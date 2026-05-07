@@ -60,7 +60,7 @@ export async function syncLiveWiki({ runDir, wikiRoot, projectRoot = null, env =
     };
   }
 
-  const targetRoot = wikiRoot ?? path.join(runDir, ".harness", "wiki", "live");
+  const targetRoot = wikiRoot ?? path.join(runDir, ".makeitreal", "wiki", "live");
   const outputPath = path.join(targetRoot, `${workItem.id}.md`);
   await mkdir(targetRoot, { recursive: true });
   await writeFile(outputPath, renderWikiPage({ artifacts, evidence: verificationEvidence }), "utf8");

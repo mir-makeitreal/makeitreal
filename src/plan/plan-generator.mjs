@@ -225,7 +225,7 @@ export async function generatePlanRun({
   const slug = slugifyTask(runId ?? request);
   const resolvedProjectRoot = path.resolve(projectRoot);
   const resolvedRunId = runId ? slugifyTask(runId) : `feature-${slug}`;
-  const runDir = path.join(resolvedProjectRoot, ".harness", "runs", resolvedRunId);
+  const runDir = path.join(resolvedProjectRoot, ".makeitreal", "runs", resolvedRunId);
   const title = titleFromRequest(request);
   const responsibilityUnitId = `ru.${slug}`;
   const contractId = `contract.${slug}.boundary`;

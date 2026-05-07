@@ -15,8 +15,8 @@ function runHarness(args, options = {}) {
 
 async function withProjectRun(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-dashboard-open-"));
-  const runDir = path.join(root, ".harness", "runs", "feature-auth");
-  await cp(new URL("../examples/canonical/.harness/runs/feature-auth", import.meta.url), runDir, { recursive: true });
+  const runDir = path.join(root, ".makeitreal", "runs", "feature-auth");
+  await cp(new URL("../examples/canonical/.makeitreal/runs/feature-auth", import.meta.url), runDir, { recursive: true });
   try {
     await callback({ root, runDir });
   } finally {

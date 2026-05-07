@@ -5,7 +5,7 @@
 Path:
 
 ```text
-dev-harness/examples/canonical/.harness/runs/feature-auth
+dev-harness/examples/canonical/.makeitreal/runs/feature-auth
 ```
 
 Purpose:

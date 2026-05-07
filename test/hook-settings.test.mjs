@@ -11,7 +11,7 @@ test("installs Claude hook settings into local project settings", async () => {
   try {
     const source = new URL("../hooks", import.meta.url);
     await cp(source, path.join(projectRoot, "dev-harness", "hooks"), { recursive: true });
-    const runDir = path.join(projectRoot, "dev-harness", "examples", "canonical", ".harness", "runs", "feature-auth");
+    const runDir = path.join(projectRoot, "dev-harness", "examples", "canonical", ".makeitreal", "runs", "feature-auth");
 
     const result = await installClaudeHooks({ projectRoot, runDir, scope: "local" });
     assert.equal(result.ok, true);

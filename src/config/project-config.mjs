@@ -21,12 +21,12 @@ const LIVE_WIKI_KEYS = new Set(["enabled"]);
 const DASHBOARD_KEYS = new Set(["autoOpen", "refreshOnStatus", "refreshOnLaunch", "refreshOnVerify"]);
 
 export function projectConfigPath(projectRoot) {
-  return path.join(path.resolve(projectRoot), ".harness", "config.json");
+  return path.join(path.resolve(projectRoot), ".makeitreal", "config.json");
 }
 
 export function inferProjectRootFromRunDir(runDir) {
   const resolved = path.resolve(runDir);
-  const marker = `${path.sep}.harness${path.sep}runs${path.sep}`;
+  const marker = `${path.sep}.makeitreal${path.sep}runs${path.sep}`;
   const markerIndex = resolved.indexOf(marker);
   if (markerIndex === -1) {
     return null;
@@ -73,7 +73,7 @@ export function validateProjectConfig(config = {}) {
       errors: [createHarnessError({
         code: "HARNESS_CONFIG_SCHEMA_INVALID",
         reason: "Make It Real config must be a JSON object.",
-        evidence: [".harness/config.json"],
+        evidence: [".makeitreal/config.json"],
         recoverable: true
       })]
     };

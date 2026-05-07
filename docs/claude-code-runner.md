@@ -54,7 +54,7 @@ Completion uses the latest successful attempt provenance, not caller assertion, 
 Example internal command:
 
 ```bash
-node bin/harness.mjs orchestrator tick .harness/board \
+node bin/harness.mjs orchestrator tick .makeitreal/board \
   --runner claude-code \
   --runner-command '{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS","--add-dir","${workspace}","--","${prompt}"]}'
 ```

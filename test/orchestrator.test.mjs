@@ -10,7 +10,7 @@ import { orchestratorTick, reconcileBoard } from "../src/orchestrator/orchestrat
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-orchestrator-"));
-  const source = new URL("../examples/kanban/.harness/board", import.meta.url);
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
   const boardDir = path.join(root, "board");
   await cp(source, boardDir, { recursive: true });
   try {

@@ -167,8 +167,8 @@ Approval command output must use the canonical JSON envelope:
 {
   "ok": true,
   "command": "blueprint approve",
-  "runDir": "/repo/.harness/runs/feature-auth",
-  "reviewPath": "/repo/.harness/runs/feature-auth/blueprint-review.json",
+  "runDir": "/repo/.makeitreal/runs/feature-auth",
+  "reviewPath": "/repo/.makeitreal/runs/feature-auth/blueprint-review.json",
   "status": "approved",
   "blueprintFingerprint": "sha256:...",
   "reviewedBy": "operator:eugene",
@@ -181,7 +181,7 @@ Approval command output must use the canonical JSON envelope:
 All failed approval/rejection attempts must be no-write:
 
 - `blueprint-review.json` remains byte-identical when it existed before the command.
-- no `.harness/current-run.json` update occurs
+- no `.makeitreal/current-run.json` update occurs
 - no `board.json`, `events.jsonl`, `claims/**`, runtime state, evidence, or `.makeitreal/**` file is written
 
 ### 4. Fingerprint Binds Approval to the Actual Blueprint
@@ -321,7 +321,7 @@ Returns:
   "ok": true,
   "command": "status",
   "projectRoot": "/repo",
-  "runDir": "/repo/.harness/runs/feature-auth",
+  "runDir": "/repo/.makeitreal/runs/feature-auth",
   "blueprint": {
     "status": "pending",
     "stale": false,

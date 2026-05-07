@@ -18,8 +18,8 @@ function runHarness(args) {
 
 async function withProjectRun(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-config-"));
-  const runDir = path.join(root, ".harness", "runs", "feature-auth");
-  await cp(new URL("../examples/canonical/.harness/runs/feature-auth", import.meta.url), runDir, { recursive: true });
+  const runDir = path.join(root, ".makeitreal", "runs", "feature-auth");
+  await cp(new URL("../examples/canonical/.makeitreal/runs/feature-auth", import.meta.url), runDir, { recursive: true });
   try {
     await callback({ root, runDir });
   } finally {
@@ -86,7 +86,7 @@ test("config command writes dashboard refresh flags", async () => {
 
 test("config migrates 1.0 files and rejects unsupported dashboard keys", async () => {
   await withProjectRun(async ({ root }) => {
-    const configPath = path.join(root, ".harness", "config.json");
+    const configPath = path.join(root, ".makeitreal", "config.json");
     await rm(configPath, { force: true });
     const { writeJsonFile } = await import("../src/io/json.mjs");
     await writeJsonFile(configPath, {

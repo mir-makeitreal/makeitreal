@@ -9,7 +9,7 @@ import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-"));
-  const source = new URL("../examples/kanban/.harness/board", import.meta.url);
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
   const boardDir = path.join(root, "board");
   await cp(source, boardDir, { recursive: true });
   try {
@@ -103,7 +103,7 @@ test("board status reports unlinked and drifted board authority", async () => {
     assert.equal(result.audit.skipped, true);
     assert.equal(result.audit.code, "HARNESS_BLUEPRINT_AUDIT_UNLINKED");
 
-    await cp(new URL("../examples/kanban/.harness/board/blueprint-review.json", import.meta.url), path.join(boardDir, "blueprint-review.json"));
+    await cp(new URL("../examples/kanban/.makeitreal/board/blueprint-review.json", import.meta.url), path.join(boardDir, "blueprint-review.json"));
     const board = await readJsonFile(path.join(boardDir, "board.json"));
     board.blueprintRunDir = "../other-run";
     await writeJsonFile(path.join(boardDir, "board.json"), board);

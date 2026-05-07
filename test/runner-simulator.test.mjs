@@ -8,7 +8,7 @@ import { runScriptedAttempt } from "../src/orchestrator/runner-simulator.mjs";
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-runner-"));
-  const source = new URL("../examples/kanban/.harness/board", import.meta.url);
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
   const boardDir = path.join(root, "board");
   await cp(source, boardDir, { recursive: true });
   try {

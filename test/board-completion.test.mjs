@@ -27,7 +27,7 @@ const VALID_CLAUDE_ARGS = [
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-board-completion-"));
-  const source = new URL("../examples/kanban/.harness/board", import.meta.url);
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
   const boardDir = path.join(root, "board");
   await cp(source, boardDir, { recursive: true });
   try {
@@ -112,9 +112,9 @@ test("orchestrator completion owns board verification, wiki sync, and Done trans
 
 test("orchestrator completion skips live wiki when disabled by project config", async () => {
   await withBoard(async ({ root, boardDir }) => {
-    const projectRunDir = path.join(root, "project", ".harness", "runs", "board");
+    const projectRunDir = path.join(root, "project", ".makeitreal", "runs", "board");
     await cp(boardDir, projectRunDir, { recursive: true });
-    await writeJsonFile(path.join(root, "project", ".harness", "config.json"), {
+    await writeJsonFile(path.join(root, "project", ".makeitreal", "config.json"), {
       schemaVersion: "1.0",
       features: {
         liveWiki: { enabled: false }

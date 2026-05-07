@@ -24,7 +24,7 @@ async function main() {
   const input = await readHookInput();
   const resolved = await resolveCurrentRunDir({
     projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.harness?.runDir ?? null
+    runDir: input.runDir ?? input.makeitreal?.runDir ?? null
   });
   if (!resolved.ok) {
     return { decision: "allow", reason: "No active Make It Real run; stop gate skipped." };

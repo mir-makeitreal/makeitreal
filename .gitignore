@@ -17,6 +17,7 @@ node_modules/
 /.claude/
 /.codex/
 /.harness/
+/.makeitreal/
 
 # Logs and temporary files
 *.log

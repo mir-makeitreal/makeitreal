@@ -38,7 +38,7 @@ test("status reports pending approval and exits zero for readable blocked runs",
     await writeCurrentRunState({ projectRoot: root, runDir, now: new Date("2026-05-06T00:00:00.000Z") });
 
     const watched = [
-      path.join(root, ".harness", "current-run.json"),
+      path.join(root, ".makeitreal", "current-run.json"),
       path.join(runDir, "blueprint-review.json")
     ];
     const before = await snapshot(watched);
@@ -64,7 +64,7 @@ test("status reports explicit dashboard refresh skip when configured off", async
   await withFixture(async ({ root, runDir }) => {
     await renderDesignPreview({ runDir });
     await writeCurrentRunState({ projectRoot: root, runDir, now: new Date("2026-05-06T00:00:00.000Z") });
-    await writeJsonFile(path.join(root, ".harness", "config.json"), {
+    await writeJsonFile(path.join(root, ".makeitreal", "config.json"), {
       schemaVersion: "1.1",
       features: {
         liveWiki: { enabled: true },

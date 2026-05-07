@@ -157,7 +157,7 @@ async function main() {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-real-golden-"));
   const projectRoot = path.join(root, "project");
   await mkdir(projectRoot, { recursive: true });
-  const runDir = path.join(projectRoot, ".harness", "runs", "slug-stats-golden");
+  const runDir = path.join(projectRoot, ".makeitreal", "runs", "slug-stats-golden");
   const request = [
     "Build a dependency-free CommonJS module at modules/slug-stats/index.cjs.",
     "Export function slugStats(input).",

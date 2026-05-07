@@ -88,7 +88,7 @@
   },
   "run": {
     "prdId": "prd.auth",
-    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth",
+    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth",
     "runId": "feature-auth",
     "workItemId": "work.feature-auth"
   },

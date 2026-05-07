@@ -109,7 +109,7 @@ async function main() {
 
   const resolved = await resolveCurrentRunDir({
     projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.harness?.runDir ?? null
+    runDir: input.runDir ?? input.makeitreal?.runDir ?? null
   });
   if (!resolved.ok) {
     return block([{
@@ -117,7 +117,7 @@ async function main() {
       reason: "Active Make It Real run context is required before file edits.",
       contractId: null,
       ownerModule: null,
-      evidence: ["CLAUDE_PROJECT_DIR", ".harness/current-run.json"],
+      evidence: ["CLAUDE_PROJECT_DIR", ".makeitreal/current-run.json"],
       recoverable: true
     }]);
   }

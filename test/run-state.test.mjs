@@ -8,14 +8,14 @@ import { currentRunStatePath, readCurrentRunState, resolveCurrentRunDir, writeCu
 test("setup writes a portable current-run pointer", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-project-"));
   try {
-    const runDir = path.join(projectRoot, ".harness", "runs", "feature-demo");
+    const runDir = path.join(projectRoot, ".makeitreal", "runs", "feature-demo");
     const result = await writeCurrentRunState({
       projectRoot,
       runDir,
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(result.ok, true);
-    assert.equal(result.state.currentRunDir, ".harness/runs/feature-demo");
+    assert.equal(result.state.currentRunDir, ".makeitreal/runs/feature-demo");
     assert.equal(result.statePath, currentRunStatePath(projectRoot));
 
     const current = await readCurrentRunState(projectRoot);
@@ -36,17 +36,17 @@ test("explicit run dir overrides current-run state", async () => {
   try {
     await writeCurrentRunState({
       projectRoot,
-      runDir: ".harness/runs/feature-a",
+      runDir: ".makeitreal/runs/feature-a",
       now: new Date("2026-05-06T00:00:00.000Z")
     });
 
     const resolved = await resolveCurrentRunDir({
       projectRoot,
-      runDir: ".harness/runs/feature-b"
+      runDir: ".makeitreal/runs/feature-b"
     });
     assert.equal(resolved.ok, true);
     assert.equal(resolved.source, "explicit");
-    assert.equal(resolved.runDir, path.join(projectRoot, ".harness", "runs", "feature-b"));
+    assert.equal(resolved.runDir, path.join(projectRoot, ".makeitreal", "runs", "feature-b"));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

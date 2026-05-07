@@ -1,6 +1,6 @@
 import path from "node:path";
 
-const RESERVED_CONTROL_PLANE_PREFIXES = [".harness/", ".claude/", "evidence/", "preview/"];
+const RESERVED_CONTROL_PLANE_PREFIXES = [".makeitreal/", ".claude/", "evidence/", "preview/"];
 
 export function reservedControlPlanePath(pattern) {
   return RESERVED_CONTROL_PLANE_PREFIXES.some((prefix) =>

@@ -52,7 +52,7 @@ async function main() {
   const approvalContext = input.last_assistant_message ?? await readLastAssistantMessage(input.transcript_path);
   return applyInteractiveBlueprintApproval({
     projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.harness?.runDir ?? null,
+    runDir: input.runDir ?? input.makeitreal?.runDir ?? null,
     prompt: input.prompt ?? input.user_prompt ?? "",
     approvalContext,
     sessionId: input.session_id ?? null,

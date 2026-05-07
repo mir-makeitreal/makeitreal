@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileExists, readJsonFile, writeJsonFile } from "../io/json.mjs";
 
 export function currentRunStatePath(projectRoot) {
-  return path.join(projectRoot, ".harness", "current-run.json");
+  return path.join(projectRoot, ".makeitreal", "current-run.json");
 }
 
 function resolveProjectPath(projectRoot, maybePath) {

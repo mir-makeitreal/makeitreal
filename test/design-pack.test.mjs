@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { validateDesignPack } from "../src/domain/design-pack.mjs";
 import { readJsonFile } from "../src/io/json.mjs";
 
-const designPackPath = new URL("../examples/canonical/.harness/runs/feature-auth/design-pack.json", import.meta.url);
+const designPackPath = new URL("../examples/canonical/.makeitreal/runs/feature-auth/design-pack.json", import.meta.url);
 
 test("valid canonical design pack passes", async () => {
   const designPack = await readJsonFile(designPackPath);

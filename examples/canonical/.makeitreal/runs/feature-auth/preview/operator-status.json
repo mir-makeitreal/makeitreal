@@ -3,11 +3,11 @@
   "dashboardRefresh": {
     "attempted": true,
     "configPath": null,
-    "dashboardUrl": "file:///Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview/index.html",
+    "dashboardUrl": "file:///Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth/preview/index.html",
     "errors": [],
     "generatedAt": "2026-04-30T00:00:00.000Z",
-    "indexPath": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview/index.html",
-    "previewDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview",
+    "indexPath": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth/preview/index.html",
+    "previewDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth/preview",
     "reason": null,
     "skipped": false
   },
@@ -28,8 +28,8 @@
     "currentRun": {
       "errors": [],
       "ok": true,
-      "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs",
-      "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth",
+      "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs",
+      "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth",
       "source": "explicit"
     },
     "errors": [],
@@ -89,7 +89,7 @@
       "phase": "launch-ready"
     },
     "phase": "launch-ready",
-    "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs",
-    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth"
+    "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs",
+    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth"
   }
 }

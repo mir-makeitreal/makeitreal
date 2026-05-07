@@ -13,7 +13,7 @@ test("syncs verified work to live wiki and writes evidence", async () => {
     const result = await syncLiveWiki({ runDir });
     assert.equal(result.ok, true);
 
-    const markdown = await readFile(path.join(runDir, ".harness", "wiki", "live", "work.feature-auth.md"), "utf8");
+    const markdown = await readFile(path.join(runDir, ".makeitreal", "wiki", "live", "work.feature-auth.md"), "utf8");
     assert.match(markdown, /# work.feature-auth/);
     assert.match(markdown, /PRD: prd.auth/);
     assert.match(markdown, /Responsibility Unit: ru.frontend/);

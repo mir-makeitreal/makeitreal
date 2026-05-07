@@ -61,6 +61,6 @@ test("blueprint decision failures are no-write", async () => {
     assert.equal(malformed.status, 1);
     assert.equal(await readFile(reviewPath, "utf8"), malformedBefore);
 
-    await rm(path.join(runDir, ".harness"), { recursive: true, force: true });
+    await rm(path.join(runDir, ".makeitreal"), { recursive: true, force: true });
   });
 });
