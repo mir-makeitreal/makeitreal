@@ -55,6 +55,10 @@ Advanced operators can also use:
 /makeitreal:config
 ```
 
+These are plugin slash commands from `plugins/makeitreal/commands/`. The
+`skills/` directory is supporting guidance, not the slash-command registration
+surface.
+
 ## Core Guarantees
 
 - PRD and Blueprint artifacts are created before implementation.

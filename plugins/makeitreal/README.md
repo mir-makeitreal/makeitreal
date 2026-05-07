@@ -6,7 +6,7 @@ keeps low-level engine commands internal.
 
 ## Exposed Skills
 
-Normal workflow:
+Normal slash-command workflow:
 
 - `/makeitreal:setup`
 - `/makeitreal:plan <request>`
@@ -17,6 +17,10 @@ Operator and advanced workflow:
 - `/makeitreal:status`
 - `/makeitreal:verify`
 - `/makeitreal:config`
+
+The command files live under `commands/`. The `skills/` directory contains the
+supporting workflow guidance that commands and Claude can use, but skills alone
+do not make commands appear in the slash-command picker.
 
 The plugin intentionally does not expose internal commands such as board claims,
 orchestrator ticks, hook installation, wiki sync, or gate mutation as normal user

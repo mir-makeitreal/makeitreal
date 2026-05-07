@@ -43,10 +43,36 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
     assert.match(skill, new RegExp(`name: ${skillName}`));
   }
 
+  for (const commandName of [...normalSkills, ...advancedSkills]) {
+    const command = await readPluginFile("commands", `${commandName}.md`);
+    assert.match(command, /description:/);
+    assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+  }
+
   const planSkill = await readPluginFile("skills", "plan", "SKILL.md");
   assert.match(planSkill, /LLM-classified conversational review/i);
   assert.match(planSkill, /makeitreal:interactive-review:llm/);
   assert.match(planSkill, /--runner claude-code/);
+});
+
+test("Make It Real plugin registers user-facing slash commands", async () => {
+  const expectedCommands = ["setup", "plan", "launch", "status", "verify", "config"];
+
+  for (const commandName of expectedCommands) {
+    const command = await readPluginFile("commands", `${commandName}.md`);
+    assert.match(command, /^---\ndescription:/);
+    assert.match(command, new RegExp(`makeitreal-engine`), `${commandName} should bridge to the plugin engine`);
+    assert.doesNotMatch(command, /board claim|wiki sync/, `${commandName} should not expose manual claim or wiki sync commands`);
+  }
+
+  const launchCommand = await readPluginFile("commands", "launch.md");
+  assert.match(launchCommand, /orchestrator tick/);
+  assert.match(launchCommand, /orchestrator complete/);
+
+  const planCommand = await readPluginFile("commands", "plan.md");
+  assert.match(planCommand, /--runner claude-code/);
+  assert.match(planCommand, /blueprint approve/);
+  assert.match(planCommand, /blueprint reject/);
 });
 
 test("Make It Real launch skill keeps low-level engine commands internal", async () => {
