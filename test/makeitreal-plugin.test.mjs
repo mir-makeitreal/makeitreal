@@ -138,6 +138,19 @@ test("Make It Real plugin binary discovers the in-repository engine", () => {
   assert.match(result.stdout, /makeitreal-engine \(internal\)/);
 });
 
+test("Make It Real plugin binary is self-contained after installation", () => {
+  const result = spawnSync(path.join(pluginRoot, "bin", "makeitreal-engine"), ["--help"], {
+    cwd: "/tmp",
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      MAKEITREAL_ENGINE_ROOT: ""
+    }
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /makeitreal-engine \(internal\)/);
+});
+
 test("Make It Real exposes an opt-in real Claude golden-path E2E script", async () => {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.equal(pkg.scripts["e2e:real-claude"], "node scripts/run-real-claude-golden-path.mjs");
