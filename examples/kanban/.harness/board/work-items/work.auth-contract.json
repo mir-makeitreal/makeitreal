@@ -1,0 +1,24 @@
+{
+  "allowedPaths": [
+    "contracts/auth-login.openapi.json"
+  ],
+  "contractIds": [
+    "contract.auth.login"
+  ],
+  "dependsOn": [],
+  "id": "work.auth-contract",
+  "lane": "Done",
+  "prdId": "prd.auth-kanban",
+  "responsibilityUnitId": "ru.auth-service",
+  "schemaVersion": "1.0",
+  "title": "Freeze auth login contract",
+  "verificationCommands": [
+    {
+      "args": [
+        "-e",
+        "console.log('auth contract ok')"
+      ],
+      "file": "node"
+    }
+  ]
+}

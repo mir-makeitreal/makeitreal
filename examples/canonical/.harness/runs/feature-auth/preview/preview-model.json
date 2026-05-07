@@ -1,0 +1,120 @@
+{
+  "board": null,
+  "design": {
+    "apiSpecs": [
+      "openapi: contract.auth.login at contracts/auth-login.openapi.json"
+    ],
+    "architectureEdges": [
+      "auth-ui -> auth-service (contract.auth.login)"
+    ],
+    "callStacks": [
+      "LoginForm.submit: authClient.login -> POST /auth/login"
+    ],
+    "responsibilityBoundaries": [
+      "ru.frontend: owns apps/web/auth/**",
+      "ru.auth-service: owns services/auth/**"
+    ],
+    "sequences": [
+      "Login request: User -> Auth UI: submit credentials",
+      "Login request: Auth UI -> Auth Service: POST /auth/login",
+      "Login request: Auth Service -> Auth UI: return session result"
+    ],
+    "stateTransitions": [
+      "Contract Frozen -> Ready via design-pack",
+      "Human Review -> Done via wiki"
+    ]
+  },
+  "generatedAt": "2026-04-30T00:00:00.000Z",
+  "operatorCockpit": {
+    "blueprintStatus": "approved",
+    "controlSurface": "claude-code",
+    "evidenceLinks": [
+      {
+        "href": "../evidence/verification.json",
+        "kind": "verification",
+        "path": "evidence/verification.json",
+        "summary": "verification recorded"
+      },
+      {
+        "href": "../evidence/wiki-sync.json",
+        "kind": "wiki-sync",
+        "path": "evidence/wiki-sync.json",
+        "summary": "wiki-sync recorded"
+      }
+    ],
+    "firstRunChecklist": [
+      {
+        "command": "/makeitreal:setup",
+        "id": "setup",
+        "label": "Setup",
+        "status": "complete"
+      },
+      {
+        "command": "/makeitreal:plan <request>",
+        "id": "plan",
+        "label": "Plan",
+        "status": "complete"
+      },
+      {
+        "command": "Approve in chat or /makeitreal:plan approve",
+        "id": "blueprint-review",
+        "label": "Blueprint Review",
+        "status": "complete"
+      },
+      {
+        "command": "/makeitreal:launch",
+        "id": "launch",
+        "label": "Launch",
+        "status": "current"
+      },
+      {
+        "command": "/makeitreal:verify",
+        "id": "verification",
+        "label": "Verification",
+        "status": "pending"
+      },
+      {
+        "command": "/makeitreal:status",
+        "id": "done",
+        "label": "Done",
+        "status": "pending"
+      }
+    ],
+    "headline": "Blueprint is approved and ready to launch.",
+    "nextAction": "/makeitreal:launch",
+    "nextCommand": "/makeitreal:launch",
+    "phase": "launch-ready",
+    "readOnly": true
+  },
+  "run": {
+    "prdId": "prd.auth",
+    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth",
+    "runId": "feature-auth",
+    "workItemId": "work.feature-auth"
+  },
+  "schemaVersion": "1.0",
+  "status": {
+    "blockers": [],
+    "blueprintStatus": "approved",
+    "evidenceSummary": [
+      {
+        "kind": "verification",
+        "ok": true,
+        "path": "evidence/verification.json",
+        "summary": "verification recorded",
+        "workItemId": "work.feature-auth"
+      },
+      {
+        "kind": "wiki-sync",
+        "ok": true,
+        "path": "evidence/wiki-sync.json",
+        "summary": "wiki-sync recorded",
+        "workItemId": "work.feature-auth"
+      }
+    ],
+    "headline": "Blueprint is approved and ready to launch.",
+    "nextAction": "/makeitreal:launch",
+    "nextCommand": "/makeitreal:launch",
+    "phase": "launch-ready"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "allowedPaths": [
+    "apps/web/auth/**"
+  ],
+  "contractIds": [
+    "contract.auth.login"
+  ],
+  "dependsOn": [
+    "work.auth-contract"
+  ],
+  "id": "work.login-ui",
+  "lane": "Ready",
+  "prdId": "prd.auth-kanban",
+  "responsibilityUnitId": "ru.frontend",
+  "schemaVersion": "1.0",
+  "title": "Implement login UI against auth contract",
+  "verificationCommands": [
+    {
+      "args": [
+        "-e",
+        "console.log('login ui ok')"
+      ],
+      "file": "node"
+    }
+  ]
+}

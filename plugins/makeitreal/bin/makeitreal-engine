@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+if [[ -n "${MAKEITREAL_ENGINE_ROOT:-}" ]]; then
+  ENGINE_ROOT="$MAKEITREAL_ENGINE_ROOT"
+else
+  ENGINE_ROOT=""
+  for candidate in \
+    "$PLUGIN_ROOT/../.." \
+    "$PLUGIN_ROOT/dev-harness" \
+    "$PLUGIN_ROOT/../dev-harness" \
+    "$PLUGIN_ROOT/../../dev-harness" \
+    "$PROJECT_ROOT" \
+    "$PROJECT_ROOT/dev-harness" \
+    "$PWD/dev-harness"; do
+    if [[ -f "$candidate/bin/harness.mjs" ]]; then
+      ENGINE_ROOT="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$ENGINE_ROOT" || ! -f "$ENGINE_ROOT/bin/harness.mjs" ]]; then
+  echo "makeitreal-engine: unable to locate dev-harness/bin/harness.mjs. Set MAKEITREAL_ENGINE_ROOT." >&2
+  exit 127
+fi
+
+exec node "$ENGINE_ROOT/bin/harness.mjs" "$@"

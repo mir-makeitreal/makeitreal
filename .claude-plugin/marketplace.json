@@ -1,0 +1,19 @@
+{
+  "name": "makeitreal-tools",
+  "owner": {
+    "name": "Make It Real"
+  },
+  "description": "Claude Code plugins for PRD-first, contract-gated engineering work.",
+  "version": "0.1.0",
+  "plugins": [
+    {
+      "name": "makeitreal",
+      "source": "./plugins/makeitreal",
+      "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Make It Real"
+      }
+    }
+  ]
+}

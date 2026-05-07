@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "units": [
+    {
+      "id": "ru.auth-service",
+      "owner": "team.auth",
+      "owns": ["contracts/**"],
+      "mayUseContracts": []
+    },
+    {
+      "id": "ru.frontend",
+      "owner": "team.frontend",
+      "owns": ["apps/web/auth/**"],
+      "mayUseContracts": ["contract.auth.login"]
+    },
+    {
+      "id": "ru.audit",
+      "owner": "team.audit",
+      "owns": ["services/audit/**"],
+      "mayUseContracts": ["contract.audit.write"]
+    }
+  ]
+}

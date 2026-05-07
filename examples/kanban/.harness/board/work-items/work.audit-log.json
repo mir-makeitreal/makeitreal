@@ -1,0 +1,26 @@
+{
+  "allowedPaths": [
+    "services/audit/**"
+  ],
+  "contractIds": [
+    "contract.audit.write"
+  ],
+  "dependsOn": [
+    "work.login-ui"
+  ],
+  "id": "work.audit-log",
+  "lane": "Ready",
+  "prdId": "prd.auth-kanban",
+  "responsibilityUnitId": "ru.audit",
+  "schemaVersion": "1.0",
+  "title": "Add audit log integration",
+  "verificationCommands": [
+    {
+      "args": [
+        "-e",
+        "console.log('audit ok')"
+      ],
+      "file": "node"
+    }
+  ]
+}

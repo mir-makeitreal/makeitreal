@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:89e980364efb56b960e131b36d16ad184a29104fd7320b42c65443f4c08cbc23",
+  "decisionNote": "Canonical fixture approval for deterministic check.",
+  "prdId": "prd.auth",
+  "reviewSource": "makeitreal:plan approve",
+  "reviewedAt": "2026-05-06T00:00:00.000Z",
+  "reviewedBy": "operator:fixture",
+  "runId": "feature-auth",
+  "schemaVersion": "1.0",
+  "status": "approved",
+  "workItemId": "work.feature-auth"
+}

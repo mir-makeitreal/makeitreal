@@ -1,0 +1,115 @@
+{
+  "apiSpecs": [
+    {
+      "contractId": "contract.auth.login",
+      "kind": "openapi",
+      "path": "contracts/auth-login.openapi.json"
+    }
+  ],
+  "architecture": {
+    "edges": [
+      {
+        "contractId": "contract.auth.login",
+        "from": "auth-ui",
+        "to": "auth-service"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "auth-ui",
+        "label": "Auth UI",
+        "responsibilityUnitId": "ru.frontend"
+      },
+      {
+        "id": "auth-service",
+        "label": "Auth Service",
+        "responsibilityUnitId": "ru.auth-service"
+      }
+    ]
+  },
+  "callStacks": [
+    {
+      "calls": [
+        "authClient.login",
+        "POST /auth/login"
+      ],
+      "entrypoint": "LoginForm.submit"
+    }
+  ],
+  "prdId": "prd.auth",
+  "responsibilityBoundaries": [
+    {
+      "mayUseContracts": [
+        "contract.auth.login"
+      ],
+      "owns": [
+        "apps/web/auth/**"
+      ],
+      "responsibilityUnitId": "ru.frontend"
+    },
+    {
+      "mayUseContracts": [],
+      "owns": [
+        "services/auth/**"
+      ],
+      "responsibilityUnitId": "ru.auth-service"
+    }
+  ],
+  "runId": "feature-auth",
+  "schemaVersion": "1.0",
+  "sequences": [
+    {
+      "messages": [
+        {
+          "from": "User",
+          "label": "submit credentials",
+          "to": "Auth UI"
+        },
+        {
+          "from": "Auth UI",
+          "label": "POST /auth/login",
+          "to": "Auth Service"
+        },
+        {
+          "from": "Auth Service",
+          "label": "return session result",
+          "to": "Auth UI"
+        }
+      ],
+      "participants": [
+        "User",
+        "Auth UI",
+        "Auth Service"
+      ],
+      "title": "Login request"
+    }
+  ],
+  "stateFlow": {
+    "lanes": [
+      "Intake",
+      "Discovery",
+      "Scoped",
+      "Blueprint Bound",
+      "Contract Frozen",
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done"
+    ],
+    "transitions": [
+      {
+        "from": "Contract Frozen",
+        "gate": "design-pack",
+        "to": "Ready"
+      },
+      {
+        "from": "Human Review",
+        "gate": "wiki",
+        "to": "Done"
+      }
+    ]
+  },
+  "workItemId": "work.feature-auth"
+}

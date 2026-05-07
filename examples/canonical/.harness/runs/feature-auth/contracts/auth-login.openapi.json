@@ -1,0 +1,16 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "Auth Login Contract", "version": "1.0.0"},
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "responses": {
+          "200": {
+            "description": "Login result"
+          }
+        }
+      }
+    }
+  }
+}

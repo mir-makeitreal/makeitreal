@@ -1,0 +1,469 @@
+{
+  "generatedAt": "2026-05-06T06:45:14.792Z",
+  "root": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z",
+  "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+  "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+  "workspace": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats",
+  "artifactPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/apps/textstats/slugStats.cjs",
+  "commands": {
+    "setup": {
+      "ok": true,
+      "command": "setup",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+      "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/current-run.json",
+      "state": {
+        "schemaVersion": "1.0",
+        "currentRunDir": ".harness/runs/offhours-slug-stats",
+        "source": "makeitreal:setup",
+        "updatedAt": "2026-05-06T07:00:00.000Z"
+      },
+      "errors": []
+    },
+    "render": {
+      "command": "design render",
+      "ok": true,
+      "previewDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/preview",
+      "errors": []
+    },
+    "pendingStatus": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+      "currentRun": {
+        "ok": true,
+        "command": "status",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/current-run.json",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+        "state": {
+          "currentRunDir": ".harness/runs/offhours-slug-stats",
+          "schemaVersion": "1.0",
+          "source": "makeitreal:setup",
+          "updatedAt": "2026-05-06T07:00:00.000Z"
+        },
+        "errors": []
+      },
+      "blueprint": {
+        "ok": false,
+        "status": "pending",
+        "stale": false,
+        "reviewedBy": null,
+        "reviewedAt": null,
+        "fingerprint": null,
+        "errors": [
+          {
+            "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+            "reason": "Blueprint review is pending user approval.",
+            "contractId": null,
+            "ownerModule": null,
+            "evidence": [
+              "blueprint-review.json"
+            ],
+            "recoverable": true
+          }
+        ]
+      },
+      "gateAudit": {
+        "ok": false,
+        "target": "Ready",
+        "checks": [
+          {
+            "gate": "ready",
+            "ok": false,
+            "errors": [
+              {
+                "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+                "reason": "Blueprint review is pending user approval.",
+                "contractId": null,
+                "ownerModule": null,
+                "evidence": [
+                  "blueprint-review.json"
+                ],
+                "recoverable": true
+              }
+            ]
+          }
+        ]
+      },
+      "nextCommand": "/makeitreal:plan approve",
+      "generatedAt": "2026-05-06T07:00:00.000Z",
+      "errors": []
+    },
+    "preApprovalTick": {
+      "command": "orchestrator tick",
+      "ok": false,
+      "errors": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "reason": "Blueprint review is pending user approval.",
+          "contractId": null,
+          "ownerModule": null,
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "recoverable": true
+        }
+      ],
+      "dispatchedWorkItemIds": [],
+      "retryWorkItemIds": []
+    },
+    "approve": {
+      "ok": true,
+      "command": "blueprint approve",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+      "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/blueprint-review.json",
+      "status": "approved",
+      "blueprintFingerprint": "sha256:4d5a439bd0fa3a031bfe146ef293e9abc10b7671980a065a0128a2f1da1f842b",
+      "reviewedBy": "operator:e2e",
+      "review": {
+        "schemaVersion": "1.0",
+        "runId": "offhours-slug-stats",
+        "workItemId": "work.slug-stats",
+        "prdId": "prd.slug-stats",
+        "blueprintFingerprint": "sha256:4d5a439bd0fa3a031bfe146ef293e9abc10b7671980a065a0128a2f1da1f842b",
+        "status": "approved",
+        "reviewSource": "makeitreal:plan approve",
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T07:00:00.000Z",
+        "decisionNote": null
+      },
+      "errors": []
+    },
+    "approvedStatus": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+      "currentRun": {
+        "ok": true,
+        "command": "status",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/current-run.json",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+        "state": {
+          "currentRunDir": ".harness/runs/offhours-slug-stats",
+          "schemaVersion": "1.0",
+          "source": "makeitreal:setup",
+          "updatedAt": "2026-05-06T07:00:00.000Z"
+        },
+        "errors": []
+      },
+      "blueprint": {
+        "ok": true,
+        "status": "approved",
+        "stale": false,
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T07:00:00.000Z",
+        "fingerprint": "sha256:4d5a439bd0fa3a031bfe146ef293e9abc10b7671980a065a0128a2f1da1f842b",
+        "errors": []
+      },
+      "gateAudit": {
+        "ok": true,
+        "target": "Ready",
+        "checks": [
+          {
+            "gate": "ready",
+            "ok": true,
+            "errors": []
+          }
+        ]
+      },
+      "nextCommand": "/makeitreal:launch",
+      "generatedAt": "2026-05-06T07:00:00.000Z",
+      "errors": []
+    },
+    "readyGate": {
+      "ok": true,
+      "command": "gate",
+      "target": "Ready",
+      "errors": []
+    },
+    "tick": {
+      "command": "orchestrator tick",
+      "ok": true,
+      "errors": [],
+      "dispatchedWorkItemIds": [
+        "work.slug-stats"
+      ],
+      "retryWorkItemIds": []
+    },
+    "complete": {
+      "ok": true,
+      "command": "orchestrator complete",
+      "workItemId": "work.slug-stats",
+      "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/evidence/work.slug-stats.verification.json",
+      "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/wiki/live/work.slug-stats.md",
+      "errors": []
+    },
+    "doneGate": {
+      "ok": false,
+      "command": "gate",
+      "target": "Done",
+      "errors": [
+        {
+          "code": "HARNESS_EVIDENCE_MISSING",
+          "reason": "Done requires evidence/verification.json.",
+          "contractId": null,
+          "ownerModule": null,
+          "evidence": [
+            "evidence/verification.json"
+          ],
+          "recoverable": false
+        },
+        {
+          "code": "HARNESS_WIKI_SYNC_MISSING",
+          "reason": "Done requires evidence/wiki-sync.json.",
+          "contractId": null,
+          "ownerModule": null,
+          "evidence": [
+            "evidence/wiki-sync.json"
+          ],
+          "recoverable": false
+        }
+      ]
+    }
+  },
+  "seed": {
+    "ok": true,
+    "command": "blueprint seed",
+    "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/blueprint-review.json",
+    "review": {
+      "schemaVersion": "1.0",
+      "runId": "offhours-slug-stats",
+      "workItemId": "work.slug-stats",
+      "prdId": "prd.slug-stats",
+      "blueprintFingerprint": "sha256:4d5a439bd0fa3a031bfe146ef293e9abc10b7671980a065a0128a2f1da1f842b",
+      "status": "pending",
+      "reviewSource": "makeitreal:plan",
+      "reviewedBy": null,
+      "reviewedAt": null,
+      "decisionNote": null
+    },
+    "errors": []
+  },
+  "board": {
+    "boardId": "board.offhours-slug-stats",
+    "lanes": [
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done",
+      "Failed Fast",
+      "Rework",
+      "Cancelled"
+    ],
+    "schemaVersion": "1.0",
+    "workItems": [
+      {
+        "allowedPaths": [
+          "apps/textstats/**"
+        ],
+        "contractIds": [
+          "contract.slug-stats.module"
+        ],
+        "dependsOn": [],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.slug-stats.verification.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.slug-stats.wiki-sync.json"
+          }
+        ],
+        "id": "work.slug-stats",
+        "lane": "Done",
+        "prdId": "prd.slug-stats",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003"
+          ]
+        },
+        "responsibilityUnitId": "ru.textstats",
+        "schemaVersion": "1.0",
+        "title": "Implement slug stats CommonJS module",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "const { slugStats } = require('./apps/textstats/slugStats.cjs'); const r = slugStats('Hello hello world!'); if (r.words !== 3 || r.uniqueWords !== 2 || r.slug !== 'hello-hello-world') throw new Error(JSON.stringify(r)); try { slugStats(123); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('slugStats verification ok');"
+            ],
+            "file": "node"
+          }
+        ]
+      }
+    ]
+  },
+  "runtimeState": {
+    "boardId": "board.offhours-slug-stats",
+    "claimed": {},
+    "completedBookkeeping": {
+      "work.slug-stats": {
+        "completedAt": "2026-05-06T07:00:00.000Z",
+        "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/evidence/work.slug-stats.verification.json",
+        "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/wiki/live/work.slug-stats.md",
+        "workItemId": "work.slug-stats"
+      }
+    },
+    "rateLimitSnapshots": {},
+    "retryAttempts": {},
+    "running": {},
+    "schemaVersion": "1.0",
+    "sessionMetrics": {
+      "failedTurns": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "startedSessions": 1,
+      "totalTokens": 0,
+      "turnCount": 1
+    }
+  },
+  "attempts": {
+    "latest": null
+  },
+  "handoff": {
+    "blueprintReview": {
+      "blueprintFingerprint": "sha256:4d5a439bd0fa3a031bfe146ef293e9abc10b7671980a065a0128a2f1da1f842b",
+      "reviewedAt": "2026-05-06T07:00:00.000Z",
+      "reviewedBy": "operator:e2e",
+      "reviewSource": "makeitreal:plan approve",
+      "status": "approved"
+    },
+    "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats",
+    "boardId": "board.offhours-slug-stats",
+    "contractArtifacts": [
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/contracts/slug-stats.contract.json"
+    ],
+    "generatedAt": "2026-05-06T07:00:00.000Z",
+    "responsibilityUnits": {
+      "schemaVersion": "1.0",
+      "units": [
+        {
+          "id": "ru.textstats",
+          "mayUseContracts": [
+            "contract.slug-stats.module"
+          ],
+          "owner": "team.utility",
+          "owns": [
+            "apps/textstats/**"
+          ],
+          "publicSurfaces": [
+            "contract.slug-stats.module"
+          ]
+        },
+        {
+          "id": "ru.consumer",
+          "mayUseContracts": [
+            "contract.slug-stats.module"
+          ],
+          "owner": "team.consumer",
+          "owns": [],
+          "publicSurfaces": []
+        }
+      ]
+    },
+    "rules": [
+      "PRD and blueprint artifacts are the source of truth.",
+      "Do not edit outside allowedPaths.",
+      "Exactly one responsibility unit owns this work item.",
+      "Use only declared contractIds across responsibility boundaries.",
+      "Do not introduce undeclared fallback behavior.",
+      "Fast-fail and surface root cause when the contract cannot be satisfied."
+    ],
+    "runnerMode": "claude-code",
+    "schemaVersion": "1.0",
+    "sourceArtifacts": [
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/board.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/work-item.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/responsibility-units.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/trust-policy.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/prd.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/design-pack.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/blueprint-review.json",
+      "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source/contracts/slug-stats.contract.json"
+    ],
+    "sourceDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/workspaces/work.slug-stats/.makeitreal/source",
+    "workItem": {
+      "allowedPaths": [
+        "apps/textstats/**"
+      ],
+      "contractIds": [
+        "contract.slug-stats.module"
+      ],
+      "dependsOn": [],
+      "doneEvidence": [
+        {
+          "kind": "verification",
+          "path": "evidence/work.slug-stats.verification.json"
+        },
+        {
+          "kind": "wiki-sync",
+          "path": "evidence/work.slug-stats.wiki-sync.json"
+        }
+      ],
+      "id": "work.slug-stats",
+      "lane": "Running",
+      "prdId": "prd.slug-stats",
+      "prdTrace": {
+        "acceptanceCriteriaIds": [
+          "AC-001",
+          "AC-002",
+          "AC-003"
+        ]
+      },
+      "responsibilityUnitId": "ru.textstats",
+      "schemaVersion": "1.0",
+      "title": "Implement slug stats CommonJS module",
+      "verificationCommands": [
+        {
+          "args": [
+            "-e",
+            "const { slugStats } = require('./apps/textstats/slugStats.cjs'); const r = slugStats('Hello hello world!'); if (r.words !== 3 || r.uniqueWords !== 2 || r.slug !== 'hello-hello-world') throw new Error(JSON.stringify(r)); try { slugStats(123); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('slugStats verification ok');"
+          ],
+          "file": "node"
+        }
+      ]
+    }
+  },
+  "product": {
+    "exists": true,
+    "content": "'use strict';\n\nfunction slugStats(input) {\n  if (typeof input !== 'string') {\n    throw new TypeError('slugStats expects a string input');\n  }\n  const tokens = input.toLowerCase().match(/[a-z0-9]+/g) || [];\n  return {\n    words: tokens.length,\n    uniqueWords: new Set(tokens).size,\n    slug: tokens.join('-'),\n  };\n}\n\nmodule.exports = { slugStats };\n"
+  },
+  "verificationEvidence": {
+    "commandHashes": [
+      "04dc470cd8a173fc230ba60a2b45edc6a866464d969eb66ef3ee97cd950bf528"
+    ],
+    "commands": [
+      {
+        "command": {
+          "args": [
+            "-e",
+            "const { slugStats } = require('./apps/textstats/slugStats.cjs'); const r = slugStats('Hello hello world!'); if (r.words !== 3 || r.uniqueWords !== 2 || r.slug !== 'hello-hello-world') throw new Error(JSON.stringify(r)); try { slugStats(123); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('slugStats verification ok');"
+          ],
+          "file": "node"
+        },
+        "commandHash": "04dc470cd8a173fc230ba60a2b45edc6a866464d969eb66ef3ee97cd950bf528",
+        "durationMs": 180,
+        "exitCode": 0,
+        "stderr": "",
+        "stdout": "slugStats verification ok\n"
+      }
+    ],
+    "kind": "board-verification",
+    "ok": true,
+    "producer": "makeitreal-engine board-complete",
+    "workItemId": "work.slug-stats"
+  },
+  "wikiEvidence": {
+    "kind": "board-wiki-sync",
+    "outputPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-offhours-e2e-V45p4z/project/.harness/runs/offhours-slug-stats/wiki/live/work.slug-stats.md",
+    "workItemId": "work.slug-stats"
+  }
+}

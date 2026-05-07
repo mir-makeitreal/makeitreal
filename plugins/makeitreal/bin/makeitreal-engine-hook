@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOOK_NAME="${1:-}"
+if [[ -z "$HOOK_NAME" ]]; then
+  echo "makeitreal-engine-hook: hook name required" >&2
+  exit 2
+fi
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+if [[ -n "${MAKEITREAL_ENGINE_ROOT:-}" ]]; then
+  ENGINE_ROOT="$MAKEITREAL_ENGINE_ROOT"
+else
+  ENGINE_ROOT=""
+  for candidate in \
+    "$PLUGIN_ROOT/../.." \
+    "$PLUGIN_ROOT/dev-harness" \
+    "$PLUGIN_ROOT/../dev-harness" \
+    "$PLUGIN_ROOT/../../dev-harness" \
+    "$PROJECT_ROOT" \
+    "$PROJECT_ROOT/dev-harness" \
+    "$PWD/dev-harness"; do
+    if [[ -d "$candidate/hooks/claude" ]]; then
+      ENGINE_ROOT="$candidate"
+      break
+    fi
+  done
+fi
+
+SCRIPT="$ENGINE_ROOT/hooks/claude/${HOOK_NAME}.mjs"
+if [[ -z "$ENGINE_ROOT" || ! -f "$SCRIPT" ]]; then
+  echo "makeitreal-engine-hook: unable to locate hook script for $HOOK_NAME. Set MAKEITREAL_ENGINE_ROOT." >&2
+  exit 127
+fi
+
+exec node "$SCRIPT"

@@ -1,0 +1,10 @@
+{
+  "approvalPolicy": "never",
+  "commandExecution": "structured-command-only",
+  "realAgentLaunch": "enabled",
+  "runnerMode": "claude-code",
+  "sandbox": "workspace-only",
+  "schemaVersion": "1.0",
+  "unsupportedToolCall": "fail-fast",
+  "userInputRequired": "fail-fast"
+}

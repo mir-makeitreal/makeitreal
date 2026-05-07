@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "runnerMode": "scripted-simulator",
+  "realAgentLaunch": "disabled",
+  "approvalPolicy": "never",
+  "sandbox": "workspace-only",
+  "commandExecution": "trusted-fixture-only",
+  "userInputRequired": "fail-fast",
+  "unsupportedToolCall": "fail-fast"
+}

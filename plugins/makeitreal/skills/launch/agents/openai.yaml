@@ -1,0 +1,8 @@
+interface:
+  display_name: "Make It Real Launch"
+  short_description: "Run gated execution"
+  brand_color: "#2563EB"
+  default_prompt: "Use $makeitreal:launch to advance the gated run."
+
+policy:
+  allow_implicit_invocation: true

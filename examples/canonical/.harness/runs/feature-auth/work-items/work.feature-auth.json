@@ -1,0 +1,40 @@
+{
+  "allowedPaths": [
+    "apps/web/auth/**"
+  ],
+  "contractIds": [
+    "contract.auth.login"
+  ],
+  "dependsOn": [],
+  "doneEvidence": [
+    {
+      "kind": "verification",
+      "path": "evidence/verification.json"
+    },
+    {
+      "kind": "wiki-sync",
+      "path": "evidence/wiki-sync.json"
+    }
+  ],
+  "id": "work.feature-auth",
+  "lane": "Contract Frozen",
+  "prdTrace": {
+    "acceptanceCriteriaIds": [
+      "AC-001",
+      "AC-002",
+      "AC-003"
+    ]
+  },
+  "prdId": "prd.auth",
+  "responsibilityUnitId": "ru.frontend",
+  "schemaVersion": "1.0",
+  "verificationCommands": [
+    {
+      "args": [
+        "-e",
+        "console.log('verification ok')"
+      ],
+      "file": "node"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Make It Real Dashboard - work.feature-auth</title>
+  <link rel="stylesheet" href="./preview.css">
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Make It Real</p>
+        <h1>work.feature-auth</h1>
+      </div>
+      <dl>
+        <div><dt>Phase</dt><dd>launch-ready</dd></div>
+        <div><dt>Blueprint</dt><dd>approved</dd></div>
+        <div><dt>Next</dt><dd><code>/makeitreal:launch</code></dd></div>
+      </dl>
+    </header>
+
+    <section class="summary">
+      <h2>Operator Status</h2>
+      <p><strong>Blueprint is approved and ready to launch.</strong></p>
+      <p class="read-only">Read-only dashboard. Use Make It Real workflow commands for state changes.</p>
+    </section>
+
+    <section class="operator-cockpit" data-read-only-cockpit="true">
+    <h2>Operator Cockpit</h2>
+    <p class="read-only">State changes happen in Claude Code. This dashboard only explains the run.</p>
+    <div class="cockpit-grid">
+      <article>
+        <h3>First Run</h3>
+        <ol class="guide-steps"><li class="guide-step complete">
+    <span>Setup</span>
+    <strong>complete</strong>
+    <code>/makeitreal:setup</code>
+  </li><li class="guide-step complete">
+    <span>Plan</span>
+    <strong>complete</strong>
+    <code>/makeitreal:plan &lt;request&gt;</code>
+  </li><li class="guide-step complete">
+    <span>Blueprint Review</span>
+    <strong>complete</strong>
+    <code>Approve in chat or /makeitreal:plan approve</code>
+  </li><li class="guide-step current">
+    <span>Launch</span>
+    <strong>current</strong>
+    <code>/makeitreal:launch</code>
+  </li><li class="guide-step pending">
+    <span>Verification</span>
+    <strong>pending</strong>
+    <code>/makeitreal:verify</code>
+  </li><li class="guide-step pending">
+    <span>Done</span>
+    <strong>pending</strong>
+    <code>/makeitreal:status</code>
+  </li></ol>
+      </article>
+      <article>
+        <h3>Next Claude Code Action</h3>
+        <p>/makeitreal:launch</p>
+        <div class="command-copy">
+          <code>/makeitreal:launch</code>
+          <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
+        </div>
+      </article>
+      <article>
+        <h3>Evidence Links</h3>
+        <ul><li><a href="../evidence/verification.json">verification: verification recorded</a> <code>evidence/verification.json</code></li><li><a href="../evidence/wiki-sync.json">wiki-sync: wiki-sync recorded</a> <code>evidence/wiki-sync.json</code></li></ul>
+      </article>
+    </div>
+  </section>
+
+    <section>
+      <h2>Kanban Board</h2>
+      <p class="empty">No launch board has been materialized for this run.</p>
+    </section>
+
+    <section>
+      <h2>Blockers And Next Action</h2>
+      <p class="empty">No active blockers.</p>
+    </section>
+
+    <section>
+      <h2>Latest Evidence Summary</h2>
+      <ul><li>verification for work.feature-auth: verification recorded <code>evidence/verification.json</code></li><li>wiki-sync for work.feature-auth: wiki-sync recorded <code>evidence/wiki-sync.json</code></li></ul>
+    </section>
+
+    <section class="details">
+      <h2>System Architecture</h2><ul><li>auth-ui -&gt; auth-service (contract.auth.login)</li></ul>
+      <h2>State Transition Flow</h2><ul><li>Contract Frozen -&gt; Ready via design-pack</li><li>Human Review -&gt; Done via wiki</li></ul>
+      <h2>API / Interface Specs</h2><ul><li>openapi: contract.auth.login at contracts/auth-login.openapi.json</li></ul>
+      <h2>Responsibility Boundaries</h2><ul><li>ru.frontend: owns apps/web/auth/**</li><li>ru.auth-service: owns services/auth/**</li></ul>
+      <h2>Call Stack</h2><ul><li>LoginForm.submit: authClient.login -&gt; POST /auth/login</li></ul>
+      <h2>Sequence Diagrams</h2><ul><li>Login request: User -&gt; Auth UI: submit credentials</li><li>Login request: Auth UI -&gt; Auth Service: POST /auth/login</li><li>Login request: Auth Service -&gt; Auth UI: return session result</li></ul>
+    </section>
+  </main>
+  <script src="./preview.js"></script>
+</body>
+</html>

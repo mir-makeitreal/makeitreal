@@ -1,0 +1,18 @@
+{
+  "name": "makeitreal",
+  "version": "0.1.0",
+  "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
+  "author": {
+    "name": "Make It Real"
+  },
+  "repository": "https://github.com/mir-makeitreal/makeitreal",
+  "homepage": "https://github.com/mir-makeitreal/makeitreal",
+  "license": "UNLICENSED",
+  "keywords": [
+    "claude-code",
+    "engineering-harness",
+    "contracts",
+    "kanban"
+  ],
+  "skills": "./skills/"
+}

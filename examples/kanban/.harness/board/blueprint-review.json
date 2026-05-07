@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:e43c25f4ca6ff8499280d2480b1bbdd5d84124637fdc9a022b4fa3b08799f40a",
+  "decisionNote": "Kanban fixture approval for deterministic tests.",
+  "prdId": "prd.auth-kanban",
+  "reviewSource": "makeitreal:plan approve",
+  "reviewedAt": "2026-05-06T00:00:00.000Z",
+  "reviewedBy": "operator:fixture",
+  "runId": "board",
+  "schemaVersion": "1.0",
+  "status": "approved",
+  "workItemId": "work.login-ui"
+}

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Make It Real Verify"
+  short_description: "Manual run verification"
+  brand_color: "#2563EB"
+  default_prompt: "Use $makeitreal:verify to inspect the blocked run."
+
+policy:
+  allow_implicit_invocation: true

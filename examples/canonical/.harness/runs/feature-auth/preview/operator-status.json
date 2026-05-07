@@ -1,0 +1,95 @@
+{
+  "boardStatus": null,
+  "dashboardRefresh": {
+    "attempted": true,
+    "configPath": null,
+    "dashboardUrl": "file:///Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview/index.html",
+    "errors": [],
+    "generatedAt": "2026-04-30T00:00:00.000Z",
+    "indexPath": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview/index.html",
+    "previewDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth/preview",
+    "reason": null,
+    "skipped": false
+  },
+  "runStatus": {
+    "blockers": [],
+    "blueprint": {
+      "errors": [],
+      "fingerprint": "sha256:89e980364efb56b960e131b36d16ad184a29104fd7320b42c65443f4c08cbc23",
+      "ok": true,
+      "reviewedAt": "2026-05-06T00:00:00.000Z",
+      "reviewedBy": "operator:fixture",
+      "stale": false,
+      "status": "approved"
+    },
+    "blueprintStatus": "approved",
+    "boardStatus": null,
+    "command": "status",
+    "currentRun": {
+      "errors": [],
+      "ok": true,
+      "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs",
+      "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth",
+      "source": "explicit"
+    },
+    "errors": [],
+    "evidenceSummary": [
+      {
+        "kind": "verification",
+        "ok": true,
+        "path": "evidence/verification.json",
+        "summary": "verification recorded",
+        "workItemId": "work.feature-auth"
+      },
+      {
+        "kind": "wiki-sync",
+        "ok": true,
+        "path": "evidence/wiki-sync.json",
+        "summary": "wiki-sync recorded",
+        "workItemId": "work.feature-auth"
+      }
+    ],
+    "gateAudit": {
+      "checks": [
+        {
+          "errors": [],
+          "gate": "ready",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "target": "Ready"
+    },
+    "generatedAt": "2026-04-30T00:00:00.000Z",
+    "headline": "Blueprint is approved and ready to launch.",
+    "nextAction": "/makeitreal:launch",
+    "nextCommand": "/makeitreal:launch",
+    "ok": true,
+    "operatorSummary": {
+      "blockers": [],
+      "blueprintStatus": "approved",
+      "evidenceSummary": [
+        {
+          "kind": "verification",
+          "ok": true,
+          "path": "evidence/verification.json",
+          "summary": "verification recorded",
+          "workItemId": "work.feature-auth"
+        },
+        {
+          "kind": "wiki-sync",
+          "ok": true,
+          "path": "evidence/wiki-sync.json",
+          "summary": "wiki-sync recorded",
+          "workItemId": "work.feature-auth"
+        }
+      ],
+      "headline": "Blueprint is approved and ready to launch.",
+      "nextAction": "/makeitreal:launch",
+      "phase": "launch-ready"
+    },
+    "phase": "launch-ready",
+    "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs",
+    "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.harness/runs/feature-auth"
+  }
+}

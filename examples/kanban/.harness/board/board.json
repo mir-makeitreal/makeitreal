@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "boardId": "board.auth",
+  "lanes": [
+    "Intake",
+    "Discovery",
+    "Scoped",
+    "Blueprint Bound",
+    "Contract Frozen",
+    "Ready",
+    "Claimed",
+    "Running",
+    "Verifying",
+    "Human Review",
+    "Done",
+    "Blocked",
+    "Rework",
+    "Failed Fast",
+    "Cancelled"
+  ],
+  "workItems": [
+    {
+      "id": "work.auth-contract",
+      "title": "Freeze auth login contract",
+      "lane": "Done",
+      "responsibilityUnitId": "ru.auth-service",
+      "contractIds": ["contract.auth.login"],
+      "dependsOn": [],
+      "allowedPaths": ["contracts/auth-login.openapi.json"],
+      "verificationCommands": [{"file":"node","args":["-e","console.log('auth contract ok')"]}]
+    },
+    {
+      "id": "work.login-ui",
+      "title": "Implement login UI against auth contract",
+      "lane": "Ready",
+      "responsibilityUnitId": "ru.frontend",
+      "contractIds": ["contract.auth.login"],
+      "dependsOn": ["work.auth-contract"],
+      "allowedPaths": ["apps/web/auth/**"],
+      "verificationCommands": [{"file":"node","args":["-e","console.log('login ui ok')"]}]
+    },
+    {
+      "id": "work.audit-log",
+      "title": "Add audit log integration",
+      "lane": "Ready",
+      "responsibilityUnitId": "ru.audit",
+      "contractIds": ["contract.audit.write"],
+      "dependsOn": ["work.login-ui"],
+      "allowedPaths": ["services/audit/**"],
+      "verificationCommands": [{"file":"node","args":["-e","console.log('audit ok')"]}]
+    }
+  ]
+}

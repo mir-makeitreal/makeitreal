@@ -1,0 +1,84 @@
+{
+  "apiSpecs": [
+    {
+      "contractId": "contract.auth.login",
+      "kind": "openapi",
+      "path": "contracts/auth-login.openapi.json"
+    }
+  ],
+  "architecture": {
+    "edges": [
+      {
+        "contractId": "contract.auth.login",
+        "from": "auth-ui",
+        "to": "auth-service"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "auth-ui",
+        "label": "Auth UI",
+        "responsibilityUnitId": "ru.frontend"
+      },
+      {
+        "id": "auth-service",
+        "label": "Auth Service",
+        "responsibilityUnitId": "ru.auth-service"
+      }
+    ]
+  },
+  "callStacks": [
+    {
+      "calls": [
+        "authClient.login",
+        "POST /auth/login"
+      ],
+      "entrypoint": "LoginForm.submit"
+    }
+  ],
+  "prdId": "prd.auth-kanban",
+  "responsibilityBoundaries": [
+    {
+      "mayUseContracts": [
+        "contract.auth.login"
+      ],
+      "owns": [
+        "apps/web/auth/**"
+      ],
+      "responsibilityUnitId": "ru.frontend"
+    }
+  ],
+  "schemaVersion": "1.0",
+  "sequences": [
+    {
+      "messages": [
+        {
+          "from": "Auth UI",
+          "label": "POST /auth/login",
+          "to": "Auth Service"
+        }
+      ],
+      "participants": [
+        "Auth UI",
+        "Auth Service"
+      ],
+      "title": "Login contract call"
+    }
+  ],
+  "stateFlow": {
+    "lanes": [
+      "Ready",
+      "Running",
+      "Verifying",
+      "Done"
+    ],
+    "transitions": [
+      {
+        "from": "Ready",
+        "gate": "claim",
+        "to": "Running"
+      }
+    ]
+  },
+  "workItemId": "work.login-ui"
+}

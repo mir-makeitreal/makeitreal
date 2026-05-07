@@ -1,0 +1,24 @@
+{
+  "acceptanceCriteria": [
+    {
+      "id": "AC-001",
+      "statement": "Login UI work uses the declared auth login contract only."
+    },
+    {
+      "id": "AC-002",
+      "statement": "Completed work records verification and live wiki evidence."
+    }
+  ],
+  "goals": [
+    "Coordinate authentication work through a contract-gated Kanban board."
+  ],
+  "id": "prd.auth-kanban",
+  "nonGoals": [
+    "Implement production authentication."
+  ],
+  "schemaVersion": "1.0",
+  "title": "Authentication Kanban Runner Fixture",
+  "userVisibleBehavior": [
+    "The login UI work item reaches Verifying only after a contract-aware runner completes."
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "feature-auth",
+  "workItemId": "work.feature-auth",
+  "prdId": "prd.auth",
+  "architecture": {
+    "nodes": [
+      {"id": "auth-ui", "label": "Auth UI", "responsibilityUnitId": "ru.frontend"},
+      {"id": "auth-service", "label": "Auth Service", "responsibilityUnitId": "ru.auth-service"}
+    ],
+    "edges": [
+      {"from": "auth-ui", "to": "auth-service", "contractId": "contract.auth.login"}
+    ]
+  },
+  "stateFlow": {
+    "lanes": ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+    "transitions": [
+      {"from": "Contract Frozen", "to": "Ready", "gate": "design-pack"},
+      {"from": "Human Review", "to": "Done", "gate": "wiki"}
+    ]
+  },
+  "apiSpecs": [
+    {"kind": "openapi", "contractId": "contract.auth.login", "path": "contracts/auth-login.openapi.json"}
+  ],
+  "responsibilityBoundaries": [
+    {"responsibilityUnitId": "ru.frontend", "owns": ["apps/web/auth/**"], "mayUseContracts": ["contract.auth.login"]},
+    {"responsibilityUnitId": "ru.auth-service", "owns": ["services/auth/**"], "mayUseContracts": []}
+  ],
+  "callStacks": [
+    {"entrypoint": "LoginForm.submit", "calls": ["authClient.login", "POST /auth/login"]}
+  ],
+  "sequences": [
+    {
+      "title": "Login request",
+      "participants": ["User", "Auth UI", "Auth Service"],
+      "messages": [
+        {"from": "User", "to": "Auth UI", "label": "submit credentials"},
+        {"from": "Auth UI", "to": "Auth Service", "label": "POST /auth/login"},
+        {"from": "Auth Service", "to": "Auth UI", "label": "return session result"}
+      ]
+    }
+  ]
+}

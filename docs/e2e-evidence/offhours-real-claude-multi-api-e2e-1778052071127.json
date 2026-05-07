@@ -1,0 +1,730 @@
+{
+  "generatedAt": "2026-05-06T07:21:11.124Z",
+  "runRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu",
+  "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project",
+  "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api",
+  "claudeBinary": {
+    "command": "claude",
+    "resolvedPath": "/Users/eugene/.local/bin/claude",
+    "realPath": "/Users/eugene/.local/share/claude/versions/2.1.129",
+    "hash": "sha256:fad2ac75c38ced2c57d046e64927c9ee4846f5ac75ea3bf8f0525ec66438c109",
+    "version": {
+      "status": 0,
+      "stdout": "2.1.129 (Claude Code)\n",
+      "stderr": ""
+    }
+  },
+  "seed": {
+    "ok": true,
+    "command": "blueprint seed",
+    "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/blueprint-review.json",
+    "review": {
+      "schemaVersion": "1.0",
+      "runId": "offhours-catalog-api",
+      "workItemId": "work.catalog-model",
+      "prdId": "prd.catalog-api",
+      "blueprintFingerprint": "sha256:9dca70150c926dad6460a7a55d8860bab9dd1e67e6fb4df4ef2504f238e0988e",
+      "status": "pending",
+      "reviewSource": "makeitreal:plan",
+      "reviewedBy": null,
+      "reviewedAt": null,
+      "decisionNote": null
+    },
+    "errors": []
+  },
+  "commands": {
+    "setup": {
+      "ok": true,
+      "command": "setup",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api",
+      "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/current-run.json",
+      "state": {
+        "schemaVersion": "1.0",
+        "currentRunDir": ".harness/runs/offhours-catalog-api",
+        "source": "makeitreal:setup",
+        "updatedAt": "2026-05-06T08:00:00.000Z"
+      },
+      "errors": []
+    },
+    "hooksInstall": {
+      "ok": true,
+      "command": "hooks install",
+      "settingsPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.claude/settings.local.json",
+      "scope": "local",
+      "errors": []
+    },
+    "render": {
+      "command": "design render",
+      "ok": true,
+      "previewDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/preview",
+      "errors": []
+    },
+    "preApprovalTick": {
+      "command": "orchestrator tick",
+      "ok": false,
+      "errors": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "reason": "Blueprint review is pending user approval.",
+          "contractId": null,
+          "ownerModule": null,
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "recoverable": true
+        }
+      ],
+      "dispatchedWorkItemIds": [],
+      "retryWorkItemIds": []
+    },
+    "approve": {
+      "ok": true,
+      "command": "blueprint approve",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api",
+      "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/blueprint-review.json",
+      "status": "approved",
+      "blueprintFingerprint": "sha256:9dca70150c926dad6460a7a55d8860bab9dd1e67e6fb4df4ef2504f238e0988e",
+      "reviewedBy": "operator:e2e",
+      "review": {
+        "schemaVersion": "1.0",
+        "runId": "offhours-catalog-api",
+        "workItemId": "work.catalog-model",
+        "prdId": "prd.catalog-api",
+        "blueprintFingerprint": "sha256:9dca70150c926dad6460a7a55d8860bab9dd1e67e6fb4df4ef2504f238e0988e",
+        "status": "approved",
+        "reviewSource": "makeitreal:plan approve",
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T08:00:00.000Z",
+        "decisionNote": null
+      },
+      "errors": []
+    },
+    "readyGate": {
+      "ok": true,
+      "command": "gate",
+      "target": "Ready",
+      "errors": []
+    },
+    "tickModel": {
+      "command": "orchestrator tick",
+      "ok": true,
+      "errors": [],
+      "dispatchedWorkItemIds": [
+        "work.catalog-model"
+      ],
+      "retryWorkItemIds": []
+    },
+    "completeModel": {
+      "ok": true,
+      "command": "orchestrator complete",
+      "workItemId": "work.catalog-model",
+      "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/evidence/work.catalog-model.verification.json",
+      "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/wiki/live/work.catalog-model.md",
+      "errors": []
+    },
+    "readyAfterModel": {
+      "ok": true,
+      "command": "board ready",
+      "workItemIds": [
+        "work.catalog-api"
+      ]
+    },
+    "tickApi": {
+      "command": "orchestrator tick",
+      "ok": true,
+      "errors": [],
+      "dispatchedWorkItemIds": [
+        "work.catalog-api"
+      ],
+      "retryWorkItemIds": []
+    },
+    "completeApi": {
+      "ok": true,
+      "command": "orchestrator complete",
+      "workItemId": "work.catalog-api",
+      "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/evidence/work.catalog-api.verification.json",
+      "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/wiki/live/work.catalog-api.md",
+      "errors": []
+    },
+    "doneGate": {
+      "ok": true,
+      "command": "gate",
+      "target": "Done",
+      "errors": []
+    }
+  },
+  "openApi": {
+    "ok": true,
+    "errors": []
+  },
+  "board": {
+    "boardId": "board.offhours-catalog-api",
+    "lanes": [
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done",
+      "Failed Fast",
+      "Rework",
+      "Cancelled"
+    ],
+    "schemaVersion": "1.0",
+    "workItems": [
+      {
+        "allowedPaths": [
+          "apps/catalog/model.cjs"
+        ],
+        "contractIds": [
+          "contract.catalog.model"
+        ],
+        "dependsOn": [],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.catalog-model.verification.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.catalog-model.wiki-sync.json"
+          }
+        ],
+        "id": "work.catalog-model",
+        "lane": "Done",
+        "prdId": "prd.catalog-api",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003",
+            "AC-004"
+          ]
+        },
+        "responsibilityUnitId": "ru.catalog-model",
+        "schemaVersion": "1.0",
+        "title": "Implement catalog book normalization module",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "const { normalizeBook } = require('./apps/catalog/model.cjs'); const b = normalizeBook({ title: ' Dune ', author: ' Frank Herbert ' }); if (b.title !== 'Dune' || b.author !== 'Frank Herbert') throw new Error(JSON.stringify(b)); try { normalizeBook({ title: '', author: 'x' }); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('catalog model ok');"
+            ],
+            "file": "node"
+          }
+        ]
+      },
+      {
+        "allowedPaths": [
+          "apps/catalog/api.cjs"
+        ],
+        "contractIds": [
+          "contract.catalog.create.openapi",
+          "contract.catalog.model"
+        ],
+        "dependsOn": [
+          "work.catalog-model"
+        ],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.catalog-api.verification.json"
+          },
+          {
+            "kind": "openapi-conformance",
+            "path": "evidence/work.catalog-api.openapi-conformance.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.catalog-api.wiki-sync.json"
+          }
+        ],
+        "id": "work.catalog-api",
+        "lane": "Done",
+        "prdId": "prd.catalog-api",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003",
+            "AC-004"
+          ]
+        },
+        "responsibilityUnitId": "ru.catalog-api",
+        "schemaVersion": "1.0",
+        "title": "Implement create-book API handler against OpenAPI contract",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "const fs = require('fs'); const path = require('path'); const { handleCreateBook } = require('./apps/catalog/api.cjs'); const created = handleCreateBook({ method: 'POST', body: { title: ' Dune ', author: ' Frank Herbert ' } }); if (created.status !== 201 || created.body.book.title !== 'Dune' || created.body.book.author !== 'Frank Herbert') throw new Error(JSON.stringify(created)); const invalid = handleCreateBook({ method: 'POST', body: { title: '', author: 'x' } }); if (invalid.status !== 400 || !invalid.body.error) throw new Error(JSON.stringify(invalid)); const evidencePath = path.join(process.env.MAKEITREAL_BOARD_DIR, 'evidence', 'work.catalog-api.openapi-conformance.json'); fs.writeFileSync(evidencePath, JSON.stringify({ kind: 'openapi-conformance', ok: true, workItemId: process.env.MAKEITREAL_WORK_ITEM_ID, contractId: 'contract.catalog.create.openapi', cases: [{ contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: ' Dune ', author: ' Frank Herbert ' } }, response: created }, { contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: '', author: 'x' } }, response: invalid }] }, null, 2)); console.log('catalog api ok');"
+            ],
+            "file": "node"
+          }
+        ]
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "attemptId": "work.catalog-model.1778054400000",
+      "completedAt": "2026-05-06T08:00:00.000Z",
+      "events": [
+        "session_started",
+        "turn_completed"
+      ],
+      "responsibilityUnitId": "ru.catalog-model",
+      "runner": {
+        "command": {
+          "args": [
+            "--print",
+            "--output-format",
+            "json",
+            "--permission-mode",
+            "dontAsk",
+            "--allowedTools",
+            "Read,Write,Edit,MultiEdit,Glob,Grep,LS",
+            "--add-dir",
+            "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model",
+            "--",
+            "# Make It Real Work Item\n\nBoard: board.offhours-catalog-api\nWork item: work.catalog-model\nTitle: Implement catalog book normalization module\nResponsibility unit: ru.catalog-model\n\n## Required Contract\n\nComplete the work item described by the staged source artifacts.\n- Read .makeitreal/source/prd.json, .makeitreal/source/design-pack.json, and .makeitreal/source/work-item.json before editing.\n- Own only the declared responsibility boundary.\n- Do not edit outside allowedPaths.\n- Use only declared contractIds for cross-boundary behavior.\n- Do not add fallback behavior for undeclared SDK/API states.\n- Fail fast and report the root cause if the happy path cannot be implemented.\n- Leave verification evidence to the Make It Real engine.\n\n## allowedPaths\n- apps/catalog/model.cjs\n\n## contractIds\n- contract.catalog.model\n\n## dependencyArtifacts\n- none\n\n## Source Artifacts\n- .makeitreal/source/prd.json\n- .makeitreal/source/design-pack.json\n- .makeitreal/source/work-item.json\n- .makeitreal/handoff.json\n"
+          ],
+          "file": "claude"
+        },
+        "executable": {
+          "hash": "sha256:fad2ac75c38ced2c57d046e64927c9ee4846f5ac75ea3bf8f0525ec66438c109",
+          "realPath": "/Users/eugene/.local/share/claude/versions/2.1.129",
+          "resolvedPath": "/Users/eugene/.local/bin/claude"
+        },
+        "exitCode": 0,
+        "handoffPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/handoff.json",
+        "mode": "claude-code",
+        "promptPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/prompt.md",
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":47966,\"duration_api_ms\":43713,\"num_turns\":10,\"result\":\"Bash 실행이 don't-ask 모드로 차단되어 직접 실행은 불가합니다. 작업 지침에 따라 검증 증거 수집은 Make It Real 엔진에 위임하며, 구현은 계약을 충족합니다.\\n\\n`apps/catalog/model.cjs`에 `normalizeBook`을 구현했습니다:\\n\\n- **AC-001**: 문자열 `title`/`author`를 `trim`으로 정규화하여 반환합니다.\\n- **AC-002**: 비문자열 또는 trim 후 빈 문자열일 때 `TypeError`를 던집니다(undeclared fallback 없음).\\n- 입력이 객체가 아닌 경우도 `TypeError`로 fast-fail합니다.\\n- `contract.catalog.model`만 사용하며 `apps/catalog/model.cjs` 경계를 벗어나지 않았습니다.\\n\\n검증 명령(`node -e ...`) 실행은 엔진에서 수행될 예정입니다.\",\"stop_reason\":\"end_turn\",\"session_id\":\"dd0d1037-0a42-4595-95ed-059e7e616735\",\"total_cost_usd\":0.39341000000000004,\"usage\":{\"input_tokens\":35,\"cache_creation_input_tokens\":32126,\"cache_read_input_tokens\":250895,\"output_tokens\":2680,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":32126,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[{\"input_tokens\":6,\"output_tokens\":347,\"cache_read_input_tokens\":49226,\"cache_creation_input_tokens\":779,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":779},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-opus-4-7[1m]\":{\"inputTokens\":35,\"outputTokens\":2680,\"cacheReadInputTokens\":250895,\"cacheCreationInputTokens\":32126,\"webSearchRequests\":0,\"costUSD\":0.39341000000000004,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01JNBnfZD2ZG94dC596mSJdC\",\"tool_input\":{\"command\":\"mkdir -p /private/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/apps/catalog\",\"description\":\"Create apps/catalog directory\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01FG6SnmvB6X2ZfLo7oHC9sk\",\"tool_input\":{\"command\":\"node -e \\\"const { normalizeBook } = require('./apps/catalog/model.cjs'); const b = normalizeBook({ title: ' Dune ', author: ' Frank Herbert ' }); if (b.title !== 'Dune' || b.author !== 'Frank Herbert') throw new Error(JSON.stringify(b)); try { normalizeBook({ title: '', author: 'x' }); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('catalog model ok');\\\"\",\"description\":\"Run verification command for catalog model\"}}],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"b6fd63b3-044f-45c3-a97b-c210e01105fd\"}\n"
+      },
+      "startedAt": "2026-05-06T08:00:00.000Z",
+      "status": "completed",
+      "workerId": "worker.catalog-model",
+      "workItemId": "work.catalog-model",
+      "evidenceFile": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/attempts/work.catalog-model.1778054400000.json"
+    },
+    {
+      "attemptId": "work.catalog-api.1778054401000",
+      "completedAt": "2026-05-06T08:00:01.000Z",
+      "events": [
+        "session_started",
+        "turn_completed"
+      ],
+      "responsibilityUnitId": "ru.catalog-api",
+      "runner": {
+        "command": {
+          "args": [
+            "--print",
+            "--output-format",
+            "json",
+            "--permission-mode",
+            "dontAsk",
+            "--allowedTools",
+            "Read,Write,Edit,MultiEdit,Glob,Grep,LS",
+            "--add-dir",
+            "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api",
+            "--",
+            "# Make It Real Work Item\n\nBoard: board.offhours-catalog-api\nWork item: work.catalog-api\nTitle: Implement create-book API handler against OpenAPI contract\nResponsibility unit: ru.catalog-api\n\n## Required Contract\n\nComplete the work item described by the staged source artifacts.\n- Read .makeitreal/source/prd.json, .makeitreal/source/design-pack.json, and .makeitreal/source/work-item.json before editing.\n- Own only the declared responsibility boundary.\n- Do not edit outside allowedPaths.\n- Use only declared contractIds for cross-boundary behavior.\n- Do not add fallback behavior for undeclared SDK/API states.\n- Fail fast and report the root cause if the happy path cannot be implemented.\n- Leave verification evidence to the Make It Real engine.\n\n## allowedPaths\n- apps/catalog/api.cjs\n\n## contractIds\n- contract.catalog.create.openapi\n- contract.catalog.model\n\n## dependencyArtifacts\n- apps/catalog/model.cjs from work.catalog-model\n\n## Source Artifacts\n- .makeitreal/source/prd.json\n- .makeitreal/source/design-pack.json\n- .makeitreal/source/work-item.json\n- .makeitreal/handoff.json\n"
+          ],
+          "file": "claude"
+        },
+        "executable": {
+          "hash": "sha256:fad2ac75c38ced2c57d046e64927c9ee4846f5ac75ea3bf8f0525ec66438c109",
+          "realPath": "/Users/eugene/.local/share/claude/versions/2.1.129",
+          "resolvedPath": "/Users/eugene/.local/bin/claude"
+        },
+        "exitCode": 0,
+        "handoffPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/handoff.json",
+        "mode": "claude-code",
+        "promptPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/prompt.md",
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":41662,\"duration_api_ms\":38761,\"num_turns\":12,\"result\":\"The file was successfully created (visible in `ls`). Smoke-testing via `node` is restricted in this mode, but per the work-item rules verification evidence is owned by the Make It Real engine, not me.\\n\\nThe handler at `apps/catalog/api.cjs` is implemented per contract:\\n- `POST /books`: calls `normalizeBook(request.body)` (contract.catalog.model), returns `{ status: 201, body: { book } }` matching the OpenAPI 201 schema (AC-003).\\n- On `TypeError` from the model (declared in contract.catalog.model errors), returns `{ status: 400, body: { error } }` matching the OpenAPI 400 schema (AC-004).\\n- No undeclared fallback states; non-`TypeError`s rethrow (fail-fast).\\n- Only edits `apps/catalog/api.cjs`; only uses `contract.catalog.model` across the boundary.\",\"stop_reason\":\"end_turn\",\"session_id\":\"9d0a7cf3-fab9-47f8-bddf-7b408b131dad\",\"total_cost_usd\":0.38960924999999996,\"usage\":{\"input_tokens\":29,\"cache_creation_input_tokens\":34555,\"cache_read_input_tokens\":208141,\"output_tokens\":2777,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":34555,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[{\"input_tokens\":6,\"output_tokens\":303,\"cache_read_input_tokens\":51251,\"cache_creation_input_tokens\":1183,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":1183},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-opus-4-7[1m]\":{\"inputTokens\":29,\"outputTokens\":2777,\"cacheReadInputTokens\":208141,\"cacheCreationInputTokens\":34555,\"webSearchRequests\":0,\"costUSD\":0.38960924999999996,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01LsNgyvXQmpbdhhbsAQZneg\",\"tool_input\":{\"command\":\"node -e \\\"const { handleCreateBook } = require('./apps/catalog/api.cjs'); const created = handleCreateBook({ method: 'POST', body: { title: ' Dune ', author: ' Frank Herbert ' } }); console.log('created:', JSON.stringify(created)); const invalid = handleCreateBook({ method: 'POST', body: { title: '', author: 'x' } }); console.log('invalid:', JSON.stringify(invalid));\\\"\",\"description\":\"Smoke-test the handler\"}}],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"bca774b0-348e-4947-bee7-22f52ae613fd\"}\n"
+      },
+      "startedAt": "2026-05-06T08:00:01.000Z",
+      "status": "completed",
+      "workerId": "worker.catalog-api",
+      "workItemId": "work.catalog-api",
+      "evidenceFile": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/attempts/work.catalog-api.1778054401000.json"
+    }
+  ],
+  "handoffs": {
+    "model": {
+      "blueprintReview": {
+        "blueprintFingerprint": "sha256:9dca70150c926dad6460a7a55d8860bab9dd1e67e6fb4df4ef2504f238e0988e",
+        "reviewedAt": "2026-05-06T08:00:00.000Z",
+        "reviewedBy": "operator:e2e",
+        "reviewSource": "makeitreal:plan approve",
+        "status": "approved"
+      },
+      "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api",
+      "boardId": "board.offhours-catalog-api",
+      "contractArtifacts": [
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/contracts/catalog-create.openapi.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/contracts/catalog-model.contract.json"
+      ],
+      "dependencyArtifacts": [],
+      "generatedAt": "2026-05-06T08:00:00.000Z",
+      "responsibilityUnits": {
+        "schemaVersion": "1.0",
+        "units": [
+          {
+            "id": "ru.client",
+            "mayUseContracts": [
+              "contract.catalog.create.openapi"
+            ],
+            "owner": "team.client",
+            "owns": [],
+            "publicSurfaces": []
+          },
+          {
+            "id": "ru.catalog-model",
+            "mayUseContracts": [
+              "contract.catalog.model"
+            ],
+            "owner": "team.catalog-model",
+            "owns": [
+              "apps/catalog/model.cjs"
+            ],
+            "publicSurfaces": [
+              "contract.catalog.model"
+            ]
+          },
+          {
+            "id": "ru.catalog-api",
+            "mayUseContracts": [
+              "contract.catalog.create.openapi",
+              "contract.catalog.model"
+            ],
+            "owner": "team.catalog-api",
+            "owns": [
+              "apps/catalog/api.cjs"
+            ],
+            "publicSurfaces": [
+              "contract.catalog.create.openapi"
+            ]
+          }
+        ]
+      },
+      "rules": [
+        "PRD and blueprint artifacts are the source of truth.",
+        "Do not edit outside allowedPaths.",
+        "Exactly one responsibility unit owns this work item.",
+        "Use only declared contractIds across responsibility boundaries.",
+        "Do not introduce undeclared fallback behavior.",
+        "Fast-fail and surface root cause when the contract cannot be satisfied."
+      ],
+      "runnerMode": "claude-code",
+      "schemaVersion": "1.0",
+      "sourceArtifacts": [
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/board.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/work-item.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/responsibility-units.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/trust-policy.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/prd.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/design-pack.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/blueprint-review.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/contracts/catalog-create.openapi.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source/contracts/catalog-model.contract.json"
+      ],
+      "sourceDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model/.makeitreal/source",
+      "workItem": {
+        "allowedPaths": [
+          "apps/catalog/model.cjs"
+        ],
+        "contractIds": [
+          "contract.catalog.model"
+        ],
+        "dependsOn": [],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.catalog-model.verification.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.catalog-model.wiki-sync.json"
+          }
+        ],
+        "id": "work.catalog-model",
+        "lane": "Running",
+        "prdId": "prd.catalog-api",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003",
+            "AC-004"
+          ]
+        },
+        "responsibilityUnitId": "ru.catalog-model",
+        "schemaVersion": "1.0",
+        "title": "Implement catalog book normalization module",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "const { normalizeBook } = require('./apps/catalog/model.cjs'); const b = normalizeBook({ title: ' Dune ', author: ' Frank Herbert ' }); if (b.title !== 'Dune' || b.author !== 'Frank Herbert') throw new Error(JSON.stringify(b)); try { normalizeBook({ title: '', author: 'x' }); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('catalog model ok');"
+            ],
+            "file": "node"
+          }
+        ]
+      }
+    },
+    "api": {
+      "blueprintReview": {
+        "blueprintFingerprint": "sha256:9dca70150c926dad6460a7a55d8860bab9dd1e67e6fb4df4ef2504f238e0988e",
+        "reviewedAt": "2026-05-06T08:00:00.000Z",
+        "reviewedBy": "operator:e2e",
+        "reviewSource": "makeitreal:plan approve",
+        "status": "approved"
+      },
+      "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api",
+      "boardId": "board.offhours-catalog-api",
+      "contractArtifacts": [
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/contracts/catalog-create.openapi.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/contracts/catalog-model.contract.json"
+      ],
+      "dependencyArtifacts": [
+        {
+          "fromWorkItemId": "work.catalog-model",
+          "path": "apps/catalog/model.cjs",
+          "sourceWorkspace": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-model"
+        }
+      ],
+      "generatedAt": "2026-05-06T08:00:01.000Z",
+      "responsibilityUnits": {
+        "schemaVersion": "1.0",
+        "units": [
+          {
+            "id": "ru.client",
+            "mayUseContracts": [
+              "contract.catalog.create.openapi"
+            ],
+            "owner": "team.client",
+            "owns": [],
+            "publicSurfaces": []
+          },
+          {
+            "id": "ru.catalog-model",
+            "mayUseContracts": [
+              "contract.catalog.model"
+            ],
+            "owner": "team.catalog-model",
+            "owns": [
+              "apps/catalog/model.cjs"
+            ],
+            "publicSurfaces": [
+              "contract.catalog.model"
+            ]
+          },
+          {
+            "id": "ru.catalog-api",
+            "mayUseContracts": [
+              "contract.catalog.create.openapi",
+              "contract.catalog.model"
+            ],
+            "owner": "team.catalog-api",
+            "owns": [
+              "apps/catalog/api.cjs"
+            ],
+            "publicSurfaces": [
+              "contract.catalog.create.openapi"
+            ]
+          }
+        ]
+      },
+      "rules": [
+        "PRD and blueprint artifacts are the source of truth.",
+        "Do not edit outside allowedPaths.",
+        "Exactly one responsibility unit owns this work item.",
+        "Use only declared contractIds across responsibility boundaries.",
+        "Do not introduce undeclared fallback behavior.",
+        "Fast-fail and surface root cause when the contract cannot be satisfied."
+      ],
+      "runnerMode": "claude-code",
+      "schemaVersion": "1.0",
+      "sourceArtifacts": [
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/board.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/work-item.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/responsibility-units.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/trust-policy.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/prd.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/design-pack.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/blueprint-review.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/contracts/catalog-create.openapi.json",
+        "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source/contracts/catalog-model.contract.json"
+      ],
+      "sourceDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/workspaces/work.catalog-api/.makeitreal/source",
+      "workItem": {
+        "allowedPaths": [
+          "apps/catalog/api.cjs"
+        ],
+        "contractIds": [
+          "contract.catalog.create.openapi",
+          "contract.catalog.model"
+        ],
+        "dependsOn": [
+          "work.catalog-model"
+        ],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.catalog-api.verification.json"
+          },
+          {
+            "kind": "openapi-conformance",
+            "path": "evidence/work.catalog-api.openapi-conformance.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.catalog-api.wiki-sync.json"
+          }
+        ],
+        "id": "work.catalog-api",
+        "lane": "Running",
+        "prdId": "prd.catalog-api",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003",
+            "AC-004"
+          ]
+        },
+        "responsibilityUnitId": "ru.catalog-api",
+        "schemaVersion": "1.0",
+        "title": "Implement create-book API handler against OpenAPI contract",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "const fs = require('fs'); const path = require('path'); const { handleCreateBook } = require('./apps/catalog/api.cjs'); const created = handleCreateBook({ method: 'POST', body: { title: ' Dune ', author: ' Frank Herbert ' } }); if (created.status !== 201 || created.body.book.title !== 'Dune' || created.body.book.author !== 'Frank Herbert') throw new Error(JSON.stringify(created)); const invalid = handleCreateBook({ method: 'POST', body: { title: '', author: 'x' } }); if (invalid.status !== 400 || !invalid.body.error) throw new Error(JSON.stringify(invalid)); const evidencePath = path.join(process.env.MAKEITREAL_BOARD_DIR, 'evidence', 'work.catalog-api.openapi-conformance.json'); fs.writeFileSync(evidencePath, JSON.stringify({ kind: 'openapi-conformance', ok: true, workItemId: process.env.MAKEITREAL_WORK_ITEM_ID, contractId: 'contract.catalog.create.openapi', cases: [{ contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: ' Dune ', author: ' Frank Herbert ' } }, response: created }, { contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: '', author: 'x' } }, response: invalid }] }, null, 2)); console.log('catalog api ok');"
+            ],
+            "file": "node"
+          }
+        ]
+      }
+    }
+  },
+  "products": {
+    "model": "'use strict';\n\nfunction normalizeField(value, field) {\n  if (typeof value !== 'string') {\n    throw new TypeError(`invalid ${field}`);\n  }\n  const trimmed = value.trim();\n  if (trimmed.length === 0) {\n    throw new TypeError(`invalid ${field}`);\n  }\n  return trimmed;\n}\n\nfunction normalizeBook(input) {\n  if (input === null || typeof input !== 'object') {\n    throw new TypeError('invalid book');\n  }\n  return {\n    title: normalizeField(input.title, 'title'),\n    author: normalizeField(input.author, 'author'),\n  };\n}\n\nmodule.exports = { normalizeBook };\n",
+    "api": "'use strict';\n\nconst { normalizeBook } = require('./model.cjs');\n\nfunction handleCreateBook(request) {\n  if (!request || request.method !== 'POST') {\n    throw new Error('unsupported request');\n  }\n  try {\n    const book = normalizeBook(request.body);\n    return {\n      status: 201,\n      body: { book },\n    };\n  } catch (err) {\n    if (err instanceof TypeError) {\n      return {\n        status: 400,\n        body: { error: err.message },\n      };\n    }\n    throw err;\n  }\n}\n\nmodule.exports = { handleCreateBook };\n",
+    "stagedDependencyInApiWorkspace": "'use strict';\n\nfunction normalizeField(value, field) {\n  if (typeof value !== 'string') {\n    throw new TypeError(`invalid ${field}`);\n  }\n  const trimmed = value.trim();\n  if (trimmed.length === 0) {\n    throw new TypeError(`invalid ${field}`);\n  }\n  return trimmed;\n}\n\nfunction normalizeBook(input) {\n  if (input === null || typeof input !== 'object') {\n    throw new TypeError('invalid book');\n  }\n  return {\n    title: normalizeField(input.title, 'title'),\n    author: normalizeField(input.author, 'author'),\n  };\n}\n\nmodule.exports = { normalizeBook };\n"
+  },
+  "verificationEvidence": {
+    "model": {
+      "commandHashes": [
+        "4f2ab9829662c5341f526102d4061145e90f704845d7383315dc1b8367d5e819"
+      ],
+      "commands": [
+        {
+          "command": {
+            "args": [
+              "-e",
+              "const { normalizeBook } = require('./apps/catalog/model.cjs'); const b = normalizeBook({ title: ' Dune ', author: ' Frank Herbert ' }); if (b.title !== 'Dune' || b.author !== 'Frank Herbert') throw new Error(JSON.stringify(b)); try { normalizeBook({ title: '', author: 'x' }); throw new Error('expected TypeError'); } catch (error) { if (!(error instanceof TypeError)) throw error; } console.log('catalog model ok');"
+            ],
+            "file": "node"
+          },
+          "commandHash": "4f2ab9829662c5341f526102d4061145e90f704845d7383315dc1b8367d5e819",
+          "durationMs": 53,
+          "exitCode": 0,
+          "stderr": "",
+          "stdout": "catalog model ok\n"
+        }
+      ],
+      "kind": "board-verification",
+      "ok": true,
+      "producer": "makeitreal-engine board-complete",
+      "workItemId": "work.catalog-model"
+    },
+    "api": {
+      "commandHashes": [
+        "7273913b8a0e2de8209145543525d03b39954f865e1541441dba6c3f91c64757"
+      ],
+      "commands": [
+        {
+          "command": {
+            "args": [
+              "-e",
+              "const fs = require('fs'); const path = require('path'); const { handleCreateBook } = require('./apps/catalog/api.cjs'); const created = handleCreateBook({ method: 'POST', body: { title: ' Dune ', author: ' Frank Herbert ' } }); if (created.status !== 201 || created.body.book.title !== 'Dune' || created.body.book.author !== 'Frank Herbert') throw new Error(JSON.stringify(created)); const invalid = handleCreateBook({ method: 'POST', body: { title: '', author: 'x' } }); if (invalid.status !== 400 || !invalid.body.error) throw new Error(JSON.stringify(invalid)); const evidencePath = path.join(process.env.MAKEITREAL_BOARD_DIR, 'evidence', 'work.catalog-api.openapi-conformance.json'); fs.writeFileSync(evidencePath, JSON.stringify({ kind: 'openapi-conformance', ok: true, workItemId: process.env.MAKEITREAL_WORK_ITEM_ID, contractId: 'contract.catalog.create.openapi', cases: [{ contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: ' Dune ', author: ' Frank Herbert ' } }, response: created }, { contractId: 'contract.catalog.create.openapi', request: { method: 'POST', path: '/books', body: { title: '', author: 'x' } }, response: invalid }] }, null, 2)); console.log('catalog api ok');"
+            ],
+            "file": "node"
+          },
+          "commandHash": "7273913b8a0e2de8209145543525d03b39954f865e1541441dba6c3f91c64757",
+          "durationMs": 42,
+          "exitCode": 0,
+          "stderr": "",
+          "stdout": "catalog api ok\n"
+        }
+      ],
+      "kind": "board-verification",
+      "ok": true,
+      "producer": "makeitreal-engine board-complete",
+      "workItemId": "work.catalog-api"
+    }
+  },
+  "openApiConformanceEvidence": {
+    "kind": "openapi-conformance",
+    "ok": true,
+    "workItemId": "work.catalog-api",
+    "contractId": "contract.catalog.create.openapi",
+    "cases": [
+      {
+        "contractId": "contract.catalog.create.openapi",
+        "request": {
+          "method": "POST",
+          "path": "/books",
+          "body": {
+            "title": " Dune ",
+            "author": " Frank Herbert "
+          }
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "book": {
+              "title": "Dune",
+              "author": "Frank Herbert"
+            }
+          }
+        }
+      },
+      {
+        "contractId": "contract.catalog.create.openapi",
+        "request": {
+          "method": "POST",
+          "path": "/books",
+          "body": {
+            "title": "",
+            "author": "x"
+          }
+        },
+        "response": {
+          "status": 400,
+          "body": {
+            "error": "invalid title"
+          }
+        }
+      }
+    ]
+  },
+  "wikiEvidence": {
+    "model": {
+      "kind": "board-wiki-sync",
+      "outputPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/wiki/live/work.catalog-model.md",
+      "workItemId": "work.catalog-model"
+    },
+    "api": {
+      "kind": "board-wiki-sync",
+      "outputPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-multi-api-e2e-woAteu/project/.harness/runs/offhours-catalog-api/wiki/live/work.catalog-api.md",
+      "workItemId": "work.catalog-api"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "makeitreal",
+  "version": "0.1.0",
+  "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
+  "author": {
+    "name": "Make It Real",
+    "url": "https://github.com/mir-makeitreal/makeitreal"
+  },
+  "repository": "https://github.com/mir-makeitreal/makeitreal",
+  "homepage": "https://github.com/mir-makeitreal/makeitreal",
+  "license": "UNLICENSED",
+  "keywords": [
+    "claude-code",
+    "engineering-harness",
+    "contracts",
+    "kanban"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Make It Real",
+    "shortDescription": "PRD-first engineering gates for Claude Code.",
+    "longDescription": "Make It Real turns Claude Code work into PRD-traced, responsibility-owned, contract-gated engineering runs with Kanban state, verification evidence, and stop hooks.",
+    "developerName": "Make It Real",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Hooks",
+      "Skills",
+      "Verification"
+    ],
+    "defaultPrompt": [
+      "Use $makeitreal:setup for this project.",
+      "Use $makeitreal:plan for this feature.",
+      "Use $makeitreal:launch to advance the gated run."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

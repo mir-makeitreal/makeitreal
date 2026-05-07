@@ -1,0 +1,1282 @@
+{
+  "generatedAt": "2026-05-07T02:04:49.706Z",
+  "runRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe",
+  "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+  "boardDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+  "workItemId": "work.retry-recovery-demo",
+  "commands": {
+    "plan": {
+      "ok": true,
+      "planOk": true,
+      "implementationReady": false,
+      "currentRunUpdated": true,
+      "command": "plan",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "runId": "retry-recovery-demo",
+      "workItemId": "work.retry-recovery-demo",
+      "contractId": "contract.retry-recovery-demo.boundary",
+      "launchBoard": {
+        "ok": true,
+        "boardPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/board.json",
+        "trustPolicyPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/trust-policy.json",
+        "runtimeStatePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/runtime-state.json",
+        "runtimeState": {
+          "schemaVersion": "1.0",
+          "boardId": "board.retry-recovery-demo",
+          "claimed": {},
+          "running": {},
+          "retryAttempts": {},
+          "completedBookkeeping": {},
+          "sessionMetrics": {
+            "turnCount": 0,
+            "startedSessions": 0,
+            "failedTurns": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          },
+          "rateLimitSnapshots": {}
+        },
+        "errors": []
+      },
+      "blueprintReview": {
+        "ok": true,
+        "command": "blueprint seed",
+        "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/blueprint-review.json",
+        "review": {
+          "schemaVersion": "1.0",
+          "runId": "retry-recovery-demo",
+          "workItemId": "work.retry-recovery-demo",
+          "prdId": "prd.retry-recovery-demo",
+          "blueprintFingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+          "status": "pending",
+          "reviewSource": "makeitreal:plan",
+          "reviewedBy": null,
+          "reviewedAt": null,
+          "decisionNote": null
+        },
+        "errors": []
+      },
+      "preview": {
+        "ok": true,
+        "previewDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/preview",
+        "errors": []
+      },
+      "currentRun": {
+        "ok": true,
+        "command": "setup",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+        "state": {
+          "schemaVersion": "1.0",
+          "currentRunDir": ".harness/runs/retry-recovery-demo",
+          "source": "makeitreal:plan",
+          "updatedAt": "2026-05-06T09:00:00.000Z"
+        },
+        "errors": []
+      },
+      "readyGate": {
+        "ok": false,
+        "command": "gate",
+        "target": "Ready",
+        "errors": [
+          {
+            "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+            "reason": "Blueprint review is pending user approval.",
+            "contractId": null,
+            "ownerModule": null,
+            "evidence": [
+              "blueprint-review.json"
+            ],
+            "recoverable": true
+          }
+        ]
+      },
+      "errors": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "reason": "Blueprint review is pending user approval.",
+          "contractId": null,
+          "ownerModule": null,
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "recoverable": true
+        }
+      ]
+    },
+    "approve": {
+      "ok": true,
+      "command": "blueprint approve",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "reviewPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/blueprint-review.json",
+      "status": "approved",
+      "blueprintFingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+      "reviewedBy": "operator:e2e",
+      "review": {
+        "schemaVersion": "1.0",
+        "runId": "retry-recovery-demo",
+        "workItemId": "work.retry-recovery-demo",
+        "prdId": "prd.retry-recovery-demo",
+        "blueprintFingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+        "status": "approved",
+        "reviewSource": "makeitreal:plan approve",
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T09:00:00.000Z",
+        "decisionNote": null
+      },
+      "errors": []
+    },
+    "failedTick": {
+      "ok": true,
+      "errors": [],
+      "dispatchedWorkItemIds": [],
+      "retryWorkItemIds": [
+        "work.retry-recovery-demo"
+      ],
+      "promotedWorkItemIds": [
+        "work.retry-recovery-demo"
+      ]
+    },
+    "reconcile": {
+      "command": "orchestrator reconcile",
+      "ok": true,
+      "errors": [],
+      "releasedClaimWorkItemIds": [],
+      "retryReadyWorkItemIds": [
+        "work.retry-recovery-demo"
+      ]
+    },
+    "rerun": {
+      "command": "orchestrator tick",
+      "ok": true,
+      "errors": [],
+      "dispatchedWorkItemIds": [
+        "work.retry-recovery-demo"
+      ],
+      "retryWorkItemIds": [],
+      "promotedWorkItemIds": []
+    },
+    "complete": {
+      "ok": true,
+      "command": "orchestrator complete",
+      "workItemId": "work.retry-recovery-demo",
+      "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/evidence/work.retry-recovery-demo.verification.json",
+      "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/wiki/live/work.retry-recovery-demo.md",
+      "errors": []
+    },
+    "doneGate": {
+      "ok": true,
+      "command": "gate",
+      "target": "Done",
+      "errors": []
+    },
+    "finalRender": {
+      "command": "design render",
+      "ok": true,
+      "previewDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/preview",
+      "errors": []
+    }
+  },
+  "statusBefore": {
+    "ok": true,
+    "command": "status",
+    "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+    "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+    "currentRun": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "state": {
+        "currentRunDir": ".harness/runs/retry-recovery-demo",
+        "schemaVersion": "1.0",
+        "source": "makeitreal:plan",
+        "updatedAt": "2026-05-06T09:00:00.000Z"
+      },
+      "errors": []
+    },
+    "blueprint": {
+      "ok": true,
+      "status": "approved",
+      "stale": false,
+      "reviewedBy": "operator:e2e",
+      "reviewedAt": "2026-05-06T09:00:00.000Z",
+      "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+      "errors": []
+    },
+    "gateAudit": {
+      "ok": true,
+      "target": "Ready",
+      "checks": [
+        {
+          "gate": "ready",
+          "ok": true,
+          "errors": []
+        }
+      ]
+    },
+    "phase": "launch-ready",
+    "blueprintStatus": "approved",
+    "headline": "Board has work ready for launch.",
+    "blockers": [],
+    "nextAction": "/makeitreal:launch",
+    "nextCommand": "/makeitreal:launch",
+    "evidenceSummary": [],
+    "boardStatus": {
+      "ok": true,
+      "command": "board status",
+      "boardId": "board.retry-recovery-demo",
+      "laneCounts": {
+        "Contract Frozen": 1
+      },
+      "activeClaims": [],
+      "blockedWork": [],
+      "failedFast": [],
+      "retryReady": [],
+      "rework": [],
+      "generatedAt": "2026-05-06T09:00:00.000Z",
+      "phase": "launch-ready",
+      "headline": "Board has work ready for launch.",
+      "blockers": [],
+      "nextAction": "/makeitreal:launch",
+      "evidenceSummary": [],
+      "operatorSummary": {
+        "phase": "launch-ready",
+        "headline": "Board has work ready for launch.",
+        "blockers": [],
+        "nextAction": "/makeitreal:launch",
+        "evidenceSummary": []
+      },
+      "runtimeState": {
+        "boardId": "board.retry-recovery-demo",
+        "claimed": {},
+        "completedBookkeeping": {},
+        "rateLimitSnapshots": {},
+        "retryAttempts": {},
+        "running": {},
+        "schemaVersion": "1.0",
+        "sessionMetrics": {
+          "failedTurns": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "startedSessions": 0,
+          "totalTokens": 0,
+          "turnCount": 0
+        }
+      },
+      "audit": {
+        "ok": true,
+        "skipped": false,
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "blueprintBlockedWorkItemIds": [],
+        "staleBlueprintWorkItemIds": [],
+        "gateFailures": []
+      },
+      "errors": []
+    },
+    "operatorSummary": {
+      "phase": "launch-ready",
+      "headline": "Board has work ready for launch.",
+      "blockers": [],
+      "nextAction": "/makeitreal:launch",
+      "evidenceSummary": [],
+      "blueprintStatus": "approved"
+    },
+    "generatedAt": "2026-05-06T09:00:00.000Z",
+    "errors": []
+  },
+  "statusAfter": {
+    "ok": true,
+    "command": "status",
+    "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+    "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+    "currentRun": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "state": {
+        "currentRunDir": ".harness/runs/retry-recovery-demo",
+        "schemaVersion": "1.0",
+        "source": "makeitreal:plan",
+        "updatedAt": "2026-05-06T09:00:00.000Z"
+      },
+      "errors": []
+    },
+    "blueprint": {
+      "ok": true,
+      "status": "approved",
+      "stale": false,
+      "reviewedBy": "operator:e2e",
+      "reviewedAt": "2026-05-06T09:00:00.000Z",
+      "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+      "errors": []
+    },
+    "gateAudit": {
+      "ok": true,
+      "target": "Ready",
+      "checks": [
+        {
+          "gate": "ready",
+          "ok": true,
+          "errors": []
+        }
+      ]
+    },
+    "phase": "done",
+    "blueprintStatus": "approved",
+    "headline": "All required evidence is complete.",
+    "blockers": [],
+    "nextAction": null,
+    "nextCommand": "/makeitreal:launch",
+    "evidenceSummary": [
+      {
+        "kind": "board-verification",
+        "workItemId": "work.retry-recovery-demo",
+        "ok": true,
+        "path": "evidence/work.retry-recovery-demo.verification.json",
+        "summary": "board-verification recorded"
+      },
+      {
+        "kind": "board-wiki-sync",
+        "workItemId": "work.retry-recovery-demo",
+        "ok": true,
+        "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+        "summary": "board-wiki-sync recorded"
+      }
+    ],
+    "boardStatus": {
+      "ok": true,
+      "command": "board status",
+      "boardId": "board.retry-recovery-demo",
+      "laneCounts": {
+        "Done": 1
+      },
+      "activeClaims": [],
+      "blockedWork": [],
+      "failedFast": [],
+      "retryReady": [],
+      "rework": [],
+      "generatedAt": "2026-05-06T09:00:04.000Z",
+      "phase": "done",
+      "headline": "All required evidence is complete.",
+      "blockers": [],
+      "nextAction": null,
+      "evidenceSummary": [
+        {
+          "kind": "board-verification",
+          "workItemId": "work.retry-recovery-demo",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.verification.json",
+          "summary": "board-verification recorded"
+        },
+        {
+          "kind": "board-wiki-sync",
+          "workItemId": "work.retry-recovery-demo",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+          "summary": "board-wiki-sync recorded"
+        }
+      ],
+      "operatorSummary": {
+        "phase": "done",
+        "headline": "All required evidence is complete.",
+        "blockers": [],
+        "nextAction": null,
+        "evidenceSummary": [
+          {
+            "kind": "board-verification",
+            "workItemId": "work.retry-recovery-demo",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.verification.json",
+            "summary": "board-verification recorded"
+          },
+          {
+            "kind": "board-wiki-sync",
+            "workItemId": "work.retry-recovery-demo",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+            "summary": "board-wiki-sync recorded"
+          }
+        ]
+      },
+      "runtimeState": {
+        "boardId": "board.retry-recovery-demo",
+        "claimed": {},
+        "completedBookkeeping": {
+          "work.retry-recovery-demo": {
+            "completedAt": "2026-05-06T09:00:04.000Z",
+            "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/evidence/work.retry-recovery-demo.verification.json",
+            "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/wiki/live/work.retry-recovery-demo.md",
+            "workItemId": "work.retry-recovery-demo"
+          }
+        },
+        "rateLimitSnapshots": {},
+        "retryAttempts": {},
+        "running": {},
+        "schemaVersion": "1.0",
+        "sessionMetrics": {
+          "failedTurns": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "startedSessions": 2,
+          "totalTokens": 0,
+          "turnCount": 1
+        }
+      },
+      "audit": {
+        "ok": true,
+        "skipped": false,
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "blueprintBlockedWorkItemIds": [],
+        "staleBlueprintWorkItemIds": [],
+        "gateFailures": []
+      },
+      "errors": []
+    },
+    "operatorSummary": {
+      "phase": "done",
+      "headline": "All required evidence is complete.",
+      "blockers": [],
+      "nextAction": null,
+      "evidenceSummary": [
+        {
+          "kind": "board-verification",
+          "workItemId": "work.retry-recovery-demo",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.verification.json",
+          "summary": "board-verification recorded"
+        },
+        {
+          "kind": "board-wiki-sync",
+          "workItemId": "work.retry-recovery-demo",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+          "summary": "board-wiki-sync recorded"
+        }
+      ],
+      "blueprintStatus": "approved"
+    },
+    "generatedAt": "2026-05-06T09:00:04.000Z",
+    "errors": []
+  },
+  "operatorSummary": {
+    "phase": "done",
+    "headline": "All required evidence is complete.",
+    "blockers": [],
+    "nextAction": null,
+    "evidenceSummary": [
+      {
+        "kind": "board-verification",
+        "workItemId": "work.retry-recovery-demo",
+        "ok": true,
+        "path": "evidence/work.retry-recovery-demo.verification.json",
+        "summary": "board-verification recorded"
+      },
+      {
+        "kind": "board-wiki-sync",
+        "workItemId": "work.retry-recovery-demo",
+        "ok": true,
+        "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+        "summary": "board-wiki-sync recorded"
+      }
+    ],
+    "blueprintStatus": "approved"
+  },
+  "intermediateStatus": {
+    "failedFast": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "currentRun": {
+        "ok": true,
+        "command": "status",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "state": {
+          "currentRunDir": ".harness/runs/retry-recovery-demo",
+          "schemaVersion": "1.0",
+          "source": "makeitreal:plan",
+          "updatedAt": "2026-05-06T09:00:00.000Z"
+        },
+        "errors": []
+      },
+      "blueprint": {
+        "ok": true,
+        "status": "approved",
+        "stale": false,
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T09:00:00.000Z",
+        "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+        "errors": []
+      },
+      "gateAudit": {
+        "ok": true,
+        "target": "Ready",
+        "checks": [
+          {
+            "gate": "ready",
+            "ok": true,
+            "errors": []
+          }
+        ]
+      },
+      "phase": "failed-fast",
+      "blueprintStatus": "approved",
+      "headline": "Runner failed fast and is waiting for retry time.",
+      "blockers": [
+        {
+          "code": "HARNESS_RUNNER_FAILED",
+          "message": "work.retry-recovery-demo can retry after 2026-05-06T09:00:02.000Z.",
+          "nextAction": "/makeitreal:status",
+          "authority": "orchestrator"
+        }
+      ],
+      "nextAction": "/makeitreal:status",
+      "nextCommand": "/makeitreal:status",
+      "evidenceSummary": [],
+      "boardStatus": {
+        "ok": true,
+        "command": "board status",
+        "boardId": "board.retry-recovery-demo",
+        "laneCounts": {
+          "Failed Fast": 1
+        },
+        "activeClaims": [],
+        "blockedWork": [],
+        "failedFast": [
+          {
+            "id": "work.retry-recovery-demo",
+            "nextRetryAt": "2026-05-06T09:00:02.000Z",
+            "attemptNumber": 1
+          }
+        ],
+        "retryReady": [],
+        "rework": [],
+        "generatedAt": "2026-05-06T09:00:01.000Z",
+        "phase": "failed-fast",
+        "headline": "Runner failed fast and is waiting for retry time.",
+        "blockers": [
+          {
+            "code": "HARNESS_RUNNER_FAILED",
+            "message": "work.retry-recovery-demo can retry after 2026-05-06T09:00:02.000Z.",
+            "nextAction": "/makeitreal:status",
+            "authority": "orchestrator"
+          }
+        ],
+        "nextAction": "/makeitreal:status",
+        "evidenceSummary": [],
+        "operatorSummary": {
+          "phase": "failed-fast",
+          "headline": "Runner failed fast and is waiting for retry time.",
+          "blockers": [
+            {
+              "code": "HARNESS_RUNNER_FAILED",
+              "message": "work.retry-recovery-demo can retry after 2026-05-06T09:00:02.000Z.",
+              "nextAction": "/makeitreal:status",
+              "authority": "orchestrator"
+            }
+          ],
+          "nextAction": "/makeitreal:status",
+          "evidenceSummary": []
+        },
+        "runtimeState": {
+          "boardId": "board.retry-recovery-demo",
+          "claimed": {},
+          "completedBookkeeping": {},
+          "rateLimitSnapshots": {},
+          "retryAttempts": {
+            "work.retry-recovery-demo": {
+              "attemptNumber": 1,
+              "dueAt": "2026-05-06T09:00:02.000Z",
+              "errorCode": "HARNESS_RUNNER_FAILED",
+              "workItemId": "work.retry-recovery-demo"
+            }
+          },
+          "running": {},
+          "schemaVersion": "1.0",
+          "sessionMetrics": {
+            "failedTurns": 1,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "startedSessions": 1,
+            "totalTokens": 0,
+            "turnCount": 0
+          }
+        },
+        "audit": {
+          "ok": true,
+          "skipped": false,
+          "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+          "blueprintBlockedWorkItemIds": [],
+          "staleBlueprintWorkItemIds": [],
+          "gateFailures": []
+        },
+        "errors": []
+      },
+      "operatorSummary": {
+        "phase": "failed-fast",
+        "headline": "Runner failed fast and is waiting for retry time.",
+        "blockers": [
+          {
+            "code": "HARNESS_RUNNER_FAILED",
+            "message": "work.retry-recovery-demo can retry after 2026-05-06T09:00:02.000Z.",
+            "nextAction": "/makeitreal:status",
+            "authority": "orchestrator"
+          }
+        ],
+        "nextAction": "/makeitreal:status",
+        "evidenceSummary": [],
+        "blueprintStatus": "approved"
+      },
+      "generatedAt": "2026-05-06T09:00:01.000Z",
+      "errors": []
+    },
+    "retryReady": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "currentRun": {
+        "ok": true,
+        "command": "status",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "state": {
+          "currentRunDir": ".harness/runs/retry-recovery-demo",
+          "schemaVersion": "1.0",
+          "source": "makeitreal:plan",
+          "updatedAt": "2026-05-06T09:00:00.000Z"
+        },
+        "errors": []
+      },
+      "blueprint": {
+        "ok": true,
+        "status": "approved",
+        "stale": false,
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T09:00:00.000Z",
+        "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+        "errors": []
+      },
+      "gateAudit": {
+        "ok": true,
+        "target": "Ready",
+        "checks": [
+          {
+            "gate": "ready",
+            "ok": true,
+            "errors": []
+          }
+        ]
+      },
+      "phase": "launch-ready",
+      "blueprintStatus": "approved",
+      "headline": "Board has work ready for launch.",
+      "blockers": [],
+      "nextAction": "/makeitreal:launch",
+      "nextCommand": "/makeitreal:launch",
+      "evidenceSummary": [],
+      "boardStatus": {
+        "ok": true,
+        "command": "board status",
+        "boardId": "board.retry-recovery-demo",
+        "laneCounts": {
+          "Ready": 1
+        },
+        "activeClaims": [],
+        "blockedWork": [],
+        "failedFast": [],
+        "retryReady": [],
+        "rework": [],
+        "generatedAt": "2026-05-06T09:00:03.000Z",
+        "phase": "launch-ready",
+        "headline": "Board has work ready for launch.",
+        "blockers": [],
+        "nextAction": "/makeitreal:launch",
+        "evidenceSummary": [],
+        "operatorSummary": {
+          "phase": "launch-ready",
+          "headline": "Board has work ready for launch.",
+          "blockers": [],
+          "nextAction": "/makeitreal:launch",
+          "evidenceSummary": []
+        },
+        "runtimeState": {
+          "boardId": "board.retry-recovery-demo",
+          "claimed": {},
+          "completedBookkeeping": {},
+          "rateLimitSnapshots": {},
+          "retryAttempts": {},
+          "running": {},
+          "schemaVersion": "1.0",
+          "sessionMetrics": {
+            "failedTurns": 1,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "startedSessions": 1,
+            "totalTokens": 0,
+            "turnCount": 0
+          }
+        },
+        "audit": {
+          "ok": true,
+          "skipped": false,
+          "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+          "blueprintBlockedWorkItemIds": [],
+          "staleBlueprintWorkItemIds": [],
+          "gateFailures": []
+        },
+        "errors": []
+      },
+      "operatorSummary": {
+        "phase": "launch-ready",
+        "headline": "Board has work ready for launch.",
+        "blockers": [],
+        "nextAction": "/makeitreal:launch",
+        "evidenceSummary": [],
+        "blueprintStatus": "approved"
+      },
+      "generatedAt": "2026-05-06T09:00:03.000Z",
+      "errors": []
+    },
+    "verifying": {
+      "ok": true,
+      "command": "status",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+      "currentRun": {
+        "ok": true,
+        "command": "status",
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project",
+        "statePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/current-run.json",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "state": {
+          "currentRunDir": ".harness/runs/retry-recovery-demo",
+          "schemaVersion": "1.0",
+          "source": "makeitreal:plan",
+          "updatedAt": "2026-05-06T09:00:00.000Z"
+        },
+        "errors": []
+      },
+      "blueprint": {
+        "ok": true,
+        "status": "approved",
+        "stale": false,
+        "reviewedBy": "operator:e2e",
+        "reviewedAt": "2026-05-06T09:00:00.000Z",
+        "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+        "errors": []
+      },
+      "gateAudit": {
+        "ok": true,
+        "target": "Ready",
+        "checks": [
+          {
+            "gate": "ready",
+            "ok": true,
+            "errors": []
+          }
+        ]
+      },
+      "phase": "verifying",
+      "blueprintStatus": "approved",
+      "headline": "Implementation is waiting for engine-owned verification.",
+      "blockers": [],
+      "nextAction": "/makeitreal:status",
+      "nextCommand": "/makeitreal:status",
+      "evidenceSummary": [],
+      "boardStatus": {
+        "ok": true,
+        "command": "board status",
+        "boardId": "board.retry-recovery-demo",
+        "laneCounts": {
+          "Verifying": 1
+        },
+        "activeClaims": [],
+        "blockedWork": [],
+        "failedFast": [],
+        "retryReady": [],
+        "rework": [],
+        "generatedAt": "2026-05-06T09:00:03.000Z",
+        "phase": "verifying",
+        "headline": "Implementation is waiting for engine-owned verification.",
+        "blockers": [],
+        "nextAction": "/makeitreal:status",
+        "evidenceSummary": [],
+        "operatorSummary": {
+          "phase": "verifying",
+          "headline": "Implementation is waiting for engine-owned verification.",
+          "blockers": [],
+          "nextAction": "/makeitreal:status",
+          "evidenceSummary": []
+        },
+        "runtimeState": {
+          "boardId": "board.retry-recovery-demo",
+          "claimed": {},
+          "completedBookkeeping": {},
+          "rateLimitSnapshots": {},
+          "retryAttempts": {},
+          "running": {},
+          "schemaVersion": "1.0",
+          "sessionMetrics": {
+            "failedTurns": 1,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "startedSessions": 2,
+            "totalTokens": 0,
+            "turnCount": 1
+          }
+        },
+        "audit": {
+          "ok": true,
+          "skipped": false,
+          "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+          "blueprintBlockedWorkItemIds": [],
+          "staleBlueprintWorkItemIds": [],
+          "gateFailures": []
+        },
+        "errors": []
+      },
+      "operatorSummary": {
+        "phase": "verifying",
+        "headline": "Implementation is waiting for engine-owned verification.",
+        "blockers": [],
+        "nextAction": "/makeitreal:status",
+        "evidenceSummary": [],
+        "blueprintStatus": "approved"
+      },
+      "generatedAt": "2026-05-06T09:00:03.000Z",
+      "errors": []
+    }
+  },
+  "attempts": [
+    {
+      "attemptId": "work.retry-recovery-demo.1778058001000",
+      "completedAt": "2026-05-06T09:00:01.000Z",
+      "events": [
+        "session_started",
+        "turn_failed"
+      ],
+      "responsibilityUnitId": "ru.retry-recovery-demo",
+      "runner": {
+        "mode": "scripted-simulator"
+      },
+      "startedAt": "2026-05-06T09:00:01.000Z",
+      "status": "failed",
+      "workerId": "worker.recovery",
+      "workItemId": "work.retry-recovery-demo",
+      "evidenceFile": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/attempts/work.retry-recovery-demo.1778058001000.json"
+    },
+    {
+      "attemptId": "work.retry-recovery-demo.1778058003000",
+      "completedAt": "2026-05-06T09:00:03.000Z",
+      "events": [
+        "session_started",
+        "turn_completed"
+      ],
+      "responsibilityUnitId": "ru.retry-recovery-demo",
+      "runner": {
+        "mode": "scripted-simulator"
+      },
+      "startedAt": "2026-05-06T09:00:03.000Z",
+      "status": "completed",
+      "workerId": "worker.recovery",
+      "workItemId": "work.retry-recovery-demo",
+      "evidenceFile": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/attempts/work.retry-recovery-demo.1778058003000.json"
+    }
+  ],
+  "verificationEvidence": {
+    "commandHashes": [
+      "32c62575e6bfc5321082105a34a37e87b86e42102ea094454dda46611b6c027a"
+    ],
+    "commands": [
+      {
+        "command": {
+          "args": [
+            "-e",
+            "console.log('retry recovery ok')"
+          ],
+          "file": "node"
+        },
+        "commandHash": "32c62575e6bfc5321082105a34a37e87b86e42102ea094454dda46611b6c027a",
+        "durationMs": 64,
+        "exitCode": 0,
+        "stderr": "",
+        "stdout": "retry recovery ok\n"
+      }
+    ],
+    "kind": "board-verification",
+    "ok": true,
+    "producer": "makeitreal-engine board-complete",
+    "workItemId": "work.retry-recovery-demo"
+  },
+  "wikiEvidence": {
+    "kind": "board-wiki-sync",
+    "outputPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/wiki/live/work.retry-recovery-demo.md",
+    "workItemId": "work.retry-recovery-demo"
+  },
+  "recoveryEvents": [
+    {
+      "event": "failed-fast",
+      "phase": "failed-fast",
+      "lane": "Failed Fast",
+      "nextAction": "/makeitreal:status"
+    },
+    {
+      "event": "retry-ready",
+      "phase": "launch-ready",
+      "lane": "Ready",
+      "nextAction": "/makeitreal:launch"
+    },
+    {
+      "event": "rerun",
+      "phase": "verifying",
+      "dispatchedWorkItemIds": [
+        "work.retry-recovery-demo"
+      ]
+    },
+    {
+      "event": "done",
+      "phase": "done",
+      "lane": "Done",
+      "nextAction": null
+    }
+  ],
+  "board": {
+    "blueprintRunDir": ".",
+    "boardId": "board.retry-recovery-demo",
+    "lanes": [
+      "Intake",
+      "Discovery",
+      "Scoped",
+      "Blueprint Bound",
+      "Contract Frozen",
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done",
+      "Failed Fast",
+      "Rework",
+      "Blocked",
+      "Cancelled"
+    ],
+    "schemaVersion": "1.0",
+    "workItems": [
+      {
+        "allowedPaths": [
+          "modules/retry-recovery-demo/**"
+        ],
+        "attemptNumber": 1,
+        "contractIds": [
+          "contract.retry-recovery-demo.boundary"
+        ],
+        "dependsOn": [],
+        "doneEvidence": [
+          {
+            "kind": "verification",
+            "path": "evidence/work.retry-recovery-demo.verification.json"
+          },
+          {
+            "kind": "wiki-sync",
+            "path": "evidence/work.retry-recovery-demo.wiki-sync.json"
+          }
+        ],
+        "id": "work.retry-recovery-demo",
+        "lane": "Done",
+        "prdId": "prd.retry-recovery-demo",
+        "prdTrace": {
+          "acceptanceCriteriaIds": [
+            "AC-001",
+            "AC-002",
+            "AC-003",
+            "AC-004"
+          ]
+        },
+        "responsibilityUnitId": "ru.retry-recovery-demo",
+        "schemaVersion": "1.0",
+        "title": "Build a retry recovery demo module",
+        "verificationCommands": [
+          {
+            "args": [
+              "-e",
+              "console.log('retry recovery ok')"
+            ],
+            "file": "node"
+          }
+        ]
+      }
+    ]
+  },
+  "previewOperatorStatus": {
+    "boardStatus": {
+      "activeClaims": [],
+      "audit": {
+        "blueprintBlockedWorkItemIds": [],
+        "gateFailures": [],
+        "ok": true,
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "skipped": false,
+        "staleBlueprintWorkItemIds": []
+      },
+      "blockedWork": [],
+      "blockers": [],
+      "boardId": "board.retry-recovery-demo",
+      "command": "board status",
+      "errors": [],
+      "evidenceSummary": [
+        {
+          "kind": "board-verification",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.verification.json",
+          "summary": "board-verification recorded",
+          "workItemId": "work.retry-recovery-demo"
+        },
+        {
+          "kind": "board-wiki-sync",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+          "summary": "board-wiki-sync recorded",
+          "workItemId": "work.retry-recovery-demo"
+        }
+      ],
+      "failedFast": [],
+      "generatedAt": "2026-05-07T02:04:49.698Z",
+      "headline": "All required evidence is complete.",
+      "laneCounts": {
+        "Done": 1
+      },
+      "nextAction": null,
+      "ok": true,
+      "operatorSummary": {
+        "blockers": [],
+        "evidenceSummary": [
+          {
+            "kind": "board-verification",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.verification.json",
+            "summary": "board-verification recorded",
+            "workItemId": "work.retry-recovery-demo"
+          },
+          {
+            "kind": "board-wiki-sync",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+            "summary": "board-wiki-sync recorded",
+            "workItemId": "work.retry-recovery-demo"
+          }
+        ],
+        "headline": "All required evidence is complete.",
+        "nextAction": null,
+        "phase": "done"
+      },
+      "phase": "done",
+      "retryReady": [],
+      "rework": [],
+      "runtimeState": {
+        "boardId": "board.retry-recovery-demo",
+        "claimed": {},
+        "completedBookkeeping": {
+          "work.retry-recovery-demo": {
+            "completedAt": "2026-05-06T09:00:04.000Z",
+            "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/evidence/work.retry-recovery-demo.verification.json",
+            "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/wiki/live/work.retry-recovery-demo.md",
+            "workItemId": "work.retry-recovery-demo"
+          }
+        },
+        "rateLimitSnapshots": {},
+        "retryAttempts": {},
+        "running": {},
+        "schemaVersion": "1.0",
+        "sessionMetrics": {
+          "failedTurns": 1,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "startedSessions": 2,
+          "totalTokens": 0,
+          "turnCount": 1
+        }
+      }
+    },
+    "runStatus": {
+      "blockers": [],
+      "blueprint": {
+        "errors": [],
+        "fingerprint": "sha256:9749d1aaf064f72c42c28b619c8dc582bd3614ac81313ed1e5b79325eb8f245b",
+        "ok": true,
+        "reviewedAt": "2026-05-06T09:00:00.000Z",
+        "reviewedBy": "operator:e2e",
+        "stale": false,
+        "status": "approved"
+      },
+      "blueprintStatus": "approved",
+      "boardStatus": {
+        "activeClaims": [],
+        "audit": {
+          "blueprintBlockedWorkItemIds": [],
+          "gateFailures": [],
+          "ok": true,
+          "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+          "skipped": false,
+          "staleBlueprintWorkItemIds": []
+        },
+        "blockedWork": [],
+        "blockers": [],
+        "boardId": "board.retry-recovery-demo",
+        "command": "board status",
+        "errors": [],
+        "evidenceSummary": [
+          {
+            "kind": "board-verification",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.verification.json",
+            "summary": "board-verification recorded",
+            "workItemId": "work.retry-recovery-demo"
+          },
+          {
+            "kind": "board-wiki-sync",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+            "summary": "board-wiki-sync recorded",
+            "workItemId": "work.retry-recovery-demo"
+          }
+        ],
+        "failedFast": [],
+        "generatedAt": "2026-05-07T02:04:49.684Z",
+        "headline": "All required evidence is complete.",
+        "laneCounts": {
+          "Done": 1
+        },
+        "nextAction": null,
+        "ok": true,
+        "operatorSummary": {
+          "blockers": [],
+          "evidenceSummary": [
+            {
+              "kind": "board-verification",
+              "ok": true,
+              "path": "evidence/work.retry-recovery-demo.verification.json",
+              "summary": "board-verification recorded",
+              "workItemId": "work.retry-recovery-demo"
+            },
+            {
+              "kind": "board-wiki-sync",
+              "ok": true,
+              "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+              "summary": "board-wiki-sync recorded",
+              "workItemId": "work.retry-recovery-demo"
+            }
+          ],
+          "headline": "All required evidence is complete.",
+          "nextAction": null,
+          "phase": "done"
+        },
+        "phase": "done",
+        "retryReady": [],
+        "rework": [],
+        "runtimeState": {
+          "boardId": "board.retry-recovery-demo",
+          "claimed": {},
+          "completedBookkeeping": {
+            "work.retry-recovery-demo": {
+              "completedAt": "2026-05-06T09:00:04.000Z",
+              "evidencePath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/evidence/work.retry-recovery-demo.verification.json",
+              "wikiPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo/wiki/live/work.retry-recovery-demo.md",
+              "workItemId": "work.retry-recovery-demo"
+            }
+          },
+          "rateLimitSnapshots": {},
+          "retryAttempts": {},
+          "running": {},
+          "schemaVersion": "1.0",
+          "sessionMetrics": {
+            "failedTurns": 1,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "startedSessions": 2,
+            "totalTokens": 0,
+            "turnCount": 1
+          }
+        }
+      },
+      "command": "status",
+      "currentRun": {
+        "errors": [],
+        "ok": true,
+        "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs",
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo",
+        "source": "explicit"
+      },
+      "errors": [],
+      "evidenceSummary": [
+        {
+          "kind": "board-verification",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.verification.json",
+          "summary": "board-verification recorded",
+          "workItemId": "work.retry-recovery-demo"
+        },
+        {
+          "kind": "board-wiki-sync",
+          "ok": true,
+          "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+          "summary": "board-wiki-sync recorded",
+          "workItemId": "work.retry-recovery-demo"
+        }
+      ],
+      "gateAudit": {
+        "checks": [
+          {
+            "errors": [],
+            "gate": "ready",
+            "ok": true
+          }
+        ],
+        "ok": true,
+        "target": "Ready"
+      },
+      "generatedAt": "2026-05-07T02:04:49.684Z",
+      "headline": "All required evidence is complete.",
+      "nextAction": null,
+      "nextCommand": "/makeitreal:launch",
+      "ok": true,
+      "operatorSummary": {
+        "blockers": [],
+        "blueprintStatus": "approved",
+        "evidenceSummary": [
+          {
+            "kind": "board-verification",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.verification.json",
+            "summary": "board-verification recorded",
+            "workItemId": "work.retry-recovery-demo"
+          },
+          {
+            "kind": "board-wiki-sync",
+            "ok": true,
+            "path": "evidence/work.retry-recovery-demo.wiki-sync.json",
+            "summary": "board-wiki-sync recorded",
+            "workItemId": "work.retry-recovery-demo"
+          }
+        ],
+        "headline": "All required evidence is complete.",
+        "nextAction": null,
+        "phase": "done"
+      },
+      "phase": "done",
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-recovery-e2e-xBQRAe/project/.harness/runs/retry-recovery-demo"
+    }
+  },
+  "previewHtml": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Harness Design Preview - work.retry-recovery-demo</title>\n  <link rel=\"stylesheet\" href=\"./preview.css\">\n</head>\n<body>\n  <main>\n    <h1>work.retry-recovery-demo</h1>\n    <section><h2>System Architecture</h2><ul><li>prd -&gt; implementation-unit (contract.retry-recovery-demo.boundary)</li></ul></section>\n    <section><h2>State Transition Flow</h2><ul><li>Contract Frozen -&gt; Ready via design-pack</li><li>Human Review -&gt; Done via wiki</li></ul></section>\n    <section><h2>API / Interface Specs</h2><ul><li>No API: Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks.</li></ul></section>\n    <section><h2>Responsibility Boundaries</h2><ul><li>ru.retry-recovery-demo: owns modules/retry-recovery-demo/**</li></ul></section>\n    <section><h2>Call Stack</h2><ul><li>work.retry-recovery-demo.start: read PRD -&gt; load design pack -&gt; execute owned responsibility unit</li></ul></section>\n    <section><h2>Sequence Diagrams</h2><ul><li>Plan to implementation handoff: User -&gt; Make It Real: request planned work</li><li>Plan to implementation handoff: Make It Real -&gt; Implementation Responsibility Unit: assign work.retry-recovery-demo via contract.retry-recovery-demo.boundary</li></ul></section>\n    <section>\n      <h2>Blueprint Review State</h2>\n      <p><strong>All required evidence is complete.</strong></p>\n      <p>Phase: <code>done</code></p>\n      <p>Blueprint: <code>approved</code></p>\n    </section>\n    <section>\n      <h2>Kanban Lane Summary</h2>\n      <ul><li>Done: 1</li></ul>\n    </section>\n    <section>\n      <h2>Blockers And Next Action</h2>\n      <p>No active blockers.</p>\n      <p>Next public action: <code>none</code></p>\n    </section>\n    <section><h2>Latest Evidence Summary</h2><ul><li>board-verification for work.retry-recovery-demo: board-verification recorded <code>evidence/work.retry-recovery-demo.verification.json</code></li><li>board-wiki-sync for work.retry-recovery-demo: board-wiki-sync recorded <code>evidence/work.retry-recovery-demo.wiki-sync.json</code></li></ul></section>\n    <section><h2>Raw Design Pack</h2><pre id=\"raw-design\"></pre></section>\n  </main>\n  <script src=\"./preview.js\"></script>\n</body>\n</html>\n"
+}

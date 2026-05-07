@@ -1,0 +1,19 @@
+{
+  "name": "@52g-tools/makeitreal-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "makeitreal-engine": "./bin/harness.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --test test/*.test.mjs && node bin/harness.mjs design render examples/canonical/.harness/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.harness/runs/feature-auth --target Ready && node bin/harness.mjs verify examples/canonical/.harness/runs/feature-auth && node bin/harness.mjs wiki sync examples/canonical/.harness/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.harness/runs/feature-auth --target Done",
+    "plugin:validate": "node scripts/validate-claude-plugin.mjs",
+    "release:check": "npm run check && npm run plugin:validate",
+    "e2e:real-claude": "node scripts/run-real-claude-golden-path.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
