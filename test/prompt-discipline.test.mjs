@@ -8,6 +8,7 @@ const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const canonicalSkillRoot = path.join(repoRoot, "plugins", "makeitreal", "skills");
 const mirSkillRoot = path.join(repoRoot, "plugins", "mir", "skills");
 const implementationPlansRoot = path.join(repoRoot, "docs", "superpowers", "plans");
+const gsdSpecKitReviewPath = path.join(repoRoot, "docs", "research", "2026-05-08-gsd-speckit-feature-review.md");
 
 async function readCanonicalSkill(name) {
   return readFile(path.join(canonicalSkillRoot, name, "SKILL.md"), "utf8");
@@ -90,4 +91,18 @@ test("implementation plans are self-contained and do not require external workfl
     assert.doesNotMatch(plan, /REQUIRED SUB-SKILL/i, fileName);
     assert.doesNotMatch(plan, /superpowers:(subagent-driven-development|executing-plans)/i, fileName);
   }
+});
+
+test("GSD and Spec Kit review captures native-compatible subagent architecture without external dependency", async () => {
+  const review = await readFile(gsdSpecKitReviewPath, "utf8");
+
+  assert.match(review, /Superpowers Subagent-Driven Development Review/);
+  assert.match(review, /fresh subagent per work item attempt/i);
+  assert.match(review, /spec compliance reviewer/i);
+  assert.match(review, /code quality reviewer/i);
+  assert.match(review, /Claude[- ]native subagent/i);
+  assert.match(review, /\.claude\/agents/);
+  assert.match(review, /does not require\s+Superpowers/i);
+  assert.match(review, /must stay self-contained/i);
+  assert.doesNotMatch(review, /REQUIRED SUB-SKILL/i);
 });
