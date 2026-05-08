@@ -1,4 +1,9 @@
-import { decideBlueprintReview, readBlueprintReview, validateBlueprintApproval } from "./review.mjs";
+import {
+  decideBlueprintReview,
+  readBlueprintReview,
+  recordBlueprintRevisionRequest,
+  validateBlueprintApproval
+} from "./review.mjs";
 import { resolveCurrentRunDir } from "../project/run-state.mjs";
 import { judgeInteractiveBlueprintReviewWithLlm } from "./approval-judge.mjs";
 
@@ -27,6 +32,16 @@ export function buildInteractiveRejectionContext({ result }) {
     `Blueprint review was recorded as rejected at ${result.reviewPath}.`,
     `Review source: ${result.review.reviewSource}.`,
     "Do not launch implementation. Revise the Blueprint or report the requested changes before asking for review again."
+  ].join("\n");
+}
+
+export function buildInteractiveRevisionContext({ result }) {
+  return [
+    "Make It Real interactive review:",
+    `Blueprint revision request has been recorded at ${result.reviewPath}.`,
+    `Review source: ${result.review.reviewSource}.`,
+    "Keep the Blueprint in pending review. Do not launch implementation.",
+    "Revise the Blueprint from the operator feedback, then ask for review again."
   ].join("\n");
 }
 
@@ -105,6 +120,48 @@ export async function applyInteractiveBlueprintApproval({
         action: "already-approved",
         runDir: resolved.runDir,
         launchRequested: judgment.launchRequested,
+        judge: judgment
+      }
+    };
+  }
+
+  if (judgment.decision === "revision_requested") {
+    const result = await recordBlueprintRevisionRequest({
+      runDir: resolved.runDir,
+      requestedBy: reviewedByFrom({ sessionId }),
+      decisionNote: `LLM interactive Blueprint review decision (${judgment.decision}, ${judgment.confidence} confidence): ${judgment.reason}`,
+      reviewSource: "makeitreal:interactive-review:llm",
+      env,
+      now
+    });
+
+    if (!result.ok) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: "UserPromptSubmit",
+          additionalContext: `Make It Real interactive revision request failed: ${result.errors.map((error) => `${error.code}: ${error.reason}`).join("; ")}`
+        },
+        makeitreal: {
+          action: "revision-failed",
+          runDir: resolved.runDir,
+          launchRequested: false,
+          judge: judgment,
+          errors: result.errors
+        }
+      };
+    }
+
+    return {
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: buildInteractiveRevisionContext({ result })
+      },
+      makeitreal: {
+        action: "revision-requested",
+        runDir: resolved.runDir,
+        reviewPath: result.reviewPath,
+        launchRequested: false,
+        reviewedBy: result.revisionRequestedBy,
         judge: judgment
       }
     };

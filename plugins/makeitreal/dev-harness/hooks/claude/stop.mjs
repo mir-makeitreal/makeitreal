@@ -49,11 +49,17 @@ async function readOptionalJson(filePath) {
 async function hasActiveExecution({ runDir }) {
   const runtimeState = await readOptionalJson(path.join(runDir, "runtime-state.json"));
   if (Object.keys(runtimeState?.running ?? {}).length > 0) {
-    return true;
+    return { active: true, running: true, verifying: false, humanReview: false };
   }
 
   const board = await readOptionalJson(path.join(runDir, "board.json"));
-  return (board?.workItems ?? []).some((workItem) => ACTIVE_EXECUTION_LANES.has(workItem.lane));
+  const activeItems = (board?.workItems ?? []).filter((workItem) => ACTIVE_EXECUTION_LANES.has(workItem.lane));
+  return {
+    active: activeItems.length > 0,
+    running: activeItems.some((workItem) => workItem.lane === "Running"),
+    verifying: activeItems.some((workItem) => workItem.lane === "Verifying"),
+    humanReview: activeItems.some((workItem) => workItem.lane === "Human Review")
+  };
 }
 
 async function main() {
@@ -66,8 +72,19 @@ async function main() {
     return passThrough();
   }
 
-  if (!await hasActiveExecution({ runDir: resolved.runDir })) {
+  const active = await hasActiveExecution({ runDir: resolved.runDir });
+  if (!active.active) {
     return passThrough();
+  }
+  if (active.running) {
+    return block([{
+      code: "HARNESS_RUNNER_IN_PROGRESS",
+      reason: "Make It Real runner is still active; wait for the runner result before checking Done evidence.",
+      contractId: null,
+      ownerModule: null,
+      evidence: ["runtime-state.json", "board.json"],
+      recoverable: true
+    }]);
   }
 
   const result = await runGates({ runDir: resolved.runDir, target: "Done" });

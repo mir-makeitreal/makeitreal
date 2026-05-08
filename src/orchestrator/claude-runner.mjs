@@ -14,13 +14,14 @@ import {
   renderDynamicRolePrompt,
   validateAgentReports
 } from "./dynamic-role-handoff.mjs";
-import { extractReviewReport } from "./review-evidence.mjs";
+import { extractReviewReports } from "./review-evidence.mjs";
 import { createRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
 import { resolveProjectRootForRun, resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
 
 const SUCCESS_EVENTS = new Set(["turn_completed"]);
-const REQUIRED_CLAUDE_TOOL_ALLOWLIST = new Set(["Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS"]);
+const REQUIRED_CLAUDE_TOOL_ALLOWLIST = new Set(["Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS", "Task"]);
 const PROMPT_PLACEHOLDERS = new Set(["${prompt}", "${promptPath}", "${handoffPath}"]);
+const REVIEW_AGENT_PLACEHOLDER = "${agents}";
 
 function hasArgPair(args, flag, value) {
   return args.some((arg, index) => arg === flag && args[index + 1] === value)
@@ -101,7 +102,7 @@ function parseClaudeRunnerArgs(args) {
       continue;
     }
 
-    const option = ["--output-format", "--permission-mode", "--allowedTools", "--add-dir"]
+    const option = ["--output-format", "--permission-mode", "--allowedTools", "--add-dir", "--agents"]
       .map((flag) => ({ flag, parsed: parseOptionValue({ args: preSeparator, index, flag }) }))
       .find(({ parsed }) => parsed);
     if (!option) {
@@ -123,30 +124,38 @@ function parseClaudeRunnerArgs(args) {
     || values["--output-format"] !== "json"
     || values["--permission-mode"] !== "dontAsk"
     || values["--add-dir"] !== "${workspace}"
+    || (values["--agents"] !== undefined && values["--agents"] !== REVIEW_AGENT_PLACEHOLDER)
     || !validateAllowedTools(values["--allowedTools"])
     || !hasCliOptionSeparatorBeforePrompt(args)
     || !hasPromptReference(args)
   ) {
-    return invalidCommand("Claude Code runner requires --print, --output-format json, --permission-mode dontAsk, conservative --allowedTools, --add-dir ${workspace}, -- before the prompt, and a prompt/handoff placeholder.");
+    return invalidCommand("Claude Code runner requires --print, --output-format json, --permission-mode dontAsk, conservative --allowedTools, optional --agents ${agents}, --add-dir ${workspace}, -- before the prompt, and a prompt/handoff placeholder.");
   }
+
+  const normalizedArgs = [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "dontAsk",
+    "--allowedTools",
+    values["--allowedTools"]
+  ];
+  if (values["--agents"] === REVIEW_AGENT_PLACEHOLDER) {
+    normalizedArgs.push("--agents", REVIEW_AGENT_PLACEHOLDER);
+  }
+  normalizedArgs.push(
+    "--add-dir",
+    "${workspace}",
+    "--",
+    postSeparator[0]
+  );
 
   return {
     ok: true,
     command: {
       file: "claude",
-      args: [
-        "--print",
-        "--output-format",
-        "json",
-        "--permission-mode",
-        "dontAsk",
-        "--allowedTools",
-        values["--allowedTools"],
-        "--add-dir",
-        "${workspace}",
-        "--",
-        postSeparator[0]
-      ]
+      args: normalizedArgs
     },
     errors: []
   };
@@ -254,6 +263,55 @@ ${dependencyArtifacts.length > 0 ? dependencyArtifacts.map((artifact) => `- ${ar
 
 ${renderDynamicRolePrompt(roleHandoff)}
 
+## Native Reviewer Loop
+
+After implementation, run the review loop before the final answer:
+- Use the spec-reviewer subagent first when the Task tool and dynamic --agents definitions are available.
+- Use the quality-reviewer subagent only after spec review passes.
+- Use the verification-reviewer subagent after quality review and before final output.
+- If a reviewer rejects or needs context, report that status and do not claim DONE.
+- Do not fabricate reviewer evidence. If Task subagents are unavailable, explain that reviewer evidence could not be produced.
+
+The final result text must include one JSON object, preferably in a fenced json block, with this shape:
+
+\`\`\`json
+{
+  "makeitrealReport": {
+    "role": "implementation-worker",
+    "status": "DONE",
+    "summary": "Implemented the approved work item.",
+    "changedFiles": [],
+    "tested": [],
+    "concerns": [],
+    "needsContext": [],
+    "blockers": []
+  },
+  "makeitrealReviews": [
+    {
+      "role": "spec-reviewer",
+      "status": "APPROVED",
+      "summary": "Implementation matches the approved Blueprint and contracts.",
+      "findings": [],
+      "evidence": []
+    },
+    {
+      "role": "quality-reviewer",
+      "status": "APPROVED",
+      "summary": "Implementation is maintainable and stays inside the responsibility boundary.",
+      "findings": [],
+      "evidence": []
+    },
+    {
+      "role": "verification-reviewer",
+      "status": "APPROVED",
+      "summary": "Verification evidence is sufficient for Done.",
+      "findings": [],
+      "evidence": []
+    }
+  ]
+}
+\`\`\`
+
 ## Source Artifacts
 - .makeitreal/source/prd.json
 - .makeitreal/source/design-pack.json
@@ -265,10 +323,52 @@ ${renderDynamicRolePrompt(roleHandoff)}
 function resolveArg(arg, replacements) {
   return arg
     .replaceAll("${workspace}", replacements.workspace)
+    .replaceAll("${agents}", replacements.agents)
     .replaceAll("${handoffPath}", replacements.handoffPath)
     .replaceAll("${promptPath}", replacements.promptPath)
     .replaceAll("${prompt}", replacements.prompt)
     .replaceAll("${workItemId}", replacements.workItemId);
+}
+
+function buildReviewerAgents() {
+  return JSON.stringify({
+    "spec-reviewer": {
+      description: "Review a Make It Real implementation against the approved Blueprint, PRD, contracts, allowed paths, and acceptance criteria.",
+      tools: ["Read", "Glob", "Grep", "LS"],
+      permissionMode: "dontAsk",
+      prompt: [
+        "You are the Make It Real spec-reviewer.",
+        "Review only the current work item implementation in the provided workspace.",
+        "Check PRD, design pack, work-item, handoff, contracts, and changed allowed-path files.",
+        "Return a concise verdict using APPROVED, APPROVED_WITH_NOTES, REJECTED, NEEDS_CONTEXT, or BLOCKED.",
+        "Do not edit files."
+      ].join("\n")
+    },
+    "quality-reviewer": {
+      description: "Review Make It Real code quality, naming, maintainability, tests, and boundary discipline after spec review.",
+      tools: ["Read", "Glob", "Grep", "LS"],
+      permissionMode: "dontAsk",
+      prompt: [
+        "You are the Make It Real quality-reviewer.",
+        "Review maintainability, naming, clean-code, overengineering, test adequacy, and responsibility boundaries.",
+        "Use the approved Blueprint and previous spec-review evidence as context.",
+        "Return a concise verdict using APPROVED, APPROVED_WITH_NOTES, REJECTED, NEEDS_CONTEXT, or BLOCKED.",
+        "Do not edit files."
+      ].join("\n")
+    },
+    "verification-reviewer": {
+      description: "Review Make It Real verification and Done readiness for the current work item.",
+      tools: ["Read", "Glob", "Grep", "LS"],
+      permissionMode: "dontAsk",
+      prompt: [
+        "You are the Make It Real verification-reviewer.",
+        "Check whether the implementation report, reviewer reports, verification command, and evidence are sufficient for Done.",
+        "If Make It Real engine verification is still pending, evaluate whether the implementation is ready for engine verification rather than inventing command output.",
+        "Return a concise verdict using APPROVED, APPROVED_WITH_NOTES, REJECTED, NEEDS_CONTEXT, or BLOCKED.",
+        "Do not edit files."
+      ].join("\n")
+    }
+  });
 }
 
 function truncate(value) {
@@ -344,10 +444,11 @@ async function listProjectFilesForAllowedPattern({ projectRoot, pattern }) {
 
 async function stageAllowedProjectFiles({ projectRoot, workspace, workItem }) {
   if (!projectRoot) {
-    return { projectRoot: null, stagedPaths: [] };
+    return { projectRoot: null, stagedPaths: [], stagedFileHashes: {} };
   }
 
   const stagedPaths = [];
+  const stagedFileHashes = {};
   const seen = new Set();
   for (const pattern of workItem.allowedPaths ?? []) {
     for (const relative of await listProjectFilesForAllowedPattern({ projectRoot, pattern })) {
@@ -363,13 +464,14 @@ async function stageAllowedProjectFiles({ projectRoot, workspace, workItem }) {
       await mkdir(path.dirname(target), { recursive: true });
       await copyFile(source, target);
       stagedPaths.push(relative);
+      stagedFileHashes[relative] = await hashFile(source);
     }
   }
 
-  return { projectRoot, stagedPaths };
+  return { projectRoot, stagedPaths, stagedFileHashes };
 }
 
-async function applyWorkspaceChangesToProject({ projectRoot, workspace, changedPaths }) {
+async function applyWorkspaceChangesToProject({ projectRoot, workspace, changedPaths, stagedFileHashes = {} }) {
   if (!projectRoot) {
     return { ok: true, applied: false, projectRoot: null, appliedPaths: [], errors: [] };
   }
@@ -383,6 +485,36 @@ async function applyWorkspaceChangesToProject({ projectRoot, workspace, changedP
       errors.push(createHarnessError({
         code: "HARNESS_WORKSPACE_APPLY_ESCAPE",
         reason: `Workspace output path escaped project root: ${relative}.`,
+        evidence: [relative],
+        recoverable: true
+      }));
+      continue;
+    }
+
+    const baselineHash = stagedFileHashes[relative] ?? null;
+    const targetExists = await fileExists(target);
+    if (baselineHash && !targetExists) {
+      errors.push(createHarnessError({
+        code: "HARNESS_PROJECT_APPLY_CONFLICT",
+        reason: `Project file was deleted after staging and before apply: ${relative}.`,
+        evidence: [relative],
+        recoverable: true
+      }));
+      continue;
+    }
+    if (baselineHash && targetExists && await hashFile(target) !== baselineHash) {
+      errors.push(createHarnessError({
+        code: "HARNESS_PROJECT_APPLY_CONFLICT",
+        reason: `Project file changed after staging and before apply: ${relative}.`,
+        evidence: [relative],
+        recoverable: true
+      }));
+      continue;
+    }
+    if (!baselineHash && targetExists) {
+      errors.push(createHarnessError({
+        code: "HARNESS_PROJECT_APPLY_CONFLICT",
+        reason: `Project file appeared after staging and before apply: ${relative}.`,
         evidence: [relative],
         recoverable: true
       }));
@@ -784,12 +916,12 @@ function parseRunnerEvents({ stdout, now, workItem, workerId, attemptId }) {
     } else if (report.report) {
       agentReports.push(report.report);
     }
-    const review = extractReviewReport({ record, workItem, workerId, attemptId, now });
+    const review = extractReviewReports({ record, workItem, workerId, attemptId, now });
     if (!review.ok) {
       errors.push(...review.errors);
       events.push("malformed");
-    } else if (review.report) {
-      reviewReports.push(review.report);
+    } else if (review.reports.length > 0) {
+      reviewReports.push(...review.reports);
     }
   }
 
@@ -851,6 +983,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     handoffPath: handoff.handoffPath,
     promptPath: handoff.promptPath,
     prompt: handoff.prompt,
+    agents: buildReviewerAgents(),
     workItemId: workItem.id
   };
   const command = {
@@ -876,6 +1009,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     env: {
       ...process.env,
       MAKEITREAL_BOARD_DIR: boardDir,
+      MAKEITREAL_PROJECT_ROOT: projectRoot ?? "",
       MAKEITREAL_WORKSPACE: workspace.workspace,
       MAKEITREAL_HANDOFF_PATH: handoff.handoffPath,
       MAKEITREAL_PROMPT_PATH: handoff.promptPath,
@@ -919,7 +1053,12 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
   });
   const runnerOk = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && agentReportValidation.ok && boundary.ok && metadataBoundary.ok;
   const applyResult = runnerOk
-    ? await applyWorkspaceChangesToProject({ projectRoot, workspace: workspace.workspace, changedPaths })
+    ? await applyWorkspaceChangesToProject({
+      projectRoot,
+      workspace: workspace.workspace,
+      changedPaths,
+      stagedFileHashes: stagedProject.stagedFileHashes
+    })
     : { ok: true, applied: false, projectRoot, appliedPaths: [], errors: [] };
   const ok = runnerOk && applyResult.ok;
   const outputErrors = [...(parsed.errors ?? []), ...agentReportValidation.errors, ...metadataBoundary.errors, ...boundary.errors, ...applyResult.errors];
@@ -951,6 +1090,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
         reviewReports: parsed.reviewReports ?? [],
         projectRoot,
         stagedProjectPaths: stagedProject.stagedPaths,
+        stagedProjectHashes: stagedProject.stagedFileHashes,
         changedPaths,
         projectApply: {
           ok: applyResult.ok,

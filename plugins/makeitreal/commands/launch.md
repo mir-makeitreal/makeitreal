@@ -1,7 +1,7 @@
 ---
 description: Launch an approved Make It Real plan through gated execution
 argument-hint: "[feature request | optional run id/path]"
-allowed-tools: ["Bash", "Read"]
+allowed-tools: ["Bash", "Read", "Task"]
 ---
 
 # Make It Real Launch
@@ -20,19 +20,55 @@ First read and follow the plugin skill:
 ${CLAUDE_PLUGIN_ROOT}/skills/launch/SKILL.md
 ```
 
-Use the plugin engine for the internal sequence described by the skill:
+Use the plugin engine for the internal sequence described by the skill. Default
+to the parent-session native Task path so Claude Code shows the implementation
+and reviewer subagents in its normal UI:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" gate "$RUN_DIR" --target Ready
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator tick "$RUN_DIR" --runner claude-code --runner-command '{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS","--add-dir","${workspace}","--","${prompt}"]}'
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native start "$RUN_DIR"
 ```
 
-Then complete only the work items that the engine moved to `Verifying` and that have successful attempt provenance:
+If status shows a work item already in `Verifying` or `Rework`, do not start a
+new implementation task. Re-run completion for that work item instead; the
+engine can recover `Rework -> Verifying` after the root cause is fixed and will
+regenerate work-item verification evidence:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code
 ```
+
+Then use the returned `nativeTask.implementationPrompt` with the Claude Code
+`Task` tool. After the implementation task returns, run three read-only native
+`Task` reviewers using the returned `nativeTask.reviewerPrompts`:
+
+- `spec-reviewer`
+- `quality-reviewer`
+- `verification-reviewer`
+
+Aggregate the implementation report and reviewer reports into one JSON object,
+then record the parent-session result:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native finish "$RUN_DIR" --work "$WORK_ITEM_ID" --attempt "$ATTEMPT_ID" --result-stdin <<'MAKEITREAL_RESULT'
+{
+  "makeitrealReport": { "role": "implementation-worker", "status": "DONE", "summary": "", "changedFiles": [], "tested": [], "concerns": [], "needsContext": [], "blockers": [] },
+  "makeitrealReviews": []
+}
+MAKEITREAL_RESULT
+```
+
+Then complete only the work items that the engine moved to `Verifying` and that
+have successful attempt provenance:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code
+```
+
+Use the `orchestrator tick --runner claude-code` child-process runner only for
+headless CI or explicit fallback diagnostics, not as the default interactive
+Claude Code path.
 
 If the command returns a dashboard refresh URL or the skill asks for the dashboard to be opened, open it:
 

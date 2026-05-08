@@ -121,3 +121,44 @@ test("blueprint review classifies question UI answers through the LLM judge", as
     assert.match(review.decisionNote, /LLM interactive Blueprint review decision/);
   });
 });
+
+test("blueprint review keeps revision requests pending for rework instead of rejection", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const judgeEnv = await writeApprovalJudgeFixture(root, {
+      decision: "revision_requested",
+      launchRequested: false,
+      confidence: "high",
+      reason: "The operator wants narrower frontend/backend boundaries before approval."
+    });
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      runDir,
+      "--prompt",
+      "승인 전에 프론트엔드와 백엔드 책임경계를 더 쪼개주세요",
+      "--context",
+      "Blueprint review question shown after the operator-facing report.",
+      "--session",
+      "question-ui-revision",
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ], {
+      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.action, "revision-requested");
+    assert.equal(output.launchRequested, false);
+    assert.match(output.additionalContext, /Blueprint revision request has been recorded/);
+
+    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
+    assert.equal(review.status, "pending");
+    assert.equal(review.reviewedBy, null);
+    assert.equal(review.revisionRequestedBy, "operator:question-ui-revision");
+    assert.match(review.revisionNote, /narrower frontend\/backend boundaries/);
+  });
+});

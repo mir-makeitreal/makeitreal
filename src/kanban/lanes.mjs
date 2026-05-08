@@ -30,5 +30,6 @@ export const TRANSITIONS = [
   { from: "Failed Fast", to: "Ready", requiredGates: ["retry"] },
   { from: "Verifying", to: "Human Review", requiredGates: ["evidence"] },
   { from: "Verifying", to: "Rework", requiredGates: [] },
+  { from: "Rework", to: "Verifying", requiredGates: ["reworkResolved"] },
   { from: "Human Review", to: "Done", requiredGates: ["evidence", "wiki"] }
 ];

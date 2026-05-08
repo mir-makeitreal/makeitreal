@@ -11,6 +11,7 @@ import { readRunAttempt } from "../src/orchestrator/attempt-store.mjs";
 import { orchestratorTick } from "../src/orchestrator/orchestrator.mjs";
 
 const SAFE_CLAUDE_TOOLS = "Read,Write,Edit,MultiEdit,Glob,Grep,LS";
+const SAFE_CLAUDE_TOOLS_WITH_TASK = "Read,Write,Edit,MultiEdit,Glob,Grep,LS,Task";
 const VALID_CLAUDE_ARGS = [
   "--print",
   "--output-format",
@@ -19,6 +20,21 @@ const VALID_CLAUDE_ARGS = [
   "dontAsk",
   "--allowedTools",
   SAFE_CLAUDE_TOOLS,
+  "--add-dir",
+  "${workspace}",
+  "--",
+  "${prompt}"
+];
+const VALID_CLAUDE_ARGS_WITH_REVIEW_AGENTS = [
+  "--print",
+  "--output-format",
+  "json",
+  "--permission-mode",
+  "dontAsk",
+  "--allowedTools",
+  SAFE_CLAUDE_TOOLS_WITH_TASK,
+  "--agents",
+  "${agents}",
   "--add-dir",
   "${workspace}",
   "--",
@@ -156,6 +172,69 @@ console.log(JSON.stringify({
   });
 });
 
+test("claude-code runner injects native reviewer agents and parses result-text review evidence", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeFakeClaude(root, `
+const fs = require('fs');
+const args = process.argv.slice(2);
+const agentsIndex = args.indexOf('--agents');
+if (agentsIndex === -1) throw new Error('missing --agents');
+const agents = JSON.parse(args[agentsIndex + 1]);
+for (const role of ['spec-reviewer', 'quality-reviewer', 'verification-reviewer']) {
+  if (!agents[role]) throw new Error('missing agent ' + role);
+}
+fs.mkdirSync('apps/web/auth', { recursive: true });
+fs.writeFileSync('apps/web/auth/runner-output.txt', 'with reviewer agents');
+console.log(JSON.stringify({
+  type: 'result',
+  subtype: 'success',
+  is_error: false,
+  result: JSON.stringify({
+    makeitrealReport: {
+      role: 'implementation-worker',
+      status: 'DONE',
+      summary: 'Implemented with native reviewer agents.',
+      changedFiles: ['apps/web/auth/runner-output.txt'],
+      tested: ['fake claude fixture'],
+      concerns: [],
+      needsContext: [],
+      blockers: []
+    },
+    makeitrealReviews: ['spec-reviewer', 'quality-reviewer', 'verification-reviewer'].map((role) => ({
+      role,
+      status: 'APPROVED',
+      summary: role + ' approved result text evidence.',
+      findings: [],
+      evidence: ['result text']
+    }))
+  })
+}));
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS_WITH_REVIEW_AGENTS
+      }
+    }));
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const attempt = await readRunAttempt({ boardDir, attemptId: "work.login-ui.1778025600000" });
+    assert.equal(attempt.runner.command.args.includes("--agents"), true);
+    assert.deepEqual(attempt.runner.reviewReports.map((report) => report.role), [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ]);
+    assert.equal(attempt.runner.agentReports[0].status, "DONE");
+  });
+});
+
 test("claude-code runner records dynamic role report and rejects blocked worker status", async () => {
   await withBoard(async ({ root, boardDir }) => {
     await enableClaudeRunner(boardDir);
@@ -234,6 +313,39 @@ console.log(JSON.stringify({ event: 'turn_completed' }));
     assert.equal(attempt.runner.projectRoot, projectRoot);
     assert.deepEqual(attempt.runner.stagedProjectPaths, ["apps/web/auth/runner-output.txt"]);
     assert.deepEqual(attempt.runner.projectApply.appliedPaths, ["apps/web/auth/runner-output.txt"]);
+  });
+});
+
+test("claude-code runner refuses to apply workspace output over changed project files", async () => {
+  await withProjectBoard(async ({ root, projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "before", "utf8");
+    await writeFakeClaude(root, `
+const fs = require('fs');
+const path = require('path');
+const projectFile = path.join(process.env.MAKEITREAL_PROJECT_ROOT, 'apps', 'web', 'auth', 'runner-output.txt');
+fs.writeFileSync(projectFile, 'concurrent change');
+fs.writeFileSync(path.join('apps', 'web', 'auth', 'runner-output.txt'), 'after');
+console.log(JSON.stringify({ event: 'turn_completed' }));
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_PROJECT_APPLY_CONFLICT");
+    assert.equal(await readFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "utf8"), "concurrent change");
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Failed Fast");
   });
 });
 

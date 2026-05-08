@@ -15,7 +15,7 @@ import { createHarnessError } from "../src/domain/errors.mjs";
 import { runGates } from "../src/gates/index.mjs";
 import { getClaudeHookStatus, installClaudeHooks } from "../src/hooks/claude-settings.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
-import { orchestratorTick, reconcileBoard } from "../src/orchestrator/orchestrator.mjs";
+import { finishNativeClaudeTask, orchestratorTick, reconcileBoard, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { refreshPreviewForTrigger, renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { initializeProject } from "../src/project/bootstrap.mjs";
@@ -50,6 +50,8 @@ Internal commands used by Make It Real skills:
   board claim <boardDir>       Claim work with --work and --worker
   board mailbox send <boardDir> Send a worker-to-worker message
   orchestrator tick <boardDir> Dispatch work attempts (--runner scripted-simulator|claude-code)
+  orchestrator native start <boardDir> Prepare a parent-session Claude Code Task handoff
+  orchestrator native finish <boardDir> Record a parent-session Task result from --result-json or stdin
   orchestrator complete <boardDir> Complete verified board work with --work [--runner scripted-simulator|claude-code]
   orchestrator reconcile <boardDir> Reconcile claims and retry-ready work
 `);
@@ -148,6 +150,18 @@ function parseJsonCommandFlag(argv, flagName) {
   }
 }
 
+async function readStdinText() {
+  if (process.stdin.isTTY) {
+    return "";
+  }
+  let raw = "";
+  process.stdin.setEncoding("utf8");
+  for await (const chunk of process.stdin) {
+    raw += chunk;
+  }
+  return raw;
+}
+
 function parseEnabledFlag(value, flagName) {
   if (["enabled", "enable", "on", "true", "yes"].includes(String(value ?? "").toLowerCase())) {
     return { ok: true, enabled: true, errors: [] };
@@ -204,7 +218,7 @@ function resolveProjectRootFlag(value) {
 
 function blueprintReviewCliResult(output) {
   const action = output?.makeitreal?.action ?? "unknown";
-  const ok = ["approved", "rejected", "already-approved"].includes(action);
+  const ok = ["approved", "rejected", "revision-requested", "already-approved"].includes(action);
   if (ok) {
     return {
       ok: true,
@@ -676,6 +690,67 @@ async function runCommand(argv) {
         dashboardRefresh: afterDashboard.dashboardRefresh,
         dashboardRefreshBefore: beforeDashboard.dashboardRefresh,
         errors: [...(result.errors ?? []), ...(afterDashboard.errors ?? [])]
+      }
+    };
+  }
+
+  if (argv[0] === "orchestrator" && argv[1] === "native" && argv[2] === "start") {
+    const beforeDashboard = await refreshPreviewForTrigger({
+      runDir: argv[3],
+      trigger: "launch",
+      now: deterministicNow(argv)
+    });
+    if (!beforeDashboard.ok) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "orchestrator native start",
+          dashboardRefresh: beforeDashboard.dashboardRefresh,
+          errors: beforeDashboard.errors
+        }
+      };
+    }
+
+    const result = await startNativeClaudeTask({
+      boardDir: argv[3],
+      workerId: parseFlag(argv, "--worker") ?? "claude-code.parent",
+      now: deterministicNow(argv)
+    });
+    const afterDashboard = await refreshPreviewForTrigger({
+      runDir: argv[3],
+      trigger: "launch",
+      now: deterministicNow(argv)
+    });
+    return {
+      exitCode: result.ok && afterDashboard.ok ? 0 : 1,
+      result: {
+        ...result,
+        ok: result.ok && afterDashboard.ok,
+        dashboardRefresh: afterDashboard.dashboardRefresh,
+        dashboardRefreshBefore: beforeDashboard.dashboardRefresh,
+        errors: [...(result.errors ?? []), ...(afterDashboard.errors ?? [])]
+      }
+    };
+  }
+
+  if (argv[0] === "orchestrator" && argv[1] === "native" && argv[2] === "finish") {
+    const resultText = argv.includes("--result-stdin")
+      ? await readStdinText()
+      : parseFlag(argv, "--result-json") ?? "";
+    const result = await finishNativeClaudeTask({
+      boardDir: argv[3],
+      workItemId: parseFlag(argv, "--work"),
+      attemptId: parseFlag(argv, "--attempt"),
+      workerId: parseFlag(argv, "--worker") ?? "claude-code.parent",
+      resultText,
+      now: deterministicNow(argv)
+    });
+    return {
+      exitCode: result.ok ? 0 : 1,
+      result: {
+        ...result,
+        errors: result.errors ?? []
       }
     };
   }

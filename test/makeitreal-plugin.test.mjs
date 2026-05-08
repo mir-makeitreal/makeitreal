@@ -72,8 +72,14 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   }
 
   const launchCommand = await readPluginFile("commands", "launch.md");
-  assert.match(launchCommand, /orchestrator tick/);
+  assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task"\]/);
+  assert.match(launchCommand, /orchestrator native start/);
+  assert.match(launchCommand, /orchestrator native finish/);
+  assert.match(launchCommand, /Claude Code\s+`Task` tool/);
+  assert.match(launchCommand, /Verifying` or `Rework/);
+  assert.match(launchCommand, /recover `Rework -> Verifying`/);
   assert.match(launchCommand, /orchestrator complete/);
+  assert.match(launchCommand, /child-process runner only for\s+headless CI/i);
   assert.match(launchCommand, /one-command start/);
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
 
@@ -139,7 +145,11 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /Use internal engine commands/);
   assert.match(launchSkill, /Do not convert internal commands/);
   assert.match(launchSkill, /board claim/);
-  assert.match(launchSkill, /orchestrator tick/);
+  assert.match(launchSkill, /orchestrator native start/);
+  assert.match(launchSkill, /orchestrator native finish/);
+  assert.match(launchSkill, /parent-session native Task path/);
+  assert.match(launchSkill, /existing work item in `Verifying` or `Rework`/);
+  assert.match(launchSkill, /child-process `claude --print` runner as a headless fallback/);
   assert.match(launchSkill, /Ralph-like one-command start/);
 });
 

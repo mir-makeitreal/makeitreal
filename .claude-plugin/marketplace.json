@@ -4,13 +4,13 @@
     "name": "Make It Real"
   },
   "description": "Claude Code plugins for PRD-first, contract-gated engineering work.",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "plugins": [
     {
       "name": "makeitreal",
       "source": "./plugins/makeitreal",
       "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "author": {
         "name": "Make It Real"
       }
@@ -19,7 +19,7 @@
       "name": "mir",
       "source": "./plugins/mir",
       "description": "Short alias plugin for Make It Real slash commands.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "author": {
         "name": "Make It Real"
       }

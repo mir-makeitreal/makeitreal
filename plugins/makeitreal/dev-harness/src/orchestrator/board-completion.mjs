@@ -10,6 +10,7 @@ import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
+import { validateCompletionReviews } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
@@ -55,13 +56,14 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
     };
   }
 
-  if (workItem.lane !== "Verifying") {
+  const retryingFromRework = workItem.lane === "Rework";
+  if (!retryingFromRework && workItem.lane !== "Verifying") {
     return {
       ok: false,
       command: "orchestrator complete",
       errors: [createHarnessError({
         code: "HARNESS_WORK_NOT_VERIFYING",
-        reason: `${workItemId} must be in Verifying before completion.`,
+        reason: `${workItemId} must be in Verifying or Rework before completion.`,
         ownerModule: workItem.responsibilityUnitId ?? null,
         evidence: ["board.json"]
       })]
@@ -99,8 +101,9 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   }
 
   if (attemptRunnerMode === "claude-code") {
+    const parentNativeTask = attempt.runner?.channel === "parent-native-task";
     const executable = attempt.runner?.executable ?? {};
-    if (!executable.resolvedPath || !executable.realPath || !executable.hash) {
+    if (!parentNativeTask && (!executable.resolvedPath || !executable.realPath || !executable.hash)) {
       return {
         ok: false,
         command: "orchestrator complete",
@@ -112,6 +115,17 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
           recoverable: true
         })]
       };
+    }
+
+    const reviews = validateCompletionReviews({ attempt, workItem });
+    if (!reviews.ok) {
+      const rework = transitionWorkItem(workItem, "Rework", { gates: {} });
+      if (rework.ok) {
+        workItem.errorCode = reviews.errors[0]?.code ?? "HARNESS_REVIEW_FAILED";
+        workItem.errorReason = reviews.errors[0]?.reason ?? null;
+        await saveBoard(boardDir, board);
+      }
+      return { ok: false, command: "orchestrator complete", errors: reviews.errors };
     }
   }
 
@@ -140,9 +154,25 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   }
   await mkdir(workspace.workspace, { recursive: true });
   const projectRoot = attempt.runner?.projectRoot ?? resolveProjectRootForRun({ runDir: boardDir });
-  const verificationCwd = attempt.runner?.projectApply?.applied && projectRoot
+  const verificationCwd = (attempt.runner?.projectApply?.applied || attempt.runner?.channel === "parent-native-task") && projectRoot
     ? projectRoot
     : workspace.workspace;
+
+  if (retryingFromRework) {
+    const retryVerification = transitionWorkItem(workItem, "Verifying", { gates: { reworkResolved: true } });
+    if (!retryVerification.ok) {
+      return { ok: false, command: "orchestrator complete", errors: retryVerification.errors };
+    }
+    delete workItem.errorCode;
+    delete workItem.errorReason;
+    await saveBoard(boardDir, board);
+    await appendBoardEvent(boardDir, {
+      event: "rework_resolved",
+      timestamp: now.toISOString(),
+      workItemId,
+      payload: { source: "orchestrator complete retry" }
+    });
+  }
 
   const commands = [];
   const errors = [];

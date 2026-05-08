@@ -5,10 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { loadBoard, saveBoard } from "../src/board/board-store.mjs";
+import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
 import { latestSuccessfulRunAttempt } from "../src/orchestrator/attempt-store.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
-import { orchestratorTick } from "../src/orchestrator/orchestrator.mjs";
+import { finishNativeClaudeTask, orchestratorTick, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
 import { loadRuntimeState } from "../src/orchestrator/runtime-state.mjs";
 
 const SAFE_CLAUDE_TOOLS = "Read,Write,Edit,MultiEdit,Glob,Grep,LS";
@@ -269,6 +270,175 @@ test("orchestrator completion accepts claude-code trust policy after real runner
     const completed = await loadBoard(boardDir);
     const workItem = completed.workItems.find((item) => item.id === "work.login-ui");
     assert.equal(workItem.lane, "Done");
+  });
+});
+
+test("parent-session native Claude task reaches completion without spawning child claude", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const board = await loadBoard(boardDir);
+    const workItem = board.workItems.find((item) => item.id === "work.login-ui");
+    workItem.verificationCommands = [{
+      file: "node",
+      args: ["-e", "require('node:fs').accessSync('apps/web/auth/native-output.txt'); console.log('native ok')"]
+    }];
+    await saveBoard(boardDir, board);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-task-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+    assert.equal(started.nativeTask.workItemId, "work.login-ui");
+    assert.match(started.nativeTask.implementationPrompt, /Do not spawn a separate claude CLI process/);
+    assert.deepEqual(started.nativeTask.reviewerPrompts.map((prompt) => prompt.role), [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ]);
+
+    await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
+
+    const resultText = JSON.stringify({
+      makeitrealReport: {
+        role: "implementation-worker",
+        status: "DONE",
+        summary: "Implemented native parent task output.",
+        changedFiles: ["apps/web/auth/native-output.txt"],
+        tested: ["node -e accessSync native-output"],
+        concerns: [],
+        needsContext: [],
+        blockers: []
+      },
+      makeitrealReviews: ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+        role,
+        status: "APPROVED",
+        summary: `${role} approved native parent task output.`,
+        findings: [],
+        evidence: ["native parent task fixture"]
+      }))
+    });
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: started.nativeTask.workItemId,
+      attemptId: started.nativeTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText,
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, true);
+
+    const verifying = await loadBoard(boardDir);
+    assert.equal(verifying.workItems.find((item) => item.id === "work.login-ui").lane, "Verifying");
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
+    assert.equal(attempt.runner.channel, "parent-native-task");
+    assert.equal(attempt.runner.executable, undefined);
+
+    const completed = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:02.000Z")
+    });
+    assert.equal(completed.ok, true);
+    const evidence = await readJsonFile(completed.evidencePath);
+    assert.equal(evidence.commands[0].cwd, projectRoot);
+  });
+});
+
+test("orchestrator complete retries Rework verification after environment recovery", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const board = await loadBoard(boardDir);
+    const workItem = board.workItems.find((item) => item.id === "work.login-ui");
+    workItem.verificationCommands = [{
+      file: "node",
+      args: ["-e", "require('node:fs').accessSync('apps/web/auth/recovered-output.txt'); console.log('recovered ok')"]
+    }];
+    await saveBoard(boardDir, board);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:rework-recovery-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+
+    const resultText = JSON.stringify({
+      makeitrealReport: {
+        role: "implementation-worker",
+        status: "DONE",
+        summary: "Implementation is present but verification environment is not ready yet.",
+        changedFiles: ["apps/web/auth/recovered-output.txt"],
+        tested: [],
+        concerns: [],
+        needsContext: [],
+        blockers: []
+      },
+      makeitrealReviews: ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+        role,
+        status: "APPROVED",
+        summary: `${role} approved recovery fixture.`,
+        findings: [],
+        evidence: ["native parent task fixture"]
+      }))
+    });
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: started.nativeTask.workItemId,
+      attemptId: started.nativeTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText,
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, true);
+
+    const failedComplete = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:02.000Z")
+    });
+    assert.equal(failedComplete.ok, false);
+    assert.equal(failedComplete.errors[0].code, "HARNESS_VERIFICATION_COMMAND_FAILED");
+    const reworkBoard = await loadBoard(boardDir);
+    assert.equal(reworkBoard.workItems.find((item) => item.id === "work.login-ui").lane, "Rework");
+
+    await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps/web/auth/recovered-output.txt"), "environment recovered\n");
+
+    const recovered = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:03.000Z")
+    });
+    assert.equal(recovered.ok, true);
+    const completed = await loadBoard(boardDir);
+    const completedItem = completed.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(completedItem.lane, "Done");
+    assert.equal(completedItem.errorCode, undefined);
+    const evidence = await readJsonFile(recovered.evidencePath);
+    assert.equal(evidence.ok, true);
+    assert.equal(evidence.commands[0].exitCode, 0);
   });
 });
 

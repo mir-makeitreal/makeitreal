@@ -5,6 +5,7 @@ export const RUNTIME_EVENTS = new Set([
   "claim_expired",
   "work_ready",
   "work_started",
+  "rework_resolved",
   "verification_completed",
   "wiki_synced",
   "session_started",
@@ -96,6 +97,7 @@ function firstClassifiedBoundaryError(errors) {
   return (errors ?? []).find((error) =>
     error?.code === "HARNESS_PATH_BOUNDARY_VIOLATION"
     || error?.code === "HARNESS_METADATA_BOUNDARY_VIOLATION"
+    || error?.code === "HARNESS_PROJECT_APPLY_CONFLICT"
   );
 }
 

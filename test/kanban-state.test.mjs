@@ -25,3 +25,12 @@ test("Human Review to Done requires evidence and wiki", () => {
   const allowed = canTransition({ from: "Human Review", to: "Done", context: { gates: { evidence: true, wiki: true } } });
   assert.equal(allowed.ok, true);
 });
+
+test("Rework can re-enter Verifying only through explicit recovery", () => {
+  const blocked = canTransition({ from: "Rework", to: "Verifying", context: { gates: {} } });
+  assert.equal(blocked.ok, false);
+  assert.deepEqual(blocked.requiredGates, ["reworkResolved"]);
+
+  const allowed = canTransition({ from: "Rework", to: "Verifying", context: { gates: { reworkResolved: true } } });
+  assert.equal(allowed.ok, true);
+});

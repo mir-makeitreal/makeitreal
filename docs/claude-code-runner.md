@@ -1,6 +1,11 @@
 # Claude Code Runner Contract
 
-The Make It Real runtime supports two runner modes:
+The Make It Real runtime supports two execution surfaces:
+
+- parent-session native Task orchestration: the default interactive Claude Code path.
+- child-process `claude --print`: a headless fallback for CI, scripted dogfood, or diagnostics.
+
+It supports two runner modes:
 
 - `scripted-simulator`: deterministic fixture runner for tests.
 - `claude-code`: structured command runner for real Claude Code execution.
@@ -17,7 +22,15 @@ The Make It Real runtime supports two runner modes:
 }
 ```
 
-The orchestrator creates a deterministic workspace under `workspaces/<workItemId>/` and writes:
+For parent-session native Task orchestration, `/mir:launch` runs:
+
+1. `orchestrator native start`: validates Ready gates, claims one ready work item, marks it `Running`, and returns implementation/reviewer prompts.
+2. Claude Code native `Task`: performs the implementation in the visible parent session UI.
+3. Claude Code native reviewer `Task`s: `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`.
+4. `orchestrator native finish`: records the implementation/review JSON evidence and moves successful work to `Verifying`.
+5. `orchestrator complete`: runs verification from the project root and moves the item through `Human Review` to `Done` only when evidence is complete.
+
+The child-process fallback creates a deterministic workspace under `workspaces/<workItemId>/` and writes:
 
 - `.makeitreal/handoff.json`
 - `.makeitreal/prompt.md`
@@ -27,13 +40,14 @@ The orchestrator creates a deterministic workspace under `workspaces/<workItemId
 - `.makeitreal/source/prd.json` when present
 - `.makeitreal/source/design-pack.json` when present
 
-The runner command must be a JSON object with `file` and `args`. It is executed with `shell: false`.
+The fallback runner command must be a JSON object with `file` and `args`. It is executed with `shell: false`.
 The `file` must be `claude`, and `args` are canonicalized to a conservative shape:
 
 - `--print`
 - `--output-format json`
 - `--permission-mode dontAsk`
-- `--allowedTools Read,Write,Edit,MultiEdit,Glob,Grep,LS`
+- `--allowedTools Read,Write,Edit,MultiEdit,Glob,Grep,LS,Task`
+- `--agents ${agents}` for native Claude Code reviewer definitions
 - `--add-dir ${workspace}`
 - `--`
 - exactly one prompt or handoff placeholder after `--`
@@ -51,12 +65,12 @@ Claude/OMC session logs under `.omc/sessions/**` are treated as runner metadata.
 
 Completion uses the latest successful attempt provenance, not caller assertion, to select the runner trust policy. A work item cannot move from `Verifying` to `Done` without a recorded successful attempt with `turn_completed` and runner mode metadata.
 
-Example internal command:
+Example fallback internal command:
 
 ```bash
 node bin/harness.mjs orchestrator tick .makeitreal/board \
   --runner claude-code \
-  --runner-command '{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS","--add-dir","${workspace}","--","${prompt}"]}'
+  --runner-command '{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS,Task","--agents","${agents}","--add-dir","${workspace}","--","${prompt}"]}'
 ```
 
 The public workflow remains `/makeitreal:launch`; this command is an internal engine surface.

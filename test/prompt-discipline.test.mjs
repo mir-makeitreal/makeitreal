@@ -64,6 +64,8 @@ for (const [label, readSkill] of [
     assert.match(skill, /Direct free-form agent-to-agent chat/i);
     assert.match(skill, /approved reviewer evidence/i);
     assert.match(skill, /routes the work item to Rework/i);
+    assert.match(skill, /parent-session native Task path/i);
+    assert.match(skill, /headless fallback/i);
   });
 
   test(`${label} verify skill uses stop-the-line root-cause recovery`, async () => {

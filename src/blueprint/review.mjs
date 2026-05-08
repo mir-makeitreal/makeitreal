@@ -220,6 +220,91 @@ export async function decideBlueprintReview({
   };
 }
 
+export async function recordBlueprintRevisionRequest({
+  runDir,
+  requestedBy,
+  decisionNote,
+  reviewSource = "makeitreal:interactive-review:llm",
+  env = process.env,
+  now = new Date()
+}) {
+  if (!requestedBy) {
+    return {
+      ok: false,
+      command: "blueprint revision request",
+      errors: [error({
+        code: "HARNESS_BLUEPRINT_REVIEW_INVALID",
+        reason: "Blueprint revision request requires a reviewer identity.",
+        evidence: ["reviewer"]
+      })]
+    };
+  }
+  const runnerEnv = validateRunnerEnvironment(env);
+  if (!runnerEnv.ok) {
+    return { ok: false, command: "blueprint revision request", errors: runnerEnv.errors };
+  }
+
+  const currentReview = await readBlueprintReview({ runDir });
+  if (!currentReview.ok) {
+    return {
+      ok: false,
+      command: "blueprint revision request",
+      reviewPath: currentReview.reviewPath,
+      errors: currentReview.errors
+    };
+  }
+  const shape = validateReviewShape(currentReview.review);
+  if (!shape.ok) {
+    return {
+      ok: false,
+      command: "blueprint revision request",
+      reviewPath: currentReview.reviewPath,
+      errors: shape.errors
+    };
+  }
+
+  const binding = await expectedBinding(runDir);
+  const fingerprint = await computeBlueprintFingerprint({ runDir });
+  const errors = [...binding.errors, ...fingerprint.errors];
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      command: "blueprint revision request",
+      reviewPath: currentReview.reviewPath,
+      errors
+    };
+  }
+
+  const review = {
+    ...currentReview.review,
+    schemaVersion: "1.0",
+    runId: binding.binding.runId,
+    workItemId: binding.binding.workItemId,
+    prdId: binding.binding.prdId,
+    blueprintFingerprint: fingerprint.fingerprint,
+    status: "pending",
+    reviewSource,
+    reviewedBy: null,
+    reviewedAt: null,
+    decisionNote: null,
+    revisionRequestedBy: requestedBy,
+    revisionRequestedAt: now.toISOString(),
+    revisionNote: decisionNote
+  };
+  await writeJsonFile(currentReview.reviewPath, review);
+  return {
+    ok: true,
+    command: "blueprint revision request",
+    runDir,
+    reviewPath: currentReview.reviewPath,
+    status: "pending",
+    blueprintFingerprint: fingerprint.fingerprint,
+    revisionRequestedBy: requestedBy,
+    review,
+    errors: []
+  };
+}
+
 export async function validateBlueprintApproval({ runDir }) {
   const fingerprint = await computeBlueprintFingerprint({ runDir });
   if (!fingerprint.ok) {

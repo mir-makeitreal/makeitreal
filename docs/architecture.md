@@ -210,7 +210,7 @@ Failure/recovery lanes:
 
 ```text
 Running -> Failed Fast -> Ready
-Verifying -> Rework
+Verifying -> Rework -> Verifying
 Claimed -> Ready when lease expires
 ```
 
@@ -220,6 +220,9 @@ Key gate rules:
   Blueprint approval gates.
 - `Human Review -> Done` requires verification evidence and wiki evidence, or
   explicit wiki-skip evidence when live wiki is disabled.
+- `Rework -> Verifying` requires explicit recovery evidence from the completion
+  gate. This lets a fixed environment or resolved review issue retry
+  work-item verification without relaunching the implementation worker.
 - `Running` cannot jump directly to `Done`.
 
 ## Responsibility And Contract Boundaries

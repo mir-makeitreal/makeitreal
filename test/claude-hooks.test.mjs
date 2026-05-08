@@ -100,7 +100,19 @@ test("pre-tool-use blocks mutating tools before Blueprint approval", async () =>
 
 test("stop blocks until Done gate evidence is complete", async () => {
   await withFixture(async ({ runDir }) => {
-    await setActiveExecution(runDir);
+    await writeJsonFile(path.join(runDir, "board.json"), {
+      schemaVersion: "1.0",
+      boardId: "board.stop-hook",
+      workItems: [{ id: "work.feature-auth", lane: "Verifying" }]
+    });
+    const approval = await decideBlueprintReview({
+      runDir,
+      status: "approved",
+      reviewedBy: "operator:stop-hook-test",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
     const blocked = runHook("hooks/claude/stop.mjs", { runDir });
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
     assert.equal(JSON.parse(blocked.stdout).decision, "block");
@@ -113,6 +125,18 @@ test("stop blocks until Done gate evidence is complete", async () => {
     const allowed = runHook("hooks/claude/stop.mjs", { runDir });
     assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
     assert.equal(JSON.parse(allowed.stdout).decision, "approve");
+  });
+});
+
+test("stop reports active runner instead of missing Done evidence while work is Running", async () => {
+  await withFixture(async ({ runDir }) => {
+    await setActiveExecution(runDir);
+    const blocked = runHook("hooks/claude/stop.mjs", { runDir });
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.decision, "block");
+    assert.match(output.reason, /HARNESS_RUNNER_IN_PROGRESS/);
+    assert.doesNotMatch(output.reason, /HARNESS_EVIDENCE_MISSING/);
   });
 });
 
@@ -293,7 +317,7 @@ test("user-prompt-submit is quiet when Blueprint review is already decided", asy
   });
 });
 
-test("user-prompt-submit records LLM-rejected Blueprint review decisions", async () => {
+test("user-prompt-submit records LLM revision requests without rejecting the Blueprint", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
@@ -319,13 +343,16 @@ test("user-prompt-submit records LLM-rejected Blueprint review decisions", async
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
-    assert.equal(output.makeitreal.action, "rejected");
-    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint review was recorded as rejected/);
+    assert.equal(output.makeitreal.action, "revision-requested");
+    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint revision request has been recorded/);
+    assert.match(output.hookSpecificOutput.additionalContext, /Do not launch implementation/);
 
     const review = await readBlueprintReview({ runDir });
-    assert.equal(review.review.status, "rejected");
+    assert.equal(review.review.status, "pending");
     assert.equal(review.review.reviewSource, "makeitreal:interactive-review:llm");
-    assert.equal(review.review.reviewedBy, "operator:session-revision-requested");
+    assert.equal(review.review.reviewedBy, null);
+    assert.equal(review.review.revisionRequestedBy, "operator:session-revision-requested");
+    assert.match(review.review.revisionNote, /revise the Blueprint/);
   });
 });
 

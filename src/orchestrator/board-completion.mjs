@@ -56,13 +56,14 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
     };
   }
 
-  if (workItem.lane !== "Verifying") {
+  const retryingFromRework = workItem.lane === "Rework";
+  if (!retryingFromRework && workItem.lane !== "Verifying") {
     return {
       ok: false,
       command: "orchestrator complete",
       errors: [createHarnessError({
         code: "HARNESS_WORK_NOT_VERIFYING",
-        reason: `${workItemId} must be in Verifying before completion.`,
+        reason: `${workItemId} must be in Verifying or Rework before completion.`,
         ownerModule: workItem.responsibilityUnitId ?? null,
         evidence: ["board.json"]
       })]
@@ -100,8 +101,9 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   }
 
   if (attemptRunnerMode === "claude-code") {
+    const parentNativeTask = attempt.runner?.channel === "parent-native-task";
     const executable = attempt.runner?.executable ?? {};
-    if (!executable.resolvedPath || !executable.realPath || !executable.hash) {
+    if (!parentNativeTask && (!executable.resolvedPath || !executable.realPath || !executable.hash)) {
       return {
         ok: false,
         command: "orchestrator complete",
@@ -152,9 +154,25 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   }
   await mkdir(workspace.workspace, { recursive: true });
   const projectRoot = attempt.runner?.projectRoot ?? resolveProjectRootForRun({ runDir: boardDir });
-  const verificationCwd = attempt.runner?.projectApply?.applied && projectRoot
+  const verificationCwd = (attempt.runner?.projectApply?.applied || attempt.runner?.channel === "parent-native-task") && projectRoot
     ? projectRoot
     : workspace.workspace;
+
+  if (retryingFromRework) {
+    const retryVerification = transitionWorkItem(workItem, "Verifying", { gates: { reworkResolved: true } });
+    if (!retryVerification.ok) {
+      return { ok: false, command: "orchestrator complete", errors: retryVerification.errors };
+    }
+    delete workItem.errorCode;
+    delete workItem.errorReason;
+    await saveBoard(boardDir, board);
+    await appendBoardEvent(boardDir, {
+      event: "rework_resolved",
+      timestamp: now.toISOString(),
+      workItemId,
+      payload: { source: "orchestrator complete retry" }
+    });
+  }
 
   const commands = [];
   const errors = [];
