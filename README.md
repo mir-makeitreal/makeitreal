@@ -162,6 +162,9 @@ Make It Real has a small public surface and a stricter internal control plane:
 For the full structure, state model, hook lifecycle, and run-packet layout, see
 [docs/architecture.md](docs/architecture.md).
 
+For the current GSD/Spec Kit feature review and Make It Real absorption backlog,
+see [docs/research/2026-05-08-gsd-speckit-feature-review.md](docs/research/2026-05-08-gsd-speckit-feature-review.md).
+
 ## Core Guarantees
 
 - PRD and Blueprint artifacts are created before implementation.
