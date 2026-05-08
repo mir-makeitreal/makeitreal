@@ -1,10 +1,21 @@
 #!/usr/bin/env node
 
+import path from "node:path";
 import { validateRunChangedPaths } from "../../src/adapters/path-boundary.mjs";
 import { validateBlueprintApproval } from "../../src/blueprint/review.mjs";
+import { fileExists, readJsonFile } from "../../src/io/json.mjs";
 import { resolveCurrentRunDir } from "../../src/project/run-state.mjs";
 
 const MUTATING_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+const RUNNER_CONTEXT_KEYS = [
+  "MAKEITREAL_BOARD_DIR",
+  "MAKEITREAL_WORK_ITEM_ID",
+  "MAKEITREAL_WORKSPACE",
+  "MAKEITREAL_HANDOFF_PATH",
+  "MAKEITREAL_PROMPT_PATH",
+  "MAKEITREAL_RESPONSIBILITY_UNIT_ID"
+];
+const ACTIVE_EXECUTION_LANES = new Set(["Claimed", "Running", "Verifying", "Human Review"]);
 
 async function readHookInput() {
   let raw = "";
@@ -96,6 +107,44 @@ function block(errors) {
   };
 }
 
+async function readOptionalJson(filePath) {
+  if (!await fileExists(filePath)) {
+    return null;
+  }
+  return readJsonFile(filePath);
+}
+
+async function activeExecutionContext({ runDir }) {
+  const ids = new Set();
+  const runtimeState = await readOptionalJson(path.join(runDir, "runtime-state.json"));
+  for (const workItemId of Object.keys(runtimeState?.running ?? {})) {
+    ids.add(workItemId);
+  }
+
+  const board = await readOptionalJson(path.join(runDir, "board.json"));
+  for (const workItem of board?.workItems ?? []) {
+    if (ACTIVE_EXECUTION_LANES.has(workItem.lane)) {
+      ids.add(workItem.id);
+    }
+  }
+
+  return {
+    active: ids.size > 0,
+    workItemId: ids.size === 1 ? [...ids][0] : null,
+    ambiguous: ids.size > 1,
+    workItemIds: [...ids]
+  };
+}
+
+function runnerContextState(env = process.env) {
+  const present = RUNNER_CONTEXT_KEYS.filter((key) => env[key]);
+  return {
+    present,
+    active: present.length > 0,
+    complete: Boolean(env.MAKEITREAL_BOARD_DIR && env.MAKEITREAL_WORK_ITEM_ID)
+  };
+}
+
 async function main() {
   const input = await readHookInput();
   const changedPaths = collectPaths(input.tool_input ?? input.toolInput ?? input);
@@ -107,10 +156,51 @@ async function main() {
     return allow("Non-mutating tool request.");
   }
 
-  const resolved = await resolveCurrentRunDir({
-    projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.makeitreal?.runDir ?? null
-  });
+  const projectRoot = input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const explicitRunDir = input.runDir ?? input.makeitreal?.runDir ?? null;
+  const runnerContext = runnerContextState(process.env);
+  const runnerRunDir = process.env.MAKEITREAL_BOARD_DIR ?? null;
+  let workItemId = process.env.MAKEITREAL_WORK_ITEM_ID ?? input.makeitreal?.workItemId ?? null;
+  let resolved = null;
+
+  if (runnerContext.active && !runnerContext.complete) {
+    return block([{
+      code: "HARNESS_RUN_CONTEXT_MISSING",
+      reason: `Make It Real runner context is incomplete: ${runnerContext.present.join(", ")}.`,
+      contractId: null,
+      ownerModule: null,
+      evidence: RUNNER_CONTEXT_KEYS,
+      recoverable: true
+    }]);
+  }
+
+  if (runnerContext.complete || explicitRunDir) {
+    resolved = await resolveCurrentRunDir({
+      projectRoot,
+      runDir: runnerRunDir ?? explicitRunDir
+    });
+  } else {
+    resolved = await resolveCurrentRunDir({ projectRoot });
+    if (!resolved.ok) {
+      return allow("No active Make It Real enforcement context.");
+    }
+    const active = await activeExecutionContext({ runDir: resolved.runDir });
+    if (!active.active) {
+      return allow("Current Make It Real run is not executing.");
+    }
+    if (active.ambiguous) {
+      return block([{
+        code: "HARNESS_RUN_CONTEXT_MISSING",
+        reason: `Active Make It Real execution has multiple work items; scoped work item context is required: ${active.workItemIds.join(", ")}.`,
+        contractId: null,
+        ownerModule: null,
+        evidence: ["runtime-state.json", "board.json", "MAKEITREAL_WORK_ITEM_ID"],
+        recoverable: true
+      }]);
+    }
+    workItemId = active.workItemId;
+  }
+
   if (!resolved.ok) {
     return block([{
       code: "HARNESS_RUN_CONTEXT_MISSING",
@@ -149,7 +239,8 @@ async function main() {
   const result = await validateRunChangedPaths({
     runDir: resolved.runDir,
     changedPaths,
-    repoRoot: input.repoRoot ?? input.cwd ?? process.cwd()
+    repoRoot: input.repoRoot ?? input.cwd ?? process.cwd(),
+    workItemId
   });
   return result.ok ? allow() : block(result.errors);
 }

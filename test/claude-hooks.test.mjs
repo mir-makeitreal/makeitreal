@@ -157,6 +157,7 @@ test("Claude hooks resolve run directory from project current-run state", async 
       runDir,
       now: new Date("2026-05-06T00:00:00.000Z")
     });
+    await setActiveExecution(runDir);
 
     const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
       tool_name: "Edit",
@@ -168,7 +169,6 @@ test("Claude hooks resolve run directory from project current-run state", async 
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
     assert.equal(JSON.parse(blocked.stdout).hookSpecificOutput.permissionDecision, "deny");
 
-    await setActiveExecution(runDir);
     const stop = runHook("hooks/claude/stop.mjs", {}, {
       cwd: root,
       env: { ...process.env, CLAUDE_PROJECT_DIR: root }
@@ -416,14 +416,81 @@ test("user-prompt-submit does not approve when the LLM judge returns none", asyn
   });
 });
 
-test("pre-tool-use blocks edits when active run context is missing", async () => {
+test("pre-tool-use allows ordinary edits when active run context is missing", async () => {
+  await withFixture(async ({ root }) => {
+    const allowed = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "apps/web/auth/LoginForm.tsx" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
+    const output = JSON.parse(allowed.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /No active Make It Real enforcement context/);
+  });
+});
+
+test("pre-tool-use allows unrelated edits when only an inactive current-run pointer exists", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    const allowed = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "tools-external/coder/src/middleware/token-auth.ts" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
+    const output = JSON.parse(allowed.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /not executing/);
+  });
+});
+
+test("pre-tool-use enforces runner boundaries from MAKEITREAL_BOARD_DIR", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "tools-external/coder/src/middleware/token-auth.ts" }
+    }, {
+      cwd: root,
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: root,
+        MAKEITREAL_BOARD_DIR: runDir,
+        MAKEITREAL_WORK_ITEM_ID: "work.feature-auth",
+        MAKEITREAL_WORKSPACE: root
+      }
+    });
+
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_PATH_BOUNDARY_VIOLATION/);
+  });
+});
+
+test("pre-tool-use blocks malformed Make It Real runner environments", async () => {
   await withFixture(async ({ root }) => {
     const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
       tool_name: "Edit",
       tool_input: { file_path: "apps/web/auth/LoginForm.tsx" }
     }, {
       cwd: root,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: root,
+        MAKEITREAL_WORK_ITEM_ID: "work.feature-auth"
+      }
     });
 
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);

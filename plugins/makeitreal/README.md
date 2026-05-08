@@ -44,6 +44,10 @@ The plugin intentionally does not expose internal commands such as board claims,
 orchestrator ticks, hook installation, wiki sync, or gate mutation as normal user
 commands.
 
+For the full architecture, including plugin/engine boundaries, hook lifecycle,
+Kanban state, run-packet layout, and evidence model, see
+[`../../docs/architecture.md`](../../docs/architecture.md).
+
 ## Runtime Contract
 
 - Planning creates PRD, Blueprint/design pack, responsibility boundaries,

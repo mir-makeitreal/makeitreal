@@ -118,6 +118,22 @@ These are plugin slash commands from `plugins/makeitreal/commands/`. The
 `skills/` directory is supporting guidance, not the slash-command registration
 surface.
 
+## Architecture
+
+Make It Real has a small public surface and a stricter internal control plane:
+
+- `plugins/makeitreal/` is the canonical Claude Code plugin.
+- `plugins/mir/` is the short alias plugin for `/mir:*` commands.
+- `bin/harness.mjs` is the internal engine CLI used by slash commands and tests.
+- `src/` contains the deterministic engine modules for planning, gates,
+  contracts, Kanban state, hooks, runner orchestration, verification, dashboard
+  rendering, diagnostics, and wiki evidence.
+- target projects store runtime state under `.makeitreal/`, which is
+  automatically ignored by git.
+
+For the full structure, state model, hook lifecycle, and run-packet layout, see
+[docs/architecture.md](docs/architecture.md).
+
 ## Core Guarantees
 
 - PRD and Blueprint artifacts are created before implementation.
