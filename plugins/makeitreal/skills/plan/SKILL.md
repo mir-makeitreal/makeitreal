@@ -46,6 +46,27 @@ Borrow the spec-first shape: clarify objective, success criteria, project constr
 
 After each answer, restate only the updated assumption that affects the plan. If the answer creates a conflict with existing code or prior user direction, surface that conflict and ask the next `AskUserQuestion` about the conflict rather than silently choosing a side.
 
+### Read-Only Parallel Reconnaissance
+
+When the request is broad, cross-cutting, or likely to require repo discovery before a good question can be asked, use read-only `Task` subagents before asking the operator. Task subagents are for reconnaissance only during planning: they may inspect files, map responsibilities, find existing patterns, and report candidate boundaries, but they must not edit files or start implementation.
+
+Use parallel reconnaissance only when it reduces uncertainty. Good split points are independent domains, such as current architecture, tests/verification commands, public API or IO contracts, and naming/path conventions. Synthesize subagent findings into one operator-facing summary before asking the next `AskUserQuestion`.
+
+Do not outsource the actual planning decision to subagents. The leader owns the canonical request, Blueprint wording, and the final question shown to the operator.
+
+### Operator-Facing Questions
+
+Do not expose internal harness terms in `AskUserQuestion` prompts unless the user is explicitly developing Make It Real itself or asks for internals. Avoid raw terms such as board, orchestrator, owner, responsibility unit, lane, claim, gate, and run directory in user-facing choices.
+
+Translate internal concepts into the user's domain language:
+
+- say "Which part of the product/codebase should this change belong to?" instead of "which owner/responsibility unit owns this?";
+- say "Should this be one end-to-end slice or split into separate work packages?" instead of "vertical slice vs board domains?";
+- say "What files or areas should be safe to change?" instead of "allowed paths";
+- say "How should we prove it works?" instead of "verification evidence".
+
+The Blueprint may still contain precise internal fields required by the engine. The conversation should present those fields as a plain-language summary first, with raw identifiers only when useful for an advanced user or for copyable commands.
+
 ### Shared Language
 
 Before producing the Blueprint, normalize the user's words into project language:

@@ -1,7 +1,7 @@
 ---
 description: Generate a PRD, Blueprint, contracts, and Kanban plan
 argument-hint: "[feature request | approve | reject]"
-allowed-tools: ["Bash", "Read", "AskUserQuestion"]
+allowed-tools: ["Bash", "Read", "AskUserQuestion", "Task"]
 ---
 
 # Make It Real Plan

@@ -27,11 +27,15 @@ for (const [label, readSkill] of [
     assert.match(skill, /Shared Language/i);
     assert.match(skill, /Boundary Proposal/i);
     assert.match(skill, /Dynamic Intake/i);
+    assert.match(skill, /Read-Only Parallel Reconnaissance/i);
+    assert.match(skill, /Operator-Facing Questions/i);
     assert.match(skill, /vertical slice/i);
     assert.match(skill, /suggestedBoundaries/);
     assert.match(skill, /acceptance criteria/i);
     assert.match(skill, /Do not use a fixed question script/i);
     assert.match(skill, /derive the next question/i);
+    assert.match(skill, /Do not expose internal harness terms/i);
+    assert.match(skill, /Task subagents/i);
   });
 
   test(`${label} launch skill keeps subagents scoped to one work item and selective context`, async () => {

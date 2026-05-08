@@ -77,6 +77,7 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
 
   const planCommand = await readPluginFile("commands", "plan.md");
+  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
   assert.match(planCommand, /--runner claude-code/);
   assert.match(planCommand, /blueprint approve/);
   assert.match(planCommand, /blueprint reject/);
@@ -169,6 +170,7 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planSkill, /makeitreal:interactive-review:llm/);
 
   const planCommand = await readAliasPluginFile("commands", "plan.md");
+  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
   assert.match(planCommand, /If the argument is empty/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /canonical request/i);
