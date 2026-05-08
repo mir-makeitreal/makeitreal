@@ -60,8 +60,47 @@ function modelBoard(board, boardStatus) {
   };
 }
 
+function modelContracts(apiSpecs = []) {
+  return apiSpecs.map((spec) => ({
+    kind: spec.kind,
+    contractId: spec.contractId ?? null,
+    path: spec.path ?? null,
+    reason: spec.reason ?? null
+  }));
+}
+
+function modelBoundaries(boundaries = []) {
+  return boundaries.map((boundary) => ({
+    responsibilityUnitId: boundary.responsibilityUnitId,
+    owns: boundary.owns ?? [],
+    mayUseContracts: boundary.mayUseContracts ?? []
+  }));
+}
+
+function modelBlueprint({ prd, designPack }) {
+  const contracts = modelContracts(designPack.apiSpecs ?? []);
+  return {
+    title: prd.title,
+    summary: prd.userVisibleBehavior ?? [],
+    goals: prd.goals ?? [],
+    nonGoals: prd.nonGoals ?? [],
+    acceptanceCriteria: prd.acceptanceCriteria ?? [],
+    primaryContract: contracts[0] ?? null,
+    contracts,
+    boundaries: modelBoundaries(designPack.responsibilityBoundaries ?? []),
+    architecture: {
+      nodes: designPack.architecture?.nodes ?? [],
+      edges: designPack.architecture?.edges ?? []
+    },
+    stateTransitions: designPack.stateFlow?.transitions ?? [],
+    callStacks: designPack.callStacks ?? [],
+    sequences: designPack.sequences ?? []
+  };
+}
+
 export async function buildPreviewModel({ runDir, now = new Date() }) {
   const resolvedRunDir = path.resolve(runDir);
+  const prd = await readJsonFile(path.join(resolvedRunDir, "prd.json"));
   const designPack = await readJsonFile(path.join(resolvedRunDir, "design-pack.json"));
   const validation = validateDesignPack(designPack);
   if (!validation.ok) {
@@ -97,6 +136,7 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
         workItemId: designPack.workItemId,
         prdId: designPack.prdId
       },
+      blueprint: modelBlueprint({ prd, designPack }),
       design: {
         architectureEdges: designPack.architecture.edges.map((edge) => `${edge.from} -> ${edge.to} (${edge.contractId})`),
         stateTransitions: designPack.stateFlow.transitions.map((transition) => `${transition.from} -> ${transition.to} via ${transition.gate}`),

@@ -23,7 +23,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/launch/SKILL.md
 Use the plugin engine for the internal sequence described by the skill:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" gate "$RUN_DIR" --target Ready
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator tick "$RUN_DIR" --runner claude-code --runner-command '{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS","--add-dir","${workspace}","--","${prompt}"]}'
 ```
@@ -37,7 +37,7 @@ Then complete only the work items that the engine moved to `Verifying` and that 
 If the command returns a dashboard refresh URL or the skill asks for the dashboard to be opened, open it:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 Report:

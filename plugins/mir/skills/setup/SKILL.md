@@ -19,7 +19,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 
 1. Locate the project root and the intended run directory.
 2. Initialize `.makeitreal/`, default config, and the project `.gitignore` entry for `/.makeitreal/`.
-3. If `--run <runDir>` is provided, record that run as the active run with `makeitreal-engine setup "$CLAUDE_PROJECT_DIR" --run <runDir>`.
+3. If `--run <runDir>` is provided, record that run as the active run with `makeitreal-engine setup "${CLAUDE_PROJECT_DIR:-$PWD}" --run <runDir>`.
 4. If no run is provided, report that setup is initialized and the next action is `/mir:plan <request>`.
 5. Confirm plugin-native hooks are available from `hooks/hooks.json`, or use the engine's fallback hook setup only when the plugin is not loaded.
 6. Do not present `hooks install` or hook file paths as normal workflow commands.

@@ -49,3 +49,13 @@ export function validateWorkspaceCwd({ workspace, cwd }) {
 
   return { ok: true, errors: [] };
 }
+
+export function resolveProjectRootForRun({ runDir }) {
+  const resolvedRunDir = path.resolve(runDir);
+  const runsDir = path.dirname(resolvedRunDir);
+  const makeitrealDir = path.dirname(runsDir);
+  if (path.basename(runsDir) !== "runs" || path.basename(makeitrealDir) !== ".makeitreal") {
+    return null;
+  }
+  return path.dirname(makeitrealDir);
+}

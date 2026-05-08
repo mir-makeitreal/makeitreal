@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
@@ -79,6 +80,7 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   const planCommand = await readPluginFile("commands", "plan.md");
   assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
   assert.match(planCommand, /--runner claude-code/);
+  assert.match(planCommand, /\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/);
   assert.match(planCommand, /blueprint approve/);
   assert.match(planCommand, /blueprint reject/);
   assert.match(planCommand, /If the argument is empty/i);
@@ -178,6 +180,7 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
 
   const planCommand = await readAliasPluginFile("commands", "plan.md");
   assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
+  assert.match(planCommand, /\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/);
   assert.match(planCommand, /If the argument is empty/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /canonical request/i);
@@ -241,6 +244,34 @@ test("Make It Real plugin binary is self-contained after installation", () => {
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /makeitreal-engine \(internal\)/);
+});
+
+test("Make It Real installed plugin copy uses the embedded engine", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-installed-plugin-"));
+  const installedPlugin = path.join(root, "makeitreal");
+  await cp(pluginRoot, installedPlugin, { recursive: true });
+  try {
+    const result = spawnSync(path.join(installedPlugin, "bin", "makeitreal-engine"), ["--help"], {
+      cwd: "/tmp",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        MAKEITREAL_ENGINE_ROOT: "",
+        CLAUDE_PROJECT_DIR: ""
+      }
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /makeitreal-engine \(internal\)/);
+
+    const embeddedPkg = JSON.parse(await readFile(path.join(installedPlugin, "dev-harness", "package.json"), "utf8"));
+    const rootPkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+    assert.equal(embeddedPkg.version, rootPkg.version);
+    const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
+    assert.match(renderer, /Blueprint Reference/);
+    assert.match(renderer, /Raw Artifacts/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("Make It Real exposes an opt-in real Claude golden-path E2E script", async () => {

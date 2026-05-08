@@ -37,6 +37,19 @@ async function withBoard(callback) {
   }
 }
 
+async function withProjectBoard(callback) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "harness-claude-runner-project-"));
+  const projectRoot = path.join(root, "project");
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
+  const boardDir = path.join(projectRoot, ".makeitreal", "runs", "board");
+  await cp(source, boardDir, { recursive: true });
+  try {
+    await callback({ root, projectRoot, boardDir });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
 async function enableClaudeRunner(boardDir) {
   await writeJsonFile(path.join(boardDir, "trust-policy.json"), {
     schemaVersion: "1.0",
@@ -117,6 +130,43 @@ console.log(JSON.stringify({ event: 'turn_completed' }));
 
     const board = await loadBoard(boardDir);
     assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Verifying");
+  });
+});
+
+test("claude-code runner stages allowed project files and applies successful workspace changes back to the repo", async () => {
+  await withProjectBoard(async ({ root, projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "before", "utf8");
+    await writeFakeClaude(root, `
+const fs = require('fs');
+const path = require('path');
+const filePath = path.join('apps', 'web', 'auth', 'runner-output.txt');
+if (fs.readFileSync(filePath, 'utf8') !== 'before') {
+  throw new Error('project file was not staged into workspace');
+}
+fs.writeFileSync(filePath, 'after');
+console.log(JSON.stringify({ event: 'turn_completed' }));
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    assert.equal(await readFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "utf8"), "after");
+
+    const attempt = await readRunAttempt({ boardDir, attemptId: "work.login-ui.1778025600000" });
+    assert.equal(attempt.runner.projectRoot, projectRoot);
+    assert.deepEqual(attempt.runner.stagedProjectPaths, ["apps/web/auth/runner-output.txt"]);
+    assert.deepEqual(attempt.runner.projectApply.appliedPaths, ["apps/web/auth/runner-output.txt"]);
   });
 });
 

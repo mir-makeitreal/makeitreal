@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmod, cp, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -32,6 +32,19 @@ async function withBoard(callback) {
   await cp(source, boardDir, { recursive: true });
   try {
     await callback({ root, boardDir });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+async function withProjectBoard(callback) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "harness-board-completion-project-"));
+  const projectRoot = path.join(root, "project");
+  const source = new URL("../examples/kanban/.makeitreal/board", import.meta.url);
+  const boardDir = path.join(projectRoot, ".makeitreal", "runs", "board");
+  await cp(source, boardDir, { recursive: true });
+  try {
+    await callback({ root, projectRoot, boardDir });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -222,6 +235,41 @@ test("orchestrator completion accepts claude-code trust policy after real runner
     });
 
     assert.equal(result.ok, true);
+    const completed = await loadBoard(boardDir);
+    assert.equal(completed.workItems.find((item) => item.id === "work.login-ui").lane, "Done");
+  });
+});
+
+test("orchestrator completion verifies applied Claude workspace output in the real project root", async () => {
+  await withProjectBoard(async ({ root, projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
+    const dispatched = await dispatchClaudeWork({
+      root,
+      boardDir,
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(dispatched.ok, true, JSON.stringify(dispatched.errors));
+    assert.equal(await readFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "utf8"), "inside boundary");
+
+    const board = await loadBoard(boardDir);
+    const workItem = board.workItems.find((item) => item.id === "work.login-ui");
+    workItem.verificationCommands = [{
+      file: process.execPath,
+      args: ["-e", "const fs = require('fs'); const text = fs.readFileSync('apps/web/auth/runner-output.txt', 'utf8'); if (text !== 'inside boundary') process.exit(7);"]
+    }];
+    await saveBoard(boardDir, board);
+
+    const result = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const evidence = await readJsonFile(path.join(boardDir, "evidence", "work.login-ui.verification.json"));
+    assert.equal(evidence.commands[0].cwd, projectRoot);
     const completed = await loadBoard(boardDir);
     assert.equal(completed.workItems.find((item) => item.id === "work.login-ui").lane, "Done");
   });

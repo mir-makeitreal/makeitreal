@@ -11,7 +11,7 @@ import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-c
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
-import { resolveWorkspace } from "./workspace-manager.mjs";
+import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
 function transitionWorkItem(workItem, to, context) {
   const transition = canTransition({ from: workItem.lane, to, context });
@@ -139,6 +139,10 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
     return { ok: false, command: "orchestrator complete", errors: workspace.errors };
   }
   await mkdir(workspace.workspace, { recursive: true });
+  const projectRoot = attempt.runner?.projectRoot ?? resolveProjectRootForRun({ runDir: boardDir });
+  const verificationCwd = attempt.runner?.projectApply?.applied && projectRoot
+    ? projectRoot
+    : workspace.workspace;
 
   const commands = [];
   const errors = [];
@@ -155,12 +159,13 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
 
     const startedAt = Date.now();
     const result = spawnSync(normalized.command.file, normalized.command.args, {
-      cwd: workspace.workspace,
+      cwd: verificationCwd,
       encoding: "utf8",
       shell: false,
       env: {
         ...process.env,
         MAKEITREAL_BOARD_DIR: boardDir,
+        MAKEITREAL_PROJECT_ROOT: projectRoot ?? "",
         MAKEITREAL_WORKSPACE: workspace.workspace,
         MAKEITREAL_WORK_ITEM_ID: workItem.id
       }
@@ -168,6 +173,7 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
     const evidence = {
       command,
       commandHash: hashCommand(command),
+      cwd: verificationCwd,
       exitCode: result.status,
       stdout: result.stdout,
       stderr: result.stderr,

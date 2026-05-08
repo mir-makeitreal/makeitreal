@@ -17,7 +17,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/verify/SKILL.md
 Resolve the current run and then run verification on the run directory:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" verify "$RUN_DIR" $ARGUMENTS
 ```
 

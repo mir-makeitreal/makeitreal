@@ -40,6 +40,12 @@ Update:
 
 ```text
 /plugin marketplace update 52g
+/plugin update makeitreal@52g
 /plugin update mir@52g
 /reload-plugins
 ```
+
+Then run `/plugin list` and confirm both `makeitreal@52g` and `mir@52g` show
+the latest version. If Claude Code still executes an older
+`~/.claude/plugins/cache/52g/mir/<version>/...` path, uninstall and reinstall
+both plugins from the refreshed marketplace.

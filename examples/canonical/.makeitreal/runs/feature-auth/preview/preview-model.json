@@ -1,4 +1,132 @@
 {
+  "blueprint": {
+    "acceptanceCriteria": [
+      {
+        "id": "AC-001",
+        "statement": "A user can submit credentials through the auth UI."
+      },
+      {
+        "id": "AC-002",
+        "statement": "The auth UI calls only the declared auth contract."
+      },
+      {
+        "id": "AC-003",
+        "statement": "Verification evidence and live wiki sync are recorded before Done."
+      }
+    ],
+    "architecture": {
+      "edges": [
+        {
+          "contractId": "contract.auth.login",
+          "from": "auth-ui",
+          "to": "auth-service"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "auth-ui",
+          "label": "Auth UI",
+          "responsibilityUnitId": "ru.frontend"
+        },
+        {
+          "id": "auth-service",
+          "label": "Auth Service",
+          "responsibilityUnitId": "ru.auth-service"
+        }
+      ]
+    },
+    "boundaries": [
+      {
+        "mayUseContracts": [
+          "contract.auth.login"
+        ],
+        "owns": [
+          "apps/web/auth/**"
+        ],
+        "responsibilityUnitId": "ru.frontend"
+      },
+      {
+        "mayUseContracts": [],
+        "owns": [
+          "services/auth/**"
+        ],
+        "responsibilityUnitId": "ru.auth-service"
+      }
+    ],
+    "callStacks": [
+      {
+        "calls": [
+          "authClient.login",
+          "POST /auth/login"
+        ],
+        "entrypoint": "LoginForm.submit"
+      }
+    ],
+    "contracts": [
+      {
+        "contractId": "contract.auth.login",
+        "kind": "openapi",
+        "path": "contracts/auth-login.openapi.json",
+        "reason": null
+      }
+    ],
+    "goals": [
+      "Deliver a contract-gated authentication UI vertical slice."
+    ],
+    "nonGoals": [
+      "Real credential validation",
+      "Production auth security"
+    ],
+    "primaryContract": {
+      "contractId": "contract.auth.login",
+      "kind": "openapi",
+      "path": "contracts/auth-login.openapi.json",
+      "reason": null
+    },
+    "sequences": [
+      {
+        "messages": [
+          {
+            "from": "User",
+            "label": "submit credentials",
+            "to": "Auth UI"
+          },
+          {
+            "from": "Auth UI",
+            "label": "POST /auth/login",
+            "to": "Auth Service"
+          },
+          {
+            "from": "Auth Service",
+            "label": "return session result",
+            "to": "Auth UI"
+          }
+        ],
+        "participants": [
+          "User",
+          "Auth UI",
+          "Auth Service"
+        ],
+        "title": "Login request"
+      }
+    ],
+    "stateTransitions": [
+      {
+        "from": "Contract Frozen",
+        "gate": "design-pack",
+        "to": "Ready"
+      },
+      {
+        "from": "Human Review",
+        "gate": "wiki",
+        "to": "Done"
+      }
+    ],
+    "summary": [
+      "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
+    ],
+    "title": "Authentication vertical slice"
+  },
   "board": null,
   "design": {
     "apiSpecs": [

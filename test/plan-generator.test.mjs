@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { readCurrentRunState, writeCurrentRunState } from "../src/project/run-state.mjs";
@@ -296,6 +297,46 @@ test("plan command creates artifacts through the internal CLI", async () => {
     const trustPolicy = await readJsonFile(path.join(output.runDir, "trust-policy.json"));
     assert.equal(trustPolicy.runnerMode, "claude-code");
     assert.equal(trustPolicy.realAgentLaunch, "enabled");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan command treats an empty slash-command project root as the current project", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-cli-empty-root-"));
+  const harnessPath = path.join(fileURLToPath(new URL("../", import.meta.url)), "bin", "harness.mjs");
+  try {
+    const result = spawnSync(process.execPath, [
+      harnessPath,
+      "plan",
+      "",
+      "--request",
+      "Build a success message contrast fix",
+      "--run",
+      "success-message-contrast",
+      "--allowed-path",
+      "web/src/components/common/auth/SuccessMessage.tsx",
+      "--runner",
+      "claude-code",
+      "--verify",
+      JSON.stringify({ file: "node", args: ["-e", "console.log('contrast ok')"] })
+    ], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: ""
+      }
+    });
+
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(await realpath(output.projectRoot), await realpath(projectRoot));
+    assert.equal((await realpath(output.runDir)).startsWith(path.join(await realpath(projectRoot), ".makeitreal", "runs")), true);
+    const current = await readCurrentRunState(projectRoot);
+    assert.equal(current.ok, true);
+    assert.equal(await realpath(current.runDir), await realpath(output.runDir));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

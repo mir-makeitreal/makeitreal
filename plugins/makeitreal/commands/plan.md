@@ -17,14 +17,14 @@ ${CLAUDE_PLUGIN_ROOT}/skills/plan/SKILL.md
 If the argument is exactly `approve`, resolve the current run with `status`, then approve that run directory:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint approve "$RUN_DIR" --by operator:slash-command
 ```
 
 If the argument is exactly `reject`, resolve the current run with `status`, then reject that run directory:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint reject "$RUN_DIR" --by operator:slash-command
 ```
 
@@ -39,13 +39,13 @@ Do not run `makeitreal-engine` plan with an empty `--request`.
 When the argument is not empty, or after interactive intake produced a canonical request, generate a zero-context implementation packet:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" plan "$CLAUDE_PROJECT_DIR" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" plan "${CLAUDE_PROJECT_DIR:-$PWD}" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
 ```
 
 After planning, open the generated dashboard when a run directory is returned:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 Report an operator-facing Blueprint report in the user's language.
@@ -65,7 +65,7 @@ After the report, ask one Claude Code `AskUserQuestion` review question in the u
 If the question returns an answer, send that answer through the same LLM review judge instead of deciding from the selected option text:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --prompt "<full AskUserQuestion answer>" --context "<Blueprint report just shown>" --session question-ui --project-root "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --prompt "<full AskUserQuestion answer>" --context "<Blueprint report just shown>" --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 Do not branch on the selected label. The `blueprint review` command owns approval, rejection, revision-request classification, and `blueprint-review.json` writes.

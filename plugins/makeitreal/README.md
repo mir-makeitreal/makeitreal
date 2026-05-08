@@ -35,6 +35,9 @@ slash-command namespace while reusing this plugin's engine and hooks.
 Update an installed copy with `/plugin marketplace update 52g`, then
 `/plugin update makeitreal@52g`, then `/reload-plugins`. If the alias is
 installed, run `/plugin update mir@52g` as well.
+Use `/plugin list` after reload; stale cache paths such as
+`~/.claude/plugins/cache/52g/makeitreal/0.1.6/...` mean Claude Code has not
+switched to the updated plugin yet.
 
 The command files live under `commands/`. The `skills/` directory contains the
 supporting workflow guidance that commands and Claude can use, but skills alone

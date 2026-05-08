@@ -13,7 +13,7 @@ The browser dashboard is read-only observability. Doctor may report dashboard pa
 
 ## Procedure
 
-1. Run `makeitreal-engine doctor "$CLAUDE_PROJECT_DIR"` through the plugin binary.
+1. Run `makeitreal-engine doctor "${CLAUDE_PROJECT_DIR:-$PWD}"` through the plugin binary.
 2. Inspect `checks.config`, `checks.plugin`, `checks.currentRun`, `checks.hooks`, `checks.dashboard`, and `checks.claudeBinary`.
 3. Treat `healthy:false` as a diagnostic result, not a command failure.
 4. Use `supportMatrix` to separate environment problems from harness state problems.

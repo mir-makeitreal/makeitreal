@@ -274,10 +274,15 @@ workspace per work item and stages:
 - the current work item
 - Blueprint review evidence
 - trust policy
+- existing project files that match the work item's allowed paths
 
 Runner output is structured evidence. Success requires a successful attempt and
-engine-owned verification. Unsupported tool calls, missing input, malformed
-events, or failed commands keep the item out of Done.
+engine-owned verification. After a successful runner turn, Make It Real applies
+only changed allowed-path files from the isolated workspace back to the real
+project root, records the applied paths in attempt provenance, and then runs
+completion verification from the real project root. Unsupported tool calls,
+missing input, malformed events, failed commands, boundary violations, or failed
+workspace apply keep the item out of Done.
 
 ## Verification And Done Evidence
 

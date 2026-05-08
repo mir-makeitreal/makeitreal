@@ -44,6 +44,26 @@ If you installed the alias, update it too:
 /reload-plugins
 ```
 
+Confirm the active copy after updating:
+
+```text
+/plugin list
+```
+
+`makeitreal@52g` and `mir@52g` should show the latest marketplace version. If
+Claude Code still runs an older path such as
+`~/.claude/plugins/cache/52g/mir/0.1.6/...`, update both plugins and reload the
+Claude Code session. If the cache remains stale, uninstall and reinstall:
+
+```text
+/plugin uninstall mir@52g
+/plugin uninstall makeitreal@52g
+/plugin marketplace update 52g
+/plugin install makeitreal@52g
+/plugin install mir@52g
+/reload-plugins
+```
+
 For local development from this repository root:
 
 ```bash
@@ -145,6 +165,8 @@ For the full structure, state model, hook lifecycle, and run-packet layout, see
   `suggestedBoundaries` so the operator can review the proposed split instead
   of guessing how to decompose the work.
 - Allowed paths and contract IDs constrain the implementation workspace.
+- Successful runner changes are applied back to the real project only for those
+  allowed paths, and completion verification runs from the real project root.
 - Undeclared fallback behavior is rejected in favor of fail-fast evidence.
 - The browser dashboard is read-only observability, not a mutation surface.
 - Verification and wiki evidence are engine-owned before Done.

@@ -17,13 +17,13 @@ ${CLAUDE_PLUGIN_ROOT}/skills/config/SKILL.md
 For read-only config status:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config get "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config get "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 For updates, pass the user's arguments through the public config surface:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "$CLAUDE_PROJECT_DIR" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "${CLAUDE_PROJECT_DIR:-$PWD}" $ARGUMENTS
 ```
 
 Report the resulting live wiki and dashboard feature flags.

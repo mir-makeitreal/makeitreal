@@ -9,26 +9,26 @@ Read or update project-local Make It Real options. The normal user-facing action
 
 ## Procedure
 
-1. Start with `makeitreal-engine config get "$CLAUDE_PROJECT_DIR"` to inspect current settings.
+1. Start with `makeitreal-engine config get "${CLAUDE_PROJECT_DIR:-$PWD}"` to inspect current settings.
 2. To enable live wiki sync, run:
 
 ```bash
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --live-wiki enabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --live-wiki enabled
 ```
 
 3. To disable live wiki sync, run:
 
 ```bash
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --live-wiki disabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --live-wiki disabled
 ```
 
 4. To change dashboard refresh behavior, use the dedicated flags:
 
 ```bash
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --dashboard-auto-open enabled
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --dashboard-refresh-on-status enabled
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --dashboard-refresh-on-launch enabled
-makeitreal-engine config set "$CLAUDE_PROJECT_DIR" --dashboard-refresh-on-verify enabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --dashboard-auto-open enabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --dashboard-refresh-on-status enabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --dashboard-refresh-on-launch enabled
+makeitreal-engine config set "${CLAUDE_PROJECT_DIR:-$PWD}" --dashboard-refresh-on-verify enabled
 ```
 
 5. Report the resulting `features.liveWiki.enabled`, `features.dashboard.*` values, and the config path.

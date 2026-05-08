@@ -18,7 +18,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 1. Inspect current run status and board state.
 2. Run the relevant gates, contract checks, path-boundary checks, evidence checks, and Done-readiness checks.
 3. When verification changes evidence-facing state, expect the engine to refresh the generated dashboard when `features.dashboard.refreshOnVerify` is enabled, or to return an explicit `dashboardRefresh.skipped` result when disabled.
-4. If `dashboardRefresh.dashboardUrl` is present, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"` unless dashboard auto-open is disabled.
+4. If `dashboardRefresh.dashboardUrl` is present, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"` unless dashboard auto-open is disabled.
 5. Report blocker codes with the artifact or work item that caused them, plus the `dashboardUrl` when available.
 6. Do not mask failures by adding fallback behavior. Fix the plan, contract, ownership, or implementation cause.
 

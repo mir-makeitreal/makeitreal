@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
-import { copyFile, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appendBoardEvent } from "../board/board-store.mjs";
 import { validateChangedPaths } from "../board/responsibility-boundaries.mjs";
@@ -9,7 +9,7 @@ import { createHarnessError } from "../domain/errors.mjs";
 import { FAILURE_EVENTS, classifyRunnerFailure, normalizeRuntimeEvent } from "../domain/runtime-events.mjs";
 import { fileExists, listJsonFiles, readJsonFile, writeJsonFile } from "../io/json.mjs";
 import { createRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
-import { resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
+import { resolveProjectRootForRun, resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
 
 const SUCCESS_EVENTS = new Set(["turn_completed"]);
 const REQUIRED_CLAUDE_TOOL_ALLOWLIST = new Set(["Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS"]);
@@ -229,6 +229,8 @@ Complete the work item described by the staged source artifacts.
 - Read .makeitreal/source/prd.json, .makeitreal/source/design-pack.json, and .makeitreal/source/work-item.json before editing.
 - Own only the declared responsibility boundary.
 - Do not edit outside allowedPaths.
+- Existing allowed-path project files have been staged into this workspace; edit those workspace files.
+- On success, Make It Real applies changed allowed-path files back to the real project and verifies there.
 - Use only declared contractIds for cross-boundary behavior.
 - Do not add fallback behavior for undeclared SDK/API states.
 - Fail fast and report the root cause if the happy path cannot be implemented.
@@ -271,6 +273,15 @@ function matchesPattern(pattern, candidate) {
   return pattern === candidate;
 }
 
+function safeJoin(root, relativePath) {
+  const resolvedRoot = path.resolve(root);
+  const resolvedPath = path.resolve(resolvedRoot, relativePath);
+  if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) {
+    return null;
+  }
+  return resolvedPath;
+}
+
 function isImmutableEngineMetadata(relative) {
   return relative === ".makeitreal" || relative.startsWith(".makeitreal/");
 }
@@ -291,6 +302,100 @@ async function collectWorkspaceFiles(root, current = root, files = []) {
     }
   }
   return files;
+}
+
+async function listProjectFilesForAllowedPattern({ projectRoot, pattern }) {
+  const relativeRoot = pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern;
+  const sourcePath = safeJoin(projectRoot, relativeRoot);
+  if (!sourcePath) {
+    return [];
+  }
+
+  let sourceStat = null;
+  try {
+    sourceStat = await stat(sourcePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+
+  if (sourceStat.isFile()) {
+    return [path.relative(projectRoot, sourcePath).split(path.sep).join("/")];
+  }
+  if (!sourceStat.isDirectory() || !pattern.endsWith("/**")) {
+    return [];
+  }
+
+  return (await collectWorkspaceFiles(projectRoot, sourcePath))
+    .map((file) => file.relative)
+    .filter((relative) => matchesPattern(pattern, relative));
+}
+
+async function stageAllowedProjectFiles({ projectRoot, workspace, workItem }) {
+  if (!projectRoot) {
+    return { projectRoot: null, stagedPaths: [] };
+  }
+
+  const stagedPaths = [];
+  const seen = new Set();
+  for (const pattern of workItem.allowedPaths ?? []) {
+    for (const relative of await listProjectFilesForAllowedPattern({ projectRoot, pattern })) {
+      if (seen.has(relative)) {
+        continue;
+      }
+      seen.add(relative);
+      const source = safeJoin(projectRoot, relative);
+      const target = safeJoin(workspace, relative);
+      if (!source || !target) {
+        continue;
+      }
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(source, target);
+      stagedPaths.push(relative);
+    }
+  }
+
+  return { projectRoot, stagedPaths };
+}
+
+async function applyWorkspaceChangesToProject({ projectRoot, workspace, changedPaths }) {
+  if (!projectRoot) {
+    return { ok: true, applied: false, projectRoot: null, appliedPaths: [], errors: [] };
+  }
+
+  const appliedPaths = [];
+  const errors = [];
+  for (const relative of changedPaths) {
+    const source = safeJoin(workspace, relative);
+    const target = safeJoin(projectRoot, relative);
+    if (!source || !target) {
+      errors.push(createHarnessError({
+        code: "HARNESS_WORKSPACE_APPLY_ESCAPE",
+        reason: `Workspace output path escaped project root: ${relative}.`,
+        evidence: [relative],
+        recoverable: true
+      }));
+      continue;
+    }
+
+    if (await fileExists(source)) {
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(source, target);
+    } else {
+      await rm(target, { force: true });
+    }
+    appliedPaths.push(relative);
+  }
+
+  return {
+    ok: errors.length === 0,
+    applied: true,
+    projectRoot,
+    appliedPaths,
+    errors
+  };
 }
 
 async function hashFile(filePath) {
@@ -518,7 +623,7 @@ async function stageSourceArtifacts({ boardDir, runDir, board, workItem, handoff
   return { sourceDir, staged, contractArtifacts };
 }
 
-async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blueprintApproval, now, dependencyArtifacts = [] }) {
+async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blueprintApproval, now, dependencyArtifacts = [], projectRoot = null, stagedProjectPaths = [] }) {
   const handoffDir = path.join(workspace, ".makeitreal");
   await mkdir(handoffDir, { recursive: true });
   const responsibilityUnits = await readJsonFile(path.join(runDir, "responsibility-units.json"));
@@ -529,6 +634,7 @@ async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blue
     generatedAt: now.toISOString(),
     boardId: board.boardId,
     boardDir,
+    projectRoot,
     workItem,
     responsibilityUnits,
     blueprintReview: {
@@ -539,6 +645,7 @@ async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blue
       reviewSource: blueprintApproval.review.reviewSource
     },
     dependencyArtifacts,
+    stagedProjectPaths,
     contractArtifacts: source.contractArtifacts,
     sourceDir: source.sourceDir,
     sourceArtifacts: source.staged,
@@ -684,6 +791,12 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
   }
   await mkdir(workspace.workspace, { recursive: true });
 
+  const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
+  const stagedProject = await stageAllowedProjectFiles({
+    projectRoot,
+    workspace: workspace.workspace,
+    workItem
+  });
   const dependencies = await stageDependencyArtifacts({ boardDir, board, workItem, workspace: workspace.workspace });
   if (!dependencies.ok) {
     return { ok: false, attemptId: null, workspace: workspace.workspace, events: [], errors: dependencies.errors };
@@ -696,7 +809,9 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     workspace: workspace.workspace,
     blueprintApproval,
     now,
-    dependencyArtifacts: dependencies.artifacts
+    dependencyArtifacts: dependencies.artifacts,
+    projectRoot,
+    stagedProjectPaths: stagedProject.stagedPaths
   });
   const immutableMetadataSnapshot = await snapshotImmutableMetadata(workspace.workspace);
   const mutableWorkspaceSnapshot = await snapshotMutableWorkspaceFiles(workspace.workspace);
@@ -771,8 +886,12 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     snapshot: immutableMetadataSnapshot,
     workItem
   });
-  const ok = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && boundary.ok && metadataBoundary.ok;
-  const outputErrors = [...(parsed.errors ?? []), ...metadataBoundary.errors, ...boundary.errors];
+  const runnerOk = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && boundary.ok && metadataBoundary.ok;
+  const applyResult = runnerOk
+    ? await applyWorkspaceChangesToProject({ projectRoot, workspace: workspace.workspace, changedPaths })
+    : { ok: true, applied: false, projectRoot, appliedPaths: [], errors: [] };
+  const ok = runnerOk && applyResult.ok;
+  const outputErrors = [...(parsed.errors ?? []), ...metadataBoundary.errors, ...boundary.errors, ...applyResult.errors];
   const failure = ok ? null : classifyRunnerFailure({
     failedToStart,
     exitCode: result.status,
@@ -796,6 +915,14 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
         executable,
         handoffPath: handoff.handoffPath,
         promptPath: handoff.promptPath,
+        projectRoot,
+        stagedProjectPaths: stagedProject.stagedPaths,
+        changedPaths,
+        projectApply: {
+          ok: applyResult.ok,
+          applied: applyResult.applied,
+          appliedPaths: applyResult.appliedPaths
+        },
         exitCode: result.status,
         stdout: truncate(result.stdout),
         stderr: truncate(result.stderr),

@@ -24,7 +24,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 6. Fast-fail on real defects and route failures to the common error/gate path.
 7. Run verification and then either sync completed work to the live wiki or record explicit wiki-skip evidence when config disables live wiki.
 8. Keep the generated dashboard fresh when `features.dashboard.refreshOnLaunch` is enabled; if disabled, report the explicit dashboard refresh skip without weakening gates.
-9. After a successful launch/status transition returns a `dashboardRefresh.dashboardUrl`, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"` unless dashboard auto-open is disabled, then include the `dashboardUrl` in the operator report.
+9. After a successful launch/status transition returns a `dashboardRefresh.dashboardUrl`, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"` unless dashboard auto-open is disabled, then include the `dashboardUrl` in the operator report.
 
 ## Scoped Subagent Execution
 
@@ -53,6 +53,8 @@ Use contract-first slicing when parallel frontend/backend/data work is required:
 
 - The engine writes `.makeitreal/handoff.json` and `.makeitreal/prompt.md` inside the deterministic work-item workspace before launching the runner.
 - The engine also stages source-of-truth artifacts under `.makeitreal/source/`, including PRD, design pack, board, responsibility map, Blueprint review evidence, contracts, trust policy, and the current work item when present.
+- Existing project files that match the work item's allowed paths are staged into the workspace before launch.
+- After a successful runner turn, the engine applies only changed allowed-path files from the workspace back to the real project root, then runs completion verification from the real project root.
 - The staged `.makeitreal/**` files are immutable runner inputs after launch; if Claude modifies or deletes them, the attempt fails fast.
 - Treat structured runner output as authoritative. `turn_completed` is success; failure events such as `turn_input_required`, `unsupported_tool_call`, `turn_failed`, or malformed output keep the work item out of Done.
 - The runner command may use `${workspace}`, `${handoffPath}`, `${promptPath}`, `${prompt}`, and `${workItemId}` placeholders. Keep `--` between `${workspace}` and prompt/handoff placeholders because Claude Code treats `--add-dir` as variadic.

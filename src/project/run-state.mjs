@@ -97,11 +97,11 @@ export async function readCurrentRunState(projectRoot) {
 }
 
 export async function resolveCurrentRunDir({
-  projectRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
+  projectRoot = process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd(),
   runDir = null,
   env = process.env
 } = {}) {
-  const resolvedProjectRoot = path.resolve(projectRoot);
+  const resolvedProjectRoot = path.resolve(projectRoot?.trim?.() || process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd());
   const explicitRunDir = runDir ?? env.HARNESS_RUN_DIR ?? env.MAKEITREAL_RUN_DIR ?? null;
   if (explicitRunDir) {
     return {

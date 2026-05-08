@@ -17,7 +17,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/setup/SKILL.md
 Use the plugin engine from the plugin root when running internal commands:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" setup "$CLAUDE_PROJECT_DIR" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" setup "${CLAUDE_PROJECT_DIR:-$PWD}" $ARGUMENTS
 ```
 
 Then report:

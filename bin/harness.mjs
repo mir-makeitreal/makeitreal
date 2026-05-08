@@ -188,6 +188,20 @@ function deterministicNow(argv = []) {
   return new Date(parseFlag(argv, "--now") ?? "2026-04-30T00:00:00.000Z");
 }
 
+function defaultProjectRoot() {
+  return process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd();
+}
+
+function resolveProjectRootArg(value) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : defaultProjectRoot();
+}
+
+function resolveProjectRootFlag(value) {
+  return value === null ? null : resolveProjectRootArg(value);
+}
+
 function blueprintReviewCliResult(output) {
   const action = output?.makeitreal?.action ?? "unknown";
   const ok = ["approved", "rejected", "already-approved"].includes(action);
@@ -258,7 +272,7 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "config" && argv[1] === "get") {
-    const result = await readProjectConfig({ projectRoot: argv[2] ?? process.cwd() });
+    const result = await readProjectConfig({ projectRoot: resolveProjectRootArg(argv[2]) });
     return { exitCode: result.ok ? 0 : 1, result };
   }
 
@@ -285,7 +299,7 @@ async function runCommand(argv) {
         }
       };
     }
-    const projectRoot = argv[2] ?? process.cwd();
+    const projectRoot = resolveProjectRootArg(argv[2]);
     let result = liveWiki.present
       ? await setLiveWikiEnabled({ projectRoot, enabled: liveWiki.enabled })
       : await readProjectConfig({ projectRoot });
@@ -344,7 +358,7 @@ async function runCommand(argv) {
       };
     }
     const result = await generatePlanRun({
-      projectRoot: argv[1] ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(argv[1]),
       request,
       runId: parseFlag(argv, "--run"),
       owner: parseFlag(argv, "--owner") ?? "team.implementation",
@@ -375,7 +389,7 @@ async function runCommand(argv) {
       };
     }
     const result = blueprintReviewCliResult(await applyInteractiveBlueprintApproval({
-      projectRoot: parseFlag(argv, "--project-root") ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(parseFlag(argv, "--project-root")),
       runDir: argv[2],
       prompt,
       approvalContext: parseFlag(argv, "--context") ?? "",
@@ -401,7 +415,7 @@ async function runCommand(argv) {
 
   if (argv[0] === "setup") {
     const result = await initializeProject({
-      projectRoot: argv[1] ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(argv[1]),
       runDir: parseFlag(argv, "--run"),
       source: "makeitreal:setup",
       now: deterministicNow(argv)
@@ -411,7 +425,7 @@ async function runCommand(argv) {
 
   if (argv[0] === "status") {
     const result = await readRunStatus({
-      projectRoot: argv[1] ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(argv[1]),
       now: deterministicNow(argv)
     });
     if (!result.ok) {
@@ -419,7 +433,7 @@ async function runCommand(argv) {
     }
     const dashboard = await refreshPreviewForTrigger({
       runDir: result.runDir,
-      projectRoot: argv[1] ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(argv[1]),
       trigger: "status",
       now: deterministicNow(argv)
     });
@@ -436,7 +450,7 @@ async function runCommand(argv) {
 
   if (argv[0] === "doctor") {
     const result = await runDoctor({
-      projectRoot: argv[1] ?? process.cwd(),
+      projectRoot: resolveProjectRootArg(argv[1]),
       runDir: parseDoctorRunDir(argv),
       env: process.env,
       now: deterministicNow(argv)
@@ -462,7 +476,7 @@ async function runCommand(argv) {
     }
     const result = await openDashboard({
       runDir: argv[2],
-      projectRoot: parseFlag(argv, "--project-root"),
+      projectRoot: resolveProjectRootFlag(parseFlag(argv, "--project-root")),
       dryRun: argv.includes("--dry-run"),
       force: argv.includes("--force")
     });
@@ -486,7 +500,7 @@ async function runCommand(argv) {
       };
     }
     const result = await installClaudeHooks({
-      projectRoot: argv[2],
+      projectRoot: resolveProjectRootArg(argv[2]),
       runDir,
       scope: parseFlag(argv, "--scope") ?? "local"
     });
@@ -510,7 +524,7 @@ async function runCommand(argv) {
       };
     }
     const result = await getClaudeHookStatus({
-      projectRoot: argv[2],
+      projectRoot: resolveProjectRootArg(argv[2]),
       runDir,
       scope: parseFlag(argv, "--scope") ?? "local"
     });

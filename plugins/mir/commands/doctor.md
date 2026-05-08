@@ -17,7 +17,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/doctor/SKILL.md
 Run:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" doctor "$CLAUDE_PROJECT_DIR" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" doctor "${CLAUDE_PROJECT_DIR:-$PWD}" $ARGUMENTS
 ```
 
 Report the stable diagnostic fields: `healthy`, failed checks, support matrix, and `nextAction`.

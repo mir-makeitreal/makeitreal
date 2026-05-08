@@ -117,7 +117,7 @@ When reporting `suggestedBoundaries`, show each proposed owner, allowed path set
 When the plugin binary is available, start by running:
 
 ```bash
-makeitreal-engine plan "$CLAUDE_PROJECT_DIR" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
+makeitreal-engine plan "${CLAUDE_PROJECT_DIR:-$PWD}" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
 ```
 
 Use `$ARGUMENTS` as the canonical request only when it is non-empty. If `$ARGUMENTS` is empty, collect the canonical request through `AskUserQuestion` first. Do not run the engine with an empty `--request`.
@@ -127,7 +127,7 @@ Derive the structured verification command from the project context. `--verify` 
 After a successful plan creates `preview/index.html`, run:
 
 ```bash
-makeitreal-engine dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"
+makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 Report the returned `dashboardUrl` so the operator can reopen the Kanban/Blueprint dashboard manually if the OS browser launch is skipped or blocked.

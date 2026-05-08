@@ -92,24 +92,30 @@ test("renders canonical architecture preview", async () => {
     assert.equal((await readJsonFile(path.join(previewDir, "preview-meta.json"))).statusSource, "readRunStatus/readBoardStatus");
     assert.equal((await readJsonFile(path.join(previewDir, "operator-status.json"))).runStatus.blueprintStatus, "approved");
 
+    const previewModel = await readJsonFile(path.join(previewDir, "preview-model.json"));
+    assert.equal(previewModel.blueprint.title, "Authentication vertical slice");
+    assert.deepEqual(previewModel.blueprint.summary, [
+      "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
+    ]);
+    assert.equal(previewModel.blueprint.primaryContract.contractId, "contract.auth.login");
+    assert.equal(previewModel.blueprint.contracts[0].path, "contracts/auth-login.openapi.json");
+    assert.equal(previewModel.blueprint.boundaries[0].responsibilityUnitId, "ru.frontend");
+    assert.equal(previewModel.blueprint.acceptanceCriteria[0].id, "AC-001");
+
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "System Architecture",
-      "State Transition Flow",
+      "Blueprint Reference",
+      "What Will Be Delivered",
       "API / Interface Specs",
       "Responsibility Boundaries",
-      "Call Stack",
-      "Sequence Diagrams",
-      "Operator Status",
-      "First Run",
-      "Next Claude Code Action",
-      "Evidence Links",
-      "Kanban Board",
-      "Blockers And Next Action",
-      "Latest Evidence Summary"
+      "Sequence & Call Stack",
+      "Acceptance Evidence",
+      "Raw Artifacts",
+      "Runtime Snapshot"
     ]) {
       assert.match(html, new RegExp(label));
     }
+    assert.doesNotMatch(html, /<h2>Kanban Board<\/h2>/);
     assert.match(html, /Read-only dashboard/);
     assert.match(html, /data-read-only-cockpit="true"/);
     assert.match(html, /\/makeitreal:status/);
@@ -129,6 +135,12 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(js, /makeitreal-engine/);
     assert.doesNotMatch(js, /fetch\([^)]*blueprint/);
     assert.doesNotMatch(js, /fetch\([^)]*orchestrator/);
+
+    const css = await readFile(path.join(previewDir, "preview.css"), "utf8");
+    assert.match(css, /\.doc-shell/);
+    assert.match(css, /\.doc-nav/);
+    assert.match(css, /\.status-rail/);
+    assert.match(css, /\.compact-kanban/);
   });
 });
 

@@ -17,13 +17,13 @@ ${CLAUDE_PLUGIN_ROOT}/skills/status/SKILL.md
 Run:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "$CLAUDE_PROJECT_DIR" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}" $ARGUMENTS
 ```
 
 If the result includes a dashboard URL and auto-open is enabled, open it:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
 Report the stable operator fields: phase, Blueprint status, blockers, evidence summary, dashboard URL, and next public command.

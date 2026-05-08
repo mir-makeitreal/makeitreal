@@ -3,36 +3,178 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Dashboard - work.feature-auth</title>
+  <title>Make It Real Blueprint - Authentication vertical slice</title>
   <link rel="stylesheet" href="./preview.css">
 </head>
 <body>
-  <main>
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Make It Real</p>
-        <h1>work.feature-auth</h1>
-      </div>
-      <dl>
-        <div><dt>Phase</dt><dd>launch-ready</dd></div>
-        <div><dt>Blueprint</dt><dd>approved</dd></div>
-        <div><dt>Next</dt><dd><code>/makeitreal:launch</code></dd></div>
-      </dl>
-    </header>
+  <main class="doc-shell">
+    <nav class="doc-nav" aria-label="Blueprint sections">
+      <p class="eyebrow">Make It Real</p>
+      <strong>Blueprint Reference</strong>
+      <a href="#overview" class="active">Overview</a>
+      <a href="#delivery">What Will Be Delivered</a>
+      <a href="#contracts">API / IO Contract</a>
+      <a href="#boundaries">Responsibility Boundaries</a>
+      <a href="#flow">Sequence & Call Stack</a>
+      <a href="#evidence">Acceptance Evidence</a>
+      <a href="#artifacts">Raw Artifacts</a>
+      <a href="#runtime">Runtime Snapshot</a>
+    </nav>
 
-    <section class="summary">
-      <h2>Operator Status</h2>
+    <article class="doc-main">
+      <header id="overview" class="hero-panel">
+        <p class="eyebrow">Blueprint Reference / work.feature-auth</p>
+        <h1>Authentication vertical slice</h1>
+        <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
+        <div class="metric-grid">
+          <div><span>Status</span><strong>approved</strong></div>
+          <div><span>Phase</span><strong>launch-ready</strong></div>
+          <div><span>Primary Contract</span><strong>contract.auth.login</strong></div>
+          <div><span>Next Action</span><strong>/makeitreal:launch</strong></div>
+        </div>
+      </header>
+
+      <section id="delivery" class="doc-section">
+        <h2>What Will Be Delivered</h2>
+        <div class="doc-table">
+          <div class="doc-row"><div class="doc-key">Goals</div><div class="doc-value"><ul class="clean-list"><li>Deliver a contract-gated authentication UI vertical slice.</li></ul></div></div>
+          <div class="doc-row"><div class="doc-key">User-visible behavior</div><div class="doc-value"><ul class="clean-list"><li>A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</li></ul></div></div>
+          <div class="doc-row"><div class="doc-key">Non-goals</div><div class="doc-value"><ul class="clean-list"><li>Real credential validation</li><li>Production auth security</li></ul></div></div>
+        </div>
+      </section>
+
+      <section id="contracts" class="doc-section">
+        <h2>API / Interface Specs</h2>
+        <p class="section-note">API / IO Contract surfaces that other responsibility units must use without reading implementation internals.</p>
+        <div class="contract-card">
+    <span class="method">openapi</span>
+    <div>
+      <strong>contract.auth.login</strong>
+      <p>contracts/auth-login.openapi.json</p>
+    </div>
+    <code>contracts/auth-login.openapi.json</code>
+  </div>
+      </section>
+
+      <section id="boundaries" class="doc-section">
+        <h2>Responsibility Boundaries</h2>
+        <div class="boundary-grid"><article class="boundary-card">
+    <strong>ru.frontend</strong>
+    <div class="path-list"><code>apps/web/auth/**</code></div>
+    <p>May use: <code>contract.auth.login</code></p>
+  </article><article class="boundary-card">
+    <strong>ru.auth-service</strong>
+    <div class="path-list"><code>services/auth/**</code></div>
+    <p class="muted">No cross-boundary contract dependencies.</p>
+  </article></div>
+      </section>
+
+      <section id="flow" class="doc-section">
+        <h2>Sequence & Call Stack</h2>
+        <h3>System Architecture</h3>
+        <div class="flow-line"><span>auth-ui</span>
+    <b>→</b>
+    <span>auth-service</span>
+    <code>contract.auth.login</code></div>
+        <h3>State Transition Flow</h3>
+        <div class="transition-list"><span>Contract Frozen → Ready <code>design-pack</code></span><span>Human Review → Done <code>wiki</code></span></div>
+        <h3>Call Stack</h3>
+        <div class="doc-table"><div class="doc-row">
+    <div class="doc-key">LoginForm.submit</div>
+    <div class="doc-value"><code>authClient.login</code> → <code>POST /auth/login</code></div>
+  </div></div>
+        <h3>Sequence Diagrams</h3>
+        <article class="sequence-card">
+    <strong>Login request</strong>
+    <ol><li><span>User</span> → <span>Auth UI</span>: submit credentials</li><li><span>Auth UI</span> → <span>Auth Service</span>: POST /auth/login</li><li><span>Auth Service</span> → <span>Auth UI</span>: return session result</li></ol>
+  </article>
+      </section>
+
+      <section id="evidence" class="doc-section">
+        <h2>Acceptance Evidence</h2>
+        <div class="criteria-list"><div class="criterion">
+    <strong>AC-001</strong>
+    <span>A user can submit credentials through the auth UI.</span>
+  </div><div class="criterion">
+    <strong>AC-002</strong>
+    <span>The auth UI calls only the declared auth contract.</span>
+  </div><div class="criterion">
+    <strong>AC-003</strong>
+    <span>Verification evidence and live wiki sync are recorded before Done.</span>
+  </div></div>
+        <h3>Latest Evidence Summary</h3>
+        <div class="rail-list"><div>
+    <strong>verification</strong>
+    <p>verification recorded for work.feature-auth</p>
+    <code>evidence/verification.json</code>
+  </div><div>
+    <strong>wiki-sync</strong>
+    <p>wiki-sync recorded for work.feature-auth</p>
+    <code>evidence/wiki-sync.json</code>
+  </div></div>
+      </section>
+
+      <section id="artifacts" class="doc-section">
+        <h2>Raw Artifacts</h2>
+        <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff.</p>
+        <div class="artifact-grid"><div>
+    <strong>PRD</strong>
+    <code>prd.json</code>
+  </div><div>
+    <strong>Design Pack</strong>
+    <code>design-pack.json</code>
+  </div><div>
+    <strong>Responsibility Units</strong>
+    <code>responsibility-units.json</code>
+  </div><div>
+    <strong>Preview Model</strong>
+    <code>preview/preview-model.json</code>
+  </div>
+    <div>
+      <strong>Run Directory</strong>
+      <code>/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth</code>
+    </div>
+  </div>
+      </section>
+    </article>
+
+    <div id="runtime">
+      <aside class="status-rail" data-read-only-cockpit="true">
+    <section>
+      <p class="rail-label">Runtime Snapshot</p>
+      <h2>launch-ready</h2>
       <p><strong>Blueprint is approved and ready to launch.</strong></p>
-      <p class="read-only">Read-only dashboard. Use Make It Real workflow commands for state changes.</p>
+      <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
+      <div class="command-copy">
+        <code>/makeitreal:launch</code>
+        <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
+      </div>
     </section>
 
-    <section class="operator-cockpit" data-read-only-cockpit="true">
-    <h2>Operator Cockpit</h2>
-    <p class="read-only">State changes happen in Claude Code. This dashboard only explains the run.</p>
-    <div class="cockpit-grid">
-      <article>
-        <h3>First Run</h3>
-        <ol class="guide-steps"><li class="guide-step complete">
+    <section>
+      <h3>Kanban</h3>
+      <p class="empty">No launch board materialized yet.</p>
+    </section>
+
+    <section>
+      <h3>Blockers</h3>
+      <p class="empty">No active blockers.</p>
+    </section>
+
+    <section>
+      <h3>Evidence Links</h3>
+      <div class="rail-list"><div>
+      <a href="../evidence/verification.json">verification: verification recorded</a>
+      <code>evidence/verification.json</code>
+    </div><div>
+      <a href="../evidence/wiki-sync.json">wiki-sync: wiki-sync recorded</a>
+      <code>evidence/wiki-sync.json</code>
+    </div></div>
+    </section>
+
+    <section>
+      <h3>First Run</h3>
+      <ol class="guide-steps"><li class="guide-step complete">
     <span>Plugin Ready</span>
     <strong>complete</strong>
     <code>/makeitreal:doctor</code>
@@ -57,45 +199,9 @@
     <strong>pending</strong>
     <code>/makeitreal:status</code>
   </li></ol>
-      </article>
-      <article>
-        <h3>Next Claude Code Action</h3>
-        <p>/makeitreal:launch</p>
-        <div class="command-copy">
-          <code>/makeitreal:launch</code>
-          <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
-        </div>
-      </article>
-      <article>
-        <h3>Evidence Links</h3>
-        <ul><li><a href="../evidence/verification.json">verification: verification recorded</a> <code>evidence/verification.json</code></li><li><a href="../evidence/wiki-sync.json">wiki-sync: wiki-sync recorded</a> <code>evidence/wiki-sync.json</code></li></ul>
-      </article>
+    </section>
+  </aside>
     </div>
-  </section>
-
-    <section>
-      <h2>Kanban Board</h2>
-      <p class="empty">No launch board has been materialized for this run.</p>
-    </section>
-
-    <section>
-      <h2>Blockers And Next Action</h2>
-      <p class="empty">No active blockers.</p>
-    </section>
-
-    <section>
-      <h2>Latest Evidence Summary</h2>
-      <ul><li>verification for work.feature-auth: verification recorded <code>evidence/verification.json</code></li><li>wiki-sync for work.feature-auth: wiki-sync recorded <code>evidence/wiki-sync.json</code></li></ul>
-    </section>
-
-    <section class="details">
-      <h2>System Architecture</h2><ul><li>auth-ui -&gt; auth-service (contract.auth.login)</li></ul>
-      <h2>State Transition Flow</h2><ul><li>Contract Frozen -&gt; Ready via design-pack</li><li>Human Review -&gt; Done via wiki</li></ul>
-      <h2>API / Interface Specs</h2><ul><li>openapi: contract.auth.login at contracts/auth-login.openapi.json</li></ul>
-      <h2>Responsibility Boundaries</h2><ul><li>ru.frontend: owns apps/web/auth/**</li><li>ru.auth-service: owns services/auth/**</li></ul>
-      <h2>Call Stack</h2><ul><li>LoginForm.submit: authClient.login -&gt; POST /auth/login</li></ul>
-      <h2>Sequence Diagrams</h2><ul><li>Login request: User -&gt; Auth UI: submit credentials</li><li>Login request: Auth UI -&gt; Auth Service: POST /auth/login</li><li>Login request: Auth Service -&gt; Auth UI: return session result</li></ul>
-    </section>
   </main>
   <script src="./preview.js"></script>
 </body>

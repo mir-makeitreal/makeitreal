@@ -25,7 +25,6 @@
     fileFallbackTimer = window.setInterval(reloadDashboard, fileFallbackMs);
   }
 
-
   function bindCommandCopy() {
     for (const button of document.querySelectorAll(".copy-command[data-copy]")) {
       button.addEventListener("click", async () => {
