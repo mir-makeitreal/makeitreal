@@ -67,6 +67,21 @@ Translate internal concepts into the user's domain language:
 
 The Blueprint may still contain precise internal fields required by the engine. The conversation should present those fields as a plain-language summary first, with raw identifiers only when useful for an advanced user or for copyable commands.
 
+### Operator-Facing Blueprint Report
+
+After a plan is generated, present the Blueprint as a reviewable development plan, not as an engine status dump. Do not lead with raw engine fields such as `planOk`, `implementationReady`, `HARNESS_*` codes, fingerprint hashes, run ids, run directories, owner ids, contract ids, lane names, or allowed-path lists.
+
+Use the user's language and prefer compact Markdown tables for reviewable content. The primary report should follow this shape:
+
+- **What will be delivered** - show the intended outcome, concrete deliverables, product/codebase value, and acceptance evidence.
+- **Scope boundaries** - show what is in scope, what is intentionally out of scope, and what code areas are expected to change.
+- **Work packages** - show each work package, its purpose, dependencies, and verification method in plain project language.
+- **How we will prove it works** - show test, contract, static analysis, manual review, or evidence expectations.
+- **Review decisions** - show only decisions the operator needs to approve, reject, or revise before launch.
+- **Dashboard and next action** - include the dashboard URL and the conversational or explicit command path for approval, revision, or rejection.
+
+Diagnostics are secondary. Only mention raw engine fields when the plan failed, the user asks for details, or the detail is necessary for a copyable command. Pending Blueprint approval is normal review state; say "Blueprint review is waiting for approval" rather than exposing `HARNESS_BLUEPRINT_APPROVAL_PENDING` as the headline.
+
 ### Shared Language
 
 Before producing the Blueprint, normalize the user's words into project language:
@@ -122,7 +137,7 @@ Report the returned `dashboardUrl` so the operator can reopen the Kanban/Bluepri
 - If the request spans multiple domains, either split it into vertical slice work items with one owner each or ask for explicit boundaries. Do not collapse frontend/backend/data ownership into one generic module.
 - Generated OpenAPI, schemas, AST checks, or equivalent contract evidence must be planned before launch.
 - Run the internal Ready gate when artifacts exist and report any blocking codes.
-- A plan may succeed with `planOk: true` while `implementationReady: false` when the only blocker is `HARNESS_BLUEPRINT_APPROVAL_PENDING`.
+- A reviewable plan can be waiting for Blueprint approval without being an implementation failure. Treat pending approval as normal review state in user-facing reports; keep raw engine field names out of the primary summary.
 - Do not launch or implement until the user has reviewed and approved the Blueprint. Approval may arrive through LLM-classified conversational review or the explicit `/makeitreal:plan approve` fallback, but both must write `blueprint-review.json`.
 - If the LLM review judge classifies the user's reply as approval plus launch intent, continue to `/makeitreal:launch` after the hook records the approval artifact.
 - After approval, launch owns the `Contract Frozen -> Ready` promotion through the Ready gate; do not mutate board lanes manually.

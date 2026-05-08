@@ -88,6 +88,9 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /Do not use a fixed question script/i);
   assert.match(planCommand, /derive each question/i);
   assert.doesNotMatch(planCommand, /ask what concrete feature/i);
+  assert.match(planCommand, /operator-facing Blueprint report/i);
+  assert.match(planCommand, /What will be delivered/i);
+  assert.match(planCommand, /Do not lead with raw engine fields/i);
 });
 
 test("Make It Real launch skill keeps low-level engine commands internal", async () => {
@@ -178,6 +181,9 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planCommand, /Do not use a fixed question script/i);
   assert.match(planCommand, /derive each question/i);
   assert.doesNotMatch(planCommand, /ask what concrete feature/i);
+  assert.match(planCommand, /operator-facing Blueprint report/i);
+  assert.match(planCommand, /What will be delivered/i);
+  assert.match(planCommand, /Do not lead with raw engine fields/i);
 });
 
 test("Make It Real plugin binary delegates to the internal engine", () => {

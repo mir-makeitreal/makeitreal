@@ -48,6 +48,16 @@ After planning, open the generated dashboard when a run directory is returned:
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"
 ```
 
-Report the Blueprint summary, approval state, dashboard URL, and next action.
+Report an operator-facing Blueprint report in the user's language.
+
+Lead with what will be delivered, not engine state. Use compact Markdown tables:
+
+1. **What will be delivered** - outcome, deliverables, user/codebase value, and acceptance evidence.
+2. **Scope** - in-scope work, out-of-scope work, and safe-to-change areas.
+3. **Work packages** - each package, its purpose, dependency, and verification method.
+4. **Review decisions** - only decisions the operator must approve, reject, or revise.
+5. **Next action** - dashboard URL plus approval, revision, or rejection instruction.
+
+Do not lead with raw engine fields such as `planOk`, `implementationReady`, `HARNESS_*` codes, fingerprint hashes, run ids, run directories, owner ids, contract ids, lane names, or allowed-path lists. Diagnostics belong only in a short secondary note when the plan failed or the user asks for details.
 
 Do not implement during planning. Launch only after Blueprint approval evidence exists.
