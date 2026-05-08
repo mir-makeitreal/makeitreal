@@ -9,6 +9,7 @@ Create a zero-context implementation packet before any code changes. The packet 
 
 Subcommands:
 
+- `/makeitreal:plan` with no request starts interactive intake through Claude Code `AskUserQuestion`, then generates the Blueprint from the collected canonical request.
 - `/makeitreal:plan <request>` generates reviewable PRD/Blueprint artifacts and seeds pending approval.
 - LLM-classified conversational review is the normal path: after the Blueprint is shown, the `UserPromptSubmit` hook asks an LLM to classify the user's reply as `approved`, `rejected`, `revision_requested`, or `none`, then records clear review decisions as `makeitreal:interactive-review:llm`.
 - `/makeitreal:plan approve` is the explicit/scriptable fallback that approves the current Blueprint through the internal `blueprint approve` command.
@@ -25,7 +26,25 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 
 Ask a short clarification round only when the plan cannot honestly define ownership, contracts, or verification. Keep it to the missing decision: owner, allowed paths, public contract, or real verification command. If the missing piece can be inferred from existing project files, inspect those files first instead of interviewing the user.
 
+When `/makeitreal:plan` is invoked without a request, clarification is not optional. Use `AskUserQuestion` to collect the missing feature request before calling the engine. Continue with one focused `AskUserQuestion` at a time until the request is specific enough to name intended behavior, responsibility boundary, contract/API/IO expectation, and verification expectation.
+
 Do not invent placeholders to pass Ready. If no honest verification command exists, report the blocked Ready gate and the exact missing command shape.
+
+### Dynamic Intake
+
+Do not use a fixed question script. Treat request intake as an adaptive spec-refinement loop: read the current repo context, surface assumptions, derive the next question from the single most important ambiguity, then converge as soon as the Blueprint can be reviewed.
+
+Use `AskUserQuestion` as the HITL UI, not as a canned questionnaire. The next question should be generated from one of these missing facts:
+
+- intended user-visible behavior and success criteria;
+- responsibility unit and exactly-one owner;
+- cross-boundary contract, API, schema, or IO surface;
+- allowed path scope and files that must not be touched;
+- real verification evidence, including test/build/static/contract checks.
+
+Borrow the spec-first shape: clarify objective, success criteria, project constraints, and boundaries before planning. Borrow the task-breakdown shape: prefer vertical slices, explicit dependencies, acceptance criteria, and checkpoints. Borrow context-engineering discipline: inspect relevant local files before asking and keep intake focused on the current missing decision.
+
+After each answer, restate only the updated assumption that affects the plan. If the answer creates a conflict with existing code or prior user direction, surface that conflict and ask the next `AskUserQuestion` about the conflict rather than silently choosing a side.
 
 ### Shared Language
 
@@ -50,8 +69,10 @@ When reporting `suggestedBoundaries`, show each proposed owner, allowed path set
 When the plugin binary is available, start by running:
 
 ```bash
-makeitreal-engine plan "$CLAUDE_PROJECT_DIR" --request "$ARGUMENTS" --runner claude-code --verify '{"file":"npm","args":["test"]}'
+makeitreal-engine plan "$CLAUDE_PROJECT_DIR" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
 ```
+
+Use `$ARGUMENTS` as the canonical request only when it is non-empty. If `$ARGUMENTS` is empty, collect the canonical request through `AskUserQuestion` first. Do not run the engine with an empty `--request`.
 
 Derive the structured verification command from the project context. `--verify` must be JSON with `file` and `args`, not a shell string. Keep `--runner claude-code` for normal Claude Code plugin use so the generated trust policy can launch real Claude Code through `/makeitreal:launch`; use the scripted simulator only for fixture tests or explicit dry runs. If no honest command exists yet, report the blocked Ready gate instead of inventing a placeholder. Use `--run`, `--owner`, `--allowed-path`, or `--api` only when the request or project context makes those values explicit.
 

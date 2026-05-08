@@ -80,6 +80,13 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /--runner claude-code/);
   assert.match(planCommand, /blueprint approve/);
   assert.match(planCommand, /blueprint reject/);
+  assert.match(planCommand, /If the argument is empty/i);
+  assert.match(planCommand, /AskUserQuestion/);
+  assert.match(planCommand, /canonical request/i);
+  assert.match(planCommand, /Do not run `makeitreal-engine` plan with an empty `--request`/);
+  assert.match(planCommand, /Do not use a fixed question script/i);
+  assert.match(planCommand, /derive each question/i);
+  assert.doesNotMatch(planCommand, /ask what concrete feature/i);
 });
 
 test("Make It Real launch skill keeps low-level engine commands internal", async () => {
@@ -160,6 +167,15 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
 
   const planSkill = await readAliasPluginFile("skills", "plan", "SKILL.md");
   assert.match(planSkill, /makeitreal:interactive-review:llm/);
+
+  const planCommand = await readAliasPluginFile("commands", "plan.md");
+  assert.match(planCommand, /If the argument is empty/i);
+  assert.match(planCommand, /AskUserQuestion/);
+  assert.match(planCommand, /canonical request/i);
+  assert.match(planCommand, /Do not run `makeitreal-engine` plan with an empty `--request`/);
+  assert.match(planCommand, /Do not use a fixed question script/i);
+  assert.match(planCommand, /derive each question/i);
+  assert.doesNotMatch(planCommand, /ask what concrete feature/i);
 });
 
 test("Make It Real plugin binary delegates to the internal engine", () => {
