@@ -201,6 +201,41 @@ test("plan generator fails fast on obvious multi-domain requests without explici
     assert.equal(result.planOk, false);
     assert.equal(result.errors[0].code, "HARNESS_RESPONSIBILITY_BOUNDARY_AMBIGUOUS");
     assert.equal(result.runDir, null);
+    assert.equal(result.nextAction, "/makeitreal:plan <request> --owner <team> --allowed-path <path> --verify <json>");
+    assert.deepEqual(result.suggestedBoundaries.map((boundary) => boundary.domain), ["frontend", "backend", "data"]);
+    assert.equal(result.suggestedBoundaries.every((boundary) => boundary.owner && boundary.contractId), true);
+    assert.equal(result.suggestedBoundaries.every((boundary) => boundary.allowedPaths.length > 0), true);
+    assert.equal(result.suggestedBoundaries.every((boundary) => boundary.verificationCommand.file === "npm"), true);
+    assert.match(result.guidance, /vertical slices/i);
+    assert.deepEqual(result.errors[0].suggestedBoundaries, result.suggestedBoundaries);
+    assert.equal(result.errors[0].nextAction, result.nextAction);
+    assert.equal(result.errors[0].guidance, result.guidance);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator accepts multi-domain vertical slices with explicit ownership and paths", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a frontend UI and backend API with a database migration for signup",
+      runId: "signup-vertical-slice",
+      owner: "team.signup",
+      allowedPaths: ["features/signup/**", "db/migrations/signup/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('signup slice ok')"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.planOk, true);
+    assert.equal(result.workItemId, "work.signup-vertical-slice");
+    assert.equal(result.suggestedBoundaries, undefined);
+
+    const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
+    assert.equal(responsibilityUnits.units[0].owner, "team.signup");
+    assert.deepEqual(responsibilityUnits.units[0].owns, ["features/signup/**", "db/migrations/signup/**"]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

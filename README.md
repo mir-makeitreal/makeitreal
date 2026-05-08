@@ -140,10 +140,29 @@ For the full structure, state model, hook lifecycle, and run-packet layout, see
 - `.makeitreal/` runtime state is automatically added to `.gitignore`.
 - Every executable work item has exactly one responsibility owner.
 - Cross-module work happens through declared boundary contracts.
+- Ambiguous frontend/backend/data requests fail fast with structured
+  `suggestedBoundaries` so the operator can review the proposed split instead
+  of guessing how to decompose the work.
 - Allowed paths and contract IDs constrain the implementation workspace.
 - Undeclared fallback behavior is rejected in favor of fail-fast evidence.
 - The browser dashboard is read-only observability, not a mutation surface.
 - Verification and wiki evidence are engine-owned before Done.
+
+## Prompt Discipline
+
+Make It Real keeps the public command surface small, but the plugin skills carry
+engineering workflow discipline:
+
+- `plan` uses a conditional clarification round only when ownership, contracts,
+  or verification are genuinely missing.
+- `plan` normalizes shared project language into PRD acceptance criteria,
+  responsibility units, contract names, and naming constraints.
+- `launch` gives scoped subagents selective context for one work item instead
+  of flooding them with the whole repository.
+- `verify` follows stop-the-line diagnosis: reproduce, localize, reduce, fix the
+  root cause, and preserve regression evidence.
+- `status` is the zoom-out operator view: current phase, why blocked, missing
+  evidence, and one next public action.
 
 ## Developer Checks
 

@@ -22,6 +22,20 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 5. Report blocker codes with the artifact or work item that caused them, plus the `dashboardUrl` when available.
 6. Do not mask failures by adding fallback behavior. Fix the plan, contract, ownership, or implementation cause.
 
+## Stop-the-Line Recovery
+
+When any gate, test, contract check, or runner attempt fails, stop adding features and diagnose the failure before continuing.
+
+Use this order:
+
+1. Reproduce the failure with the smallest exact command or artifact read.
+2. Localize whether the failure is in the plan, contract, allowed path boundary, runner, implementation, test, or external dependency.
+3. Reduce to a minimal failing case or a single missing evidence artifact.
+4. Fix the root cause. Do not add fallback branches for states the contract does not allow.
+5. Add or preserve regression evidence, then rerun the declared verification command and affected gates.
+
+Do not delete tests, weaken assertions, remove contract checks, or broaden allowed paths just to reach Done. If the Blueprint is wrong, revise the Blueprint and re-approve it instead of patching around the mismatch.
+
 ## Output
 
 Return a concise verdict: pass, blocked, or inconsistent state. Include exact commands run and the highest-priority next repair.

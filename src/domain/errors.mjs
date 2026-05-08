@@ -1,5 +1,5 @@
 export function createHarnessError(input) {
-  return {
+  const error = {
     code: input.code,
     reason: input.reason,
     contractId: input.contractId ?? null,
@@ -7,6 +7,14 @@ export function createHarnessError(input) {
     evidence: input.evidence ?? [],
     recoverable: input.recoverable ?? false
   };
+
+  for (const key of ["nextAction", "suggestedBoundaries", "guidance"]) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) {
+      error[key] = input[key];
+    }
+  }
+
+  return error;
 }
 
 export function isHarnessError(value) {

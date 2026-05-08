@@ -149,6 +149,21 @@ Planning creates:
 - Pending Blueprint review evidence.
 - Read-only dashboard preview.
 
+If the incoming request spans multiple detected responsibility domains, planning
+does not collapse the work into one broad owner. It returns
+`HARNESS_RESPONSIBILITY_BOUNDARY_AMBIGUOUS`, a public `nextAction`, and
+machine-readable `suggestedBoundaries` with proposed owner, allowed paths,
+contract ID, responsibility, and verification command. The operator or LLM
+planner must review that proposal and rerun planning with explicit boundaries.
+If the caller already supplies an explicit owner, allowed paths, and verification
+command for a vertical slice, planning may proceed as one responsibility unit.
+
+The prompt layer follows a small set of workflow rules inspired by production
+engineering skill packs without expanding the slash-command surface: conditional
+clarification, shared project language, vertical slices, contract-first slicing,
+selective context for scoped workers, stop-the-line debugging, and zoom-out
+status reports.
+
 ## Blueprint Approval Model
 
 Blueprint approval is evidence, not a conversational assumption.

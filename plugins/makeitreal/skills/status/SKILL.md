@@ -23,6 +23,18 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 6. Separate verified facts from suspected causes.
 7. Identify the next actionable workflow command: setup, plan, launch, or verify.
 
+## Zoom-Out Guidance
+
+Status is the operator's zoom-out surface. It should answer:
+
+- current phase;
+- why blocked, if blocked;
+- missing artifact, evidence, approval, or contract;
+- one next action using only public commands;
+- whether the browser dashboard was refreshed or intentionally skipped.
+
+When plan generation failed with responsibility ambiguity, surface `suggestedBoundaries` as review guidance: proposed owner, allowed paths, contract ID, and verification command. Do not convert those suggestions into board mutations from status.
+
 ## Phase Contract
 
 Status may report `planning-required`, `approval-required`, `launch-ready`, `running`, `verifying`, `human-review`, `failed-fast`, `rework-required`, `blocked`, or `done`.

@@ -26,6 +26,21 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 8. Keep the generated dashboard fresh when `features.dashboard.refreshOnLaunch` is enabled; if disabled, report the explicit dashboard refresh skip without weakening gates.
 9. After a successful launch/status transition returns a `dashboardRefresh.dashboardUrl`, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "$CLAUDE_PROJECT_DIR"` unless dashboard auto-open is disabled, then include the `dashboardUrl` in the operator report.
 
+## Scoped Subagent Execution
+
+Launch-created subagents are scoped workers, not general chat assistants. Every spawned worker must receive selective context only:
+
+- `MAKEITREAL_BOARD_DIR`
+- `MAKEITREAL_WORK_ITEM_ID`
+- work-item title, lane, allowed paths, owner, dependencies, and contract IDs
+- PRD acceptance criteria relevant to that one work item
+- the exact contract/spec documents it may read or implement against
+- the structured verification command it must make pass
+
+The runner prompt must state that other files, other work items, and undeclared contracts are outside scope. Subagents may read supporting files needed to understand the assigned paths, but edits must stay inside the work item's allowed paths. General user-created subagents outside Make It Real launch mode must not be blocked merely because a current run exists.
+
+Use contract-first slicing when parallel frontend/backend/data work is required: define contracts first, then launch scoped backend and frontend/data work items against the same frozen contract. Use vertical slices when one responsibility unit can own a complete, testable path.
+
 ## Internal Runner Selection
 
 - Use the scripted simulator only for fixture tests or explicit dry runs.
@@ -50,6 +65,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 - Dashboard generation itself is mandatory for Ready-capable plans; launch refresh flags only control non-mandatory dashboard refresh around launch progress.
 - Launch must resolve the current run itself; do not ask the user for an internal board directory during normal operation.
 - Do not add fallbacks for impossible states or undeclared SDK/API behavior.
+- Keep worker prompts compact. Prefer selective context from the work item, PRD trace, design pack, and contract file over dumping the entire run or repository.
 - If verification fails, keep the work item out of Done and report the blocker.
 - If a runner fails fast, use the engine retry/reconcile path. Do not claim `Rework -> Ready` auto-recovery unless that authority path is explicitly implemented.
 - If there is no active current-run state, start with `/makeitreal:plan <request>` or select an existing run with `/makeitreal:setup --run <runDir>`.

@@ -19,6 +19,32 @@ Subcommands:
 The browser dashboard is read-only observability. It may show the next recommended Claude Code command, evidence paths, and Kanban status.
 State changes belong to Claude Code conversation, Make It Real hooks, and internal engine gates. Do not add browser buttons for approval, launch, retry, reconcile, or Done transitions.
 
+## Prompt Discipline
+
+### Conditional Grill
+
+Ask a short clarification round only when the plan cannot honestly define ownership, contracts, or verification. Keep it to the missing decision: owner, allowed paths, public contract, or real verification command. If the missing piece can be inferred from existing project files, inspect those files first instead of interviewing the user.
+
+Do not invent placeholders to pass Ready. If no honest verification command exists, report the blocked Ready gate and the exact missing command shape.
+
+### Shared Language
+
+Before producing the Blueprint, normalize the user's words into project language:
+
+- responsibility unit names, independent of programming language or framework;
+- domain terms that must appear in PRD acceptance criteria;
+- public contract names and IO/schema names;
+- forbidden ambiguous words that need replacement before launch;
+- naming conventions visible in nearby source files.
+
+The generated plan should be readable by a zero-context agent and by a human reviewer. Acceptance criteria must be concrete enough to verify from tests, generated contracts, AST/static checks, or equivalent evidence.
+
+### Boundary Proposal
+
+For broad requests, prefer vertical slice work items when one team can own the full slice from contract to verification. When a single owner would hide real team boundaries, fail fast with `HARNESS_RESPONSIBILITY_BOUNDARY_AMBIGUOUS` and surface the engine's `suggestedBoundaries`.
+
+When reporting `suggestedBoundaries`, show each proposed owner, allowed path set, contract ID, and verification command. Treat it as a review proposal, not automatic approval.
+
 ## Engine Bridge
 
 When the plugin binary is available, start by running:
@@ -51,6 +77,7 @@ Report the returned `dashboardUrl` so the operator can reopen the Kanban/Bluepri
 - Do not implement during planning.
 - Do not assume language-specific module boundaries unless the project requires them.
 - Cross-domain teams must be able to work from contracts without reading each other's implementation.
+- If the request spans multiple domains, either split it into vertical slice work items with one owner each or ask for explicit boundaries. Do not collapse frontend/backend/data ownership into one generic module.
 - Generated OpenAPI, schemas, AST checks, or equivalent contract evidence must be planned before launch.
 - Run the internal Ready gate when artifacts exist and report any blocking codes.
 - A plan may succeed with `planOk: true` while `implementationReady: false` when the only blocker is `HARNESS_BLUEPRINT_APPROVAL_PENDING`.

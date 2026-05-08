@@ -58,6 +58,52 @@ function detectedResponsibilityDomains(request) {
   return domains;
 }
 
+function suggestedBoundaryForDomain(domain) {
+  const definitions = {
+    frontend: {
+      owner: "team.frontend",
+      allowedPaths: ["apps/web/**", "apps/frontend/**", "src/ui/**"],
+      verificationCommand: { file: "npm", args: ["test", "--", "--grep", "frontend"] },
+      responsibility: "Own user-facing UI behavior and consume only declared UI/API contracts."
+    },
+    backend: {
+      owner: "team.backend",
+      allowedPaths: ["apps/api/**", "services/**", "src/server/**"],
+      verificationCommand: { file: "npm", args: ["test", "--", "--grep", "api"] },
+      responsibility: "Own server-side behavior and publish stable service/API contracts."
+    },
+    data: {
+      owner: "team.data",
+      allowedPaths: ["db/**", "migrations/**", "src/data/**"],
+      verificationCommand: { file: "npm", args: ["test", "--", "--grep", "data"] },
+      responsibility: "Own persistence schema, migrations, and data access contracts."
+    }
+  };
+  const definition = definitions[domain] ?? {
+    owner: `team.${domain}`,
+    allowedPaths: [`modules/${domain}/**`],
+    verificationCommand: { file: "npm", args: ["test"] },
+    responsibility: `Own the ${domain} responsibility unit.`
+  };
+
+  return {
+    domain,
+    owner: definition.owner,
+    allowedPaths: definition.allowedPaths,
+    contractId: `contract.${domain}.boundary`,
+    responsibility: definition.responsibility,
+    verificationCommand: definition.verificationCommand
+  };
+}
+
+function boundaryAmbiguityGuidance(domains) {
+  return {
+    nextAction: "/makeitreal:plan <request> --owner <team> --allowed-path <path> --verify <json>",
+    guidance: "Split the request into reviewable vertical slices when one owner can own the full slice. If multiple teams must work in parallel, define explicit responsibility boundaries and contracts first.",
+    suggestedBoundaries: domains.map(suggestedBoundaryForDomain)
+  };
+}
+
 function openApiDocument({ title, slug }) {
   return {
     openapi: "3.1.0",
@@ -150,7 +196,8 @@ export async function generatePlanRun({
   }
 
   const domains = detectedResponsibilityDomains(request);
-  if (domains.length > 1) {
+  if (domains.length > 1 && allowedPaths.length === 0) {
+    const ambiguity = boundaryAmbiguityGuidance(domains);
     return {
       ok: false,
       command: "plan",
@@ -165,11 +212,13 @@ export async function generatePlanRun({
       preview: null,
       currentRun: null,
       readyGate: null,
+      ...ambiguity,
       errors: [createHarnessError({
         code: "HARNESS_RESPONSIBILITY_BOUNDARY_AMBIGUOUS",
         reason: `Request appears to span multiple responsibility domains (${domains.join(", ")}). This generator cannot safely collapse them into one owner.`,
         evidence: ["--request", "--allowed-path"],
-        recoverable: true
+        recoverable: true,
+        ...ambiguity
       })]
     };
   }
