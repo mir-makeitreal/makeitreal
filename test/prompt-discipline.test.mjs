@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { test } from "node:test";
@@ -7,6 +7,7 @@ import { test } from "node:test";
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const canonicalSkillRoot = path.join(repoRoot, "plugins", "makeitreal", "skills");
 const mirSkillRoot = path.join(repoRoot, "plugins", "mir", "skills");
+const implementationPlansRoot = path.join(repoRoot, "docs", "superpowers", "plans");
 
 async function readCanonicalSkill(name) {
   return readFile(path.join(canonicalSkillRoot, name, "SKILL.md"), "utf8");
@@ -78,3 +79,15 @@ for (const [label, readSkill] of [
     assert.match(skill, /must not mutate board\/run\/approval\/config\/evidence state/);
   });
 }
+
+test("implementation plans are self-contained and do not require external workflow skills", async () => {
+  const planFiles = (await readdir(implementationPlansRoot)).filter((fileName) => fileName.endsWith(".md"));
+  assert.ok(planFiles.length > 0);
+
+  for (const fileName of planFiles) {
+    const plan = await readFile(path.join(implementationPlansRoot, fileName), "utf8");
+    assert.match(plan, /This plan is self-contained/i, fileName);
+    assert.doesNotMatch(plan, /REQUIRED SUB-SKILL/i, fileName);
+    assert.doesNotMatch(plan, /superpowers:(subagent-driven-development|executing-plans)/i, fileName);
+  }
+});

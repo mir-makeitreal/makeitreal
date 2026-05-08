@@ -1,6 +1,6 @@
 # Make It Real Blueprint Reference Dashboard Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** This plan is self-contained. Execute it task-by-task from the repository files and commands listed below; no external skill, plugin, or prior chat context is required.
 
 **Goal:** Redesign the generated Make It Real dashboard so the Blueprint reads like API/SDK documentation while Kanban remains compact runtime state.
 
