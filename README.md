@@ -4,9 +4,9 @@ Make It Real is a Claude Code plugin and local engineering harness for PRD-first
 contract-gated software work.
 
 It turns a feature request into a reviewable Blueprint, a read-only Kanban
-dashboard, responsibility-owned work items, declared boundary contracts, real
-Claude Code execution, verification evidence, and a Done gate that cannot be
-passed by assertion alone.
+dashboard, module-level IO signatures, responsibility-owned work items,
+declared boundary contracts, real Claude Code execution, verification evidence,
+and a Done gate that cannot be passed by assertion alone.
 
 ## Install
 
@@ -170,6 +170,8 @@ see [docs/research/2026-05-08-gsd-speckit-feature-review.md](docs/research/2026-
 - PRD and Blueprint artifacts are created before implementation.
 - `.makeitreal/` runtime state is automatically added to `.gitignore`.
 - Every executable work item has exactly one responsibility owner.
+- Every Blueprint declares module interfaces with public surfaces, inputs,
+  outputs, and error contracts before implementation starts.
 - Cross-module work happens through declared boundary contracts.
 - Ambiguous frontend/backend/data requests fail fast with structured
   `suggestedBoundaries` so the operator can review the proposed split instead

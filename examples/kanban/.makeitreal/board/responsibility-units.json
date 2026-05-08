@@ -5,18 +5,21 @@
       "id": "ru.auth-service",
       "owner": "team.auth",
       "owns": ["contracts/**"],
+      "publicSurfaces": ["POST /auth/login"],
       "mayUseContracts": []
     },
     {
       "id": "ru.frontend",
       "owner": "team.frontend",
       "owns": ["apps/web/auth/**"],
+      "publicSurfaces": ["LoginForm.submit"],
       "mayUseContracts": ["contract.auth.login"]
     },
     {
       "id": "ru.audit",
       "owner": "team.audit",
       "owns": ["services/audit/**"],
+      "publicSurfaces": ["AuditLog.write"],
       "mayUseContracts": ["contract.audit.write"]
     }
   ]

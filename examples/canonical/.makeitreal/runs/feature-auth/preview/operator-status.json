@@ -15,9 +15,9 @@
     "blockers": [],
     "blueprint": {
       "errors": [],
-      "fingerprint": "sha256:89e980364efb56b960e131b36d16ad184a29104fd7320b42c65443f4c08cbc23",
+      "fingerprint": "sha256:2c6096da5a5b35e6cbfb5bcccf32052f354e6d1a5d76f939ea9d522f7a599f7d",
       "ok": true,
-      "reviewedAt": "2026-05-06T00:00:00.000Z",
+      "reviewedAt": "2026-04-30T00:00:00.000Z",
       "reviewedBy": "operator:fixture",
       "stale": false,
       "status": "approved"

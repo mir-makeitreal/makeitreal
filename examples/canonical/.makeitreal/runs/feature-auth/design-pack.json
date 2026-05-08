@@ -26,6 +26,68 @@
     {"responsibilityUnitId": "ru.frontend", "owns": ["apps/web/auth/**"], "mayUseContracts": ["contract.auth.login"]},
     {"responsibilityUnitId": "ru.auth-service", "owns": ["services/auth/**"], "mayUseContracts": []}
   ],
+  "moduleInterfaces": [
+    {
+      "responsibilityUnitId": "ru.frontend",
+      "owner": "team.frontend",
+      "moduleName": "Auth UI",
+      "purpose": "Own credential collection, client-side validation, and rendering of the declared session result.",
+      "owns": ["apps/web/auth/**"],
+      "publicSurfaces": [
+        {
+          "name": "LoginForm.submit",
+          "kind": "component-event",
+          "description": "Submits credential input and delegates authentication through the declared auth login contract.",
+          "contractIds": ["contract.auth.login"],
+          "consumers": ["Auth page composition", "browser interaction tests"],
+          "signature": {
+            "inputs": [
+              {"name": "credentials.email", "type": "string", "required": true, "description": "User email address collected by the login form."},
+              {"name": "credentials.password", "type": "string", "required": true, "description": "User password collected by the login form."}
+            ],
+            "outputs": [
+              {"name": "sessionResult", "type": "AuthSession", "description": "Session response returned by contract.auth.login."}
+            ],
+            "errors": [
+              {"code": "AUTH_LOGIN_REJECTED", "when": "The auth service rejects the credential payload.", "handling": "Surface the declared auth error state; do not infer fallback session behavior."}
+            ]
+          }
+        }
+      ],
+      "imports": [
+        {"contractId": "contract.auth.login", "providerResponsibilityUnitId": "ru.auth-service", "surface": "POST /auth/login", "allowedUse": "Submit credential payload and consume declared session result only."}
+      ]
+    },
+    {
+      "responsibilityUnitId": "ru.auth-service",
+      "owner": "team.auth",
+      "moduleName": "Auth Service",
+      "purpose": "Own login request validation and session issuance behind the OpenAPI contract.",
+      "owns": ["services/auth/**", "contracts/auth-login.openapi.json"],
+      "publicSurfaces": [
+        {
+          "name": "POST /auth/login",
+          "kind": "http",
+          "description": "Authenticates credentials and returns the declared session response.",
+          "contractIds": ["contract.auth.login"],
+          "consumers": ["ru.frontend"],
+          "signature": {
+            "inputs": [
+              {"name": "request.body.email", "type": "string", "required": true, "description": "Email value from the auth UI."},
+              {"name": "request.body.password", "type": "string", "required": true, "description": "Password value from the auth UI."}
+            ],
+            "outputs": [
+              {"name": "200.session", "type": "AuthSession", "description": "Authenticated session payload defined by the OpenAPI contract."}
+            ],
+            "errors": [
+              {"code": "401.INVALID_CREDENTIALS", "when": "Credentials are syntactically valid but authentication fails.", "handling": "Return the declared error response; do not issue partial sessions or fallback identities."}
+            ]
+          }
+        }
+      ],
+      "imports": []
+    }
+  ],
   "callStacks": [
     {"entrypoint": "LoginForm.submit", "calls": ["authClient.login", "POST /auth/login"]}
   ],

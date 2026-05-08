@@ -6,8 +6,9 @@ runner orchestration.
 
 The core invariant is simple: implementation may not start until a reviewable
 Blueprint exists and has explicit approval evidence. That Blueprint must define
-responsibility boundaries, contracts, allowed paths, verification commands, and
-Kanban work items.
+responsibility boundaries, module public surfaces, input/output/error
+signatures, contracts, allowed paths, verification commands, and Kanban work
+items.
 
 ## System Shape
 
@@ -146,8 +147,8 @@ sequenceDiagram
 Planning creates:
 
 - PRD with goals, non-goals, acceptance criteria, and verification intent.
-- Design pack with architecture, state flow, API/IO specs, boundaries, call
-  stack, and sequence diagrams.
+- Design pack with architecture, state flow, API/IO specs, module interfaces,
+  boundaries, call stack, and sequence diagrams.
 - Responsibility units with exactly one owner per executable work item.
 - Boundary contracts and contract IDs used by work items.
 - Kanban work items with dependencies, allowed paths, and verification commands.
@@ -229,6 +230,12 @@ Key gate rules:
 
 Every executable work item has one responsibility owner. That owner is the only
 authority for the declared allowed paths and declared contract IDs.
+
+Every design pack also declares `moduleInterfaces`. Each interface binds a
+responsibility unit to its module name, owned paths, public surfaces, accepted
+inputs, produced outputs, and error contract. This is the SDK/API-doc-like
+handoff surface: adjacent teams and scoped agents should be able to work from
+these signatures without reading the provider implementation.
 
 Boundary checks happen in multiple places:
 

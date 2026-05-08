@@ -38,10 +38,18 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
     assert.equal(designPack.apiSpecs[0].kind, "none");
     assert.equal(designPack.apiSpecs[0].contractId, result.contractId);
     assert.equal(designPack.architecture.edges[0].contractId, result.contractId);
+    assert.equal(designPack.moduleInterfaces[0].responsibilityUnitId, "ru.summary-widget");
+    assert.equal(designPack.moduleInterfaces[0].moduleName, "Build a dashboard widget with summary metrics");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "summary-widget.module");
+    assert.deepEqual(designPack.moduleInterfaces[0].publicSurfaces[0].contractIds, [result.contractId]);
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "prdRequest");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "verifiedBehavior");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.errors[0].code, "BOUNDARY_CONTRACT_VIOLATION");
 
     const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
     assert.equal(responsibilityUnits.units.length, 1);
     assert.equal(responsibilityUnits.units[0].owner, "team.frontend");
+    assert.deepEqual(responsibilityUnits.units[0].publicSurfaces, ["summary-widget.module"]);
 
     const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.summary-widget.json"));
     assert.equal(workItem.title, "Build a dashboard widget with summary metrics");
@@ -131,6 +139,10 @@ test("plan generator writes OpenAPI contract for API-shaped requests", async () 
     assert.equal(result.implementationReady, false);
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
     assert.equal(designPack.apiSpecs[0].kind, "openapi");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "POST /invoice-search-api");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "http");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "requestBody");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "200 response");
 
     const openapi = await readJsonFile(path.join(result.runDir, "contracts", "invoice-search-api.openapi.json"));
     assert.equal(openapi.openapi, "3.1.0");

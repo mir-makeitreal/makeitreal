@@ -53,9 +53,9 @@ Kanban state, run-packet layout, and evidence model, see
 
 ## Runtime Contract
 
-- Planning creates PRD, Blueprint/design pack, responsibility boundaries,
-  contracts, Kanban work items, verification commands, trust policy, and the
-  read-only dashboard.
+- Planning creates PRD, Blueprint/design pack, module IO signatures,
+  responsibility boundaries, contracts, Kanban work items, verification
+  commands, trust policy, and the read-only dashboard.
 - Plan and setup both ensure `/.makeitreal/` is present in the project
   `.gitignore` before runtime state is written. Setup is not a per-project
   prerequisite for new work.

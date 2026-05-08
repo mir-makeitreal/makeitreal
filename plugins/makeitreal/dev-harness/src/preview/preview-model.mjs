@@ -77,7 +77,60 @@ function modelBoundaries(boundaries = []) {
   }));
 }
 
-function modelBlueprint({ prd, designPack }) {
+function unitIndex(responsibilityUnits) {
+  return new Map((responsibilityUnits?.units ?? []).map((unit) => [unit.id, unit]));
+}
+
+function normalizeSignature(signature = {}) {
+  return {
+    inputs: signature.inputs ?? [],
+    outputs: signature.outputs ?? [],
+    errors: signature.errors ?? []
+  };
+}
+
+function normalizeSurface(surface) {
+  if (typeof surface === "string") {
+    return {
+      name: surface,
+      kind: "surface",
+      description: null,
+      contractIds: [],
+      consumers: [],
+      signature: {
+        inputs: [],
+        outputs: [],
+        errors: []
+      }
+    };
+  }
+  return {
+    name: surface?.name ?? "Unnamed surface",
+    kind: surface?.kind ?? "surface",
+    description: surface?.description ?? null,
+    contractIds: surface?.contractIds ?? [],
+    consumers: surface?.consumers ?? [],
+    signature: normalizeSignature(surface?.signature)
+  };
+}
+
+function modelModuleInterfaces({ designPack, responsibilityUnits }) {
+  const units = unitIndex(responsibilityUnits);
+  return (designPack.moduleInterfaces ?? []).map((moduleInterface) => {
+    const unit = units.get(moduleInterface.responsibilityUnitId) ?? {};
+    return {
+      responsibilityUnitId: moduleInterface.responsibilityUnitId,
+      owner: moduleInterface.owner ?? unit.owner ?? null,
+      moduleName: moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId,
+      purpose: moduleInterface.purpose ?? null,
+      owns: moduleInterface.owns ?? unit.owns ?? [],
+      publicSurfaces: (moduleInterface.publicSurfaces ?? []).map(normalizeSurface),
+      imports: moduleInterface.imports ?? []
+    };
+  });
+}
+
+function modelBlueprint({ prd, designPack, responsibilityUnits }) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
   return {
     title: prd.title,
@@ -88,6 +141,7 @@ function modelBlueprint({ prd, designPack }) {
     primaryContract: contracts[0] ?? null,
     contracts,
     boundaries: modelBoundaries(designPack.responsibilityBoundaries ?? []),
+    moduleInterfaces: modelModuleInterfaces({ designPack, responsibilityUnits }),
     architecture: {
       nodes: designPack.architecture?.nodes ?? [],
       edges: designPack.architecture?.edges ?? []
@@ -112,6 +166,8 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
     runDir: resolvedRunDir,
     now
   });
+  const hasResponsibilityUnits = await fileExists(path.join(resolvedRunDir, "responsibility-units.json"));
+  const responsibilityUnits = hasResponsibilityUnits ? await readJsonFile(path.join(resolvedRunDir, "responsibility-units.json")) : null;
   const hasBoard = await fileExists(path.join(resolvedRunDir, "board.json"));
   const boardStatus = hasBoard ? await readBoardStatus({ boardDir: resolvedRunDir, now }) : null;
   const board = hasBoard ? await loadBoard(resolvedRunDir) : null;
@@ -136,12 +192,13 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
         workItemId: designPack.workItemId,
         prdId: designPack.prdId
       },
-      blueprint: modelBlueprint({ prd, designPack }),
+      blueprint: modelBlueprint({ prd, designPack, responsibilityUnits }),
       design: {
         architectureEdges: designPack.architecture.edges.map((edge) => `${edge.from} -> ${edge.to} (${edge.contractId})`),
         stateTransitions: designPack.stateFlow.transitions.map((transition) => `${transition.from} -> ${transition.to} via ${transition.gate}`),
         apiSpecs: designPack.apiSpecs.map((spec) => spec.kind === "none" ? `No API: ${spec.reason}` : `${spec.kind}: ${spec.contractId} at ${spec.path}`),
         responsibilityBoundaries: designPack.responsibilityBoundaries.map((boundary) => `${boundary.responsibilityUnitId}: owns ${boundary.owns.join(", ")}`),
+        moduleInterfaces: (designPack.moduleInterfaces ?? []).map((moduleInterface) => `${moduleInterface.responsibilityUnitId}: ${(moduleInterface.publicSurfaces ?? []).map((surface) => surface.name).join(", ")}`),
         callStacks: designPack.callStacks.map((stack) => `${stack.entrypoint}: ${stack.calls.join(" -> ")}`),
         sequences: designPack.sequences.flatMap((sequence) => sequence.messages.map((message) => `${sequence.title}: ${message.from} -> ${message.to}: ${message.label}`))
       },

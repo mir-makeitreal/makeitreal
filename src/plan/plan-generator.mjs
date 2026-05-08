@@ -126,6 +126,99 @@ function openApiDocument({ title, slug }) {
   };
 }
 
+function surfaceNameFor({ usesOpenApi, slug }) {
+  return usesOpenApi ? `POST /${slug}` : `${slug}.module`;
+}
+
+function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug }) {
+  if (usesOpenApi) {
+    return {
+      inputs: [
+        {
+          name: "requestBody",
+          type: "object",
+          required: true,
+          description: `Payload accepted by POST /${slug} for: ${title}`
+        }
+      ],
+      outputs: [
+        {
+          name: "200 response",
+          type: "object",
+          description: "Successful response body defined by the OpenAPI contract."
+        }
+      ],
+      errors: [
+        {
+          code: "CONTRACT_MISMATCH",
+          when: "The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract.",
+          handling: "Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior."
+        }
+      ]
+    };
+  }
+
+  return {
+    inputs: [
+      {
+        name: "prdRequest",
+        type: "PRD scope",
+        required: true,
+        description: `Accepted user request for this responsibility unit: ${title}`
+      },
+      {
+        name: "ownedWorkspace",
+        type: "project paths",
+        required: true,
+        description: owns.join(", ")
+      }
+    ],
+    outputs: [
+      {
+        name: "verifiedBehavior",
+        type: "module behavior",
+        description: "Implementation satisfying the PRD acceptance criteria inside the declared ownership boundary."
+      },
+      {
+        name: "publicSurface",
+        type: "declared interface",
+        description: `Consumers may rely on ${contractId} without reading implementation internals.`
+      }
+    ],
+    errors: [
+      {
+        code: "BOUNDARY_CONTRACT_VIOLATION",
+        when: "The work requires undeclared paths, undeclared cross-module imports, or behavior outside the Blueprint.",
+        handling: "Fail fast and revise the Blueprint; do not add speculative fallback branches."
+      }
+    ]
+  };
+}
+
+function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi }) {
+  const surfaceName = surfaceNameFor({ usesOpenApi, slug });
+  return {
+    responsibilityUnitId,
+    owner,
+    moduleName: title,
+    purpose: `Own delivery of "${title}" through declared paths and public surfaces only.`,
+    owns,
+    publicSurfaces: [
+      {
+        name: surfaceName,
+        kind: usesOpenApi ? "http" : "module",
+        description: usesOpenApi
+          ? `HTTP contract surface for ${title}.`
+          : `Module boundary surface for ${title}.`,
+        contractIds: [contractId],
+        consumers: ["Declared downstream responsibility units and tests"],
+        signature: moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug })
+      }
+    ],
+    imports: []
+  };
+}
+
 function trustPolicyFor({ runnerMode, runId }) {
   if (runnerMode === "claude-code") {
     return {
@@ -351,6 +444,7 @@ export async function generatePlanRun({
         contractId,
         reason: "Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks."
       };
+  const moduleInterface = moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi });
 
   const designPack = {
     schemaVersion: "1.0",
@@ -377,8 +471,9 @@ export async function generatePlanRun({
     responsibilityBoundaries: [
       { responsibilityUnitId, owns, mayUseContracts: [contractId] }
     ],
+    moduleInterfaces: [moduleInterface],
     callStacks: [
-      { entrypoint: `${workItemId}.start`, calls: ["read PRD", "load design pack", "execute owned responsibility unit"] }
+      { entrypoint: moduleInterface.publicSurfaces[0].name, calls: ["validate declared inputs", "execute owned responsibility unit", "return declared outputs or fail fast"] }
     ],
     sequences: [
       {
@@ -399,7 +494,7 @@ export async function generatePlanRun({
         id: responsibilityUnitId,
         owner,
         owns,
-        publicSurfaces: [contractId],
+        publicSurfaces: moduleInterface.publicSurfaces.map((surface) => surface.name),
         mayUseContracts: [contractId]
       }
     ]

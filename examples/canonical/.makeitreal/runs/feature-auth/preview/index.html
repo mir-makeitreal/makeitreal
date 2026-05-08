@@ -14,6 +14,7 @@
       <a href="#overview" class="active">Overview</a>
       <a href="#delivery">What Will Be Delivered</a>
       <a href="#contracts">API / IO Contract</a>
+      <a href="#interfaces">Module Interfaces</a>
       <a href="#boundaries">Responsibility Boundaries</a>
       <a href="#flow">Sequence & Call Stack</a>
       <a href="#evidence">Acceptance Evidence</a>
@@ -54,6 +55,87 @@
     </div>
     <code>contracts/auth-login.openapi.json</code>
   </div>
+      </section>
+
+      <section id="interfaces" class="doc-section">
+        <h2>Module Interfaces</h2>
+        <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
+        <div class="module-interface-list"><article class="module-interface">
+    <header>
+      <div>
+        <p class="module-id">ru.frontend</p>
+        <h3>Auth UI</h3>
+      </div>
+      <span>team.frontend</span>
+    </header>
+    <p class="section-note">Own credential collection, client-side validation, and rendering of the declared session result.</p>
+    <div class="path-list"><code>apps/web/auth/**</code></div>
+    <section class="surface-card">
+      <div class="surface-header">
+        <div>
+          <p class="module-id">component-event</p>
+          <h4>LoginForm.submit</h4>
+        </div>
+        <div class="contract-chip-list"><code>contract.auth.login</code></div>
+      </div>
+      <p>Submits credential input and delegates authentication through the declared auth login contract.</p>
+      <p class="muted">Consumers: Auth page composition, browser interaction tests</p>
+      <div class="signature-grid">
+        <div class="signature-column">
+    <h4>Inputs</h4>
+    <div class="signature-table"><div class="signature-row"><strong>credentials.email</strong><span>string · required</span><p>User email address collected by the login form.</p></div><div class="signature-row"><strong>credentials.password</strong><span>string · required</span><p>User password collected by the login form.</p></div></div>
+  </div>
+        <div class="signature-column">
+    <h4>Outputs</h4>
+    <div class="signature-table"><div class="signature-row"><strong>sessionResult</strong><span>AuthSession</span><p>Session response returned by contract.auth.login.</p></div></div>
+  </div>
+        <div class="signature-column">
+    <h4>Error Contract</h4>
+    <div class="signature-table"><div class="signature-row"><strong>AUTH_LOGIN_REJECTED</strong><span>The auth service rejects the credential payload.</span><p>Surface the declared auth error state; do not infer fallback session behavior.</p></div></div>
+  </div>
+      </div>
+    </section>
+    <div class="imports-list">
+      <h4>Imports</h4>
+      <p><code>contract.auth.login</code> Submit credential payload and consume declared session result only.</p>
+    </div>
+  </article><article class="module-interface">
+    <header>
+      <div>
+        <p class="module-id">ru.auth-service</p>
+        <h3>Auth Service</h3>
+      </div>
+      <span>team.auth</span>
+    </header>
+    <p class="section-note">Own login request validation and session issuance behind the OpenAPI contract.</p>
+    <div class="path-list"><code>services/auth/**</code><code>contracts/auth-login.openapi.json</code></div>
+    <section class="surface-card">
+      <div class="surface-header">
+        <div>
+          <p class="module-id">http</p>
+          <h4>POST /auth/login</h4>
+        </div>
+        <div class="contract-chip-list"><code>contract.auth.login</code></div>
+      </div>
+      <p>Authenticates credentials and returns the declared session response.</p>
+      <p class="muted">Consumers: ru.frontend</p>
+      <div class="signature-grid">
+        <div class="signature-column">
+    <h4>Inputs</h4>
+    <div class="signature-table"><div class="signature-row"><strong>request.body.email</strong><span>string · required</span><p>Email value from the auth UI.</p></div><div class="signature-row"><strong>request.body.password</strong><span>string · required</span><p>Password value from the auth UI.</p></div></div>
+  </div>
+        <div class="signature-column">
+    <h4>Outputs</h4>
+    <div class="signature-table"><div class="signature-row"><strong>200.session</strong><span>AuthSession</span><p>Authenticated session payload defined by the OpenAPI contract.</p></div></div>
+  </div>
+        <div class="signature-column">
+    <h4>Error Contract</h4>
+    <div class="signature-table"><div class="signature-row"><strong>401.INVALID_CREDENTIALS</strong><span>Credentials are syntactically valid but authentication fails.</span><p>Return the declared error response; do not issue partial sessions or fallback identities.</p></div></div>
+  </div>
+      </div>
+    </section>
+
+  </article></div>
       </section>
 
       <section id="boundaries" class="doc-section">

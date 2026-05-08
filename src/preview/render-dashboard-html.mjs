@@ -53,6 +53,85 @@ function renderContracts(contracts = []) {
   return contracts.map(renderContract).join("");
 }
 
+function formatSignatureMeta(item, valueKeys = []) {
+  return valueKeys
+    .map((key) => {
+      if (key === "required" && item[key] === true) {
+        return "required";
+      }
+      if (key === "required" && item[key] === false) {
+        return "optional";
+      }
+      return item[key];
+    })
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function renderSignatureRow(item, valueKeys = []) {
+  const details = [
+    `<strong>${escapeHtml(item.name ?? item.code ?? "item")}</strong>`,
+    `<span>${escapeHtml(formatSignatureMeta(item, valueKeys) || item.description || item.when || "")}</span>`
+  ];
+  if (item.description && !valueKeys.includes("description")) {
+    details.push(`<p>${escapeHtml(item.description)}</p>`);
+  }
+  if (item.handling) {
+    details.push(`<p>${escapeHtml(item.handling)}</p>`);
+  }
+  return `<div class="signature-row">${details.join("")}</div>`;
+}
+
+function renderSignatureTable(title, items = [], valueKeys = []) {
+  if (items.length === 0) {
+    return `<div class="signature-column">
+      <h4>${escapeHtml(title)}</h4>
+      <p class="empty">None declared.</p>
+    </div>`;
+  }
+  return `<div class="signature-column">
+    <h4>${escapeHtml(title)}</h4>
+    <div class="signature-table">${items.map((item) => renderSignatureRow(item, valueKeys)).join("")}</div>
+  </div>`;
+}
+
+function renderModuleInterfaces(moduleInterfaces = []) {
+  if (moduleInterfaces.length === 0) {
+    return '<p class="empty">No module interfaces declared.</p>';
+  }
+  return `<div class="module-interface-list">${moduleInterfaces.map((moduleInterface) => `<article class="module-interface">
+    <header>
+      <div>
+        <p class="module-id">${escapeHtml(moduleInterface.responsibilityUnitId)}</p>
+        <h3>${escapeHtml(moduleInterface.moduleName)}</h3>
+      </div>
+      ${moduleInterface.owner ? `<span>${escapeHtml(moduleInterface.owner)}</span>` : ""}
+    </header>
+${moduleInterface.purpose ? `    <p class="section-note">${escapeHtml(moduleInterface.purpose)}</p>` : ""}
+    <div class="path-list">${(moduleInterface.owns ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div>
+    ${(moduleInterface.publicSurfaces ?? []).map((surface) => `<section class="surface-card">
+      <div class="surface-header">
+        <div>
+          <p class="module-id">${escapeHtml(surface.kind)}</p>
+          <h4>${escapeHtml(surface.name)}</h4>
+        </div>
+        <div class="contract-chip-list">${(surface.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}</div>
+      </div>
+${surface.description ? `      <p>${escapeHtml(surface.description)}</p>` : ""}
+${(surface.consumers ?? []).length > 0 ? `      <p class="muted">Consumers: ${surface.consumers.map((consumer) => escapeHtml(consumer)).join(", ")}</p>` : ""}
+      <div class="signature-grid">
+        ${renderSignatureTable("Inputs", surface.signature?.inputs ?? [], ["type", "required"])}
+        ${renderSignatureTable("Outputs", surface.signature?.outputs ?? [], ["type"])}
+        ${renderSignatureTable("Error Contract", surface.signature?.errors ?? [], ["when"])}
+      </div>
+    </section>`).join("")}
+${(moduleInterface.imports ?? []).length > 0 ? `    <div class="imports-list">
+      <h4>Imports</h4>
+      ${(moduleInterface.imports ?? []).map((dependency) => `<p><code>${escapeHtml(dependency.contractId)}</code> ${escapeHtml(dependency.allowedUse ?? dependency.surface ?? "")}</p>`).join("")}
+    </div>` : ""}
+  </article>`).join("")}</div>`;
+}
+
 function renderBoundaries(boundaries = []) {
   if (boundaries.length === 0) {
     return '<p class="empty">No responsibility boundaries declared.</p>';
@@ -248,6 +327,7 @@ export function renderDashboardHtml(model) {
       <a href="#overview" class="active">Overview</a>
       <a href="#delivery">What Will Be Delivered</a>
       <a href="#contracts">API / IO Contract</a>
+      <a href="#interfaces">Module Interfaces</a>
       <a href="#boundaries">Responsibility Boundaries</a>
       <a href="#flow">Sequence & Call Stack</a>
       <a href="#evidence">Acceptance Evidence</a>
@@ -281,6 +361,12 @@ export function renderDashboardHtml(model) {
         <h2>API / Interface Specs</h2>
         <p class="section-note">API / IO Contract surfaces that other responsibility units must use without reading implementation internals.</p>
         ${renderContracts(blueprint.contracts)}
+      </section>
+
+      <section id="interfaces" class="doc-section">
+        <h2>Module Interfaces</h2>
+        <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
+        ${renderModuleInterfaces(blueprint.moduleInterfaces)}
       </section>
 
       <section id="boundaries" class="doc-section">
@@ -467,6 +553,9 @@ h3 {
 .doc-table,
 .contract-card,
 .boundary-card,
+.module-interface,
+.surface-card,
+.signature-row,
 .sequence-card,
 .criterion,
 .compact-kanban .kanban-lane,
@@ -559,6 +648,108 @@ h3 {
 .method.neutral {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.module-interface-list {
+  display: grid;
+  gap: 12px;
+}
+
+.module-interface {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--panel);
+}
+
+.module-interface header,
+.surface-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.module-interface h3,
+.surface-card h4 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.module-interface header span {
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #344054;
+  background: var(--soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.module-id {
+  margin: 0 0 3px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.surface-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--soft);
+}
+
+.contract-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.contract-chip-list code {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: var(--panel);
+}
+
+.surface-card p,
+.signature-row p,
+.imports-list p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.signature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.signature-column h4,
+.imports-list h4 {
+  margin: 0 0 6px;
+  color: #344054;
+  font-size: 12px;
+}
+
+.signature-table {
+  display: grid;
+  gap: 6px;
+}
+
+.signature-row {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  background: var(--panel);
+}
+
+.signature-row span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .boundary-grid {
@@ -787,6 +978,7 @@ h3 {
 
   .doc-nav,
   .metric-grid,
+  .signature-grid,
   .boundary-grid {
     grid-template-columns: 1fr;
   }

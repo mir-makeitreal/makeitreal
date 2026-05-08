@@ -100,6 +100,12 @@ test("renders canonical architecture preview", async () => {
     assert.equal(previewModel.blueprint.primaryContract.contractId, "contract.auth.login");
     assert.equal(previewModel.blueprint.contracts[0].path, "contracts/auth-login.openapi.json");
     assert.equal(previewModel.blueprint.boundaries[0].responsibilityUnitId, "ru.frontend");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].responsibilityUnitId, "ru.frontend");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].moduleName, "Auth UI");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].name, "LoginForm.submit");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "credentials.email");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "sessionResult");
+    assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.errors[0].code, "AUTH_LOGIN_REJECTED");
     assert.equal(previewModel.blueprint.acceptanceCriteria[0].id, "AC-001");
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
@@ -107,6 +113,10 @@ test("renders canonical architecture preview", async () => {
       "Blueprint Reference",
       "What Will Be Delivered",
       "API / Interface Specs",
+      "Module Interfaces",
+      "Inputs",
+      "Outputs",
+      "Error Contract",
       "Responsibility Boundaries",
       "Sequence & Call Stack",
       "Acceptance Evidence",
@@ -140,6 +150,8 @@ test("renders canonical architecture preview", async () => {
     assert.match(css, /\.doc-shell/);
     assert.match(css, /\.doc-nav/);
     assert.match(css, /\.status-rail/);
+    assert.match(css, /\.module-interface/);
+    assert.match(css, /\.signature-table/);
     assert.match(css, /\.compact-kanban/);
   });
 });

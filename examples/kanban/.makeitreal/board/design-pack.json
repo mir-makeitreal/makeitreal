@@ -4,6 +4,11 @@
       "contractId": "contract.auth.login",
       "kind": "openapi",
       "path": "contracts/auth-login.openapi.json"
+    },
+    {
+      "contractId": "contract.audit.write",
+      "kind": "none",
+      "reason": "Audit write behavior is enforced by declared responsibility ownership and verification fixtures."
     }
   ],
   "architecture": {
@@ -12,6 +17,11 @@
         "contractId": "contract.auth.login",
         "from": "auth-ui",
         "to": "auth-service"
+      },
+      {
+        "contractId": "contract.audit.write",
+        "from": "auth-ui",
+        "to": "audit-service"
       }
     ],
     "nodes": [
@@ -24,6 +34,11 @@
         "id": "auth-service",
         "label": "Auth Service",
         "responsibilityUnitId": "ru.auth-service"
+      },
+      {
+        "id": "audit-service",
+        "label": "Audit Service",
+        "responsibilityUnitId": "ru.audit"
       }
     ]
   },
@@ -39,6 +54,13 @@
   "prdId": "prd.auth-kanban",
   "responsibilityBoundaries": [
     {
+      "mayUseContracts": [],
+      "owns": [
+        "contracts/auth-login.openapi.json"
+      ],
+      "responsibilityUnitId": "ru.auth-service"
+    },
+    {
       "mayUseContracts": [
         "contract.auth.login"
       ],
@@ -46,6 +68,178 @@
         "apps/web/auth/**"
       ],
       "responsibilityUnitId": "ru.frontend"
+    },
+    {
+      "mayUseContracts": [
+        "contract.audit.write"
+      ],
+      "owns": [
+        "services/audit/**"
+      ],
+      "responsibilityUnitId": "ru.audit"
+    }
+  ],
+  "moduleInterfaces": [
+    {
+      "responsibilityUnitId": "ru.auth-service",
+      "owner": "team.auth",
+      "moduleName": "Auth Login Contract",
+      "purpose": "Own the login HTTP contract consumed by the frontend.",
+      "owns": [
+        "contracts/auth-login.openapi.json"
+      ],
+      "publicSurfaces": [
+        {
+          "name": "POST /auth/login",
+          "kind": "http",
+          "description": "Declares credential input and session output for login.",
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "consumers": [
+            "ru.frontend"
+          ],
+          "signature": {
+            "inputs": [
+              {
+                "name": "request.body.email",
+                "type": "string",
+                "required": true,
+                "description": "Email supplied by the login UI."
+              },
+              {
+                "name": "request.body.password",
+                "type": "string",
+                "required": true,
+                "description": "Password supplied by the login UI."
+              }
+            ],
+            "outputs": [
+              {
+                "name": "200.session",
+                "type": "AuthSession",
+                "description": "Successful authenticated session payload."
+              }
+            ],
+            "errors": [
+              {
+                "code": "401.INVALID_CREDENTIALS",
+                "when": "Credential authentication fails.",
+                "handling": "Return the declared auth error; do not issue fallback sessions."
+              }
+            ]
+          }
+        }
+      ],
+      "imports": []
+    },
+    {
+      "responsibilityUnitId": "ru.frontend",
+      "owner": "team.frontend",
+      "moduleName": "Login UI",
+      "purpose": "Own login form behavior while consuming only the declared auth login contract.",
+      "owns": [
+        "apps/web/auth/**"
+      ],
+      "publicSurfaces": [
+        {
+          "name": "LoginForm.submit",
+          "kind": "component-event",
+          "description": "Collects credential input and submits through authClient.login.",
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "consumers": [
+            "Auth route",
+            "browser tests"
+          ],
+          "signature": {
+            "inputs": [
+              {
+                "name": "credentials.email",
+                "type": "string",
+                "required": true,
+                "description": "Email entered by the user."
+              },
+              {
+                "name": "credentials.password",
+                "type": "string",
+                "required": true,
+                "description": "Password entered by the user."
+              }
+            ],
+            "outputs": [
+              {
+                "name": "sessionResult",
+                "type": "AuthSession",
+                "description": "Session response from contract.auth.login."
+              }
+            ],
+            "errors": [
+              {
+                "code": "AUTH_LOGIN_REJECTED",
+                "when": "The declared auth contract rejects the credentials.",
+                "handling": "Show the declared auth failure state; do not infer alternate success paths."
+              }
+            ]
+          }
+        }
+      ],
+      "imports": [
+        {
+          "contractId": "contract.auth.login",
+          "providerResponsibilityUnitId": "ru.auth-service",
+          "surface": "POST /auth/login",
+          "allowedUse": "Submit credentials and consume the declared session or error output."
+        }
+      ]
+    },
+    {
+      "responsibilityUnitId": "ru.audit",
+      "owner": "team.audit",
+      "moduleName": "Audit Log Integration",
+      "purpose": "Own audit event emission after login UI work is complete.",
+      "owns": [
+        "services/audit/**"
+      ],
+      "publicSurfaces": [
+        {
+          "name": "AuditLog.write",
+          "kind": "service-module",
+          "description": "Records an audit event through the declared audit write boundary.",
+          "contractIds": [
+            "contract.audit.write"
+          ],
+          "consumers": [
+            "ru.frontend"
+          ],
+          "signature": {
+            "inputs": [
+              {
+                "name": "auditEvent",
+                "type": "AuditEvent",
+                "required": true,
+                "description": "Login-related audit event payload."
+              }
+            ],
+            "outputs": [
+              {
+                "name": "writeReceipt",
+                "type": "AuditWriteReceipt",
+                "description": "Acknowledges durable audit write completion."
+              }
+            ],
+            "errors": [
+              {
+                "code": "AUDIT_WRITE_REJECTED",
+                "when": "The audit event cannot be accepted by the declared boundary.",
+                "handling": "Fail fast and report verification failure; do not silently drop audit events."
+              }
+            ]
+          }
+        }
+      ],
+      "imports": []
     }
   ],
   "schemaVersion": "1.0",
