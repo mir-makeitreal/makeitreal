@@ -184,7 +184,11 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
       const failedFast = transitionLane(latestBoard, workItem.id, "Failed Fast", { gates: {} }, {
         attemptNumber,
         nextRetryAt: dueAt,
-        errorCode: result.errors[0]?.code ?? "HARNESS_RUNNER_FAILED"
+        errorCode: result.failure?.code ?? result.errors[0]?.code ?? "HARNESS_RUNNER_FAILED",
+        errorCategory: result.failure?.category ?? null,
+        errorReason: result.failure?.reason ?? result.errors[0]?.reason ?? null,
+        errorNextAction: result.failure?.nextAction ?? null,
+        latestAttemptId: result.attemptId ?? null
       });
       if (!failedFast.ok) {
         await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
@@ -195,7 +199,10 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
         workItemId: workItem.id,
         attemptNumber,
         dueAt,
-        errorCode: result.errors[0]?.code ?? "HARNESS_RUNNER_FAILED"
+        errorCode: result.failure?.code ?? result.errors[0]?.code ?? "HARNESS_RUNNER_FAILED",
+        errorCategory: result.failure?.category ?? null,
+        errorReason: result.failure?.reason ?? result.errors[0]?.reason ?? null,
+        latestAttemptId: result.attemptId ?? null
       });
       clearRunning(runtimeState, workItem.id);
       clearClaimed(runtimeState, workItem.id);
@@ -203,7 +210,7 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
         await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
         await saveBoard(boardDir, latestBoard);
         await saveRuntimeState(boardDir, runtimeState);
-        return { ok: false, errors: result.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
+        return { ok: false, errors: result.errors, failure: result.failure ?? null, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
       }
     }
 
@@ -245,6 +252,10 @@ export async function reconcileBoard({ boardDir, now }) {
       workItem.lane = "Ready";
       delete workItem.nextRetryAt;
       delete workItem.errorCode;
+      delete workItem.errorCategory;
+      delete workItem.errorReason;
+      delete workItem.errorNextAction;
+      delete workItem.latestAttemptId;
       clearRetry(runtimeState, workItem.id);
       retryReadyWorkItemIds.push(workItem.id);
     }

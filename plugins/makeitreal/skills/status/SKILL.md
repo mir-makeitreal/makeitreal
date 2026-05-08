@@ -37,6 +37,7 @@ Use only public next actions in the user-facing report:
 - `/makeitreal:launch`
 - `/makeitreal:status`
 - `/makeitreal:verify`
+- `/makeitreal:doctor`
 
 ## Output
 

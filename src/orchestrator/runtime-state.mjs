@@ -74,8 +74,16 @@ export function clearRunning(state, workItemId) {
   delete state.running[workItemId];
 }
 
-export function recordRetry(state, { workItemId, attemptNumber, dueAt, errorCode }) {
-  state.retryAttempts[workItemId] = { workItemId, attemptNumber, dueAt, errorCode };
+export function recordRetry(state, { workItemId, attemptNumber, dueAt, errorCode, errorCategory = null, errorReason = null, latestAttemptId = null }) {
+  state.retryAttempts[workItemId] = {
+    workItemId,
+    attemptNumber,
+    dueAt,
+    errorCode,
+    errorCategory,
+    errorReason,
+    latestAttemptId
+  };
 }
 
 export function clearRetry(state, workItemId) {

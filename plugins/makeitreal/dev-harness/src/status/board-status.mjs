@@ -31,7 +31,15 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
     laneCounts: countLanes(board),
     activeClaims,
     blockedWork: blockedWork.map((item) => ({ id: item.id, dependsOn: item.dependsOn ?? [] })),
-    failedFast: failedFast.map((item) => ({ id: item.id, nextRetryAt: item.nextRetryAt ?? null, attemptNumber: item.attemptNumber ?? null })),
+    failedFast: failedFast.map((item) => ({
+      id: item.id,
+      nextRetryAt: item.nextRetryAt ?? null,
+      attemptNumber: item.attemptNumber ?? null,
+      errorCode: item.errorCode ?? null,
+      errorCategory: item.errorCategory ?? null,
+      errorReason: item.errorReason ?? null,
+      latestAttemptId: item.latestAttemptId ?? null
+    })),
     retryReady: retryReady.map((item) => ({ id: item.id, nextRetryAt: item.nextRetryAt ?? null })),
     rework: rework.map((item) => ({ id: item.id })),
     generatedAt: now.toISOString()

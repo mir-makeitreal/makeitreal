@@ -17,6 +17,7 @@ Operator and advanced workflow:
 - `/makeitreal:status`
 - `/makeitreal:verify`
 - `/makeitreal:config`
+- `/makeitreal:doctor`
 
 The command files live under `commands/`. The `skills/` directory contains the
 supporting workflow guidance that commands and Claude can use, but skills alone
@@ -40,6 +41,8 @@ commands.
   transitions stay in Claude Code conversation, hooks, and engine gates.
 - Live wiki sync is configurable. Disabling it records explicit skip evidence
   instead of weakening the Done gate.
+- Doctor is read-only diagnostics for plugin files, hooks, current-run state,
+  dashboard preview, config, and the Claude Code CLI.
 
 ## Local Validation
 

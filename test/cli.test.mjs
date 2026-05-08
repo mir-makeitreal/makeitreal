@@ -15,6 +15,7 @@ test("CLI help lists the supported commands", () => {
   assert.match(result.stdout, /gate/);
   assert.match(result.stdout, /verify/);
   assert.match(result.stdout, /config get/);
+  assert.match(result.stdout, /doctor <projectRoot>/);
   assert.match(result.stdout, /wiki sync/);
   assert.match(result.stdout, /--runner scripted-simulator\|claude-code/);
 });

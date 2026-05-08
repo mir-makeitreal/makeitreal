@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { loadBoard } from "../src/board/board-store.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
 import { validateClaudeRunnerCommand } from "../src/orchestrator/claude-runner.mjs";
+import { readRunAttempt } from "../src/orchestrator/attempt-store.mjs";
 import { orchestratorTick } from "../src/orchestrator/orchestrator.mjs";
 
 const SAFE_CLAUDE_TOOLS = "Read,Write,Edit,MultiEdit,Glob,Grep,LS";
@@ -410,9 +411,14 @@ test("claude-code runner treats structured failure events as failed fast even wi
     }));
 
     assert.equal(result.ok, false);
-    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_FAILED");
+    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_COMMAND_REJECTED");
+    assert.equal(result.failure.category, "command-rejection");
     const board = await loadBoard(boardDir);
-    assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Failed Fast");
+    const failed = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(failed.lane, "Failed Fast");
+    assert.equal(failed.errorCode, "HARNESS_CLAUDE_RUNNER_COMMAND_REJECTED");
+    const attempt = await readRunAttempt({ boardDir, attemptId: failed.latestAttemptId });
+    assert.equal(attempt.runner.failure.category, "command-rejection");
   });
 });
 
@@ -441,9 +447,93 @@ console.log(JSON.stringify({
     }));
 
     assert.equal(result.ok, false);
-    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_FAILED");
+    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_QUOTA");
+    assert.equal(result.failure.category, "quota");
     const board = await loadBoard(boardDir);
-    assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Failed Fast");
+    const failed = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(failed.lane, "Failed Fast");
+    assert.equal(failed.errorCode, "HARNESS_CLAUDE_RUNNER_QUOTA");
+    assert.equal(failed.errorCategory, "quota");
+  });
+});
+
+test("claude-code runner classifies hook failures separately", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeFakeClaude(root, `
+console.error('Stop hook failed: command timed out');
+process.exit(1);
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_HOOK_FAILED");
+    assert.equal(result.failure.category, "hook-failure");
+  });
+});
+
+test("claude-code runner keeps bare turn ended errors generic", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeFakeClaude(root, "console.log(JSON.stringify({ event: 'turn_ended_with_error' }));");
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_FAILED");
+    assert.equal(result.failure.category, "generic");
+    const board = await loadBoard(boardDir);
+    const failed = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(failed.errorCode, "HARNESS_CLAUDE_RUNNER_FAILED");
+    assert.equal(failed.errorNextAction, "/makeitreal:status");
+  });
+});
+
+test("claude-code runner classifies timeouts separately", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeFakeClaude(root, `
+console.error('Request timed out after 30000ms');
+process.exit(1);
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_CLAUDE_RUNNER_TIMEOUT");
+    assert.equal(result.failure.category, "timeout");
+    const board = await loadBoard(boardDir);
+    const failed = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(failed.errorCategory, "timeout");
+    assert.equal(failed.errorNextAction, "/makeitreal:launch");
   });
 });
 

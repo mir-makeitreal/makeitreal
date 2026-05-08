@@ -9,6 +9,7 @@ import { sendMailboxMessage } from "../src/board/mailbox.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled } from "../src/config/project-config.mjs";
 import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
+import { runDoctor } from "../src/diagnostics/doctor.mjs";
 import { createHarnessError } from "../src/domain/errors.mjs";
 import { runGates } from "../src/gates/index.mjs";
 import { getClaudeHookStatus, installClaudeHooks } from "../src/hooks/claude-settings.mjs";
@@ -38,6 +39,7 @@ Internal commands used by Make It Real skills:
   blueprint reject <runDir>    Reject Blueprint review evidence
   setup <projectRoot>          Record the active Make It Real run
   status <projectRoot>         Show the active Make It Real run state
+  doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
   dashboard open <runDir>      Open the generated Kanban dashboard in the default browser
   hooks install <projectRoot>  Install Claude hook settings for a run
   hooks status <projectRoot>   Show Make It Real Claude hook status
@@ -169,6 +171,15 @@ function parseOptionalEnabledFlag(argv, flagName) {
     return { present: false, ok: true, enabled: null, errors: [] };
   }
   return { present: true, ...parseEnabledFlag(value, flagName) };
+}
+
+function parseDoctorRunDir(argv) {
+  const flagged = parseFlag(argv, "--run");
+  if (flagged) {
+    return flagged;
+  }
+  const positional = argv[2];
+  return positional && !positional.startsWith("--") ? positional : null;
 }
 
 function deterministicNow(argv = []) {
@@ -356,6 +367,16 @@ async function runCommand(argv) {
         errors: dashboard.errors
       }
     };
+  }
+
+  if (argv[0] === "doctor") {
+    const result = await runDoctor({
+      projectRoot: argv[1] ?? process.cwd(),
+      runDir: parseDoctorRunDir(argv),
+      env: process.env,
+      now: deterministicNow(argv)
+    });
+    return { exitCode: 0, result };
   }
 
   if (argv[0] === "dashboard" && argv[1] === "open") {

@@ -206,6 +206,8 @@ test("status projects board recovery phases through the public current-run surfa
     assert.equal(output.phase, "failed-fast");
     assert.equal(output.nextAction, "/makeitreal:status");
     assert.equal(output.boardStatus.failedFast[0].id, plan.workItemId);
+    assert.equal(output.boardStatus.failedFast[0].errorCode, "HARNESS_RUNNER_FAILED");
+    assert.equal(output.boardStatus.failedFast[0].errorCategory, null);
 
     const reconciled = await reconcileBoard({
       boardDir: plan.runDir,

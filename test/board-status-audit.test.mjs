@@ -125,17 +125,50 @@ test("board status explains Failed Fast retry and Rework without writing state",
     const workItem = board.workItems.find((item) => item.id === "work.login-ui");
     workItem.lane = "Failed Fast";
     workItem.nextRetryAt = "2026-05-06T00:00:01.000Z";
-    workItem.errorCode = "HARNESS_RUNNER_FAILED";
+    workItem.errorCode = "HARNESS_CLAUDE_HOOK_FAILED";
+    workItem.errorCategory = "hook-failure";
+    workItem.errorReason = "Claude Code hook execution failed.";
+    workItem.errorNextAction = "/makeitreal:doctor";
+    workItem.latestAttemptId = "work.login-ui.1777996800000";
     await writeJsonFile(boardPath, board);
     const before = await snapshot(watched);
 
     let result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.phase, "failed-fast");
-    assert.equal(result.nextAction, "/makeitreal:status");
-    assert.equal(result.blockers[0].code, "HARNESS_RUNNER_FAILED");
+    assert.equal(result.nextAction, "/makeitreal:doctor");
+    assert.equal(result.blockers[0].code, "HARNESS_CLAUDE_HOOK_FAILED");
+    assert.deepEqual(result.failedFast[0], {
+      id: "work.login-ui",
+      nextRetryAt: "2026-05-06T00:00:01.000Z",
+      attemptNumber: null,
+      errorCode: "HARNESS_CLAUDE_HOOK_FAILED",
+      errorCategory: "hook-failure",
+      errorReason: "Claude Code hook execution failed.",
+      latestAttemptId: "work.login-ui.1777996800000"
+    });
     assert.deepEqual(await snapshot(watched), before);
 
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:02.000Z") });
+    assert.equal(result.phase, "failed-fast");
+    assert.equal(result.nextAction, "/makeitreal:doctor");
+
+    const timeoutBoard = await readJsonFile(boardPath);
+    const timeoutItem = timeoutBoard.workItems.find((item) => item.id === "work.login-ui");
+    timeoutItem.nextRetryAt = "2026-05-06T00:00:05.000Z";
+    timeoutItem.errorCode = "HARNESS_CLAUDE_RUNNER_TIMEOUT";
+    timeoutItem.errorCategory = "timeout";
+    timeoutItem.errorReason = "Claude Code runner timed out.";
+    timeoutItem.errorNextAction = "/makeitreal:launch";
+    await writeJsonFile(boardPath, timeoutBoard);
+    const timeoutBefore = await snapshot(watched);
+
+    result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:02.000Z") });
+    assert.equal(result.phase, "failed-fast");
+    assert.equal(result.nextAction, "/makeitreal:status");
+    assert.equal(result.blockers[0].nextAction, "/makeitreal:status");
+    assert.deepEqual(await snapshot(watched), timeoutBefore);
+
+    result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:06.000Z") });
     assert.equal(result.phase, "failed-fast");
     assert.equal(result.nextAction, "/makeitreal:launch");
 

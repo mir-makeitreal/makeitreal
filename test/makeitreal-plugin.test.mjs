@@ -37,7 +37,7 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
   ]);
 
   const normalSkills = ["setup", "plan", "launch"];
-  const advancedSkills = ["verify", "status", "config"];
+  const advancedSkills = ["verify", "status", "config", "doctor"];
   for (const skillName of [...normalSkills, ...advancedSkills]) {
     const skill = await readPluginFile("skills", skillName, "SKILL.md");
     assert.match(skill, new RegExp(`name: ${skillName}`));
@@ -56,7 +56,7 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
 });
 
 test("Make It Real plugin registers user-facing slash commands", async () => {
-  const expectedCommands = ["setup", "plan", "launch", "status", "verify", "config"];
+  const expectedCommands = ["setup", "plan", "launch", "status", "verify", "config", "doctor"];
 
   for (const commandName of expectedCommands) {
     const command = await readPluginFile("commands", `${commandName}.md`);
@@ -85,7 +85,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
 
 test("Make It Real skills keep the browser dashboard read-only", async () => {
   const root = new URL("../plugins/makeitreal/skills/", import.meta.url);
-  const files = ["setup", "plan", "status", "launch", "verify"];
+  const files = ["setup", "plan", "status", "launch", "verify", "doctor"];
   for (const name of files) {
     const body = await readFile(new URL(`${name}/SKILL.md`, root), "utf8");
     assert.match(body, /read-only|observability/i, `${name} should describe dashboard as read-only observability`);

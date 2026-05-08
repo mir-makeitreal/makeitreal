@@ -7,7 +7,8 @@ const ACTIONS = {
   plan: "/makeitreal:plan <request>",
   launch: "/makeitreal:launch",
   status: "/makeitreal:status",
-  verify: "/makeitreal:verify"
+  verify: "/makeitreal:verify",
+  doctor: "/makeitreal:doctor"
 };
 
 export function actionForErrorCode(code) {
@@ -25,6 +26,11 @@ export function actionForErrorCode(code) {
     case "HARNESS_VERIFICATION_FAILED":
     case "HARNESS_DONE_EVIDENCE_MISSING":
       return ACTIONS.verify;
+    case "HARNESS_CLAUDE_RUNNER_STARTUP_FAILED":
+    case "HARNESS_CLAUDE_RUNNER_COMMAND_REJECTED":
+    case "HARNESS_CLAUDE_HOOK_FAILED":
+    case "HARNESS_RUNNER_OUTPUT_INVALID":
+      return ACTIONS.doctor;
     default:
       return ACTIONS.status;
   }
@@ -116,6 +122,13 @@ function firstByLane(board, lanes) {
   return (board.workItems ?? []).find((item) => lanes.includes(item.lane));
 }
 
+function failedFastNextAction(failedFast, canRetry) {
+  if (!canRetry && failedFast.errorNextAction === ACTIONS.launch) {
+    return ACTIONS.status;
+  }
+  return failedFast.errorNextAction ?? (canRetry ? ACTIONS.launch : ACTIONS.status);
+}
+
 export function summarizeBoardOperator({ board, activeClaims = [], blockedWork = [], retryReady = [], now = new Date(), audit = null }) {
   const errors = audit?.gateFailures ?? [];
   if (errors.length > 0) {
@@ -144,16 +157,21 @@ export function summarizeBoardOperator({ board, activeClaims = [], blockedWork =
   if (failedFast) {
     const retryReadyIds = new Set(retryReady.map((item) => item.id));
     const canRetry = retryReadyIds.has(failedFast.id) || !failedFast.nextRetryAt || new Date(failedFast.nextRetryAt).getTime() <= now.getTime();
+    const retryDetail = canRetry
+      ? `${failedFast.id} is ready to retry.`
+      : `${failedFast.id} can retry after ${failedFast.nextRetryAt}.`;
+    const reasonDetail = failedFast.errorReason ? ` ${failedFast.errorReason}` : "";
+    const nextAction = failedFastNextAction(failedFast, canRetry);
     return {
       phase: "failed-fast",
       headline: canRetry ? "Runner failed fast and can be retried." : "Runner failed fast and is waiting for retry time.",
       blockers: [{
         code: failedFast.errorCode ?? "HARNESS_RUNNER_FAILED",
-        message: canRetry ? `${failedFast.id} is ready to retry.` : `${failedFast.id} can retry after ${failedFast.nextRetryAt}.`,
-        nextAction: canRetry ? ACTIONS.launch : ACTIONS.status,
+        message: `${retryDetail}${reasonDetail}`,
+        nextAction,
         authority: "orchestrator"
       }],
-      nextAction: canRetry ? ACTIONS.launch : ACTIONS.status
+      nextAction
     };
   }
 

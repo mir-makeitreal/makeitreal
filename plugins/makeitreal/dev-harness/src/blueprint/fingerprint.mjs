@@ -35,6 +35,10 @@ function normalizeFingerprintValue(relativePath, value) {
         attemptNumber,
         nextRetryAt,
         errorCode,
+        errorCategory,
+        errorReason,
+        errorNextAction,
+        latestAttemptId,
         ...stableWorkItem
       } = workItem;
       return stableWorkItem;

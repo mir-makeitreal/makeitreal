@@ -6,7 +6,7 @@ import { appendBoardEvent } from "../board/board-store.mjs";
 import { validateChangedPaths } from "../board/responsibility-boundaries.mjs";
 import { resolveBlueprintRunDir, validateBoardBlueprintApproval } from "../blueprint/review.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
-import { FAILURE_EVENTS, normalizeRuntimeEvent } from "../domain/runtime-events.mjs";
+import { FAILURE_EVENTS, classifyRunnerFailure, normalizeRuntimeEvent } from "../domain/runtime-events.mjs";
 import { fileExists, listJsonFiles, readJsonFile, writeJsonFile } from "../io/json.mjs";
 import { createRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
 import { resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
@@ -772,6 +772,16 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     workItem
   });
   const ok = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && boundary.ok && metadataBoundary.ok;
+  const outputErrors = [...(parsed.errors ?? []), ...metadataBoundary.errors, ...boundary.errors];
+  const failure = ok ? null : classifyRunnerFailure({
+    failedToStart,
+    exitCode: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    error: result.error,
+    events: parsedEvents,
+    errors: outputErrors
+  });
 
   await updateRunAttempt({
     boardDir,
@@ -788,7 +798,8 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
         promptPath: handoff.promptPath,
         exitCode: result.status,
         stdout: truncate(result.stdout),
-        stderr: truncate(result.stderr)
+        stderr: truncate(result.stderr),
+        failure
       }
     }
   });
@@ -797,22 +808,17 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     return { ok: true, attemptId: attempt.attemptId, workspace: workspace.workspace, events, errors: [] };
   }
 
-  const outputErrors = [...(parsed.errors ?? []), ...metadataBoundary.errors, ...boundary.errors];
-  const failureEvent = parsedEvents.find((event) => FAILURE_EVENTS.has(event));
   return {
     ok: false,
     attemptId: attempt.attemptId,
     workspace: workspace.workspace,
     events,
+    failure,
     errors: outputErrors.length > 0 ? outputErrors : [createHarnessError({
-      code: failedToStart ? "HARNESS_CLAUDE_RUNNER_STARTUP_FAILED" : "HARNESS_CLAUDE_RUNNER_FAILED",
-      reason: failedToStart
-        ? `Claude Code runner failed to start: ${result.error.message}`
-        : failureEvent
-          ? `Claude Code runner emitted failure event: ${failureEvent}.`
-          : `Claude Code runner exited with status ${result.status}.`,
+      code: failure.code,
+      reason: failure.reason,
       ownerModule: workItem.responsibilityUnitId ?? null,
-      evidence: [handoff.handoffPath],
+      evidence: failure.evidence?.length > 0 ? failure.evidence : [handoff.handoffPath],
       recoverable: true
     })]
   };
