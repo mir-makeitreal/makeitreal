@@ -57,6 +57,11 @@ for (const [label, readSkill] of [
     assert.match(skill, /MAKEITREAL_WORK_ITEM_ID/);
     assert.match(skill, /selective context/i);
     assert.match(skill, /contract-first slicing/i);
+    assert.match(skill, /dynamic role handoff/i);
+    assert.match(skill, /pre-created Claude agent files/i);
+    assert.match(skill, /DONE_WITH_CONCERNS/);
+    assert.match(skill, /NEEDS_CONTEXT/);
+    assert.match(skill, /Direct free-form agent-to-agent chat/i);
   });
 
   test(`${label} verify skill uses stop-the-line root-cause recovery`, async () => {
@@ -93,16 +98,25 @@ test("implementation plans are self-contained and do not require external workfl
   }
 });
 
-test("GSD and Spec Kit review captures native-compatible subagent architecture without external dependency", async () => {
+test("GSD and Spec Kit review captures dynamic subagent architecture without external agent dependency", async () => {
   const review = await readFile(gsdSpecKitReviewPath, "utf8");
 
   assert.match(review, /Superpowers Subagent-Driven Development Review/);
   assert.match(review, /fresh subagent per work item attempt/i);
   assert.match(review, /spec compliance reviewer/i);
   assert.match(review, /code quality reviewer/i);
-  assert.match(review, /Claude[- ]native subagent/i);
-  assert.match(review, /\.claude\/agents/);
+  assert.match(review, /Native Claude Compatibility Without Pre-Created Agents/);
+  assert.match(review, /Selective Adoption Decision/);
+  assert.match(review, /pre-created role agents are not/i);
+  assert.match(review, /dynamic prompts and handoff packets/i);
+  assert.match(review, /Dynamic role handoff templates/i);
+  assert.match(review, /Control-plane coordination/i);
+  assert.match(review, /Direct free-form agent-to-agent chat/i);
+  assert.match(review, /Worker self-scoping/i);
+  assert.match(review, /optional .*\.claude\/agents/);
+  assert.match(review, /drifts from the engine-generated handoff/i);
   assert.match(review, /does not require\s+Superpowers/i);
   assert.match(review, /must stay self-contained/i);
   assert.doesNotMatch(review, /REQUIRED SUB-SKILL/i);
+  assert.doesNotMatch(review, /should therefore ship a small plugin `agents` roster/i);
 });

@@ -67,6 +67,12 @@ const FAILURE_CLASSES = Object.freeze({
     reason: "Runner changed files outside the declared responsibility boundary.",
     nextAction: "/makeitreal:status"
   },
+  agentStatus: {
+    category: "agent-status",
+    code: "HARNESS_AGENT_STATUS_FAILED",
+    reason: "Implementation worker did not report a clean DONE status.",
+    nextAction: "/makeitreal:status"
+  },
   output: {
     category: "output",
     code: "HARNESS_RUNNER_OUTPUT_INVALID",
@@ -95,6 +101,10 @@ function firstClassifiedBoundaryError(errors) {
 
 function firstOutputError(errors) {
   return (errors ?? []).find((error) => error?.code === "HARNESS_RUNNER_OUTPUT_INVALID");
+}
+
+function firstAgentStatusError(errors) {
+  return (errors ?? []).find((error) => typeof error?.code === "string" && error.code.startsWith("HARNESS_AGENT_"));
 }
 
 export function classifyRunnerFailure({
@@ -133,6 +143,16 @@ export function classifyRunnerFailure({
       ...FAILURE_CLASSES.output,
       reason: outputError.reason,
       evidence: outputError.evidence ?? evidence
+    };
+  }
+
+  const agentStatusError = firstAgentStatusError(errors);
+  if (agentStatusError) {
+    return {
+      ...FAILURE_CLASSES.agentStatus,
+      code: agentStatusError.code,
+      reason: agentStatusError.reason,
+      evidence: agentStatusError.evidence ?? evidence
     };
   }
 

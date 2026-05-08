@@ -8,6 +8,12 @@ import { resolveBlueprintRunDir, validateBoardBlueprintApproval } from "../bluep
 import { createHarnessError } from "../domain/errors.mjs";
 import { FAILURE_EVENTS, classifyRunnerFailure, normalizeRuntimeEvent } from "../domain/runtime-events.mjs";
 import { fileExists, listJsonFiles, readJsonFile, writeJsonFile } from "../io/json.mjs";
+import {
+  buildDynamicRoleHandoff,
+  extractAgentReport,
+  renderDynamicRolePrompt,
+  validateAgentReports
+} from "./dynamic-role-handoff.mjs";
 import { createRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
 import { resolveProjectRootForRun, resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
 
@@ -215,7 +221,7 @@ export function validateClaudeRunnerCommand(command) {
   return parseClaudeRunnerArgs(args);
 }
 
-function renderPrompt({ board, workItem, dependencyArtifacts = [] }) {
+function renderPrompt({ board, workItem, dependencyArtifacts = [], roleHandoff }) {
   return `# Make It Real Work Item
 
 Board: ${board.boardId}
@@ -244,6 +250,8 @@ ${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
 
 ## dependencyArtifacts
 ${dependencyArtifacts.length > 0 ? dependencyArtifacts.map((artifact) => `- ${artifact.path} from ${artifact.fromWorkItemId}`).join("\n") : "- none"}
+
+${renderDynamicRolePrompt(roleHandoff)}
 
 ## Source Artifacts
 - .makeitreal/source/prd.json
@@ -628,6 +636,10 @@ async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blue
   await mkdir(handoffDir, { recursive: true });
   const responsibilityUnits = await readJsonFile(path.join(runDir, "responsibility-units.json"));
   const source = await stageSourceArtifacts({ boardDir, runDir, board, workItem, handoffDir });
+  const roleHandoff = buildDynamicRoleHandoff({
+    workItem,
+    verificationCommand: workItem.verificationCommands?.[0] ?? null
+  });
   const handoff = {
     schemaVersion: "1.0",
     runnerMode: "claude-code",
@@ -649,6 +661,7 @@ async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blue
     contractArtifacts: source.contractArtifacts,
     sourceDir: source.sourceDir,
     sourceArtifacts: source.staged,
+    dynamicRole: roleHandoff,
     rules: [
       "PRD and blueprint artifacts are the source of truth.",
       "Do not edit outside allowedPaths.",
@@ -660,10 +673,10 @@ async function writeHandoff({ boardDir, runDir, board, workItem, workspace, blue
   };
   const handoffPath = path.join(handoffDir, "handoff.json");
   const promptPath = path.join(handoffDir, "prompt.md");
-  const prompt = renderPrompt({ board, workItem, dependencyArtifacts });
+  const prompt = renderPrompt({ board, workItem, dependencyArtifacts, roleHandoff });
   await writeJsonFile(handoffPath, handoff);
   await writeFile(promptPath, prompt, "utf8");
-  return { handoffPath, promptPath, prompt };
+  return { handoffPath, promptPath, prompt, roleHandoff };
 }
 
 function jsonRecords(stdout) {
@@ -734,6 +747,7 @@ function parseRunnerEvents({ stdout, now, workItem, workerId, attemptId }) {
 
   const events = [];
   const errors = [];
+  const agentReports = [];
   for (const record of records) {
     const eventName = eventNameFromRecord(record);
     if (!eventName) {
@@ -761,9 +775,16 @@ function parseRunnerEvents({ stdout, now, workItem, workerId, attemptId }) {
     } else {
       events.push(normalized.event.event);
     }
+    const report = extractAgentReport({ record, workItem, workerId, attemptId, now });
+    if (!report.ok) {
+      errors.push(...report.errors);
+      events.push("malformed");
+    } else if (report.report) {
+      agentReports.push(report.report);
+    }
   }
 
-  return { ok: errors.length === 0, events, errors };
+  return { ok: errors.length === 0, events, errors, agentReports };
 }
 
 export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId, runnerCommand, now, cwd }) {
@@ -856,7 +877,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
 
   const failedToStart = result.error instanceof Error;
   const parsed = failedToStart || result.status !== 0
-    ? { ok: result.status === 0 && !failedToStart, events: [failedToStart ? "startup_failed" : "turn_failed"], errors: [] }
+    ? { ok: result.status === 0 && !failedToStart, events: [failedToStart ? "startup_failed" : "turn_failed"], errors: [], agentReports: [] }
     : parseRunnerEvents({ stdout: result.stdout, now, workItem, workerId, attemptId: attempt.attemptId });
 
   const parsedEvents = parsed.events.length > 0 ? parsed.events : ["malformed"];
@@ -879,6 +900,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
 
   const hasSuccess = parsedEvents.some((event) => SUCCESS_EVENTS.has(event));
   const hasFailure = parsedEvents.some((event) => FAILURE_EVENTS.has(event));
+  const agentReportValidation = validateAgentReports({ reports: parsed.agentReports, workItem });
   const changedPaths = await listChangedWorkspaceFiles(workspace.workspace, mutableWorkspaceSnapshot);
   const boundary = validateChangedPaths({ workItem, changedPaths });
   const metadataBoundary = await validateImmutableMetadata({
@@ -886,12 +908,12 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
     snapshot: immutableMetadataSnapshot,
     workItem
   });
-  const runnerOk = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && boundary.ok && metadataBoundary.ok;
+  const runnerOk = !failedToStart && result.status === 0 && parsed.ok && hasSuccess && !hasFailure && agentReportValidation.ok && boundary.ok && metadataBoundary.ok;
   const applyResult = runnerOk
     ? await applyWorkspaceChangesToProject({ projectRoot, workspace: workspace.workspace, changedPaths })
     : { ok: true, applied: false, projectRoot, appliedPaths: [], errors: [] };
   const ok = runnerOk && applyResult.ok;
-  const outputErrors = [...(parsed.errors ?? []), ...metadataBoundary.errors, ...boundary.errors, ...applyResult.errors];
+  const outputErrors = [...(parsed.errors ?? []), ...agentReportValidation.errors, ...metadataBoundary.errors, ...boundary.errors, ...applyResult.errors];
   const failure = ok ? null : classifyRunnerFailure({
     failedToStart,
     exitCode: result.status,
@@ -915,6 +937,8 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
         executable,
         handoffPath: handoff.handoffPath,
         promptPath: handoff.promptPath,
+        dynamicRole: handoff.roleHandoff,
+        agentReports: parsed.agentReports ?? [],
         projectRoot,
         stagedProjectPaths: stagedProject.stagedPaths,
         changedPaths,

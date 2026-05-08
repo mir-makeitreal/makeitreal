@@ -91,7 +91,19 @@ const prd = JSON.parse(fs.readFileSync(path.join(sourceDir, 'prd.json'), 'utf8')
 const designPack = JSON.parse(fs.readFileSync(path.join(sourceDir, 'design-pack.json'), 'utf8'));
 fs.mkdirSync('apps/web/auth', { recursive: true });
 fs.writeFileSync('apps/web/auth/runner-output.txt', [prd.id, designPack.workItemId, process.env.MAKEITREAL_WORK_ITEM_ID].join('|'));
-console.log(JSON.stringify({ event: 'turn_completed' }));
+console.log(JSON.stringify({
+  event: 'turn_completed',
+  makeitrealReport: {
+    role: 'implementation-worker',
+    status: 'DONE',
+    summary: 'Implemented login UI fixture output.',
+    changedFiles: ['apps/web/auth/runner-output.txt'],
+    tested: ['fixture fake claude'],
+    concerns: [],
+    needsContext: [],
+    blockers: []
+  }
+}));
 `);
     const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
       boardDir,
@@ -116,10 +128,18 @@ console.log(JSON.stringify({ event: 'turn_completed' }));
     assert.deepEqual(handoff.workItem.allowedPaths, ["apps/web/auth/**"]);
     assert.equal(handoff.blueprintReview.status, "approved");
     assert.equal(handoff.blueprintReview.reviewedBy, "operator:fixture");
+    assert.equal(handoff.dynamicRole.role, "implementation-worker");
+    assert.equal(handoff.dynamicRole.coordination.mode, "control-plane-mediated");
+    assert.deepEqual(handoff.dynamicRole.statusProtocol, ["DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"]);
+    assert.deepEqual(handoff.dynamicRole.assignment.allowedPaths, ["apps/web/auth/**"]);
+    assert.equal(handoff.dynamicRole.assignment.verificationCommand.file, "node");
     assert.equal(handoff.contractArtifacts.some((artifact) => artifact.endsWith("contracts/auth-login.openapi.json")), true);
     assert.equal(handoff.sourceArtifacts.some((artifact) => artifact.endsWith("blueprint-review.json")), true);
     assert.equal(handoff.rules.some((rule) => /Do not edit outside allowedPaths/.test(rule)), true);
     assert.match(prompt, /Title: Implement login UI against auth contract/);
+    assert.match(prompt, /Dynamic Role Handoff/);
+    assert.match(prompt, /Report Status Protocol/);
+    assert.match(prompt, /direct free-form agent-to-agent chat/);
     const stagedReview = await readJsonFile(path.join(workspace, ".makeitreal", "source", "blueprint-review.json"));
     assert.equal(stagedReview.status, "approved");
     const stagedContract = await readJsonFile(path.join(workspace, ".makeitreal", "source", "contracts", "auth-login.openapi.json"));
@@ -130,6 +150,53 @@ console.log(JSON.stringify({ event: 'turn_completed' }));
 
     const board = await loadBoard(boardDir);
     assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Verifying");
+    const attempt = await readRunAttempt({ boardDir, attemptId: "work.login-ui.1778025600000" });
+    assert.equal(attempt.runner.dynamicRole.role, "implementation-worker");
+    assert.equal(attempt.runner.agentReports[0].status, "DONE");
+  });
+});
+
+test("claude-code runner records dynamic role report and rejects blocked worker status", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeFakeClaude(root, `
+console.log(JSON.stringify({
+  event: 'turn_completed',
+  makeitrealReport: {
+    role: 'implementation-worker',
+    status: 'BLOCKED',
+    summary: 'Cannot proceed without a contract decision.',
+    changedFiles: [],
+    tested: [],
+    concerns: [],
+    needsContext: ['Which API response schema is authoritative?'],
+    blockers: ['Missing frozen response schema']
+  }
+}));
+`);
+    const result = await withFakeClaudeOnPath(root, () => orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-05-06T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerCommand: {
+        file: "claude",
+        args: VALID_CLAUDE_ARGS
+      }
+    }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_AGENT_BLOCKED");
+    assert.equal(result.failure.category, "agent-status");
+    const board = await loadBoard(boardDir);
+    const failed = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(failed.lane, "Failed Fast");
+    assert.equal(failed.errorCode, "HARNESS_AGENT_BLOCKED");
+
+    const attempt = await readRunAttempt({ boardDir, attemptId: "work.login-ui.1778025600000" });
+    assert.equal(attempt.runner.agentReports[0].status, "BLOCKED");
+    assert.deepEqual(attempt.runner.agentReports[0].blockers, ["Missing frozen response schema"]);
   });
 });
 

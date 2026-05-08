@@ -43,9 +43,8 @@ Make It Real does not yet have:
 
 - A first-class project constitution/governance artifact.
 - Brownfield codebase mapping before planning.
-- A durable agent-role catalog with model/tool profiles.
-- Claude-native Make It Real subagent definitions that appear in Claude Code's
-  `/agents` UI and can be selected through native subagent invocation.
+- A durable dynamic handoff and review-loop protocol for implementer, spec
+  reviewer, quality reviewer, and verifier roles.
 - Wave-level execution planning visible to users.
 - A progress-next command that selects the next appropriate public action.
 - Lifecycle commands for ship/archive/milestone/release.
@@ -71,7 +70,7 @@ The most relevant GSD concepts are:
 | Manual acceptance verification | Verification is not only "tests ran"; broken work produces a fix plan. | Adopt as verification debt and rework plan artifact. |
 | Model profiles | Users can choose quality, balanced, or budget profiles. | Adopt as runner profiles, but do not let profiles weaken gates. |
 | Workflow feature toggles | Research, plan-check, verifier, and parallelization can be enabled/disabled. | Adopt as semantic config profiles with deterministic engine validation. |
-| Agent role roster | Researchers, planners, checkers, executors, verifiers have distinct prompts and tools. | Adopt a smaller Make It Real role catalog scoped to contract-first work. |
+| Agent role roster | Researchers, planners, checkers, executors, verifiers have distinct prompts and tools. | Adopt the role separation as dynamic prompt/handoff contracts, not as required pre-created agents. |
 | Progress-next | User can ask the system to pick the next workflow action. | Adopt as `/mir:next` or a status-driven recommendation before adding more commands. |
 
 ### What To Avoid From GSD
@@ -101,7 +100,7 @@ does not ask workers to read the parent chat or the whole run directory.
 | Superpowers Pattern | Make It Real Adaptation | Claude Native Compatibility |
 | --- | --- | --- |
 | Fresh subagent per task | Fresh subagent per work item attempt; resume only the same implementer for review fixes on the same work item. | Use Claude Code subagents with separate context windows. |
-| Controller provides full task context | Engine writes `agent-handoff.json` and prompt from PRD slice, Blueprint work item, contracts, dependency artifacts, allowed paths, and verification command. | Handoff prompt can be passed to a plugin/project subagent through native `@agent` or `--agent` flows. |
+| Controller provides full task context | Engine writes `agent-handoff.json` and prompt from PRD slice, Blueprint work item, contracts, dependency artifacts, allowed paths, and verification command. | Handoff prompt can be passed through Claude native subagent invocation when available; the structured runner remains the automation fallback. |
 | Implementer reports `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED` | Map status to board events: `DONE` enters review, `DONE_WITH_CONCERNS` opens a review blocker, `NEEDS_CONTEXT` asks the operator or planner for missing context, `BLOCKED` fast-fails with root cause and rework planning. | Status is plain text plus structured output captured by the runner, so it works with native agents and CLI automation. |
 | Spec compliance review before quality review | Add a `spec-reviewer` role that checks actual diff against PRD, Blueprint, contracts, and acceptance criteria before any quality review. | Reviewer can be a read-only Claude subagent with `Read`, `Glob`, `Grep`, and bounded `Bash` verification tools. |
 | Code quality review after spec compliance | Add a `quality-reviewer` role that checks boundaries, naming, tests, maintainability, and overengineering only after spec compliance passes. | Reviewer can be a second native subagent; it receives base/head diff and spec-review evidence, not broad session context. |
@@ -132,30 +131,45 @@ does not ask workers to read the parent chat or the whole run directory.
 8. The run-level verification reviewer checks all work items and evidence before
    Done.
 
-### Native Claude Agent Surface
+### Native Claude Compatibility Without Pre-Created Agents
 
 Claude Code stores subagents as Markdown files with YAML frontmatter in
 project-level `.claude/agents/`, user-level `~/.claude/agents/`, CLI-provided
 `--agents` JSON, managed settings, or a plugin `agents/` directory. Make It Real
-should therefore ship a small plugin `agents/` roster and optionally allow
-`/mir:setup` to copy stricter project-level agents when a project wants local
-overrides.
+should remain compatible with those surfaces, but should not require
+pre-created role agents for the core harness.
 
-Initial native-compatible agents:
+The MVP should treat every subagent invocation as dynamic:
 
-| Agent | Purpose | Default Tools |
+| Dynamic Role | Purpose | What The Handoff Provides |
 | --- | --- | --- |
-| `makeitreal-repo-mapper` | Read-only brownfield map before planning. | `Read`, `Glob`, `Grep`, safe `Bash` for listing/tests discovery. |
-| `makeitreal-implementation-worker` | Implement one approved work item from `agent-handoff.json`. | `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, bounded `Bash`. |
-| `makeitreal-spec-reviewer` | Verify implementation against PRD, Blueprint, contracts, and acceptance criteria. | Read-only tools plus bounded verification `Bash`. |
-| `makeitreal-quality-reviewer` | Review maintainability, naming, modularity, tests, and overengineering after spec compliance. | Read-only tools plus bounded verification `Bash`. |
-| `makeitreal-verification-reviewer` | Check final evidence, unresolved concerns, dependency artifacts, and Done readiness. | Read-only tools. |
+| Repository mapper | Read-only brownfield map before planning. | Files to inspect, questions to answer, and read-only constraints. |
+| Implementation worker | Implement one approved work item. | Work item, contracts, allowed paths, dependency artifacts, verification command, and report-status contract. |
+| Spec reviewer | Verify implementation against PRD, Blueprint, contracts, and acceptance criteria. | Task requirements, changed files or diff range, contract docs, and implementer report. |
+| Quality reviewer | Review maintainability, naming, modularity, tests, and overengineering after spec compliance. | Passing spec-review evidence, diff range, local quality rules, and test evidence. |
+| Verification reviewer | Check final evidence, unresolved concerns, dependency artifacts, and Done readiness. | Board summary, verification evidence, wiki or skip evidence, review debt, and remaining blockers. |
 
-Plugin-level agents should avoid frontmatter fields that Claude ignores for
-plugin subagents, such as per-agent hooks or permission modes. Make It Real's
-existing hooks and runner boundary checks remain the enforcement layer. If a
-project needs stricter per-agent hooks, setup can materialize project-level
-`.claude/agents/` files where those fields are supported.
+Optional Claude native agent shells can be added later as adapters for
+discoverability, tool/model defaults, or `/agents` UI ergonomics. They must never
+be the authority for scope, contracts, approval, or Done. If an optional shell
+drifts from the engine-generated handoff, the Blueprint handoff wins.
+
+### Selective Adoption Decision
+
+Make It Real should be critical about what it absorbs. The useful unit is the
+coordination architecture, not the presence of named agent files.
+
+| Decision | Adopt | Why |
+| --- | --- | --- |
+| Adopt now | Dynamic role handoff templates for implementer, spec reviewer, quality reviewer, verifier, and rework planner. | This gives each subagent precise behavior without creating persistent role shells that can drift. |
+| Adopt now | Structured status protocol: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`. | These states are small enough for LLMs to follow and map cleanly to board events, review debt, clarification, and fail-fast recovery. |
+| Adopt now | Spec-compliance review before quality review. | It prevents clean-looking code that does not implement the approved Blueprint. |
+| Adopt now | Control-plane coordination through board events, dependency artifacts, mailbox entries, claims, and review debt. | Subagents stay narrow; the orchestrator owns lifecycle and coordination. |
+| Defer | Pre-created `.claude/agents/` or plugin `agents/` role shells. | They may improve discoverability later, but they are not required for correctness and can confuse authority boundaries. |
+| Defer | Per-role model/tool profiles. | Useful after the dynamic handoff contract stabilizes; premature profiles would add config surface before the core loop is proven. |
+| Reject | Direct free-form agent-to-agent chat. | It hides decisions from the board and weakens contract-first traceability. |
+| Reject | Worker self-scoping by reading broad run state or parent conversation history. | Scope must come from the approved handoff packet, not from worker inference. |
+| Reject | Parallel implementation without disjoint-path, disjoint-owner, dependency, and frozen-contract proof. | Speed is not worth boundary leaks or conflicting edits. |
 
 ### Guardrails
 
@@ -169,10 +183,10 @@ project needs stricter per-agent hooks, setup can materialize project-level
 - A `DONE_WITH_CONCERNS` report is not a pass; it becomes explicit review debt.
 - `NEEDS_CONTEXT` should create an operator-facing clarification or planner
   rework item, not a silent fallback.
-- Native Claude subagent compatibility is a product requirement: Make It Real
-  should work through Claude Code's `/agents` UI, explicit agent mentions, and
-  plugin-provided agent definitions, with the current structured runner kept as
-  the automation fallback.
+- Native Claude subagent compatibility is a product requirement, but
+  pre-created role agents are not. The core path should work through dynamic
+  prompts and handoff packets, with optional `.claude/agents/`, `--agents`, or
+  plugin `agents/` shells treated only as adapters.
 
 ## Spec Kit Review
 
@@ -216,7 +230,7 @@ These should be implemented before broadening the product surface.
 | Brownfield map | GSD and Spec Kit Brownfield | Read-only repo map containing stack, test commands, modules/responsibility candidates, existing contracts, naming conventions, and reusable modules. | `plan` can propose boundaries from map without exposing internal harness terms. |
 | Blueprint clarification artifact | Spec Kit clarify | `clarifications.json` with question, answer, affected spec section, and decision provenance. | AskUserQuestion answers are recorded and shown in dashboard Blueprint docs. |
 | Blueprint quality checker | GSD plan-checker | Engine validates PRD/design/contract/task traceability before Ready. | New gate errors distinguish missing acceptance criteria, missing boundary contract, missing verification, and untraceable work item. |
-| Agent role catalog | GSD agent roster and Superpowers SDD | Small Claude-native role set: `repo-mapper`, `implementation-worker`, `spec-reviewer`, `quality-reviewer`, `verification-reviewer`, `rework-planner`. | Plugin/project agent files are valid Claude native subagents; launch docs select roles without broad context dumping; tests assert role prompts stay scoped. |
+| Dynamic role handoff protocol | GSD agent roster and Superpowers SDD | Implementer, spec-reviewer, quality-reviewer, verifier, and rework-planner roles are generated as per-work dynamic prompts and handoff packets. | Tests assert generated prompts are scoped, self-contained, and do not require pre-created `.claude/agents/` files. |
 | Execution waves | GSD execute-phase and Superpowers SDD | Board dependency graph projects wave 1/2/3 and launch reports wave state; implementation fan-out is allowed only for disjoint work items with frozen contracts. | Dashboard and status show wave grouping; orchestrator dispatch respects wave boundaries and blocks conflicting implementation agents. |
 | Progress-next | GSD progress | `/mir:next` or `/mir:status --next` recommends setup/plan/review/launch/verify/rework/done. | No raw engine fields; recommendation is derived from run status and gate blockers. |
 
@@ -246,7 +260,7 @@ These should be implemented before broadening the product surface.
 | PRD/spec creation | Yes | Needs constitution and clarification trace. | P0 |
 | Technical plan/design pack | Yes | Needs research notes, quality checker, data model/quickstart slots. | P0 |
 | Task breakdown | Yes, as Kanban work items | Needs wave projection and traceability visualization. | P0 |
-| Scoped execution | Yes | Needs first-class role catalog, Superpowers-style review loop, and Claude native subagent routing. | P0 |
+| Scoped execution | Yes | Needs dynamic implementer/reviewer loop and Claude native-compatible invocation, not pre-created agents. | P0 |
 | Verification | Yes | Needs verification debt and rework planning. | P1 |
 | Status/progress | Yes | Needs progress-next and resume packet. | P0/P1 |
 | Config | Basic semantic profiles | Needs runner/model/workflow profiles. | P1 |
@@ -259,7 +273,7 @@ These should be implemented before broadening the product surface.
 
 1. Constitution and brownfield map.
 2. Clarification artifact and Blueprint quality checker.
-3. Claude-native agent role catalog and Superpowers-style implementer /
+3. Dynamic subagent handoff protocol and Superpowers-style implementer /
    spec-reviewer / quality-reviewer loop.
 4. Wave projection with conflict-safe fan-out.
 5. Progress-next and resume packet.

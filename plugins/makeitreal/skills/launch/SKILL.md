@@ -49,6 +49,8 @@ The runner prompt must state that other files, other work items, and undeclared 
 
 Use contract-first slicing when parallel frontend/backend/data work is required: define contracts first, then launch scoped backend and frontend/data work items against the same frozen contract. Use vertical slices when one responsibility unit can own a complete, testable path.
 
+Do not require pre-created Claude agent files for scoped work. Launch should inject a dynamic role handoff into the work-item prompt and `.makeitreal/handoff.json` each time. The role handoff must define the implementation-worker role, control-plane-mediated coordination, the allowed status protocol (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`), and the spec-reviewer -> quality-reviewer -> verification-reviewer review loop. Direct free-form agent-to-agent chat is not a coordination mechanism; use board events, dependency artifacts, mailbox entries, claims, and review debt.
+
 ## Internal Runner Selection
 
 - Use the scripted simulator only for fixture tests or explicit dry runs.
