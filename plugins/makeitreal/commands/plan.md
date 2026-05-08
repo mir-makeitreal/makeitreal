@@ -60,4 +60,16 @@ Lead with what will be delivered, not engine state. Use compact Markdown tables:
 
 Do not lead with raw engine fields such as `planOk`, `implementationReady`, `HARNESS_*` codes, fingerprint hashes, run ids, run directories, owner ids, contract ids, lane names, or allowed-path lists. Diagnostics belong only in a short secondary note when the plan failed or the user asks for details.
 
+After the report, ask one Claude Code `AskUserQuestion` review question in the user's language. The question should offer the natural decision paths: approve and launch, request changes, or reject. Make the prompt clear that a free-form answer is also acceptable.
+
+If the question returns an answer, send that answer through the same LLM review judge instead of deciding from the selected option text:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --prompt "<full AskUserQuestion answer>" --context "<Blueprint report just shown>" --session question-ui --project-root "$CLAUDE_PROJECT_DIR"
+```
+
+Do not branch on the selected label. The `blueprint review` command owns approval, rejection, revision-request classification, and `blueprint-review.json` writes.
+
+If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will send that reply to the same LLM review judge. `/makeitreal:plan approve` and `/makeitreal:plan reject` are scriptable fallbacks, not the primary UX.
+
 Do not implement during planning. Launch only after Blueprint approval evidence exists.

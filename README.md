@@ -79,9 +79,10 @@ also valid. With no active run it plans first, opens/reports the Blueprint
 dashboard, and stops for review. It does not execute code before Blueprint
 approval.
 
-Review the generated Blueprint and browser dashboard. Approval is normally
-handled conversationally by the plugin hook's LLM judge. For scripts or explicit
-fallbacks, use:
+Review the generated Blueprint and browser dashboard. The plan command asks a
+Claude Code review question after showing the Blueprint; that answer, and any
+later natural-language chat reply, is classified by the same LLM judge. For
+scripts or explicit fallbacks, use:
 
 ```text
 /makeitreal:plan approve

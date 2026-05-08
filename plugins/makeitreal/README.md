@@ -56,9 +56,9 @@ Kanban state, run-packet layout, and evidence model, see
 - Plan and setup both ensure `/.makeitreal/` is present in the project
   `.gitignore` before runtime state is written. Setup is not a per-project
   prerequisite for new work.
-- Blueprint approval is required before launch. Conversational approval is
-  classified by an LLM judge; `/makeitreal:plan approve` remains the explicit
-  scriptable fallback.
+- Blueprint approval is required before launch. The plan review question and
+  later conversational replies are classified by the same LLM judge;
+  `/makeitreal:plan approve` remains the explicit scriptable fallback.
 - Launch runs through the internal engine using the `claude-code` runner trust
   policy for real Claude Code execution.
 - The dashboard may auto-open and auto-refresh, but it remains read-only. State

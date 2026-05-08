@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { seedBlueprintReview } from "../src/blueprint/review.mjs";
@@ -13,6 +13,21 @@ function runHarness(args, options = {}) {
     encoding: "utf8",
     env: options.env ?? process.env
   });
+}
+
+async function writeApprovalJudgeFixture(root, result) {
+  const scriptPath = `${root}/approval-judge-fixture.mjs`;
+  await writeFile(scriptPath, [
+    "#!/usr/bin/env node",
+    `const result = ${JSON.stringify(result)};`,
+    "process.stdout.write(JSON.stringify({ result: JSON.stringify(result) }));"
+  ].join("\n"));
+  return {
+    MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
+      file: process.execPath,
+      args: [scriptPath]
+    })
+  };
 }
 
 test("blueprint approve and reject write operator review evidence", async () => {
@@ -62,5 +77,47 @@ test("blueprint decision failures are no-write", async () => {
     assert.equal(await readFile(reviewPath, "utf8"), malformedBefore);
 
     await rm(path.join(runDir, ".makeitreal"), { recursive: true, force: true });
+  });
+});
+
+test("blueprint review classifies question UI answers through the LLM judge", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const judgeEnv = await writeApprovalJudgeFixture(root, {
+      decision: "approved",
+      launchRequested: true,
+      confidence: "high",
+      reason: "The operator approved the Blueprint from the review question UI."
+    });
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      runDir,
+      "--prompt",
+      "승인하고 바로 시작",
+      "--context",
+      "Blueprint review question shown after the operator-facing report.",
+      "--session",
+      "question-ui",
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ], {
+      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.command, "blueprint review");
+    assert.equal(output.action, "approved");
+    assert.equal(output.launchRequested, true);
+    assert.match(output.additionalContext, /Blueprint approval has been recorded/);
+
+    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
+    assert.equal(review.status, "approved");
+    assert.equal(review.reviewSource, "makeitreal:interactive-review:llm");
+    assert.equal(review.reviewedBy, "operator:question-ui");
+    assert.match(review.decisionNote, /LLM interactive Blueprint review decision/);
   });
 });

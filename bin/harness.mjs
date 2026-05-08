@@ -6,6 +6,7 @@ import { loadBoard } from "../src/board/board-store.mjs";
 import { claimWorkItem } from "../src/board/claim-store.mjs";
 import { getReadyWorkItems, validateDependencyGraph } from "../src/board/dependency-graph.mjs";
 import { sendMailboxMessage } from "../src/board/mailbox.mjs";
+import { applyInteractiveBlueprintApproval } from "../src/blueprint/interactive-approval.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled } from "../src/config/project-config.mjs";
 import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
@@ -37,6 +38,7 @@ Internal commands used by Make It Real skills:
   plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts (--runner scripted-simulator|claude-code)
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
+  blueprint review <runDir>    Classify a review answer with the LLM judge
   setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
@@ -186,6 +188,40 @@ function deterministicNow(argv = []) {
   return new Date(parseFlag(argv, "--now") ?? "2026-04-30T00:00:00.000Z");
 }
 
+function blueprintReviewCliResult(output) {
+  const action = output?.makeitreal?.action ?? "unknown";
+  const ok = ["approved", "rejected", "already-approved"].includes(action);
+  if (ok) {
+    return {
+      ok: true,
+      command: "blueprint review",
+      action,
+      runDir: output.makeitreal.runDir ?? null,
+      reviewPath: output.makeitreal.reviewPath ?? null,
+      launchRequested: output.makeitreal.launchRequested ?? false,
+      reviewedBy: output.makeitreal.reviewedBy ?? null,
+      judge: output.makeitreal.judge ?? null,
+      additionalContext: output.hookSpecificOutput?.additionalContext ?? null,
+      errors: []
+    };
+  }
+  return {
+    ok: false,
+    command: "blueprint review",
+    action,
+    runDir: output?.makeitreal?.runDir ?? null,
+    launchRequested: output?.makeitreal?.launchRequested ?? false,
+    judge: output?.makeitreal?.judge ?? null,
+    additionalContext: output?.hookSpecificOutput?.additionalContext ?? null,
+    errors: output?.makeitreal?.errors ?? [createHarnessError({
+      code: "HARNESS_BLUEPRINT_REVIEW_UNDECIDED",
+      reason: output?.makeitreal?.reason ?? "The Blueprint review answer was not classified as approve, reject, or revise.",
+      evidence: ["prompt"],
+      recoverable: true
+    })]
+  };
+}
+
 async function runCommand(argv) {
   if (argv.length === 0 || argv.includes("--help")) {
     printHelp();
@@ -318,6 +354,35 @@ async function runCommand(argv) {
       runnerMode: parseFlag(argv, "--runner") ?? "scripted-simulator",
       now: deterministicNow(argv)
     });
+    return { exitCode: result.ok ? 0 : 1, result };
+  }
+
+  if (argv[0] === "blueprint" && argv[1] === "review") {
+    const prompt = parseFlag(argv, "--prompt");
+    if (!prompt) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "blueprint review",
+          errors: [createHarnessError({
+            code: "HARNESS_BLUEPRINT_REVIEW_PROMPT_REQUIRED",
+            reason: "blueprint review requires --prompt <operator answer>.",
+            evidence: ["--prompt"],
+            recoverable: true
+          })]
+        }
+      };
+    }
+    const result = blueprintReviewCliResult(await applyInteractiveBlueprintApproval({
+      projectRoot: parseFlag(argv, "--project-root") ?? process.cwd(),
+      runDir: argv[2],
+      prompt,
+      approvalContext: parseFlag(argv, "--context") ?? "",
+      sessionId: parseFlag(argv, "--session") ?? "question-ui",
+      env: process.env,
+      now: deterministicNow(argv)
+    }));
     return { exitCode: result.ok ? 0 : 1, result };
   }
 

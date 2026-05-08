@@ -56,7 +56,7 @@
         "status": "complete"
       },
       {
-        "command": "Approve in chat or /makeitreal:plan approve",
+        "command": "Answer the review question or reply in chat",
         "id": "blueprint-review",
         "label": "Blueprint Review",
         "status": "complete"

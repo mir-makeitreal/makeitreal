@@ -67,7 +67,7 @@ test("board status reports stale Blueprint work and is no-write", async () => {
     assert.equal(result.audit.staleBlueprintWorkItemIds.includes("work.login-ui"), true);
     assert.equal(result.audit.gateFailures[0].code, "HARNESS_BLUEPRINT_APPROVAL_STALE");
     assert.equal(result.phase, "approval-required");
-    assert.equal(result.blockers[0].nextAction, "Approve the Blueprint in chat, or run /makeitreal:plan approve");
+    assert.equal(result.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
     assert.deepEqual(await snapshot(watched), before);
   });
 });
@@ -89,7 +89,7 @@ test("board status blocks Contract Frozen planned work until Blueprint approval"
     assert.equal(result.phase, "approval-required");
     assert.equal(result.blockers[0].code, "HARNESS_BLUEPRINT_APPROVAL_PENDING");
     assert.deepEqual(result.audit.blueprintBlockedWorkItemIds, [plan.workItemId]);
-    assert.equal(result.nextAction, "Approve the Blueprint in chat, or run /makeitreal:plan approve");
+    assert.equal(result.nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

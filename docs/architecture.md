@@ -168,10 +168,14 @@ status reports.
 
 Blueprint approval is evidence, not a conversational assumption.
 
-Approval can be recorded in two ways:
+Approval can be recorded in three ways:
 
-- Conversational review through `UserPromptSubmit`, where an LLM judge classifies
-  the latest user reply as approval, rejection, revision request, or no decision.
+- The plan command's Claude Code question UI can send the operator's answer to
+  the internal `blueprint review` command, where the same LLM judge classifies
+  it as approval, rejection, revision request, or no decision.
+- Conversational review through `UserPromptSubmit`, where the same LLM judge
+  classifies the latest user reply with the previous assistant Blueprint report
+  as context.
 - Explicit/scriptable fallback via `/makeitreal:plan approve` or
   `/makeitreal:plan reject`.
 

@@ -3,7 +3,7 @@ import { listJsonFiles, readJsonFile } from "../io/json.mjs";
 
 const ACTIONS = {
   setup: "/makeitreal:setup",
-  approve: "Approve the Blueprint in chat, or run /makeitreal:plan approve",
+  approve: "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
   plan: "/makeitreal:plan <request>",
   launch: "/makeitreal:launch",
   status: "/makeitreal:status",

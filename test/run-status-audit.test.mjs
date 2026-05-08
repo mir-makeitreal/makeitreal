@@ -50,10 +50,10 @@ test("status reports pending approval and exits zero for readable blocked runs",
     assert.equal(output.phase, "approval-required");
     assert.equal(output.blueprintStatus, "pending");
     assert.equal(output.blockers[0].code, "HARNESS_BLUEPRINT_APPROVAL_PENDING");
-    assert.equal(output.blockers[0].nextAction, "Approve the Blueprint in chat, or run /makeitreal:plan approve");
+    assert.equal(output.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
     assert.equal(output.gateAudit.ok, false);
     assert.equal(output.nextCommand, "/makeitreal:plan approve");
-    assert.equal(output.nextAction, "Approve the Blueprint in chat, or run /makeitreal:plan approve");
+    assert.equal(output.nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
     assert.equal(output.dashboardRefresh.attempted, true);
     assert.equal(output.dashboardRefresh.skipped, false);
     assert.deepEqual(await snapshot(watched), before);
@@ -138,7 +138,7 @@ test("status reports stale approval separately from missing approval", async () 
     assert.equal(output.blueprint.status, "stale");
     assert.equal(output.phase, "blocked");
     assert.equal(output.blueprintStatus, "stale");
-    assert.equal(output.blockers[0].nextAction, "Approve the Blueprint in chat, or run /makeitreal:plan approve");
+    assert.equal(output.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
 
     await rm(path.join(runDir, "blueprint-review.json"), { force: true });
     result = runHarness(["status", root]);

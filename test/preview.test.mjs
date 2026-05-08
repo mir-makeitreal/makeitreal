@@ -27,7 +27,7 @@ test("operator cockpit maps phases to a read-only first-run guide", () => {
       phase: "approval-required",
       blueprintStatus: "pending",
       headline: "Blueprint review is pending.",
-      nextAction: "Approve the Blueprint in chat, or run /makeitreal:plan approve",
+      nextAction: "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
       nextCommand: "/makeitreal:plan approve",
       evidenceSummary: [
         {

@@ -82,6 +82,18 @@ Use the user's language and prefer compact Markdown tables for reviewable conten
 
 Diagnostics are secondary. Only mention raw engine fields when the plan failed, the user asks for details, or the detail is necessary for a copyable command. Pending Blueprint approval is normal review state; say "Blueprint review is waiting for approval" rather than exposing `HARNESS_BLUEPRINT_APPROVAL_PENDING` as the headline.
 
+### Review Decision UX
+
+After the operator-facing Blueprint report, ask a final Claude Code `AskUserQuestion` review question. This question UI should make the normal choices obvious: approve and launch, request changes, or reject. Keep the wording in the user's language and allow free-form feedback for revisions.
+
+All review paths must converge on the same LLM review judge and the same `blueprint-review.json` authority:
+
+- question UI answer: call the internal `blueprint review` command with the full answer and the Blueprint report as context;
+- later chat reply: rely on the `UserPromptSubmit` hook, which sends the reply and previous assistant message to the same LLM review judge;
+- explicit slash command: keep `/makeitreal:plan approve` and `/makeitreal:plan reject` only as scriptable fallbacks.
+
+Do not branch on option labels, button text, keywords, or short replies such as "yes". The LLM review judge owns the approval, rejection, revision-request, or no-op classification. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/makeitreal:plan approve`.
+
 ### Shared Language
 
 Before producing the Blueprint, normalize the user's words into project language:

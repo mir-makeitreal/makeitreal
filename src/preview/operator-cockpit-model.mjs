@@ -1,7 +1,7 @@
 const FIRST_RUN_STEPS = Object.freeze([
   { id: "plugin", label: "Plugin Ready", command: "/makeitreal:doctor" },
   { id: "plan", label: "Plan", command: "/makeitreal:plan <request>" },
-  { id: "blueprint-review", label: "Blueprint Review", command: "Approve in chat or /makeitreal:plan approve" },
+  { id: "blueprint-review", label: "Blueprint Review", command: "Answer the review question or reply in chat" },
   { id: "launch", label: "Launch", command: "/makeitreal:launch" },
   { id: "verification", label: "Verification", command: "/makeitreal:verify" },
   { id: "done", label: "Done", command: "/makeitreal:status" }

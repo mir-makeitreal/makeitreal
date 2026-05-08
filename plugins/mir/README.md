@@ -23,6 +23,9 @@ Common commands:
 
 `/mir:launch <feature request>` can be used as a one-command start. It plans
 first and stops at Blueprint review; implementation still waits for approval.
+The plan review question and later natural-language replies are classified by
+the same LLM judge; `/mir:plan approve` remains the explicit scriptable
+fallback.
 
 Advanced commands:
 

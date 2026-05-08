@@ -40,6 +40,11 @@ for (const [label, readSkill] of [
     assert.match(skill, /Do not lead with raw engine fields/i);
     assert.match(skill, /What will be delivered/i);
     assert.match(skill, /Diagnostics are secondary/i);
+    assert.match(skill, /Review Decision UX/i);
+    assert.match(skill, /question UI/i);
+    assert.match(skill, /same LLM review judge/i);
+    assert.match(skill, /Do not branch on option labels/i);
+    assert.match(skill, /If the question is dismissed/i);
   });
 
   test(`${label} launch skill keeps subagents scoped to one work item and selective context`, async () => {
