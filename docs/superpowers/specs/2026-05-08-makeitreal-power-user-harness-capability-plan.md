@@ -408,7 +408,7 @@ developers who install harness tooling.
 
 Required:
 
-- License decision.
+- MIT license file and manifest metadata.
 - command reference.
 - install/update/troubleshooting.
 - plugin cache troubleshooting.
@@ -614,7 +614,7 @@ Scope:
 - architecture overview.
 - release checklist.
 - changelog.
-- license decision.
+- MIT license file and manifest metadata.
 - security notes.
 - known limitations.
 

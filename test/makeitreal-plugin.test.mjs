@@ -7,9 +7,14 @@ import { test } from "node:test";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const pluginRoot = path.join(repoRoot, "plugins", "makeitreal");
+const aliasPluginRoot = path.join(repoRoot, "plugins", "mir");
 
 async function readPluginFile(...parts) {
   return readFile(path.join(pluginRoot, ...parts), "utf8");
+}
+
+async function readAliasPluginFile(...parts) {
+  return readFile(path.join(aliasPluginRoot, ...parts), "utf8");
 }
 
 test("Make It Real plugin exposes only the intended workflow skills", async () => {
@@ -31,8 +36,8 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
     "kanban"
   ]);
   assert.deepEqual(manifest.interface.defaultPrompt, [
-    "Use $makeitreal:setup for this project.",
     "Use $makeitreal:plan for this feature.",
+    "Review and approve the Blueprint in chat.",
     "Use $makeitreal:launch to advance the gated run."
   ]);
 
@@ -68,6 +73,8 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   const launchCommand = await readPluginFile("commands", "launch.md");
   assert.match(launchCommand, /orchestrator tick/);
   assert.match(launchCommand, /orchestrator complete/);
+  assert.match(launchCommand, /one-command start/);
+  assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
 
   const planCommand = await readPluginFile("commands", "plan.md");
   assert.match(planCommand, /--runner claude-code/);
@@ -81,6 +88,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /Do not convert internal commands/);
   assert.match(launchSkill, /board claim/);
   assert.match(launchSkill, /orchestrator tick/);
+  assert.match(launchSkill, /Ralph-like one-command start/);
 });
 
 test("Make It Real skills keep the browser dashboard read-only", async () => {
@@ -109,10 +117,49 @@ test("Make It Real Claude plugin registers native hooks through plugin root file
 
 test("Make It Real repository exposes a Claude marketplace entry", async () => {
   const marketplace = JSON.parse(await readFile(path.join(repoRoot, ".claude-plugin", "marketplace.json"), "utf8"));
-  assert.equal(marketplace.name, "makeitreal-tools");
-  assert.equal(marketplace.plugins.length, 1);
-  assert.equal(marketplace.plugins[0].name, "makeitreal");
-  assert.equal(marketplace.plugins[0].source, "./plugins/makeitreal");
+  assert.equal(marketplace.name, "52g");
+  assert.equal(marketplace.plugins.length, 2);
+
+  const plugins = Object.fromEntries(marketplace.plugins.map((plugin) => [plugin.name, plugin]));
+  assert.equal(plugins.makeitreal.source, "./plugins/makeitreal");
+  assert.equal(plugins.mir.source, "./plugins/mir");
+  assert.match(plugins.mir.description, /alias/i);
+});
+
+test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
+  const canonicalManifest = JSON.parse(await readPluginFile(".claude-plugin", "plugin.json"));
+  const aliasManifest = JSON.parse(await readAliasPluginFile(".claude-plugin", "plugin.json"));
+
+  assert.equal(aliasManifest.name, "mir");
+  assert.equal(aliasManifest.version, canonicalManifest.version);
+  assert.equal(aliasManifest.repository, "https://github.com/mir-makeitreal/makeitreal");
+  assert.equal(aliasManifest.homepage, "https://github.com/mir-makeitreal/makeitreal");
+  assert.equal(aliasManifest.skills, "./skills/");
+  assert.deepEqual(aliasManifest.dependencies, ["makeitreal@52g"]);
+  assert.equal(Object.hasOwn(aliasManifest, "hooks"), false, "mir must not register duplicate hooks");
+  await assert.rejects(
+    () => stat(path.join(aliasPluginRoot, "hooks", "hooks.json")),
+    /ENOENT/,
+    "mir should rely on the canonical makeitreal plugin hooks"
+  );
+
+  const expectedCommands = ["setup", "plan", "launch", "status", "verify", "config", "doctor"];
+  for (const commandName of expectedCommands) {
+    const command = await readAliasPluginFile("commands", `${commandName}.md`);
+    const skill = await readAliasPluginFile("skills", commandName, "SKILL.md");
+    assert.match(command, /^---\ndescription:/);
+    assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+    assert.doesNotMatch(`${command}\n${skill}`, /\/makeitreal:/);
+  }
+
+  const readme = await readAliasPluginFile("README.md");
+  assert.match(readme, /\/mir:setup/);
+  assert.match(readme, /\/mir:plan <feature request>/);
+  assert.match(readme, /\/mir:launch/);
+  assert.match(readme, /\/mir:status/);
+
+  const planSkill = await readAliasPluginFile("skills", "plan", "SKILL.md");
+  assert.match(planSkill, /makeitreal:interactive-review:llm/);
 });
 
 test("Make It Real plugin binary delegates to the internal engine", () => {
@@ -133,6 +180,19 @@ test("Make It Real plugin binary discovers the in-repository engine", () => {
     cwd: repoRoot,
     encoding: "utf8",
     env: process.env
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /makeitreal-engine \(internal\)/);
+});
+
+test("mir alias plugin binary delegates to the canonical engine", () => {
+  const result = spawnSync(path.join(aliasPluginRoot, "bin", "makeitreal-engine"), ["--help"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      MAKEITREAL_ENGINE_ROOT: repoRoot
+    }
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /makeitreal-engine \(internal\)/);
@@ -160,7 +220,7 @@ test("Make It Real exposes an opt-in real Claude golden-path E2E script", async 
     encoding: "utf8"
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /setup -> plan --runner claude-code/);
+  assert.match(result.stdout, /plan --runner claude-code/);
   assert.match(result.stdout, /consumes real Claude Code quota/);
 });
 
@@ -175,5 +235,6 @@ test("Make It Real exposes opt-in Claude plugin validation", async () => {
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /claude plugin validate plugins\/makeitreal/);
+  assert.match(result.stdout, /claude plugin validate plugins\/mir/);
   assert.match(result.stdout, /does not run real Claude Code tasks/);
 });

@@ -44,9 +44,9 @@
     ],
     "firstRunChecklist": [
       {
-        "command": "/makeitreal:setup",
-        "id": "setup",
-        "label": "Setup",
+        "command": "/makeitreal:doctor",
+        "id": "plugin",
+        "label": "Plugin Ready",
         "status": "complete"
       },
       {

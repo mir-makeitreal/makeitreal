@@ -156,8 +156,8 @@ test("status preserves current-run missing failure", async () => {
     assert.equal(result.status, 1);
     const output = JSON.parse(result.stdout);
     assert.equal(output.errors[0].code, "HARNESS_CURRENT_RUN_MISSING");
-    assert.equal(output.phase, "setup-required");
-    assert.equal(output.nextAction, "/makeitreal:setup");
+    assert.equal(output.phase, "planning-required");
+    assert.equal(output.nextAction, "/makeitreal:plan <request>");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

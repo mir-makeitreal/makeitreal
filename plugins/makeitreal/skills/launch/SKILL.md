@@ -15,6 +15,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 
 ## Procedure
 
+0. If there is no active current-run state and the slash command includes a feature request, run the plan workflow for that request and stop at Blueprint review. This preserves Make It Real's plan-first invariant while giving users a Ralph-like one-command start. If there is no current run and no request text, report `/makeitreal:plan <request>` as the next action.
 1. Confirm PRD, design pack, contracts, responsibility map, and Kanban work items exist.
 2. Run the Ready gate before implementation, including Blueprint approval validation.
 3. Let the engine promote `Contract Frozen` work to `Ready` only after the Ready gate passes.
@@ -51,4 +52,4 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 - Do not add fallbacks for impossible states or undeclared SDK/API behavior.
 - If verification fails, keep the work item out of Done and report the blocker.
 - If a runner fails fast, use the engine retry/reconcile path. Do not claim `Rework -> Ready` auto-recovery unless that authority path is explicitly implemented.
-- If there is no active current-run state, stop and run `/makeitreal:setup` first.
+- If there is no active current-run state, start with `/makeitreal:plan <request>` or select an existing run with `/makeitreal:setup --run <runDir>`.

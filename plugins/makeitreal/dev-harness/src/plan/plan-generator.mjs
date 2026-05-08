@@ -3,6 +3,7 @@ import { createHarnessError } from "../domain/errors.mjs";
 import { invalidAllowedPathPattern } from "../domain/path-policy.mjs";
 import { normalizeVerificationCommand } from "../domain/verification-command.mjs";
 import { renderDesignPreview } from "../preview/render-preview.mjs";
+import { ensureMakeItRealGitIgnore } from "../project/bootstrap.mjs";
 import { writeCurrentRunState } from "../project/run-state.mjs";
 import { runGates } from "../gates/index.mjs";
 import { writeJsonFile } from "../io/json.mjs";
@@ -257,6 +258,7 @@ export async function generatePlanRun({
     };
   }
   const usesOpenApi = isApiLike(request, apiKind);
+  await ensureMakeItRealGitIgnore({ projectRoot: resolvedProjectRoot });
 
   const prd = {
     schemaVersion: "1.0",

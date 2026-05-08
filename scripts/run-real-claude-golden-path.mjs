@@ -33,7 +33,7 @@ function usage() {
   console.log(`run-real-claude-golden-path
 
 Runs the Make It Real first-run golden path with a real Claude Code runner:
-setup -> plan --runner claude-code -> dashboard render/open dry-run -> approve -> launch -> verify/complete -> Done.
+plan --runner claude-code -> dashboard render/open dry-run -> approve -> launch -> verify/complete -> Done.
 
 This command is intentionally not part of npm run check because it consumes real Claude Code quota.
 `);
@@ -173,7 +173,6 @@ async function main() {
     ]
   };
 
-  const setup = runHarness(["setup", projectRoot, "--run", runDir, "--now", now.toISOString()]);
   const plan = runHarness([
     "plan", projectRoot,
     "--request", request,
@@ -233,7 +232,7 @@ async function main() {
     workspace,
     artifactPath,
     commands: {
-      setup: setup.json,
+      setup: null,
       plan: plan.json,
       pendingStatus: pendingStatus.json,
       dashboardDryRun: dashboardDryRun.json,

@@ -189,7 +189,7 @@ test("doctor CLI accepts a documented positional run path", async () => {
   }
 });
 
-test("doctor exits zero and points to setup when no current run is selected", async () => {
+test("doctor exits zero and points to plan when no current run is selected", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-empty-"));
   const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-empty-bin-"));
   try {
@@ -215,7 +215,7 @@ test("doctor exits zero and points to setup when no current run is selected", as
     assert.equal(output.healthy, false);
     assert.equal(output.checks.currentRun.status, "fail");
     assert.equal(output.checks.currentRun.errors[0].code, "HARNESS_CURRENT_RUN_MISSING");
-    assert.equal(output.nextAction, "/makeitreal:setup");
+    assert.equal(output.nextAction, "/makeitreal:plan <request>");
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(binDir, { recursive: true, force: true });

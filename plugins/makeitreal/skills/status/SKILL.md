@@ -25,7 +25,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 
 ## Phase Contract
 
-Status may report `setup-required`, `approval-required`, `launch-ready`, `running`, `verifying`, `human-review`, `failed-fast`, `rework-required`, `blocked`, or `done`.
+Status may report `planning-required`, `approval-required`, `launch-ready`, `running`, `verifying`, `human-review`, `failed-fast`, `rework-required`, `blocked`, or `done`.
 
 Use only public next actions in the user-facing report:
 

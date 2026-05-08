@@ -46,7 +46,7 @@ function bashCommand(input) {
 function bashLooksMutating(command) {
   return /(^|[;&|]\s*)(touch|rm|mv|cp|mkdir|rmdir|tee)\b/.test(command)
     || /(^|[;&|]\s*)(sed|perl)\s+[^;&|]*\s-i\b/.test(command)
-    || /(^|[^<])>{1,2}[^>]/.test(command)
+    || /(^|\s)(?:[A-Za-z0-9._/-]+)?>{1,2}\s*(?!&\d)(?=["']?[A-Za-z0-9._/-])/.test(command)
     || /\b(node|python3?|ruby)\s+-e\b/.test(command) && /\b(writeFile|appendFile|mkdirSync|rmSync|open\s*\()/i.test(command);
 }
 

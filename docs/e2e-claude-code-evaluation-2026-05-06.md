@@ -27,9 +27,9 @@ wiki sync, and Done gates.
   followed by canonical `design render -> gate Ready -> verify -> wiki sync ->
   gate Done`.
 - R2 first-run golden path on 2026-05-07 added the productized
-  `npm run e2e:real-claude` command. It verified `setup -> plan --runner
-  claude-code -> dashboard dry-run -> Blueprint approval -> launch -> complete
-  -> Done` against Claude Code 2.1.132. Evidence:
+  `npm run e2e:real-claude` command. The current flow verifies
+  `plan --runner claude-code -> dashboard dry-run -> Blueprint approval ->
+  launch -> complete -> Done` against Claude Code. Evidence:
   `docs/e2e-evidence/real-claude-golden-path-1778137695717.json`.
 
 ## Marketplace Installability
@@ -41,7 +41,9 @@ Verified install path:
 
 ```text
 claude plugin marketplace add .
-claude plugin install makeitreal@makeitreal-tools --scope local
+claude plugin install makeitreal@52g --scope local
+# or short slash-command alias:
+claude plugin install mir@52g --scope local
 ```
 
 This is a repository-hosted marketplace install path, not an official Anthropic

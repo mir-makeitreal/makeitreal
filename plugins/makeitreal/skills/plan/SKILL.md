@@ -57,4 +57,4 @@ Report the returned `dashboardUrl` so the operator can reopen the Kanban/Bluepri
 - Do not launch or implement until the user has reviewed and approved the Blueprint. Approval may arrive through LLM-classified conversational review or the explicit `/makeitreal:plan approve` fallback, but both must write `blueprint-review.json`.
 - If the LLM review judge classifies the user's reply as approval plus launch intent, continue to `/makeitreal:launch` after the hook records the approval artifact.
 - After approval, launch owns the `Contract Frozen -> Ready` promotion through the Ready gate; do not mutate board lanes manually.
-- If setup has not recorded an active run, stop and run `/makeitreal:setup` first.
+- `/makeitreal:plan <request>` may be the first Make It Real command in a project. It creates `.makeitreal/runs/...`, records the current run, and writes the git ignore entry automatically.

@@ -32,9 +32,8 @@ export function buildInteractiveRejectionContext({ result }) {
 
 export function buildNoopUserPromptSubmitOutput({ reason = "No Make It Real interactive approval action." } = {}) {
   return {
-    hookSpecificOutput: {
-      hookEventName: "UserPromptSubmit"
-    },
+    continue: true,
+    suppressOutput: true,
     makeitreal: {
       action: "noop",
       reason
@@ -61,6 +60,9 @@ export async function applyInteractiveBlueprintApproval({
   if (!currentReview.ok) {
     return buildNoopUserPromptSubmitOutput({ reason: "No Blueprint review evidence was available for review." });
   }
+  if (currentReview.review.status !== "pending") {
+    return buildNoopUserPromptSubmitOutput({ reason: "Blueprint review is not pending." });
+  }
 
   const judgment = await judge({
     prompt,
@@ -82,16 +84,11 @@ export async function applyInteractiveBlueprintApproval({
     };
   }
   if (judgment.decision === "none") {
-    return {
-      hookSpecificOutput: {
-        hookEventName: "UserPromptSubmit"
-      },
-      makeitreal: {
-        action: "noop",
-        reason: "LLM judge did not classify the prompt as a Blueprint review decision.",
-        judge: judgment
-      }
-    };
+    const output = buildNoopUserPromptSubmitOutput({
+      reason: "LLM judge did not classify the prompt as a Blueprint review decision."
+    });
+    output.makeitreal.judge = judgment;
+    return output;
   }
 
   const approvalState = await validateBlueprintApproval({ runDir: resolved.runDir });

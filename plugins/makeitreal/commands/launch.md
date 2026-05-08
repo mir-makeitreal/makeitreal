@@ -1,12 +1,18 @@
 ---
 description: Launch an approved Make It Real plan through gated execution
-argument-hint: "[optional run id or path]"
+argument-hint: "[feature request | optional run id/path]"
 allowed-tools: ["Bash", "Read"]
 ---
 
 # Make It Real Launch
 
 Advance the approved Make It Real run through Ready, execution, verification, wiki evidence, and Done gates.
+
+If there is no active current run and `$ARGUMENTS` is a feature request, treat
+`/makeitreal:launch <request>` as a one-command start. Generate the Blueprint
+with the same planning rules as `/makeitreal:plan <request>`, open/report the
+dashboard, and stop at Blueprint review. Do not execute implementation until the
+Blueprint is approved.
 
 First read and follow the plugin skill:
 

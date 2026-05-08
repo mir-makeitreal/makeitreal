@@ -177,7 +177,7 @@ async function checkCurrentRun({ projectRoot, runDir, env }) {
       summary: "No readable Make It Real current run is selected.",
       reason: result.errors[0]?.reason ?? "No active Make It Real run state found.",
       evidence: result.errors[0]?.evidence ?? [".makeitreal/current-run.json"],
-      nextAction: "/makeitreal:setup",
+      nextAction: "/makeitreal:plan <request>",
       extra: {
         source: result.source,
         runDir: null

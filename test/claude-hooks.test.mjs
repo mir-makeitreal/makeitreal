@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { runVerification } from "../src/adapters/command-evidence.mjs";
-import { readBlueprintReview, seedBlueprintReview } from "../src/blueprint/review.mjs";
+import { decideBlueprintReview, readBlueprintReview, seedBlueprintReview } from "../src/blueprint/review.mjs";
+import { writeJsonFile } from "../src/io/json.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { writeCurrentRunState } from "../src/project/run-state.mjs";
 import { syncLiveWiki } from "../src/wiki/live-wiki.mjs";
@@ -35,6 +37,23 @@ async function writeApprovalJudgeFixture(root, result) {
       args: [scriptPath]
     })
   };
+}
+
+async function setActiveExecution(runDir) {
+  await writeJsonFile(path.join(runDir, "runtime-state.json"), {
+    schemaVersion: "1.0",
+    running: {
+      "work.feature-auth": {
+        attemptId: "attempt.stop-hook",
+        lastEventAt: "2026-05-06T00:00:00.000Z",
+        startedAt: "2026-05-06T00:00:00.000Z",
+        workerId: "worker.stop-hook",
+        workItemId: "work.feature-auth"
+      }
+    },
+    retries: {},
+    terminals: {}
+  });
 }
 
 test("pre-tool-use blocks writes outside allowed paths", async () => {
@@ -81,6 +100,7 @@ test("pre-tool-use blocks mutating tools before Blueprint approval", async () =>
 
 test("stop blocks until Done gate evidence is complete", async () => {
   await withFixture(async ({ runDir }) => {
+    await setActiveExecution(runDir);
     const blocked = runHook("hooks/claude/stop.mjs", { runDir });
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
     assert.equal(JSON.parse(blocked.stdout).decision, "block");
@@ -92,7 +112,41 @@ test("stop blocks until Done gate evidence is complete", async () => {
 
     const allowed = runHook("hooks/claude/stop.mjs", { runDir });
     assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
-    assert.equal(JSON.parse(allowed.stdout).decision, "allow");
+    assert.equal(JSON.parse(allowed.stdout).decision, "approve");
+  });
+});
+
+test("stop is quiet when no Make It Real run is active", async () => {
+  await withFixture(async ({ root }) => {
+    const result = runHook("hooks/claude/stop.mjs", {}, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      continue: true,
+      suppressOutput: true
+    });
+  });
+});
+
+test("stop is quiet for planned runs that are not executing", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    const result = runHook("hooks/claude/stop.mjs", {}, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      continue: true,
+      suppressOutput: true
+    });
   });
 });
 
@@ -114,6 +168,7 @@ test("Claude hooks resolve run directory from project current-run state", async 
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
     assert.equal(JSON.parse(blocked.stdout).hookSpecificOutput.permissionDecision, "deny");
 
+    await setActiveExecution(runDir);
     const stop = runHook("hooks/claude/stop.mjs", {}, {
       cwd: root,
       env: { ...process.env, CLAUDE_PROJECT_DIR: root }
@@ -188,12 +243,53 @@ test("user-prompt-submit does not approve keyword-looking text when the LLM judg
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
-    assert.equal(output.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+    assert.equal(output.continue, true);
+    assert.equal(output.suppressOutput, true);
+    assert.equal(output.hookSpecificOutput, undefined);
     assert.equal(output.makeitreal.action, "noop");
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
     assert.equal(review.review.reviewSource, "makeitreal:plan");
+  });
+});
+
+test("user-prompt-submit is quiet when Blueprint review is already decided", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    await decideBlueprintReview({
+      runDir,
+      status: "approved",
+      reviewedBy: "operator:test",
+      now: new Date("2026-05-06T00:01:00.000Z")
+    });
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:02:00.000Z")
+    });
+    const judgeEnv = await writeApprovalJudgeFixture(root, {
+      decision: "approved",
+      launchRequested: true,
+      confidence: "high",
+      reason: "This fixture should not be reached after approval."
+    });
+
+    const result = runHook("hooks/claude/user-prompt-submit.mjs", {
+      hook_event_name: "UserPromptSubmit",
+      session_id: "session-after-approval",
+      prompt: "일반 채팅입니다"
+    }, {
+      cwd: root,
+      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.continue, true);
+    assert.equal(output.suppressOutput, true);
+    assert.equal(output.hookSpecificOutput, undefined);
+    assert.equal(output.makeitreal.action, "noop");
   });
 });
 
@@ -309,7 +405,11 @@ test("user-prompt-submit does not approve when the LLM judge returns none", asyn
       env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
-    assert.equal(JSON.parse(result.stdout).makeitreal.action, "noop");
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.continue, true);
+    assert.equal(output.suppressOutput, true);
+    assert.equal(output.hookSpecificOutput, undefined);
+    assert.equal(output.makeitreal.action, "noop");
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
@@ -330,6 +430,23 @@ test("pre-tool-use blocks edits when active run context is missing", async () =>
     const output = JSON.parse(blocked.stdout);
     assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_RUN_CONTEXT_MISSING/);
+  });
+});
+
+test("pre-tool-use allows bootstrap Make It Real Bash commands without run context", async () => {
+  await withFixture(async ({ root }) => {
+    const setup = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Bash",
+      tool_input: {
+        command: `"${harnessRoot}/plugins/makeitreal/bin/makeitreal-engine" setup "$CLAUDE_PROJECT_DIR" 2>&1`
+      }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(setup.status, 0, setup.stdout || setup.stderr);
+    assert.equal(JSON.parse(setup.stdout).hookSpecificOutput.permissionDecision, "allow");
   });
 });
 

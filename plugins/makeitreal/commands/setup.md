@@ -1,12 +1,12 @@
 ---
 description: Initialize Make It Real for the current Claude Code project
-argument-hint: "[optional run id or path]"
+argument-hint: "[--run <existing run id or path>]"
 allowed-tools: ["Bash", "Read"]
 ---
 
 # Make It Real Setup
 
-Initialize Make It Real for the current Claude Code project.
+Initialize Make It Real for the current Claude Code project. This command is optional for new work because `/makeitreal:plan <request>` can create and select the run itself.
 
 First read and follow the plugin skill:
 
@@ -23,6 +23,8 @@ Use the plugin engine from the plugin root when running internal commands:
 Then report:
 
 - the active run directory
+- whether `.makeitreal/` was added to `.gitignore`
+- the config path
 - whether plugin-native hooks are available
 - the next command, normally `/makeitreal:plan <request>`
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
+import path from "node:path";
 import { runGates } from "../../src/gates/index.mjs";
+import { fileExists, readJsonFile } from "../../src/io/json.mjs";
 import { resolveCurrentRunDir } from "../../src/project/run-state.mjs";
+
+const ACTIVE_EXECUTION_LANES = new Set(["Running", "Verifying", "Human Review"]);
 
 async function readHookInput() {
   let raw = "";
@@ -20,6 +24,38 @@ function block(errors) {
   };
 }
 
+function passThrough() {
+  return {
+    continue: true,
+    suppressOutput: true
+  };
+}
+
+function approve(reason) {
+  return {
+    decision: "approve",
+    suppressOutput: true,
+    reason
+  };
+}
+
+async function readOptionalJson(filePath) {
+  if (!await fileExists(filePath)) {
+    return null;
+  }
+  return readJsonFile(filePath);
+}
+
+async function hasActiveExecution({ runDir }) {
+  const runtimeState = await readOptionalJson(path.join(runDir, "runtime-state.json"));
+  if (Object.keys(runtimeState?.running ?? {}).length > 0) {
+    return true;
+  }
+
+  const board = await readOptionalJson(path.join(runDir, "board.json"));
+  return (board?.workItems ?? []).some((workItem) => ACTIVE_EXECUTION_LANES.has(workItem.lane));
+}
+
 async function main() {
   const input = await readHookInput();
   const resolved = await resolveCurrentRunDir({
@@ -27,7 +63,11 @@ async function main() {
     runDir: input.runDir ?? input.makeitreal?.runDir ?? null
   });
   if (!resolved.ok) {
-    return { decision: "allow", reason: "No active Make It Real run; stop gate skipped." };
+    return passThrough();
+  }
+
+  if (!await hasActiveExecution({ runDir: resolved.runDir })) {
+    return passThrough();
   }
 
   const result = await runGates({ runDir: resolved.runDir, target: "Done" });
@@ -35,7 +75,7 @@ async function main() {
     return block(result.errors);
   }
 
-  return { decision: "allow", reason: "Harness Done gate passed." };
+  return approve("Harness Done gate passed.");
 }
 
 main().then((result) => {

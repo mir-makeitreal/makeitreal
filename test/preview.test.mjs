@@ -47,7 +47,7 @@ test("operator cockpit maps phases to a read-only first-run guide", () => {
   assert.deepEqual(
     cockpit.firstRunChecklist.map((step) => [step.id, step.status]),
     [
-      ["setup", "complete"],
+      ["plugin", "complete"],
       ["plan", "complete"],
       ["blueprint-review", "current"],
       ["launch", "pending"],

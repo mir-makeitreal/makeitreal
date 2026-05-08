@@ -9,12 +9,12 @@ operate as a Claude Code plugin without expanding the user-facing command set.
 
 Normal workflow:
 
-- `/makeitreal:setup`
 - `/makeitreal:plan <request>`
 - `/makeitreal:launch`
 
 Read-only or advanced workflow:
 
+- `/makeitreal:setup`
 - `/makeitreal:status`
 - `/makeitreal:verify`
 - `/makeitreal:config`
@@ -36,6 +36,7 @@ It runs:
 
 ```bash
 claude plugin validate plugins/makeitreal
+claude plugin validate plugins/mir
 claude plugin validate .claude-plugin/marketplace.json
 ```
 
@@ -52,11 +53,33 @@ plugin packaging validation.
 
 ## Install Path
 
+Public marketplace install:
+
+```text
+/plugin marketplace add mir-makeitreal/makeitreal
+/plugin install makeitreal@52g
+# or short slash-command alias:
+/plugin install mir@52g
+/reload-plugins
+```
+
+Public marketplace update:
+
+```text
+/plugin marketplace update 52g
+/plugin update makeitreal@52g
+# if installed:
+/plugin update mir@52g
+/reload-plugins
+```
+
 Local install from the repository root:
 
 ```bash
 claude plugin marketplace add . --scope local
-claude plugin install makeitreal@makeitreal-tools --scope local
+claude plugin install makeitreal@52g --scope local
+# or short slash-command alias:
+claude plugin install mir@52g --scope local
 claude plugin list
 ```
 
@@ -73,5 +96,5 @@ Before claiming release readiness, gather:
 ## Remaining Public Release Gap
 
 The local plugin and marketplace manifests validate. The public repository target
-is `https://github.com/mir-makeitreal/makeitreal`. Public distribution still
-requires a license decision.
+is `https://github.com/mir-makeitreal/makeitreal`. Public distribution is
+licensed under MIT.

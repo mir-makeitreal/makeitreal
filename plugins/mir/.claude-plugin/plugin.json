@@ -1,0 +1,22 @@
+{
+  "name": "mir",
+  "version": "0.1.5",
+  "description": "Short slash-command alias for the Make It Real Claude Code engineering harness.",
+  "author": {
+    "name": "Make It Real"
+  },
+  "repository": "https://github.com/mir-makeitreal/makeitreal",
+  "homepage": "https://github.com/mir-makeitreal/makeitreal",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "engineering-harness",
+    "contracts",
+    "kanban",
+    "alias"
+  ],
+  "skills": "./skills/",
+  "dependencies": [
+    "makeitreal@52g"
+  ]
+}

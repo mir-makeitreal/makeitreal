@@ -17,7 +17,7 @@ import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { orchestratorTick, reconcileBoard } from "../src/orchestrator/orchestrator.mjs";
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { refreshPreviewForTrigger, renderDesignPreview } from "../src/preview/render-preview.mjs";
-import { writeCurrentRunState } from "../src/project/run-state.mjs";
+import { initializeProject } from "../src/project/bootstrap.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readRunStatus } from "../src/status/run-status.mjs";
 import { syncLiveWiki } from "../src/wiki/live-wiki.mjs";
@@ -37,7 +37,7 @@ Internal commands used by Make It Real skills:
   plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts (--runner scripted-simulator|claude-code)
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
-  setup <projectRoot>          Record the active Make It Real run
+  setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
   dashboard open <runDir>      Open the generated Kanban dashboard in the default browser
@@ -335,7 +335,7 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "setup") {
-    const result = await writeCurrentRunState({
+    const result = await initializeProject({
       projectRoot: argv[1] ?? process.cwd(),
       runDir: parseFlag(argv, "--run"),
       source: "makeitreal:setup",

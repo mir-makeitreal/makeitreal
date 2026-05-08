@@ -74,7 +74,7 @@ export async function readCurrentRunState(projectRoot) {
       state: null,
       errors: [{
         code: "HARNESS_CURRENT_RUN_MISSING",
-        reason: "No active Make It Real run state found. Run makeitreal:setup first.",
+        reason: "No active Make It Real run state found. Start with /makeitreal:plan <request>, or use /makeitreal:setup --run <runDir> to select an existing run.",
         contractId: null,
         ownerModule: null,
         evidence: [statePath],

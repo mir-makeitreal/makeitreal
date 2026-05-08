@@ -8,16 +8,33 @@ keeps low-level engine commands internal.
 
 Normal slash-command workflow:
 
-- `/makeitreal:setup`
 - `/makeitreal:plan <request>`
 - `/makeitreal:launch`
 
+For new work, `/makeitreal:plan <request>` is the first command. It creates the
+run, selects it, writes project config if needed, and keeps `.makeitreal/`
+ignored. `/makeitreal:setup` is optional and exists for config bootstrap without
+planning yet, or selecting an existing run with `--run`.
+
+For a Ralph-like entrypoint, `/makeitreal:launch <request>` may be used when no
+run is active. It generates the Blueprint and stops at review; implementation
+still waits for Blueprint approval.
+
 Operator and advanced workflow:
 
+- `/makeitreal:setup`
 - `/makeitreal:status`
 - `/makeitreal:verify`
 - `/makeitreal:config`
 - `/makeitreal:doctor`
+
+The repository marketplace is named `52g`, so the canonical install ID is
+`makeitreal@52g`. The companion `mir@52g` plugin provides the shorter `/mir:*`
+slash-command namespace while reusing this plugin's engine and hooks.
+
+Update an installed copy with `/plugin marketplace update 52g`, then
+`/plugin update makeitreal@52g`, then `/reload-plugins`. If the alias is
+installed, run `/plugin update mir@52g` as well.
 
 The command files live under `commands/`. The `skills/` directory contains the
 supporting workflow guidance that commands and Claude can use, but skills alone
@@ -32,6 +49,9 @@ commands.
 - Planning creates PRD, Blueprint/design pack, responsibility boundaries,
   contracts, Kanban work items, verification commands, trust policy, and the
   read-only dashboard.
+- Plan and setup both ensure `/.makeitreal/` is present in the project
+  `.gitignore` before runtime state is written. Setup is not a per-project
+  prerequisite for new work.
 - Blueprint approval is required before launch. Conversational approval is
   classified by an LLM judge; `/makeitreal:plan approve` remains the explicit
   scriptable fallback.
@@ -50,6 +70,7 @@ From the repository root:
 
 ```bash
 claude plugin validate plugins/makeitreal
+claude plugin validate plugins/mir
 claude plugin validate .claude-plugin/marketplace.json
 ```
 

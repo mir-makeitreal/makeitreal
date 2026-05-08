@@ -1,5 +1,5 @@
 const FIRST_RUN_STEPS = Object.freeze([
-  { id: "setup", label: "Setup", command: "/makeitreal:setup" },
+  { id: "plugin", label: "Plugin Ready", command: "/makeitreal:doctor" },
   { id: "plan", label: "Plan", command: "/makeitreal:plan <request>" },
   { id: "blueprint-review", label: "Blueprint Review", command: "Approve in chat or /makeitreal:plan approve" },
   { id: "launch", label: "Launch", command: "/makeitreal:launch" },
@@ -8,7 +8,7 @@ const FIRST_RUN_STEPS = Object.freeze([
 ]);
 
 const PHASE_STATUS = Object.freeze({
-  "setup-required": ["current", "pending", "pending", "pending", "pending", "pending"],
+  "planning-required": ["complete", "current", "pending", "pending", "pending", "pending"],
   "approval-required": ["complete", "complete", "current", "pending", "pending", "pending"],
   "launch-ready": ["complete", "complete", "complete", "current", "pending", "pending"],
   running: ["complete", "complete", "complete", "complete", "current", "pending"],

@@ -14,7 +14,7 @@ const ACTIONS = {
 export function actionForErrorCode(code) {
   switch (code) {
     case "HARNESS_CURRENT_RUN_MISSING":
-      return ACTIONS.setup;
+      return ACTIONS.plan;
     case "HARNESS_BLUEPRINT_APPROVAL_MISSING":
     case "HARNESS_BLUEPRINT_APPROVAL_PENDING":
     case "HARNESS_BLUEPRINT_APPROVAL_STALE":
@@ -61,15 +61,15 @@ export function blueprintStatusFrom(blueprint) {
 export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
   if (!resolved?.ok) {
     const blockers = (resolved?.errors ?? []).map((error) => blockerFromError(error, {
-      nextAction: ACTIONS.setup,
+      nextAction: ACTIONS.plan,
       authority: "current-run"
     }));
     return {
-      phase: "setup-required",
+      phase: "planning-required",
       blueprintStatus: "missing",
-      headline: "Make It Real is not set up for this project.",
+      headline: "No active Make It Real run is selected yet.",
       blockers,
-      nextAction: ACTIONS.setup,
+      nextAction: ACTIONS.plan,
       evidenceSummary: []
     };
   }

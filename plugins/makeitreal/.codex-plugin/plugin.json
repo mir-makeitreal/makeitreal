@@ -1,6 +1,6 @@
 {
   "name": "makeitreal",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
   "author": {
     "name": "Make It Real",
@@ -8,7 +8,7 @@
   },
   "repository": "https://github.com/mir-makeitreal/makeitreal",
   "homepage": "https://github.com/mir-makeitreal/makeitreal",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "claude-code",
     "engineering-harness",
@@ -28,8 +28,8 @@
       "Verification"
     ],
     "defaultPrompt": [
-      "Use $makeitreal:setup for this project.",
       "Use $makeitreal:plan for this feature.",
+      "Review and approve the Blueprint in chat.",
       "Use $makeitreal:launch to advance the gated run."
     ],
     "brandColor": "#2563EB"

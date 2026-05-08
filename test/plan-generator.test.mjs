@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -73,6 +73,9 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
     const current = await readCurrentRunState(projectRoot);
     assert.equal(current.ok, true);
     assert.equal(current.runDir, result.runDir);
+
+    const gitignore = await readFile(path.join(projectRoot, ".gitignore"), "utf8");
+    assert.match(gitignore, /^\/\.makeitreal\/$/m);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

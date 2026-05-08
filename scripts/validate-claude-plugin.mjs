@@ -11,6 +11,10 @@ const targets = [
     path: path.join(repoRoot, "plugins", "makeitreal")
   },
   {
+    kind: "plugin",
+    path: path.join(repoRoot, "plugins", "mir")
+  },
+  {
     kind: "marketplace",
     path: path.join(repoRoot, ".claude-plugin", "marketplace.json")
   }
@@ -23,6 +27,7 @@ Validates the Make It Real Claude Code plugin packaging with the local Claude CL
 
 Checks:
 - claude plugin validate plugins/makeitreal
+- claude plugin validate plugins/mir
 - claude plugin validate .claude-plugin/marketplace.json
 
 This command does not run real Claude Code tasks or consume model quota.

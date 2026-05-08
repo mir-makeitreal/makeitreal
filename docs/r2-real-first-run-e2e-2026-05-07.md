@@ -5,12 +5,11 @@
 R2 promotes Make It Real from a fixture-backed harness into a repeatable Claude Code first-run path.
 The verified public workflow is:
 
-1. `/makeitreal:setup`
-2. `/makeitreal:plan <request>`
-3. read-only dashboard review
-4. Blueprint approval
-5. `/makeitreal:launch`
-6. engine-owned verification and Done gate
+1. `/makeitreal:plan <request>`
+2. read-only dashboard review
+3. Blueprint approval
+4. `/makeitreal:launch`
+5. engine-owned verification and Done gate
 
 The implementation keeps the browser dashboard read-only. Claude Code remains the only implementation surface, and the Make It Real engine remains the authority for gates, verification, wiki evidence, and Done transitions.
 

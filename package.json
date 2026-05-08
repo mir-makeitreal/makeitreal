@@ -1,7 +1,8 @@
 {
   "name": "@52g-tools/makeitreal-engine",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "makeitreal-engine": "./bin/harness.mjs"

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Make It Real Setup"
+  short_description: "Initialize Make It Real"
+  brand_color: "#2563EB"
+  default_prompt: "Use $makeitreal:setup for this project."
+
+policy:
+  allow_implicit_invocation: true
