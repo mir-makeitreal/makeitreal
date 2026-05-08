@@ -84,6 +84,38 @@ test("config command writes dashboard refresh flags", async () => {
   });
 });
 
+test("config command applies semantic profiles", async () => {
+  await withProjectRun(async ({ root }) => {
+    const quiet = runHarness(["config", "set", root, "--profile", "quiet"]);
+    assert.equal(quiet.status, 0, quiet.stdout || quiet.stderr);
+    assert.deepEqual(JSON.parse(quiet.stdout).config.features, {
+      liveWiki: { enabled: true },
+      dashboard: {
+        autoOpen: false,
+        refreshOnLaunch: true,
+        refreshOnStatus: false,
+        refreshOnVerify: true
+      }
+    });
+
+    const restored = runHarness(["config", "set", root, "--profile", "default"]);
+    assert.equal(restored.status, 0, restored.stdout || restored.stderr);
+    assert.deepEqual(JSON.parse(restored.stdout).config.features, {
+      liveWiki: { enabled: true },
+      dashboard: {
+        autoOpen: true,
+        refreshOnLaunch: true,
+        refreshOnStatus: true,
+        refreshOnVerify: true
+      }
+    });
+
+    const unsupported = runHarness(["config", "set", root, "--profile", "noisy"]);
+    assert.equal(unsupported.status, 1);
+    assert.equal(JSON.parse(unsupported.stdout).errors[0].code, "HARNESS_CONFIG_PROFILE_UNSUPPORTED");
+  });
+});
+
 test("config migrates 1.0 files and rejects unsupported dashboard keys", async () => {
   await withProjectRun(async ({ root }) => {
     const configPath = path.join(root, ".makeitreal", "config.json");

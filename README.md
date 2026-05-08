@@ -51,9 +51,10 @@ Confirm the active copy after updating:
 ```
 
 `makeitreal@52g` and `mir@52g` should show the latest marketplace version. If
-Claude Code still runs an older path such as
-`~/.claude/plugins/cache/52g/mir/0.1.6/...`, update both plugins and reload the
-Claude Code session. If the cache remains stale, uninstall and reinstall:
+Claude Code still runs an older cached path such as
+`~/.claude/plugins/cache/52g/mir/<older-version>/...`, update both plugins and
+reload the Claude Code session. If the cache remains stale, uninstall and
+reinstall:
 
 ```text
 /plugin uninstall mir@52g
@@ -126,6 +127,12 @@ Advanced operators can also use:
 
 `/makeitreal:setup` is optional. Use it only to initialize config without
 planning yet, or to select an existing run with `--run`.
+
+`/makeitreal:config` and `/mir:config` are semantic operator workflows, not raw
+JSON editors. You can say `wiki off`, `dashboard quiet`, or `default`; the
+plugin maps that intent to deterministic engine flags such as `--profile quiet`
+or `--profile default`. With no arguments, Claude Code asks a settings question
+and applies the selected deterministic action.
 
 If you installed the alias plugin, use the equivalent short commands:
 

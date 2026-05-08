@@ -1,12 +1,13 @@
 ---
-description: Read or update Make It Real optional feature flags
-argument-hint: "[get | live-wiki enabled|disabled | dashboard flags]"
-allowed-tools: ["Bash", "Read"]
+description: Review or change Make It Real settings through semantic operator choices
+argument-hint: "[wiki off | dashboard quiet | default | advanced]"
+allowed-tools: ["Bash", "Read", "AskUserQuestion"]
 ---
 
 # Make It Real Config
 
-Read or update project-local Make It Real configuration.
+Review or update project-local Make It Real configuration without exposing
+engine-shaped config keys as the normal UX.
 
 First read and follow the plugin skill:
 
@@ -14,18 +15,24 @@ First read and follow the plugin skill:
 ${CLAUDE_PLUGIN_ROOT}/skills/config/SKILL.md
 ```
 
-For read-only config status:
+Always inspect current settings first:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config get "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
-For updates, pass the user's arguments through the public config surface:
+If `$ARGUMENTS` is empty or unclear, show a compact settings table and use
+AskUserQuestion to ask what the operator wants to change.
+
+If `$ARGUMENTS` is present, classify the semantic operator intent. Do not pass
+raw `$ARGUMENTS` through to the engine. Run only one of the deterministic actions
+listed in the skill, such as:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "${CLAUDE_PROJECT_DIR:-$PWD}" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "${CLAUDE_PROJECT_DIR:-$PWD}" --profile quiet
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "${CLAUDE_PROJECT_DIR:-$PWD}" --profile default
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" config set "${CLAUDE_PROJECT_DIR:-$PWD}" --live-wiki disabled
 ```
 
-Report the resulting live wiki and dashboard feature flags.
-
-Live wiki is optional. Disabling it must still produce explicit skip evidence before Done.
+Report the resulting setting names in user language. Do not present key/value
+config editing as the normal path.

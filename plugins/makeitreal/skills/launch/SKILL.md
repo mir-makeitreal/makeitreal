@@ -26,6 +26,14 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 8. Keep the generated dashboard fresh when `features.dashboard.refreshOnLaunch` is enabled; if disabled, report the explicit dashboard refresh skip without weakening gates.
 9. After a successful launch/status transition returns a `dashboardRefresh.dashboardUrl`, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"` unless dashboard auto-open is disabled, then include the `dashboardUrl` in the operator report.
 
+## Operator Report
+
+Lead with the public launch state: whether Blueprint approval is present,
+whether execution started, which work item moved, and what the next public action
+is. Keep raw engine fields, runner command JSON, run ids, hashes, contract ids,
+and HARNESS codes in an advanced diagnostic note only when the user asks or
+troubleshooting requires it. Do not lead with raw engine fields.
+
 ## Scoped Subagent Execution
 
 Launch-created subagents are scoped workers, not general chat assistants. Every spawned worker must receive selective context only:

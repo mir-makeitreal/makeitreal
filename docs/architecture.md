@@ -75,6 +75,12 @@ Internal engine commands such as `gate`, `board claim`, `orchestrator tick`,
 `orchestrator complete`, `wiki sync`, and `hooks install` are not normal
 user-facing commands. Slash commands may invoke them internally.
 
+Public slash commands present semantic operator workflows. Internal engine
+commands remain deterministic, scriptable, and JSON-oriented. The LLM may
+classify natural-language operator intent, but writes must pass through typed
+engine flags or named profiles; it must not edit `.makeitreal/config.json`
+directly or expose raw `features.*` keys as the normal workflow.
+
 ## Project State Layout
 
 Each target project gets local runtime state under `.makeitreal/`. This path is

@@ -99,6 +99,41 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /If the question is dismissed/i);
 });
 
+test("Make It Real config commands use OMC-style semantic UX", async () => {
+  for (const [label, reader] of [
+    ["makeitreal", readPluginFile],
+    ["mir", readAliasPluginFile]
+  ]) {
+    const command = await reader("commands", "config.md");
+    const skill = await reader("skills", "config", "SKILL.md");
+    const combined = `${command}\n${skill}`;
+
+    assert.match(command, /allowed-tools: \["Bash", "Read", "AskUserQuestion"\]/, `${label} config should be able to ask`);
+    assert.match(combined, /semantic operator intent/i, `${label} config should classify semantic intent`);
+    assert.match(combined, /AskUserQuestion/, `${label} config should use Claude Code question UI`);
+    assert.match(combined, /--profile quiet/, `${label} config should expose quiet mode through deterministic profile`);
+    assert.match(combined, /--profile default/, `${label} config should expose default mode through deterministic profile`);
+    assert.match(combined, /Do not present key\/value config editing as the normal path/i);
+    assert.doesNotMatch(combined, /features\.liveWiki\.enabled=false/);
+    assert.doesNotMatch(command, /config set "\$\{CLAUDE_PROJECT_DIR:-\$PWD\}" \$ARGUMENTS/);
+  }
+});
+
+test("Make It Real operator commands separate primary reports from diagnostics", async () => {
+  const commandNames = ["status", "doctor", "verify", "launch"];
+  for (const reader of [readPluginFile, readAliasPluginFile]) {
+    for (const commandName of commandNames) {
+      const command = await reader("commands", `${commandName}.md`);
+      const skill = await reader("skills", commandName, "SKILL.md");
+      const combined = `${command}\n${skill}`;
+
+      assert.match(combined, /Operator Report/i, `${commandName} should define an operator report`);
+      assert.match(combined, /advanced diagnostic/i, `${commandName} should keep diagnostics secondary`);
+      assert.match(combined, /Do not lead with raw engine fields/i, `${commandName} should hide raw fields by default`);
+    }
+  }
+});
+
 test("Make It Real launch skill keeps low-level engine commands internal", async () => {
   const launchSkill = await readPluginFile("skills", "launch", "SKILL.md");
   assert.match(launchSkill, /Use internal engine commands/);

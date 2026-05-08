@@ -15,6 +15,22 @@ export const DEFAULT_CONFIG = Object.freeze({
   })
 });
 
+export const CONFIG_PROFILES = Object.freeze({
+  default: DEFAULT_CONFIG,
+  quiet: Object.freeze({
+    schemaVersion: "1.1",
+    features: Object.freeze({
+      liveWiki: Object.freeze({ enabled: true }),
+      dashboard: Object.freeze({
+        autoOpen: false,
+        refreshOnStatus: false,
+        refreshOnLaunch: true,
+        refreshOnVerify: true
+      })
+    })
+  })
+});
+
 const ROOT_KEYS = new Set(["schemaVersion", "features"]);
 const FEATURE_KEYS = new Set(["liveWiki", "dashboard"]);
 const LIVE_WIKI_KEYS = new Set(["enabled"]);
@@ -238,6 +254,27 @@ export async function writeProjectConfig({ projectRoot, config }) {
     config: normalized,
     errors: []
   };
+}
+
+export async function setProjectConfigProfile({ projectRoot, profile }) {
+  const config = CONFIG_PROFILES[profile];
+  if (!config) {
+    return {
+      ok: false,
+      command: "config set",
+      projectRoot: path.resolve(projectRoot),
+      configPath: projectConfigPath(projectRoot),
+      source: "project",
+      config: null,
+      errors: [createHarnessError({
+        code: "HARNESS_CONFIG_PROFILE_UNSUPPORTED",
+        reason: `Unsupported Make It Real config profile: ${profile}`,
+        evidence: ["--profile"],
+        recoverable: true
+      })]
+    };
+  }
+  return writeProjectConfig({ projectRoot, config });
 }
 
 export async function setLiveWikiEnabled({ projectRoot, enabled }) {

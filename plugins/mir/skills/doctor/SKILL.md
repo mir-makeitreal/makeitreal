@@ -19,6 +19,13 @@ The browser dashboard is read-only observability. Doctor may report dashboard pa
 4. Use `supportMatrix` to separate environment problems from harness state problems.
 5. Report `nextAction` exactly when it is a public command or an install/PATH repair instruction.
 
+## Operator Report
+
+Lead with a pass/warn/fail diagnostic table and the smallest next fix. Keep raw
+engine fields, JSON envelopes, run ids, hashes, contract ids, and HARNESS codes
+in an advanced diagnostic note only when the user asks or troubleshooting
+requires it. Do not lead with raw engine fields.
+
 ## Output
 
 Keep the report short: healthy state, failing checks, evidence paths, support matrix highlights, and the next safe action.

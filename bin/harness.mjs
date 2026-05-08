@@ -8,7 +8,7 @@ import { getReadyWorkItems, validateDependencyGraph } from "../src/board/depende
 import { sendMailboxMessage } from "../src/board/mailbox.mjs";
 import { applyInteractiveBlueprintApproval } from "../src/blueprint/interactive-approval.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
-import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled } from "../src/config/project-config.mjs";
+import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled, setProjectConfigProfile } from "../src/config/project-config.mjs";
 import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
 import { runDoctor } from "../src/diagnostics/doctor.mjs";
 import { createHarnessError } from "../src/domain/errors.mjs";
@@ -32,7 +32,7 @@ Internal commands used by Make It Real skills:
   gate <runDir> --target <lane> Evaluate gates for Ready or Done
   verify <runDir>              Run declared verification commands
   config get <projectRoot>     Show Make It Real project config
-  config set <projectRoot>     Update config (--live-wiki/--dashboard-auto-open/--dashboard-refresh-on-* enabled|disabled)
+  config set <projectRoot>     Update config (--profile default|quiet, --live-wiki/--dashboard-* enabled|disabled)
   wiki sync <runDir>           Sync verified work to live wiki
   contracts openapi <runDir>   Validate OpenAPI contracts
   plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts (--runner scripted-simulator|claude-code)
@@ -277,6 +277,7 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "config" && argv[1] === "set") {
+    const profile = parseFlag(argv, "--profile");
     const liveWiki = parseOptionalEnabledFlag(argv, "--live-wiki");
     const dashboardAutoOpen = parseOptionalEnabledFlag(argv, "--dashboard-auto-open");
     const dashboardStatus = parseOptionalEnabledFlag(argv, "--dashboard-refresh-on-status");
@@ -284,7 +285,7 @@ async function runCommand(argv) {
     const dashboardVerify = parseOptionalEnabledFlag(argv, "--dashboard-refresh-on-verify");
     const parsedFlags = [liveWiki, dashboardAutoOpen, dashboardStatus, dashboardLaunch, dashboardVerify];
     const errors = parsedFlags.flatMap((flag) => flag.errors);
-    if (errors.length > 0 || !parsedFlags.some((flag) => flag.present)) {
+    if (errors.length > 0 || (!profile && !parsedFlags.some((flag) => flag.present))) {
       return {
         exitCode: 1,
         result: {
@@ -300,9 +301,17 @@ async function runCommand(argv) {
       };
     }
     const projectRoot = resolveProjectRootArg(argv[2]);
-    let result = liveWiki.present
-      ? await setLiveWikiEnabled({ projectRoot, enabled: liveWiki.enabled })
-      : await readProjectConfig({ projectRoot });
+    let result;
+    if (profile) {
+      result = await setProjectConfigProfile({ projectRoot, profile });
+    } else if (liveWiki.present) {
+      result = await setLiveWikiEnabled({ projectRoot, enabled: liveWiki.enabled });
+    } else {
+      result = await readProjectConfig({ projectRoot });
+    }
+    if (result.ok && profile && liveWiki.present) {
+      result = await setLiveWikiEnabled({ projectRoot, enabled: liveWiki.enabled });
+    }
     if (result.ok && (dashboardStatus.present || dashboardLaunch.present || dashboardVerify.present)) {
       result = await setDashboardRefresh({
         projectRoot,

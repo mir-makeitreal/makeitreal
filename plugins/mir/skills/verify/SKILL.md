@@ -22,6 +22,13 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 5. Report blocker codes with the artifact or work item that caused them, plus the `dashboardUrl` when available.
 6. Do not mask failures by adding fallback behavior. Fix the plan, contract, ownership, or implementation cause.
 
+## Operator Report
+
+Lead with verification pass/fail, the failing command if any, the affected work
+item, and the next rework action. Keep raw engine fields, JSON envelopes, run ids,
+hashes, contract ids, and HARNESS codes in an advanced diagnostic note only when
+the user asks or troubleshooting requires it. Do not lead with raw engine fields.
+
 ## Stop-the-Line Recovery
 
 When any gate, test, contract check, or runner attempt fails, stop adding features and diagnose the failure before continuing.

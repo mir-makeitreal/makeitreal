@@ -23,6 +23,13 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 6. Separate verified facts from suspected causes.
 7. Identify the next actionable workflow command: setup, plan, launch, or verify.
 
+## Operator Report
+
+Lead with the operator-facing phase, blockers, evidence summary, dashboard URL,
+and next public action. Keep raw engine fields, JSON envelopes, run ids, hashes,
+contract ids, and HARNESS codes in an advanced diagnostic note only when the user
+asks or troubleshooting requires it. Do not lead with raw engine fields.
+
 ## Zoom-Out Guidance
 
 Status is the operator's zoom-out surface. It should answer:
