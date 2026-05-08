@@ -51,6 +51,8 @@ Use contract-first slicing when parallel frontend/backend/data work is required:
 
 Do not require pre-created Claude agent files for scoped work. Launch should inject a dynamic role handoff into the work-item prompt and `.makeitreal/handoff.json` each time. The role handoff must define the implementation-worker role, control-plane-mediated coordination, the allowed status protocol (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`), and the spec-reviewer -> quality-reviewer -> verification-reviewer review loop. Direct free-form agent-to-agent chat is not a coordination mechanism; use board events, dependency artifacts, mailbox entries, claims, and review debt.
 
+For Claude-code attempts, implementation success alone is not Done evidence. Completion requires approved reviewer evidence from `spec-reviewer`, `quality-reviewer`, and `verification-reviewer` in the latest attempt provenance; missing or rejected review evidence routes the work item to Rework instead of Done.
+
 ## Internal Runner Selection
 
 - Use the scripted simulator only for fixture tests or explicit dry runs.
@@ -68,7 +70,7 @@ Do not require pre-created Claude agent files for scoped work. Launch should inj
 - The staged `.makeitreal/**` files are immutable runner inputs after launch; if Claude modifies or deletes them, the attempt fails fast.
 - Treat structured runner output as authoritative. `turn_completed` is success; failure events such as `turn_input_required`, `unsupported_tool_call`, `turn_failed`, or malformed output keep the work item out of Done.
 - The runner command may use `${workspace}`, `${handoffPath}`, `${promptPath}`, `${prompt}`, and `${workItemId}` placeholders. Keep `--` between `${workspace}` and prompt/handoff placeholders because Claude Code treats `--add-dir` as variadic.
-- Completion must use the latest recorded successful attempt provenance; do not mark work Done from a manually moved `Verifying` lane.
+- Completion must use the latest recorded successful attempt provenance and approved reviewer evidence; do not mark work Done from a manually moved `Verifying` lane.
 
 ## Rules
 

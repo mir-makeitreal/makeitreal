@@ -10,6 +10,7 @@ import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
+import { validateCompletionReviews } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
@@ -112,6 +113,17 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
           recoverable: true
         })]
       };
+    }
+
+    const reviews = validateCompletionReviews({ attempt, workItem });
+    if (!reviews.ok) {
+      const rework = transitionWorkItem(workItem, "Rework", { gates: {} });
+      if (rework.ok) {
+        workItem.errorCode = reviews.errors[0]?.code ?? "HARNESS_REVIEW_FAILED";
+        workItem.errorReason = reviews.errors[0]?.reason ?? null;
+        await saveBoard(boardDir, board);
+      }
+      return { ok: false, command: "orchestrator complete", errors: reviews.errors };
     }
   }
 

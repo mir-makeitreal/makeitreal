@@ -130,6 +130,10 @@ does not ask workers to read the parent chat or the whole run directory.
 7. Review failures route back to the same implementer context for that work item.
 8. The run-level verification reviewer checks all work items and evidence before
    Done.
+9. Completion validates the latest attempt provenance for approved
+   `spec-reviewer`, `quality-reviewer`, and `verification-reviewer` evidence;
+   missing or rejected review evidence routes the work item to Rework instead of
+   Done.
 
 ### Native Claude Compatibility Without Pre-Created Agents
 
@@ -164,6 +168,7 @@ coordination architecture, not the presence of named agent files.
 | Adopt now | Dynamic role handoff templates for implementer, spec reviewer, quality reviewer, verifier, and rework planner. | This gives each subagent precise behavior without creating persistent role shells that can drift. |
 | Adopt now | Structured status protocol: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`. | These states are small enough for LLMs to follow and map cleanly to board events, review debt, clarification, and fail-fast recovery. |
 | Adopt now | Spec-compliance review before quality review. | It prevents clean-looking code that does not implement the approved Blueprint. |
+| Adopt now | Approved reviewer evidence as a Done gate. | Claude-code attempts should not reach Done from implementer success alone; the latest attempt must contain spec, quality, and verification review approval. |
 | Adopt now | Control-plane coordination through board events, dependency artifacts, mailbox entries, claims, and review debt. | Subagents stay narrow; the orchestrator owns lifecycle and coordination. |
 | Defer | Pre-created `.claude/agents/` or plugin `agents/` role shells. | They may improve discoverability later, but they are not required for correctness and can confuse authority boundaries. |
 | Defer | Per-role model/tool profiles. | Useful after the dynamic handoff contract stabilizes; premature profiles would add config surface before the core loop is proven. |
@@ -178,6 +183,8 @@ coordination architecture, not the presence of named agent files.
 - The controller, not the worker, decides the task packet. Workers should not
   inspect broad run state or parent conversation history to discover scope.
 - Reviewers must verify actual code and evidence, not trust implementer claims.
+- Done requires approved reviewer evidence from spec, quality, and verification
+  reviewers; missing or rejected review evidence routes to Rework.
 - Implementation subagents may run in parallel only when the board proves
   disjoint paths, disjoint ownership, and frozen shared contracts.
 - A `DONE_WITH_CONCERNS` report is not a pass; it becomes explicit review debt.

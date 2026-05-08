@@ -62,6 +62,8 @@ for (const [label, readSkill] of [
     assert.match(skill, /DONE_WITH_CONCERNS/);
     assert.match(skill, /NEEDS_CONTEXT/);
     assert.match(skill, /Direct free-form agent-to-agent chat/i);
+    assert.match(skill, /approved reviewer evidence/i);
+    assert.match(skill, /routes the work item to Rework/i);
   });
 
   test(`${label} verify skill uses stop-the-line root-cause recovery`, async () => {
@@ -111,6 +113,8 @@ test("GSD and Spec Kit review captures dynamic subagent architecture without ext
   assert.match(review, /dynamic prompts and handoff packets/i);
   assert.match(review, /Dynamic role handoff templates/i);
   assert.match(review, /Control-plane coordination/i);
+  assert.match(review, /Approved reviewer evidence as a Done gate/i);
+  assert.match(review, /routes the work item to Rework/i);
   assert.match(review, /Direct free-form agent-to-agent chat/i);
   assert.match(review, /Worker self-scoping/i);
   assert.match(review, /optional .*\.claude\/agents/);

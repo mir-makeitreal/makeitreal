@@ -6,6 +6,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { loadBoard, saveBoard } from "../src/board/board-store.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
+import { latestSuccessfulRunAttempt } from "../src/orchestrator/attempt-store.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { orchestratorTick } from "../src/orchestrator/orchestrator.mjs";
 import { loadRuntimeState } from "../src/orchestrator/runtime-state.mjs";
@@ -56,7 +57,31 @@ async function writeFakeClaude(root) {
 const fs = require('fs');
 fs.mkdirSync('apps/web/auth', { recursive: true });
 fs.writeFileSync('apps/web/auth/runner-output.txt', 'inside boundary');
-console.log(JSON.stringify({ event: 'turn_completed' }));
+console.log(JSON.stringify({
+  event: 'turn_completed',
+  makeitrealReport: {
+    role: 'implementation-worker',
+    status: 'DONE',
+    summary: 'Implemented test fixture output.',
+    changedFiles: ['apps/web/auth/runner-output.txt'],
+    tested: ['fake claude fixture'],
+    concerns: [],
+    needsContext: [],
+    blockers: []
+  }
+}));
+for (const role of ['spec-reviewer', 'quality-reviewer', 'verification-reviewer']) {
+  console.log(JSON.stringify({
+    event: 'notification',
+    makeitrealReview: {
+      role,
+      status: 'APPROVED',
+      summary: role + ' approved fixture output.',
+      findings: [],
+      evidence: ['fake claude fixture']
+    }
+  }));
+}
 `, "utf8");
   await chmod(filePath, 0o755);
 }
@@ -235,8 +260,78 @@ test("orchestrator completion accepts claude-code trust policy after real runner
     });
 
     assert.equal(result.ok, true);
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
+    assert.deepEqual(attempt.runner.reviewReports.map((report) => report.role), [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ]);
     const completed = await loadBoard(boardDir);
-    assert.equal(completed.workItems.find((item) => item.id === "work.login-ui").lane, "Done");
+    const workItem = completed.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(workItem.lane, "Done");
+  });
+});
+
+test("orchestrator completion requires approved dynamic reviewer evidence for claude-code work", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const dispatched = await dispatchClaudeWork({
+      root,
+      boardDir,
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(dispatched.ok, true);
+
+    const latestAttempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
+    const attemptPath = path.join(boardDir, "attempts", `${latestAttempt.attemptId}.json`);
+    const attempt = await readJsonFile(attemptPath);
+    attempt.runner.reviewReports = [];
+    await writeJsonFile(attemptPath, attempt);
+
+    const result = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_REVIEW_EVIDENCE_MISSING");
+    const board = await loadBoard(boardDir);
+    const workItem = board.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(workItem.lane, "Rework");
+    assert.equal(workItem.errorCode, "HARNESS_REVIEW_EVIDENCE_MISSING");
+  });
+});
+
+test("orchestrator completion rejects failed dynamic reviewer evidence for claude-code work", async () => {
+  await withBoard(async ({ root, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const dispatched = await dispatchClaudeWork({
+      root,
+      boardDir,
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(dispatched.ok, true);
+
+    const latestAttempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
+    const attemptPath = path.join(boardDir, "attempts", `${latestAttempt.attemptId}.json`);
+    const attempt = await readJsonFile(attemptPath);
+    attempt.runner.reviewReports = attempt.runner.reviewReports.map((report) =>
+      report.role === "quality-reviewer" ? { ...report, status: "REJECTED" } : report
+    );
+    await writeJsonFile(attemptPath, attempt);
+
+    const result = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_REVIEW_REJECTED");
+    assert.match(result.errors[0].reason, /quality-reviewer/);
   });
 });
 

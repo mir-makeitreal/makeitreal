@@ -14,6 +14,7 @@ import {
   renderDynamicRolePrompt,
   validateAgentReports
 } from "./dynamic-role-handoff.mjs";
+import { extractReviewReport } from "./review-evidence.mjs";
 import { createRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
 import { resolveProjectRootForRun, resolveWorkspace, validateWorkspaceCwd } from "./workspace-manager.mjs";
 
@@ -748,6 +749,7 @@ function parseRunnerEvents({ stdout, now, workItem, workerId, attemptId }) {
   const events = [];
   const errors = [];
   const agentReports = [];
+  const reviewReports = [];
   for (const record of records) {
     const eventName = eventNameFromRecord(record);
     if (!eventName) {
@@ -782,9 +784,16 @@ function parseRunnerEvents({ stdout, now, workItem, workerId, attemptId }) {
     } else if (report.report) {
       agentReports.push(report.report);
     }
+    const review = extractReviewReport({ record, workItem, workerId, attemptId, now });
+    if (!review.ok) {
+      errors.push(...review.errors);
+      events.push("malformed");
+    } else if (review.report) {
+      reviewReports.push(review.report);
+    }
   }
 
-  return { ok: errors.length === 0, events, errors, agentReports };
+  return { ok: errors.length === 0, events, errors, agentReports, reviewReports };
 }
 
 export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId, runnerCommand, now, cwd }) {
@@ -877,7 +886,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
 
   const failedToStart = result.error instanceof Error;
   const parsed = failedToStart || result.status !== 0
-    ? { ok: result.status === 0 && !failedToStart, events: [failedToStart ? "startup_failed" : "turn_failed"], errors: [], agentReports: [] }
+    ? { ok: result.status === 0 && !failedToStart, events: [failedToStart ? "startup_failed" : "turn_failed"], errors: [], agentReports: [], reviewReports: [] }
     : parseRunnerEvents({ stdout: result.stdout, now, workItem, workerId, attemptId: attempt.attemptId });
 
   const parsedEvents = parsed.events.length > 0 ? parsed.events : ["malformed"];
@@ -939,6 +948,7 @@ export async function runClaudeCodeAttempt({ boardDir, board, workItem, workerId
         promptPath: handoff.promptPath,
         dynamicRole: handoff.roleHandoff,
         agentReports: parsed.agentReports ?? [],
+        reviewReports: parsed.reviewReports ?? [],
         projectRoot,
         stagedProjectPaths: stagedProject.stagedPaths,
         changedPaths,
