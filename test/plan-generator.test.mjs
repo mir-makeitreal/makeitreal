@@ -31,6 +31,7 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
 
     const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
     assert.equal(prd.goals.length > 0, true);
+    assert.doesNotMatch(prd.goals.join("\n"), /Deliver the requested capability/);
     assert.equal(prd.userVisibleBehavior.length > 0, true);
     assert.equal(prd.acceptanceCriteria.every((criterion) => criterion.id && criterion.statement), true);
 
@@ -39,22 +40,22 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
     assert.equal(designPack.apiSpecs[0].contractId, result.contractId);
     assert.equal(designPack.architecture.edges[0].contractId, result.contractId);
     assert.equal(designPack.moduleInterfaces[0].responsibilityUnitId, "ru.summary-widget");
-    assert.equal(designPack.moduleInterfaces[0].moduleName, "Build a dashboard widget with summary metrics");
-    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "summary-widget.module");
+    assert.equal(designPack.moduleInterfaces[0].moduleName, "Summary Widget");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "summary-widget.execute");
     assert.deepEqual(designPack.moduleInterfaces[0].publicSurfaces[0].contractIds, [result.contractId]);
-    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "prdRequest");
-    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "verifiedBehavior");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "request");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "result");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.errors[0].code, "BOUNDARY_CONTRACT_VIOLATION");
 
     const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
     assert.equal(responsibilityUnits.units.length, 1);
     assert.equal(responsibilityUnits.units[0].owner, "team.frontend");
-    assert.deepEqual(responsibilityUnits.units[0].publicSurfaces, ["summary-widget.module"]);
+    assert.deepEqual(responsibilityUnits.units[0].publicSurfaces, ["summary-widget.execute"]);
 
     const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.summary-widget.json"));
     assert.equal(workItem.title, "Build a dashboard widget with summary metrics");
     assert.deepEqual(workItem.dependsOn, []);
-    assert.deepEqual(workItem.prdTrace.acceptanceCriteriaIds, ["AC-001", "AC-002", "AC-003", "AC-004"]);
+    assert.deepEqual(workItem.prdTrace.acceptanceCriteriaIds, ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005"]);
     assert.deepEqual(workItem.doneEvidence, [
       { kind: "verification", path: "evidence/work.summary-widget.verification.json" },
       { kind: "wiki-sync", path: "evidence/work.summary-widget.wiki-sync.json" }
@@ -384,6 +385,47 @@ test("plan generator honors explicit project paths in the request", async () => 
 
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
     assert.deepEqual(designPack.moduleInterfaces[0].owns, ["src/math.mjs", "test/math.test.mjs"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator derives function-shaped module contracts without path false positives", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.",
+      runId: "display-name-normalizer",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.display-name-normalizer.json"));
+    assert.deepEqual(workItem.allowedPaths, ["src/normalize-name.mjs", "test/normalize-name.test.mjs"]);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const moduleInterface = designPack.moduleInterfaces[0];
+    assert.equal(moduleInterface.moduleName, "Normalize Display Name");
+    assert.equal(moduleInterface.publicSurfaces[0].name, "normalizeDisplayName");
+    assert.equal(moduleInterface.publicSurfaces[0].signature.inputs[0].name, "input");
+    assert.equal(moduleInterface.publicSurfaces[0].signature.inputs[0].type, "string");
+    assert.equal(moduleInterface.publicSurfaces[0].signature.outputs[0].name, "normalizedValue");
+    assert.equal(moduleInterface.publicSurfaces[0].signature.errors[0].code, "DISPLAY_NAME_INVALID");
+    assert.equal(moduleInterface.publicSurfaces[0].signature.inputs.some((input) => input.name === "prdRequest"), false);
+
+    const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
+    assert.deepEqual(prd.goals, [
+      "Implement the Normalize Display Name responsibility unit inside src/normalize-name.mjs, test/normalize-name.test.mjs.",
+      "Expose normalizeDisplayName with the declared input, output, and error contract.",
+      "Verify the responsibility unit with npm test."
+    ]);
+    assert.deepEqual(prd.userVisibleBehavior, [
+      "normalizeDisplayName accepts input, returns normalizedValue, and fails through DISPLAY_NAME_INVALID, BOUNDARY_CONTRACT_VIOLATION."
+    ]);
+    assert.equal(prd.goals.some((goal) => goal.includes("leading/trailing whitespace")), false);
+    assert.match(prd.acceptanceCriteria[0].statement, /normalizeDisplayName is the only public surface/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

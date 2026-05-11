@@ -86,17 +86,21 @@ function normalizeNativeDecisionPayload(payload) {
   if (typeof payload.launchRequested !== "boolean") {
     throw new Error("Native Blueprint review decision requires boolean launchRequested.");
   }
-  if (!CONFIDENCE.has(payload.confidence)) {
-    throw new Error("Native Blueprint review decision confidence must be high, medium, or low.");
+  const confidence = payload.confidence == null ? "medium" : payload.confidence;
+  if (!CONFIDENCE.has(confidence)) {
+    throw new Error("Native Blueprint review decision confidence must be high, medium, or low when provided.");
   }
-  if (typeof payload.reason !== "string" || !payload.reason.trim()) {
-    throw new Error("Native Blueprint review decision requires a non-empty reason.");
+  const reason = typeof payload.reason === "string" && payload.reason.trim()
+    ? payload.reason.trim()
+    : "Native Claude Code judgment recorded from the current Blueprint review interaction.";
+  if (reason.length > 1000) {
+    throw new Error("Native Blueprint review decision reason must be 1000 characters or fewer.");
   }
   return {
     decision: payload.decision,
     launchRequested: payload.launchRequested,
-    confidence: payload.confidence,
-    reason: payload.reason.trim()
+    confidence,
+    reason
   };
 }
 
@@ -125,7 +129,7 @@ export function buildNativeReviewDelegationContext({
     "```bash",
     `"${enginePath}" blueprint review "${runDir}" --decision-json '<JSON>' --session "${session}" --project-root "${projectRoot}"`,
     "```",
-    "The JSON must be valid JSON with this shape, and `launchRequested` must be a real boolean from the user's actual intent.",
+    "The JSON must be valid JSON with this shape. `decision` and `launchRequested` are required; `confidence` and `reason` are recommended and default to medium confidence with a generic reason if omitted.",
     "Example when the user approves and asks to start now:",
     "{\"decision\":\"approved\",\"launchRequested\":true,\"confidence\":\"high\",\"reason\":\"short native Claude Code judgment\"}",
     "Example when the user approves but does not ask to start now:",

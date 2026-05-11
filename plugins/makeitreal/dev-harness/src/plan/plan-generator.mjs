@@ -68,8 +68,20 @@ function explicitAllowedPathsFromRequest(request) {
   const candidates = [];
   const tokenPattern = /(?:^|[\s("'`])([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+(?:\/|\.[A-Za-z0-9._-]+)?)(?=$|[\s)"'`,.;:!?])/g;
   for (const match of text.matchAll(tokenPattern)) {
-    const candidate = match[1].replace(/\/+$/, "");
+    const candidate = match[1].replace(/\/+$/, "").replace(/[.,;:!?]+$/, "");
     if (!candidate || candidate.startsWith("http/") || candidate.startsWith("https/")) {
+      continue;
+    }
+    const root = candidate.split("/")[0];
+    const hasFileExtension = /\.[A-Za-z0-9._-]+$/.test(candidate);
+    const looksLikeGlob = candidate.endsWith("/**");
+    const knownProjectRoot = [
+      ".github", "app", "apps", "bin", "client", "components", "contracts",
+      "db", "docs", "hooks", "lib", "migrations", "modules", "packages",
+      "plugins", "scripts", "server", "services", "src", "test", "tests",
+      "tools", "web"
+    ].includes(root);
+    if (!hasFileExtension && !looksLikeGlob && !knownProjectRoot) {
       continue;
     }
     candidates.push(candidate.includes(".") || candidate.endsWith("/**") ? candidate : `${candidate}/**`);
@@ -149,6 +161,18 @@ function pascalName(slug) {
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
     .join("");
   return value || "Work";
+}
+
+function humanizeIdentifier(value) {
+  return String(value ?? "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
 function uniqueValues(values) {
@@ -443,7 +467,79 @@ function componentProfileFromRequest({ request, slug }) {
   };
 }
 
-function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile }) {
+function moduleProfileFromRequest({ request, slug }) {
+  const text = String(request ?? "");
+  const functionMatch = text.match(/\b(?:exporting|exposes?|function|create)\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)/i)
+    ?? text.match(/\b([a-z][A-Za-z0-9_$]*)\s*\(([^)]*)\)/);
+  const functionName = functionMatch?.[1] ?? null;
+  const rawArgs = functionMatch?.[2]
+    ?.split(",")
+    .map((part) => part.trim())
+    .filter(Boolean) ?? [];
+  const moduleName = functionName ? humanizeIdentifier(functionName) : humanizeIdentifier(slug);
+  const surfaceName = functionName ?? `${slug}.execute`;
+  const normalizedOutput = /normaliz/i.test(text)
+    ? "normalizedValue"
+    : /parse/i.test(text)
+      ? "parsedResult"
+      : /format/i.test(text)
+        ? "formattedValue"
+        : "result";
+  const returnType = /\bstring\b/i.test(text) ? "string" : "module result";
+  const errorCode = text.match(/\bcode\s+([A-Z][A-Z0-9_]+)/)?.[1] ?? "BOUNDARY_CONTRACT_VIOLATION";
+  const invalidWhen = /non-string|empty/i.test(text)
+    ? "Input is non-string or normalizes to an empty value."
+    : "The call violates the declared module contract.";
+  const inputs = rawArgs.length > 0
+    ? rawArgs.map((arg) => ({
+        name: arg,
+        type: new RegExp(`\\b${arg}\\b[^.]*\\bstring\\b`, "i").test(text) || /\binput must be a string\b/i.test(text) ? "string" : "declared input",
+        required: true,
+        description: `Declared ${arg} input for ${surfaceName}.`
+      }))
+    : [{
+        name: "request",
+        type: "declared input",
+        required: true,
+        description: `Input accepted by ${surfaceName}; refine the Blueprint if additional fields are required.`
+      }];
+  const outputs = [{
+    name: normalizedOutput,
+    type: returnType,
+    description: /trim|collapse|normaliz/i.test(text)
+      ? "Returned value after the declared normalization rules are applied."
+      : "Returned value defined by the module contract."
+  }];
+  const errors = [{
+    code: errorCode,
+    when: invalidWhen,
+    handling: errorCode === "BOUNDARY_CONTRACT_VIOLATION"
+      ? "Fail fast and revise the Blueprint; do not add speculative fallback branches."
+      : `Throw the declared error with code ${errorCode}; do not coerce invalid input through fallback behavior.`
+  }];
+  if (errorCode !== "BOUNDARY_CONTRACT_VIOLATION") {
+    errors.push({
+      code: "BOUNDARY_CONTRACT_VIOLATION",
+      when: "The work requires undeclared paths, undeclared cross-module imports, or behavior outside the Blueprint.",
+      handling: "Fail fast and revise the Blueprint; do not add speculative fallback branches."
+    });
+  }
+  return {
+    moduleName,
+    surfaceName,
+    purpose: `Own the ${moduleName} contract and its tests through declared paths only.`,
+    inputs,
+    outputs,
+    errors,
+    calls: [
+      "validate declared inputs",
+      functionName ? `execute ${functionName}` : "execute owned module behavior",
+      "return declared output or throw declared error"
+    ]
+  };
+}
+
+function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
   if (usesOpenApi) {
     if (apiProfile.opsLike) {
       return [
@@ -525,6 +621,33 @@ function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile }) {
     );
     return criteria;
   }
+  if (moduleProfile) {
+    const inputNames = moduleProfile.inputs.map((input) => input.name).join(", ");
+    const outputNames = moduleProfile.outputs.map((output) => output.name).join(", ");
+    const errorCodes = moduleProfile.errors.map((error) => error.code).join(", ");
+    return [
+      {
+        id: "AC-001",
+        statement: `${moduleProfile.surfaceName} is the only public surface for the ${moduleProfile.moduleName} responsibility unit.`
+      },
+      {
+        id: "AC-002",
+        statement: `Inputs are explicitly validated: ${inputNames}.`
+      },
+      {
+        id: "AC-003",
+        statement: `Successful execution returns declared output: ${outputNames}.`
+      },
+      {
+        id: "AC-004",
+        statement: `Invalid or out-of-contract calls fail fast through declared errors: ${errorCodes}.`
+      },
+      {
+        id: "AC-005",
+        statement: "Ready gate passes before implementation starts and Done requires verification plus wiki evidence."
+      }
+    ];
+  }
   return [
     {
       id: "AC-001",
@@ -542,6 +665,68 @@ function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile }) {
       id: "AC-004",
       statement: "Ready gate passes before implementation starts."
     }
+  ];
+}
+
+function verificationCommandLabel(commands = []) {
+  const command = commands[0];
+  if (!command) {
+    return "declared verification command";
+  }
+  return [command.file, ...(command.args ?? [])].filter(Boolean).join(" ");
+}
+
+function prdGoalsFor({ title, usesOpenApi, apiProfile, componentProfile, moduleProfile, owns, verificationCommands }) {
+  const verify = verificationCommandLabel(verificationCommands);
+  if (usesOpenApi) {
+    return [
+      `Expose ${apiProfile.method.toUpperCase()} ${apiProfile.routePath} as the declared public API contract.`,
+      `Validate request, response, status, and dependency behavior through contract evidence.`,
+      `Verify the slice with ${verify}.`
+    ];
+  }
+  if (componentProfile) {
+    return [
+      `Deliver ${componentProfile.componentName} through its declared props, states, events, and accessibility contract.`,
+      `Keep implementation inside ${owns.join(", ")}.`,
+      `Verify rendered behavior and declared interactions with ${verify}.`
+    ];
+  }
+  if (moduleProfile) {
+    return [
+      `Implement the ${moduleProfile.moduleName} responsibility unit inside ${owns.join(", ")}.`,
+      `Expose ${moduleProfile.surfaceName} with the declared input, output, and error contract.`,
+      `Verify the responsibility unit with ${verify}.`
+    ];
+  }
+  return [
+    `Deliver ${title} inside ${owns.join(", ")}.`,
+    `Expose only declared public surfaces for the owning responsibility unit.`,
+    `Verify the work with ${verify}.`
+  ];
+}
+
+function userVisibleBehaviorFor({ usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
+  if (usesOpenApi) {
+    return [
+      `${apiProfile.method.toUpperCase()} ${apiProfile.routePath} accepts only the declared request contract and returns only declared responses.`
+    ];
+  }
+  if (componentProfile) {
+    return [
+      `${componentProfile.componentName} renders the declared states and interactions without relying on adjacent implementation internals.`
+    ];
+  }
+  if (moduleProfile) {
+    const inputs = moduleProfile.inputs.map((input) => input.name).join(", ");
+    const outputs = moduleProfile.outputs.map((output) => output.name).join(", ");
+    const errors = moduleProfile.errors.map((error) => error.code).join(", ");
+    return [
+      `${moduleProfile.surfaceName} accepts ${inputs}, returns ${outputs}, and fails through ${errors}.`
+    ];
+  }
+  return [
+    "The implemented behavior matches the PRD acceptance criteria and exposes only declared public surfaces."
   ];
 }
 
@@ -698,17 +883,17 @@ function openApiDocument({ title, slug, apiProfile }) {
   };
 }
 
-function surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile }) {
+function surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile, moduleProfile }) {
   if (usesOpenApi) {
     return `${apiProfile.method.toUpperCase()} ${apiProfile.routePath}`;
   }
   if (componentProfile) {
     return `${componentProfile.componentName}.props`;
   }
-  return `${slug}.module`;
+  return moduleProfile?.surfaceName ?? `${slug}.execute`;
 }
 
-function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiProfile, componentProfile }) {
+function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiProfile, componentProfile, moduleProfile }) {
   if (usesOpenApi) {
     return {
       inputs: [
@@ -783,49 +968,35 @@ function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiPro
   }
 
   return {
-    inputs: [
-      {
-        name: "prdRequest",
-        type: "PRD scope",
-        required: true,
-        description: `Accepted user request for this responsibility unit: ${title}`
-      },
-      {
-        name: "ownedWorkspace",
-        type: "project paths",
-        required: true,
-        description: owns.join(", ")
-      }
-    ],
-    outputs: [
-      {
-        name: "verifiedBehavior",
-        type: "module behavior",
-        description: "Implementation satisfying the PRD acceptance criteria inside the declared ownership boundary."
-      },
-      {
-        name: "publicSurface",
-        type: "declared interface",
-        description: `Consumers may rely on ${contractId} without reading implementation internals.`
-      }
-    ],
-    errors: [
-      {
-        code: "BOUNDARY_CONTRACT_VIOLATION",
-        when: "The work requires undeclared paths, undeclared cross-module imports, or behavior outside the Blueprint.",
-        handling: "Fail fast and revise the Blueprint; do not add speculative fallback branches."
-      }
-    ]
+    inputs: moduleProfile?.inputs ?? [{
+      name: "request",
+      type: "declared input",
+      required: true,
+      description: `Input accepted by ${title}.`
+    }],
+    outputs: moduleProfile?.outputs ?? [{
+      name: "result",
+      type: "module result",
+      description: `Consumers may rely on ${contractId} without reading implementation internals.`
+    }],
+    errors: moduleProfile?.errors ?? [{
+      code: "BOUNDARY_CONTRACT_VIOLATION",
+      when: "The work requires undeclared paths, undeclared cross-module imports, or behavior outside the Blueprint.",
+      handling: "Fail fast and revise the Blueprint; do not add speculative fallback branches."
+    }]
   };
 }
 
-function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile }) {
-  const surfaceName = surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile });
+function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
+  const surfaceName = surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile, moduleProfile });
+  const moduleName = componentProfile?.componentName ?? moduleProfile?.moduleName ?? title;
   return {
     responsibilityUnitId,
     owner,
-    moduleName: title,
-    purpose: `Own delivery of "${title}" through declared paths and public surfaces only.`,
+    moduleName,
+    purpose: usesOpenApi || componentProfile
+      ? `Own delivery of "${title}" through declared paths and public surfaces only.`
+      : moduleProfile?.purpose ?? `Own delivery of "${title}" through declared paths and public surfaces only.`,
     owns,
     publicSurfaces: [
       {
@@ -835,10 +1006,10 @@ function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, tit
           ? `HTTP contract surface for ${title}.`
           : componentProfile
             ? `Component contract surface for ${componentProfile.componentName}.`
-            : `Module boundary surface for ${title}.`,
+            : `Module boundary surface for ${moduleName}.`,
         contractIds: [contractId],
         consumers: ["Declared downstream responsibility units and tests"],
-        signature: moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiProfile, componentProfile })
+        signature: moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiProfile, componentProfile, moduleProfile })
       }
     ],
     imports: apiProfile?.dependencies ?? []
@@ -863,7 +1034,7 @@ function componentContractDocument({ componentProfile, contractId, title }) {
   };
 }
 
-function callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProfile }) {
+function callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
   if (usesOpenApi) {
     const calls = ["validate declared inputs"];
     for (const dependency of apiProfile.dependencies) {
@@ -885,7 +1056,7 @@ function callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProf
     }];
   }
   return [
-    { entrypoint: moduleInterface.publicSurfaces[0].name, calls: ["validate declared inputs", "execute owned responsibility unit", "return declared outputs or fail fast"] }
+    { entrypoint: moduleInterface.publicSurfaces[0].name, calls: moduleProfile?.calls ?? ["validate declared inputs", "execute owned responsibility unit", "return declared outputs or fail fast"] }
   ];
 }
 
@@ -1112,19 +1283,18 @@ export async function generatePlanRun({
   const usesOpenApi = isApiLike(request, apiKind);
   const apiProfile = usesOpenApi ? apiProfileFromRequest({ request, slug }) : null;
   const componentProfile = usesOpenApi ? null : componentProfileFromRequest({ request, slug });
-  const acceptanceCriteria = acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile });
+  const moduleProfile = usesOpenApi || componentProfile ? null : moduleProfileFromRequest({ request, slug });
+  const acceptanceCriteria = acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile, moduleProfile });
+  const goals = prdGoalsFor({ title, usesOpenApi, apiProfile, componentProfile, moduleProfile, owns, verificationCommands: commands });
+  const userVisibleBehavior = userVisibleBehaviorFor({ usesOpenApi, apiProfile, componentProfile, moduleProfile });
   await ensureMakeItRealGitIgnore({ projectRoot: resolvedProjectRoot });
 
   const prd = {
     schemaVersion: "1.0",
     id: `prd.${slug}`,
     title,
-    goals: [
-      `Deliver the requested capability: ${title}`
-    ],
-    userVisibleBehavior: [
-      "The implemented behavior matches the PRD acceptance criteria and exposes only declared public surfaces."
-    ],
+    goals,
+    userVisibleBehavior,
     acceptanceCriteria,
     nonGoals: [
       "Generate production implementation code during planning.",
@@ -1146,7 +1316,7 @@ export async function generatePlanRun({
         contractId,
         reason: "Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks."
       };
-  const moduleInterface = moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile });
+  const moduleInterface = moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile });
   const componentContracts = componentProfile
     ? [{ kind: "component", contractId, path: `contracts/${slug}.component-contract.json` }]
     : [];
@@ -1191,7 +1361,7 @@ export async function generatePlanRun({
       { responsibilityUnitId, owns, mayUseContracts }
     ],
     moduleInterfaces: [moduleInterface],
-    callStacks: callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProfile }),
+    callStacks: callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProfile, moduleProfile }),
     sequences: sequencesFor({ workItemId, contractId, usesOpenApi, apiProfile, componentProfile })
   };
 

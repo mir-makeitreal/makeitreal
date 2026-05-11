@@ -92,7 +92,7 @@ All review paths must converge on the current Claude Code session as the review 
 - later chat reply: rely on the `UserPromptSubmit` hook, which injects the reply, previous assistant message, and native review protocol back into the current Claude Code session;
 - explicit slash command: keep `/mir:plan approve` and `/mir:plan reject` only as scriptable controls.
 
-Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --decision-json`. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
+Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --decision-json`. Always include `decision` and `launchRequested`; include `confidence` and `reason` when available, but they are evidence metadata and the engine can default them if omitted. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
 
 ### Shared Language
 

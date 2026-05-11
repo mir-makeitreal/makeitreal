@@ -34,11 +34,11 @@ a { color: var(--accent); text-decoration: none; }
 
 .doc-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 300px;
-  gap: 18px;
-  max-width: 1480px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 22px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 22px;
 }
 
 .doc-nav,
@@ -52,12 +52,12 @@ a { color: var(--accent); text-decoration: none; }
 
 .doc-nav,
 .status-rail {
-  position: sticky;
-  top: 18px;
   align-self: start;
 }
 
 .doc-nav {
+  position: sticky;
+  top: 22px;
   display: grid;
   gap: 6px;
   padding: 14px;
@@ -94,6 +94,10 @@ a { color: var(--accent); text-decoration: none; }
   padding: 18px;
 }
 
+.hero-panel {
+  padding: 22px;
+}
+
 .eyebrow,
 .rail-label {
   margin: 0 0 6px;
@@ -106,8 +110,9 @@ a { color: var(--accent); text-decoration: none; }
 
 h1 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 48px);
-  line-height: 1.05;
+  max-width: 760px;
+  font-size: clamp(30px, 3vw, 38px);
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -129,16 +134,66 @@ h3 {
   font-size: 16px;
 }
 
-.metric-grid {
+.surface-line {
+  margin: 10px 0 0;
+}
+
+.surface-line code {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  padding: 7px 9px;
+  color: #344054;
+  overflow-wrap: anywhere;
+}
+
+.hero-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.status-pill {
+  border: 1px solid #bfd0ff;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--accent-soft);
+  color: #263ca8;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.request-disclosure {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.request-disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.request-disclosure p {
+  margin: 8px 0 0;
+  max-width: 920px;
+}
+
+.reference-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
 }
 
-.metric-grid div,
+.reference-grid div,
 .doc-table,
-.contract-card,
+.reference-table,
 .boundary-card,
 .module-interface,
 .surface-card,
@@ -152,20 +207,21 @@ h3 {
   background: var(--soft);
 }
 
-.metric-grid div {
+.reference-grid div {
   padding: 10px;
 }
 
-.metric-grid span {
+.reference-grid span {
   display: block;
   color: var(--muted);
   font-size: 11px;
 }
 
-.metric-grid strong {
+.reference-grid strong {
   display: block;
   margin-top: 4px;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .doc-table {
@@ -206,16 +262,24 @@ h3 {
   color: var(--muted);
 }
 
-.contract-card {
+.reference-table {
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
+  overflow: hidden;
   background: var(--panel);
 }
 
-.contract-card p {
+.reference-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(180px, auto);
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--soft-line);
+  padding: 12px;
+}
+
+.reference-row:first-child { border-top: 0; }
+
+.reference-row p {
   margin: 3px 0 0;
   color: var(--muted);
 }
@@ -409,17 +473,44 @@ h3 {
 }
 
 .status-rail {
-  display: grid;
-  gap: 0;
+  display: block;
   overflow: hidden;
 }
 
-.status-rail section {
+.status-rail summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.status-rail summary strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--soft-line);
 }
 
-.status-rail section:first-child {
+.status-grid section {
+  border-top: 1px solid var(--soft-line);
+  border-left: 1px solid var(--soft-line);
+}
+
+.status-grid section:nth-child(1),
+.status-grid section:nth-child(2) {
   border-top: 0;
+}
+
+.status-grid section:nth-child(odd) {
+  border-left: 0;
 }
 
 .status-rail h2 {
@@ -507,6 +598,16 @@ h3 {
   padding: 10px;
 }
 
+.diagnostics-panel summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.diagnostics-panel .doc-table {
+  margin: 12px 0;
+}
+
 .rail-list p {
   margin: 3px 0;
   color: var(--muted);
@@ -548,8 +649,7 @@ h3 {
     grid-template-columns: 1fr;
   }
 
-  .doc-nav,
-  .status-rail {
+  .doc-nav {
     position: static;
   }
 
@@ -564,14 +664,15 @@ h3 {
   }
 
   .doc-nav,
-  .metric-grid,
+  .reference-grid,
   .signature-grid,
-  .boundary-grid {
+  .boundary-grid,
+  .status-grid {
     grid-template-columns: 1fr;
   }
 
   .doc-row,
-  .contract-card,
+  .reference-row,
   .criterion,
   .artifact-grid {
     grid-template-columns: 1fr;

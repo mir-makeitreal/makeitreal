@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Blueprint - Authentication vertical slice</title>
+  <title>Make It Real Blueprint - Login Form</title>
   <link rel="stylesheet" href="./preview.css">
 </head>
 <body>
@@ -13,25 +13,31 @@
       <strong>Blueprint Reference</strong>
       <a href="#overview" class="active">Overview</a>
       <a href="#delivery">What Will Be Delivered</a>
-      <a href="#contracts">API / IO Contract</a>
+      <a href="#contracts">Public Contracts</a>
       <a href="#interfaces">Module Interfaces</a>
       <a href="#boundaries">Responsibility Boundaries</a>
       <a href="#flow">Sequence & Call Stack</a>
       <a href="#evidence">Acceptance Evidence</a>
-      <a href="#artifacts">Raw Artifacts</a>
-      <a href="#runtime">Runtime Snapshot</a>
     </nav>
 
     <article class="doc-main">
       <header id="overview" class="hero-panel">
-        <p class="eyebrow">Blueprint Reference / work.feature-auth</p>
-        <h1>Authentication vertical slice</h1>
+        <div class="hero-topline">
+          <p class="eyebrow">Blueprint Reference</p>
+          <span class="status-pill">approved</span>
+        </div>
+        <h1>Login Form</h1>
+        <p class="surface-line"><code>LoginForm.submit(credentials.email, credentials.password)</code></p>
         <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
-        <div class="metric-grid">
-          <div><span>Status</span><strong>approved</strong></div>
-          <div><span>Phase</span><strong>launch-ready</strong></div>
-          <div><span>Primary Contract</span><strong>contract.auth.login</strong></div>
-          <div><span>Next Action</span><strong>/makeitreal:launch</strong></div>
+        <details class="request-disclosure">
+          <summary>Original request</summary>
+          <p>Authentication vertical slice</p>
+        </details>
+        <div class="reference-grid">
+          <div><span>Public Surface</span><strong>LoginForm.submit</strong></div>
+          <div><span>Owner</span><strong>team.frontend</strong></div>
+          <div><span>Contract</span><strong>contract.auth.login</strong></div>
+          <div><span>Verification</span><strong>Verification passed</strong></div>
         </div>
       </header>
 
@@ -45,16 +51,16 @@
       </section>
 
       <section id="contracts" class="doc-section">
-        <h2>API / Interface Specs</h2>
+        <h2>Public Contracts</h2>
         <p class="section-note">API / IO Contract surfaces that other responsibility units must use without reading implementation internals.</p>
-        <div class="contract-card">
-    <span class="method">openapi</span>
+        <div class="reference-table"><div class="reference-row">
+    <div><span class="method ">openapi</span></div>
     <div>
       <strong>contract.auth.login</strong>
-      <p>contracts/auth-login.openapi.json</p>
+      <p>Authoritative machine-readable contract.</p>
     </div>
     <code>contracts/auth-login.openapi.json</code>
-  </div>
+  </div></div>
       </section>
 
       <section id="interfaces" class="doc-section">
@@ -196,10 +202,16 @@
   </div></div>
       </section>
 
-      <section id="artifacts" class="doc-section">
-        <h2>Raw Artifacts</h2>
-        <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff.</p>
-        <div class="artifact-grid"><div>
+      <section id="diagnostics" class="doc-section">
+        <details class="diagnostics-panel">
+    <summary>Developer Diagnostics</summary>
+    <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
+    <div class="doc-table">
+      <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>launch-ready</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>approved</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth</code></div></div>
+    </div>
+    <div class="artifact-grid"><div>
     <strong>PRD</strong>
     <code>prd.json</code>
   </div><div>
@@ -217,46 +229,51 @@
       <code>/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth</code>
     </div>
   </div>
+  </details>
       </section>
-    </article>
 
-    <div id="runtime">
-      <aside class="status-rail" data-read-only-cockpit="true">
-    <section>
-      <p class="rail-label">Runtime Snapshot</p>
-      <h2>launch-ready</h2>
-      <p><strong>Blueprint is approved and ready to launch.</strong></p>
-      <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
-      <div class="command-copy">
-        <code>/makeitreal:launch</code>
-        <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
-      </div>
-    </section>
+      <div id="runtime">
+        <details class="status-rail" data-read-only-cockpit="true">
+    <summary>
+      <span>Run Status & Kanban</span>
+      <strong>launch-ready</strong>
+    </summary>
+    <div class="status-grid">
+      <section>
+        <p class="rail-label">Current Run</p>
+        <h2>launch-ready</h2>
+        <p><strong>Blueprint is approved and ready to launch.</strong></p>
+        <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
+        <div class="command-copy">
+          <code>/makeitreal:launch</code>
+          <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
+        </div>
+      </section>
 
-    <section>
-      <h3>Kanban</h3>
-      <p class="empty">No launch board materialized yet.</p>
-    </section>
+      <section>
+        <h3>Kanban</h3>
+        <div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div>
+      </section>
 
-    <section>
-      <h3>Blockers</h3>
-      <p class="empty">No active blockers.</p>
-    </section>
+      <section>
+        <h3>Blockers</h3>
+        <p class="empty">No active blockers.</p>
+      </section>
 
-    <section>
-      <h3>Evidence Links</h3>
-      <div class="rail-list"><div>
+      <section>
+        <h3>Evidence Links</h3>
+        <div class="rail-list"><div>
       <a href="../evidence/verification.json">verification: verification recorded</a>
       <code>evidence/verification.json</code>
     </div><div>
       <a href="../evidence/wiki-sync.json">wiki-sync: wiki-sync recorded</a>
       <code>evidence/wiki-sync.json</code>
     </div></div>
-    </section>
+      </section>
 
-    <section>
-      <h3>First Run</h3>
-      <ol class="guide-steps"><li class="guide-step complete">
+      <section>
+        <h3>First Run</h3>
+        <ol class="guide-steps"><li class="guide-step complete">
     <span>Plugin Ready</span>
     <strong>complete</strong>
     <code>/makeitreal:doctor</code>
@@ -281,9 +298,11 @@
     <strong>pending</strong>
     <code>/makeitreal:status</code>
   </li></ol>
-    </section>
-  </aside>
+      </section>
     </div>
+  </details>
+      </div>
+    </article>
   </main>
   <script src="./preview.js"></script>
 </body>

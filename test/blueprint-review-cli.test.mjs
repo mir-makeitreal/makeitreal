@@ -105,6 +105,40 @@ test("blueprint review records native Claude Code decision JSON", async () => {
   });
 });
 
+test("blueprint review accepts native decisions with optional metadata defaults", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const decision = {
+      decision: "approved",
+      launchRequested: true
+    };
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      runDir,
+      "--decision-json",
+      JSON.stringify(decision),
+      "--session",
+      "question-ui",
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ], {
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.action, "approved");
+
+    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
+    assert.equal(review.status, "approved");
+    assert.match(review.decisionNote, /medium confidence/);
+    assert.match(review.decisionNote, /current Blueprint review interaction/);
+  });
+});
+
 test("blueprint review refuses prompt-only child-judge flow", async () => {
   await withFixture(async ({ runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });

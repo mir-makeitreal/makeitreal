@@ -36,7 +36,8 @@ Purpose:
 - plans with `--runner claude-code`
 - blocks launch before Blueprint approval
 - records approval evidence
-- launches a real Claude Code runner in a bounded work-item workspace
+- launches a native Claude Code work item flow against the real project root
+  under Make It Real allowed-path hooks
 - verifies output through the engine
 - checks read-only dashboard behavior
 - reaches Done through gate evidence

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
@@ -112,7 +113,7 @@ test("renders canonical architecture preview", async () => {
     for (const label of [
       "Blueprint Reference",
       "What Will Be Delivered",
-      "API / Interface Specs",
+      "Public Contracts",
       "Module Interfaces",
       "Inputs",
       "Outputs",
@@ -120,14 +121,17 @@ test("renders canonical architecture preview", async () => {
       "Responsibility Boundaries",
       "Sequence & Call Stack",
       "Acceptance Evidence",
-      "Raw Artifacts",
-      "Runtime Snapshot"
+      "Developer Diagnostics",
+      "Current Run"
     ]) {
       assert.match(html, new RegExp(label));
     }
+    assert.doesNotMatch(html, /<a href="#artifacts">Raw Artifacts<\/a>/);
+    assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
     assert.doesNotMatch(html, /<h2>Kanban Board<\/h2>/);
     assert.match(html, /Read-only dashboard/);
     assert.match(html, /data-read-only-cockpit="true"/);
+    assert.match(html, /data-operator-kanban="true"/);
     assert.match(html, /\/makeitreal:status/);
     assert.match(html, /copy-command/);
     assert.doesNotMatch(html, /data-harness-action=/);
@@ -222,7 +226,8 @@ test("preview projects approved launch board state without mutating control-plan
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /Board has work ready for launch/);
     assert.match(html, /class="kanban-lane"/);
-    assert.match(html, /data-lane="Contract Frozen"/);
+    assert.match(html, /data-lane="Planned"/);
+    assert.doesNotMatch(html, /data-lane="Contract Frozen"/);
     assert.match(html, /class="work-card"/);
     assert.match(html, /\/makeitreal:launch/);
     assert.doesNotMatch(html, /board claim/);
@@ -232,4 +237,43 @@ test("preview projects approved launch board state without mutating control-plan
     const model = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
     assert.equal(model.board.lanes.find((lane) => lane.name === "Contract Frozen").workItems[0].id, plan.workItemId);
   });
+});
+
+test("preview renders long implementation requests as compact reference docs", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
+  try {
+    const request = "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.";
+    const plan = await generatePlanRun({
+      projectRoot: root,
+      request,
+      runId: "display-name-normalizer",
+      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const result = await renderDesignPreview({ runDir: plan.runDir });
+    assert.equal(result.ok, true);
+
+    const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
+    assert.match(html, /<h1>Normalize Display Name<\/h1>/);
+    assert.match(html, /normalizeDisplayName\(input\)/);
+    assert.match(html, /Original request/);
+    assert.match(html, /display-name normalization responsibility unit/);
+    assert.match(html, /Public Surface/);
+    assert.match(html, /Run Status & Kanban/);
+    assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
+    assert.doesNotMatch(html, /<h1>Implement a pure JavaScript display-name/);
+    assert.doesNotMatch(html, /<strong>Implement a pure JavaScript display-name/);
+    assert.doesNotMatch(html, /<a href="#artifacts">Raw Artifacts<\/a>/);
+    assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
+
+    const css = await readFile(path.join(plan.runDir, "preview", "preview.css"), "utf8");
+    assert.match(css, /grid-template-columns: 240px minmax\(0, 1fr\)/);
+    assert.match(css, /\.reference-grid/);
+    assert.doesNotMatch(css, /grid-template-columns: 220px minmax\(0, 1fr\) 300px/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

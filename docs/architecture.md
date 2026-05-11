@@ -114,7 +114,7 @@ automatically added to `.gitignore` by `plan` and `setup`.
       attempts/
         *.json
       workspaces/
-        work.<id>/
+        work.<id>/             # scripted fixture/legacy runner only
           .makeitreal/
             handoff.json
             prompt.md
@@ -243,8 +243,9 @@ Boundary checks happen in multiple places:
 - Ready gate validates design, contracts, responsibility ownership, and Blueprint
   approval.
 - `PreToolUse` blocks edits outside allowed paths for an active run.
-- Runner workspace staging gives the agent only the relevant handoff packet,
-  source artifacts, and work item contract.
+- Native Claude Code launch gives the parent session a scoped Task handoff with
+  the relevant contract, allowed paths, and verification plan. Scripted
+  workspace staging remains only for fixtures and legacy runner evidence.
 
 This intentionally rejects undeclared fallback behavior. If a dependency, SDK,
 API, or module violates its contract, the harness should fail fast and record

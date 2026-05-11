@@ -176,9 +176,11 @@ see [docs/research/2026-05-08-gsd-speckit-feature-review.md](docs/research/2026-
 - Ambiguous frontend/backend/data requests fail fast with structured
   `suggestedBoundaries` so the operator can review the proposed split instead
   of guessing how to decompose the work.
-- Allowed paths and contract IDs constrain the implementation workspace.
-- Successful runner changes are applied back to the real project only for those
-  allowed paths, and completion verification runs from the real project root.
+- Allowed paths and contract IDs constrain native Claude Code edits in the real
+  project root.
+- Successful work item completion is verified from the real project root. The
+  old staged workspace runner is retained only for scripted fixtures and legacy
+  evidence replay.
 - Undeclared fallback behavior is rejected in favor of fail-fast evidence.
 - The browser dashboard is read-only observability, not a mutation surface.
 - Verification and wiki evidence are engine-owned before Done.

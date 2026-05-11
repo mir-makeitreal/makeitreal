@@ -23,34 +23,95 @@ function renderAcceptance(criteria = []) {
   </div>`).join("")}</div>`;
 }
 
-function renderContract(contract) {
-  if (!contract) {
-    return '<p class="empty">No API or IO contract declared.</p>';
-  }
-  if (contract.kind === "none") {
-    return `<div class="contract-card">
-      <span class="method neutral">NO API</span>
-      <div>
-        <strong>Contract evidence is non-API</strong>
-        <p>${escapeHtml(contract.reason ?? "No external API surface for this work.")}</p>
-      </div>
-    </div>`;
-  }
-  return `<div class="contract-card">
-    <span class="method">${escapeHtml(contract.kind ?? "contract")}</span>
-    <div>
-      <strong>${escapeHtml(contract.contractId ?? "Unnamed contract")}</strong>
-      <p>${escapeHtml(contract.path ?? "No contract path recorded.")}</p>
-    </div>
-    ${contract.path ? `<code>${escapeHtml(contract.path)}</code>` : ""}
-  </div>`;
+function humanizeIdentifier(value) {
+  return String(value ?? "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
-function renderContracts(contracts = []) {
-  if (contracts.length === 0) {
-    return '<p class="empty">No contracts declared.</p>';
+function conciseTitleFromText(value) {
+  const text = String(value ?? "");
+  const functionLike = text.match(/\b([a-z][A-Za-z0-9]+)\s*\(/);
+  if (functionLike) {
+    return humanizeIdentifier(functionLike[1]);
   }
-  return contracts.map(renderContract).join("");
+  const filtered = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((word) => ![
+      "a", "an", "and", "or", "the", "with", "for", "to", "of", "in",
+      "implement", "create", "build", "add", "update", "pure", "javascript",
+      "typescript", "responsibility", "unit", "module", "component", "contract",
+      "verification", "command", "input", "output", "test", "tests"
+    ].includes(word))
+    .slice(0, 5)
+    .join(" ");
+  return humanizeIdentifier(filtered || text);
+}
+
+function primarySurface(blueprint = {}) {
+  return blueprint.moduleInterfaces?.[0]?.publicSurfaces?.[0] ?? null;
+}
+
+function primaryModule(blueprint = {}) {
+  return blueprint.moduleInterfaces?.[0] ?? null;
+}
+
+function surfaceSignature(surface) {
+  if (!surface?.name) {
+    return null;
+  }
+  const inputs = surface.signature?.inputs ?? [];
+  if (inputs.length === 0) {
+    return surface.name;
+  }
+  return `${surface.name}(${inputs.map((input) => input.name ?? "input").join(", ")})`;
+}
+
+function referenceTitle(model) {
+  const blueprint = model.blueprint ?? {};
+  const surface = primarySurface(blueprint);
+  if (surface?.name && !/^[a-z0-9-]+\.module$/i.test(surface.name)) {
+    return humanizeIdentifier(surface.name);
+  }
+  return conciseTitleFromText(blueprint.title ?? model.run.workItemId);
+}
+
+function verificationLabel(status = {}) {
+  if (status.phase === "done") {
+    return "Verified and synced";
+  }
+  const verification = (status.evidenceSummary ?? []).find((item) => String(item.kind ?? "").includes("verification"));
+  if (verification?.ok === true) {
+    return "Verification passed";
+  }
+  return status.nextAction ?? "Pending review";
+}
+
+function verificationTileLabel(status = {}) {
+  return status.phase === "done" || (status.evidenceSummary ?? []).some((item) => String(item.kind ?? "").includes("verification")) ? "Verification" : "Next Step";
+}
+
+function renderContractReference(contracts = []) {
+  if (contracts.length === 0) {
+    return '<p class="empty">No public contracts declared.</p>';
+  }
+  return `<div class="reference-table">${contracts.map((contract) => `<div class="reference-row">
+    <div><span class="method ${contract.kind === "none" ? "neutral" : ""}">${escapeHtml(contract.kind ?? "contract")}</span></div>
+    <div>
+      <strong>${escapeHtml(contract.contractId ?? "Unnamed contract")}</strong>
+      <p>${escapeHtml(contract.kind === "none" ? contract.reason ?? "Non-API boundary contract." : "Authoritative machine-readable contract.")}</p>
+    </div>
+    <code>${escapeHtml(contract.path ?? "Declared by responsibility boundary")}</code>
+  </div>`).join("")}</div>`;
 }
 
 function formatSignatureMeta(item, valueKeys = []) {
@@ -236,7 +297,21 @@ function renderRawArtifacts(model) {
   </div>`;
 }
 
+function renderDeveloperDiagnostics(model, status) {
+  return `<details class="diagnostics-panel">
+    <summary>Developer Diagnostics</summary>
+    <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
+    <div class="doc-table">
+      <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>${escapeHtml(status.phase ?? "unknown")}</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>${escapeHtml(status.blueprintStatus ?? "unknown")}</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>${escapeHtml(model.run.runDir)}</code></div></div>
+    </div>
+    ${renderRawArtifacts(model)}
+  </details>`;
+}
+
 function renderWorkItemCard(workItem) {
+  const title = conciseTitleFromText(workItem.title ?? workItem.id);
   const flags = [
     workItem.isBlocked ? "blocked" : null,
     workItem.isRetryReady ? "retry ready" : null,
@@ -244,7 +319,7 @@ function renderWorkItemCard(workItem) {
     workItem.claim ? `claimed by ${workItem.claim.workerId}` : null
   ].filter(Boolean);
   return `<article class="work-card" data-work-item-id="${escapeHtml(workItem.id)}">
-    <strong>${escapeHtml(workItem.title ?? workItem.id)}</strong>
+    <strong>${escapeHtml(title)}</strong>
     <code>${escapeHtml(workItem.id)}</code>
     <span>${escapeHtml(workItem.responsibilityUnitId)}</span>
     ${flags.length > 0 ? `<em>${escapeHtml(flags.join(" | "))}</em>` : ""}
@@ -253,12 +328,47 @@ function renderWorkItemCard(workItem) {
 
 function renderCompactKanban(board) {
   if (!board) {
-    return '<p class="empty">No launch board materialized yet.</p>';
+    return '<div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div>';
   }
-  return `<div class="compact-kanban">${board.lanes.map((lane) => `<section class="kanban-lane" data-lane="${escapeHtml(lane.name)}">
-    <header><span>${escapeHtml(lane.name)}</span><strong>${lane.workItems.length}</strong></header>
-    ${lane.workItems.slice(0, 3).map(renderWorkItemCard).join("")}
+  const groups = groupBoardForOperator(board);
+  return `<div class="compact-kanban" data-operator-kanban="true">${groups.map((group) => `<section class="kanban-lane" data-lane="${escapeHtml(group.name)}">
+    <header><span>${escapeHtml(group.name)}</span><strong>${group.workItems.length}</strong></header>
+    ${group.workItems.slice(0, 3).map(renderWorkItemCard).join("")}
+    ${group.workItems.length > 3 ? `<p class="muted">+${group.workItems.length - 3} more</p>` : ""}
   </section>`).join("")}</div>`;
+}
+
+function operatorLaneFor(workItem) {
+  if (workItem.isBlocked || workItem.isRetryReady || workItem.isRework || ["Failed Fast", "Rework"].includes(workItem.lane)) {
+    return "Blocked";
+  }
+  if (["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen"].includes(workItem.lane)) {
+    return "Planned";
+  }
+  if (["Ready", "Claimed"].includes(workItem.lane)) {
+    return "Ready";
+  }
+  if (workItem.lane === "Running") {
+    return "In Progress";
+  }
+  if (["Verifying", "Human Review"].includes(workItem.lane)) {
+    return "Review";
+  }
+  if (workItem.lane === "Done") {
+    return "Done";
+  }
+  return "Planned";
+}
+
+function groupBoardForOperator(board) {
+  const order = ["Planned", "Ready", "In Progress", "Review", "Done", "Blocked"];
+  const groups = new Map(order.map((name) => [name, { name, workItems: [] }]));
+  for (const lane of board.lanes ?? []) {
+    for (const workItem of lane.workItems ?? []) {
+      groups.get(operatorLaneFor(workItem)).workItems.push({ ...workItem, internalLane: lane.name });
+    }
+  }
+  return [...groups.values()].filter((group) => group.workItems.length > 0 || group.name !== "Blocked");
 }
 
 function renderChecklistStep(step) {
@@ -273,50 +383,59 @@ function renderOperatorCockpit(cockpit, board, status) {
   if (!cockpit) {
     return "";
   }
-  return `<aside class="status-rail" data-read-only-cockpit="${cockpit.readOnly ? "true" : "false"}">
-    <section>
-      <p class="rail-label">Runtime Snapshot</p>
-      <h2>${escapeHtml(status.phase ?? "unknown")}</h2>
-      <p><strong>${escapeHtml(status.headline ?? "Status unavailable.")}</strong></p>
-      <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
-      <div class="command-copy">
-        <code>${escapeHtml(status.nextCommand ?? status.nextAction ?? "none")}</code>
-        <button type="button" class="copy-command" data-copy="${escapeHtml(status.nextCommand ?? status.nextAction ?? "")}">Copy</button>
-      </div>
-    </section>
+  return `<details class="status-rail" data-read-only-cockpit="${cockpit.readOnly ? "true" : "false"}">
+    <summary>
+      <span>Run Status & Kanban</span>
+      <strong>${escapeHtml(status.phase ?? "unknown")}</strong>
+    </summary>
+    <div class="status-grid">
+      <section>
+        <p class="rail-label">Current Run</p>
+        <h2>${escapeHtml(status.phase ?? "unknown")}</h2>
+        <p><strong>${escapeHtml(status.headline ?? "Status unavailable.")}</strong></p>
+        <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
+        <div class="command-copy">
+          <code>${escapeHtml(status.nextCommand ?? status.nextAction ?? "none")}</code>
+          <button type="button" class="copy-command" data-copy="${escapeHtml(status.nextCommand ?? status.nextAction ?? "")}">Copy</button>
+        </div>
+      </section>
 
-    <section>
-      <h3>Kanban</h3>
-      ${renderCompactKanban(board)}
-    </section>
+      <section>
+        <h3>Kanban</h3>
+        ${renderCompactKanban(board)}
+      </section>
 
-    <section>
-      <h3>Blockers</h3>
-      ${renderBlockers(status.blockers)}
-    </section>
+      <section>
+        <h3>Blockers</h3>
+        ${renderBlockers(status.blockers)}
+      </section>
 
-    <section>
-      <h3>Evidence Links</h3>
-      ${renderEvidenceLinks(cockpit.evidenceLinks)}
-    </section>
+      <section>
+        <h3>Evidence Links</h3>
+        ${renderEvidenceLinks(cockpit.evidenceLinks)}
+      </section>
 
-    <section>
-      <h3>First Run</h3>
-      <ol class="guide-steps">${cockpit.firstRunChecklist.map(renderChecklistStep).join("")}</ol>
-    </section>
-  </aside>`;
+      <section>
+        <h3>First Run</h3>
+        <ol class="guide-steps">${cockpit.firstRunChecklist.map(renderChecklistStep).join("")}</ol>
+      </section>
+    </div>
+  </details>`;
 }
 
 export function renderDashboardHtml(model) {
   const blueprint = model.blueprint ?? {};
   const primarySummary = (blueprint.summary ?? [])[0] ?? "No user-visible behavior recorded.";
   const primaryContract = blueprint.primaryContract;
+  const surface = primarySurface(blueprint);
+  const moduleInterface = primaryModule(blueprint);
+  const title = referenceTitle(model);
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Blueprint - ${escapeHtml(blueprint.title ?? model.run.workItemId)}</title>
+  <title>Make It Real Blueprint - ${escapeHtml(title)}</title>
   <link rel="stylesheet" href="./preview.css">
 </head>
 <body>
@@ -326,25 +445,31 @@ export function renderDashboardHtml(model) {
       <strong>Blueprint Reference</strong>
       <a href="#overview" class="active">Overview</a>
       <a href="#delivery">What Will Be Delivered</a>
-      <a href="#contracts">API / IO Contract</a>
+      <a href="#contracts">Public Contracts</a>
       <a href="#interfaces">Module Interfaces</a>
       <a href="#boundaries">Responsibility Boundaries</a>
       <a href="#flow">Sequence & Call Stack</a>
       <a href="#evidence">Acceptance Evidence</a>
-      <a href="#artifacts">Raw Artifacts</a>
-      <a href="#runtime">Runtime Snapshot</a>
     </nav>
 
     <article class="doc-main">
       <header id="overview" class="hero-panel">
-        <p class="eyebrow">Blueprint Reference / ${escapeHtml(model.run.workItemId)}</p>
-        <h1>${escapeHtml(blueprint.title ?? model.run.workItemId)}</h1>
+        <div class="hero-topline">
+          <p class="eyebrow">Blueprint Reference</p>
+          <span class="status-pill">${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
+        </div>
+        <h1>${escapeHtml(title)}</h1>
+        ${surfaceSignature(surface) ? `<p class="surface-line"><code>${escapeHtml(surfaceSignature(surface))}</code></p>` : ""}
         <p class="summary-line">${escapeHtml(primarySummary)}</p>
-        <div class="metric-grid">
-          <div><span>Status</span><strong>${escapeHtml(model.status.blueprintStatus ?? "unknown")}</strong></div>
-          <div><span>Phase</span><strong>${escapeHtml(model.status.phase ?? "unknown")}</strong></div>
-          <div><span>Primary Contract</span><strong>${escapeHtml(primaryContract?.contractId ?? primaryContract?.kind ?? "none")}</strong></div>
-          <div><span>Next Action</span><strong>${escapeHtml(model.status.nextAction ?? "none")}</strong></div>
+        <details class="request-disclosure">
+          <summary>Original request</summary>
+          <p>${escapeHtml(blueprint.title ?? model.run.workItemId)}</p>
+        </details>
+        <div class="reference-grid">
+          <div><span>Public Surface</span><strong>${escapeHtml(surface?.name ?? "Not declared")}</strong></div>
+          <div><span>Owner</span><strong>${escapeHtml(moduleInterface?.owner ?? moduleInterface?.responsibilityUnitId ?? "Not assigned")}</strong></div>
+          <div><span>Contract</span><strong>${escapeHtml(primaryContract?.contractId ?? primaryContract?.kind ?? "none")}</strong></div>
+          <div><span>${escapeHtml(verificationTileLabel(model.status))}</span><strong>${escapeHtml(verificationLabel(model.status))}</strong></div>
         </div>
       </header>
 
@@ -358,9 +483,9 @@ export function renderDashboardHtml(model) {
       </section>
 
       <section id="contracts" class="doc-section">
-        <h2>API / Interface Specs</h2>
+        <h2>Public Contracts</h2>
         <p class="section-note">API / IO Contract surfaces that other responsibility units must use without reading implementation internals.</p>
-        ${renderContracts(blueprint.contracts)}
+        ${renderContractReference(blueprint.contracts)}
       </section>
 
       <section id="interfaces" class="doc-section">
@@ -393,16 +518,14 @@ export function renderDashboardHtml(model) {
         ${renderEvidenceSummary(model.status.evidenceSummary)}
       </section>
 
-      <section id="artifacts" class="doc-section">
-        <h2>Raw Artifacts</h2>
-        <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff.</p>
-        ${renderRawArtifacts(model)}
+      <section id="diagnostics" class="doc-section">
+        ${renderDeveloperDiagnostics(model, model.status)}
       </section>
-    </article>
 
-    <div id="runtime">
-      ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
-    </div>
+      <div id="runtime">
+        ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
+      </div>
+    </article>
   </main>
   <script src="./preview.js"></script>
 </body>
@@ -447,11 +570,11 @@ a { color: var(--accent); text-decoration: none; }
 
 .doc-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 300px;
-  gap: 18px;
-  max-width: 1480px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 22px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 22px;
 }
 
 .doc-nav,
@@ -465,12 +588,12 @@ a { color: var(--accent); text-decoration: none; }
 
 .doc-nav,
 .status-rail {
-  position: sticky;
-  top: 18px;
   align-self: start;
 }
 
 .doc-nav {
+  position: sticky;
+  top: 22px;
   display: grid;
   gap: 6px;
   padding: 14px;
@@ -507,6 +630,10 @@ a { color: var(--accent); text-decoration: none; }
   padding: 18px;
 }
 
+.hero-panel {
+  padding: 22px;
+}
+
 .eyebrow,
 .rail-label {
   margin: 0 0 6px;
@@ -519,8 +646,9 @@ a { color: var(--accent); text-decoration: none; }
 
 h1 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 48px);
-  line-height: 1.05;
+  max-width: 760px;
+  font-size: clamp(30px, 3vw, 38px);
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -542,16 +670,66 @@ h3 {
   font-size: 16px;
 }
 
-.metric-grid {
+.surface-line {
+  margin: 10px 0 0;
+}
+
+.surface-line code {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  padding: 7px 9px;
+  color: #344054;
+  overflow-wrap: anywhere;
+}
+
+.hero-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.status-pill {
+  border: 1px solid #bfd0ff;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--accent-soft);
+  color: #263ca8;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.request-disclosure {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.request-disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.request-disclosure p {
+  margin: 8px 0 0;
+  max-width: 920px;
+}
+
+.reference-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
 }
 
-.metric-grid div,
+.reference-grid div,
 .doc-table,
-.contract-card,
+.reference-table,
 .boundary-card,
 .module-interface,
 .surface-card,
@@ -565,20 +743,21 @@ h3 {
   background: var(--soft);
 }
 
-.metric-grid div {
+.reference-grid div {
   padding: 10px;
 }
 
-.metric-grid span {
+.reference-grid span {
   display: block;
   color: var(--muted);
   font-size: 11px;
 }
 
-.metric-grid strong {
+.reference-grid strong {
   display: block;
   margin-top: 4px;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .doc-table {
@@ -619,16 +798,24 @@ h3 {
   color: var(--muted);
 }
 
-.contract-card {
+.reference-table {
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
+  overflow: hidden;
   background: var(--panel);
 }
 
-.contract-card p {
+.reference-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(180px, auto);
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--soft-line);
+  padding: 12px;
+}
+
+.reference-row:first-child { border-top: 0; }
+
+.reference-row p {
   margin: 3px 0 0;
   color: var(--muted);
 }
@@ -822,17 +1009,44 @@ h3 {
 }
 
 .status-rail {
-  display: grid;
-  gap: 0;
+  display: block;
   overflow: hidden;
 }
 
-.status-rail section {
+.status-rail summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.status-rail summary strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--soft-line);
 }
 
-.status-rail section:first-child {
+.status-grid section {
+  border-top: 1px solid var(--soft-line);
+  border-left: 1px solid var(--soft-line);
+}
+
+.status-grid section:nth-child(1),
+.status-grid section:nth-child(2) {
   border-top: 0;
+}
+
+.status-grid section:nth-child(odd) {
+  border-left: 0;
 }
 
 .status-rail h2 {
@@ -920,6 +1134,16 @@ h3 {
   padding: 10px;
 }
 
+.diagnostics-panel summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.diagnostics-panel .doc-table {
+  margin: 12px 0;
+}
+
 .rail-list p {
   margin: 3px 0;
   color: var(--muted);
@@ -961,8 +1185,7 @@ h3 {
     grid-template-columns: 1fr;
   }
 
-  .doc-nav,
-  .status-rail {
+  .doc-nav {
     position: static;
   }
 
@@ -977,14 +1200,15 @@ h3 {
   }
 
   .doc-nav,
-  .metric-grid,
+  .reference-grid,
   .signature-grid,
-  .boundary-grid {
+  .boundary-grid,
+  .status-grid {
     grid-template-columns: 1fr;
   }
 
   .doc-row,
-  .contract-card,
+  .reference-row,
   .criterion,
   .artifact-grid {
     grid-template-columns: 1fr;
