@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { readFile } from "node:fs/promises";
 import { runVerification } from "../src/adapters/command-evidence.mjs";
 import { validateOpenApiContracts } from "../src/adapters/openapi-contract.mjs";
 import { loadBoard } from "../src/board/board-store.mjs";
@@ -51,8 +52,8 @@ Internal commands used by Make It Real skills:
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
   dashboard open <runDir>      Open the generated Kanban dashboard in the default browser
-  hooks install <projectRoot>  Install Claude hook settings for a run
-  hooks status <projectRoot>   Show Make It Real Claude hook status
+  hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
+  hooks status <projectRoot> --run <runDir>  Show Make It Real Claude hook status
   board status <boardDir>      Show lane counts
   board ready <boardDir>       List dependency-unblocked Ready work
   board claim <boardDir>       Claim work with --work and --worker
@@ -63,6 +64,15 @@ Internal commands used by Make It Real skills:
   orchestrator complete <boardDir> Complete verified board work with --work [--runner scripted-simulator|claude-code]
   orchestrator reconcile <boardDir> Reconcile claims and retry-ready work
 `);
+}
+
+async function packageVersion() {
+  try {
+    const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
 
 function parseTarget(argv) {
@@ -227,6 +237,18 @@ function blueprintReviewCliResult(output) {
 }
 
 async function runCommand(argv) {
+  if (argv[0] === "--version" || argv[0] === "-v" || argv[0] === "version") {
+    return {
+      exitCode: 0,
+      result: {
+        ok: true,
+        command: "version",
+        version: await packageVersion(),
+        errors: []
+      }
+    };
+  }
+
   if (argv.length === 0 || argv.includes("--help")) {
     printHelp();
     return { exitCode: 0, result: null };
@@ -423,8 +445,10 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "status") {
+    const projectRoot = resolveProjectRootArg(argv[1]);
     const result = await readRunStatus({
-      projectRoot: resolveProjectRootArg(argv[1]),
+      projectRoot,
+      runDir: parseFlag(argv, "--run"),
       now: deterministicNow(argv)
     });
     if (!result.ok) {
@@ -432,7 +456,7 @@ async function runCommand(argv) {
     }
     const dashboard = await refreshPreviewForTrigger({
       runDir: result.runDir,
-      projectRoot: resolveProjectRootArg(argv[1]),
+      projectRoot,
       trigger: "status",
       now: deterministicNow(argv)
     });

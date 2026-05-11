@@ -255,6 +255,11 @@ ${(workItem.allowedPaths ?? []).map((item) => `- ${item}`).join("\n")}
 Contracts:
 ${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
 
+Dependency contracts:
+${(workItem.dependencyContracts ?? []).length > 0
+    ? workItem.dependencyContracts.map((item) => `- ${item.contractId}: ${item.surface} (${item.allowedUse})`).join("\n")
+    : "- none"}
+
 Verification commands:
 ${(workItem.verificationCommands ?? []).map((item) => `- ${JSON.stringify(item)}`).join("\n")}
 

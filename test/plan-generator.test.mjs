@@ -183,6 +183,12 @@ test("plan generator derives API route, statuses, headers, and dependency import
     assert.deepEqual(Object.keys(operation.responses), ["201", "400", "409", "422"]);
     assert.deepEqual(operation.parameters.map((parameter) => parameter.name), ["Idempotency-Key"]);
     assert.deepEqual(Object.keys(openapi.components.schemas.ApiV1OrdersRequest.properties), ["customerId", "items", "shippingAddress"]);
+    assert.deepEqual(operation.requestBody.content["application/json"].examples.sample.value.shippingAddress, {
+      line1: "1 Example St",
+      city: "Example City"
+    });
+    assert.equal(operation.responses["201"].content["application/json"].examples.success.value.data.shippingAddress.line1, "1 Example St");
+    assert.equal(openapi.components.schemas.ApiV1OrdersResponse.required.includes("data"), true);
 
     const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
     assert.match(prd.acceptanceCriteria[0].statement, /POST \/api\/v1\/orders/);
@@ -194,6 +200,17 @@ test("plan generator derives API route, statuses, headers, and dependency import
       "contract.events.publish"
     ]);
     assert.equal(designPack.apiSpecs.some((spec) => spec.contractId === "contract.data.persistence"), true);
+
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-api.json"));
+    assert.deepEqual(workItem.contractIds, [
+      result.contractId,
+      "contract.data.persistence",
+      "contract.events.publish"
+    ]);
+    assert.deepEqual(workItem.dependencyContracts.map((dependency) => dependency.contractId), [
+      "contract.data.persistence",
+      "contract.events.publish"
+    ]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -259,11 +276,32 @@ test("plan generator derives frontend component contracts and evidence lanes", a
     const workItem = await readJsonFile(path.join(result.runDir, "work-items", `${result.workItemId}.json`));
     assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
       "verification",
-      "type-check",
-      "a11y",
-      "visual-regression",
       "wiki-sync"
     ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator preserves explicit slash-separated component props", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a React StatusPill component with label/status/tone props and tests",
+      runId: "status-pill",
+      owner: "team.frontend",
+      allowedPaths: ["src/components/StatusPill.jsx"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('status pill ok')"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const names = designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs.map((input) => input.name);
+    assert.equal(names.includes("label"), true);
+    assert.equal(names.includes("status"), true);
+    assert.equal(names.includes("tone"), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

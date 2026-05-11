@@ -10,6 +10,7 @@ import { orchestratorTick, reconcileBoard } from "../src/orchestrator/orchestrat
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { writeCurrentRunState } from "../src/project/run-state.mjs";
+import { readEvidenceSummary } from "../src/status/operator-summary.mjs";
 import { withFixture } from "./helpers/fixture.mjs";
 
 function runHarness(args) {
@@ -57,6 +58,40 @@ test("status reports pending approval and exits zero for readable blocked runs",
     assert.equal(output.dashboardRefresh.attempted, true);
     assert.equal(output.dashboardRefresh.skipped, false);
     assert.deepEqual(await snapshot(watched), before);
+  });
+});
+
+test("status accepts explicit run override without setup current-run state", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await renderDesignPreview({ runDir });
+
+    const result = runHarness(["status", root, "--run", runDir]);
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.runDir, runDir);
+  });
+});
+
+test("status marks stale generic verification failure as superseded after work-item evidence passes", async () => {
+  await withFixture(async ({ runDir }) => {
+    await writeJsonFile(path.join(runDir, "evidence", "verification.json"), {
+      kind: "verification",
+      ok: false,
+      commands: [{ exitCode: 1 }]
+    });
+    await writeJsonFile(path.join(runDir, "evidence", "work.feature-auth.verification.json"), {
+      kind: "board-verification",
+      ok: true,
+      workItemId: "work.feature-auth",
+      commands: [{ exitCode: 0 }]
+    });
+
+    const summary = await readEvidenceSummary(runDir);
+    const generic = summary.find((item) => item.path === "evidence/verification.json");
+    assert.equal(generic.superseded, true);
+    assert.equal(generic.ok, null);
+    assert.match(generic.summary, /superseded/);
   });
 });
 

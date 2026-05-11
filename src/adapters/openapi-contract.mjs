@@ -28,7 +28,97 @@ function jsonSchemaObject(container) {
   return container?.content?.["application/json"]?.schema;
 }
 
-function validateImplementationGradeOperation({ operation, method, routePath, contractId, evidencePath }) {
+function resolveSchemaRef({ schema, document }) {
+  if (!schema || typeof schema !== "object" || typeof schema.$ref !== "string") {
+    return schema;
+  }
+  const prefix = "#/components/schemas/";
+  if (!schema.$ref.startsWith(prefix)) {
+    return schema;
+  }
+  return document.components?.schemas?.[schema.$ref.slice(prefix.length)] ?? schema;
+}
+
+function schemaExampleErrors({ schema, value, pointer, document, contractId, evidencePath }) {
+  schema = resolveSchemaRef({ schema, document });
+  if (!schema || typeof schema !== "object") {
+    return [];
+  }
+  const errors = [];
+  if (schema.type === "object") {
+    if (!hasObject(value)) {
+      return [contractError({
+        code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+        reason: `OpenAPI example ${pointer} must be an object.`,
+        contractId,
+        evidencePath
+      })];
+    }
+    for (const key of schema.required ?? []) {
+      if (!Object.hasOwn(value, key)) {
+        errors.push(contractError({
+          code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+          reason: `OpenAPI example ${pointer}.${key} is required by its schema.`,
+          contractId,
+          evidencePath
+        }));
+      }
+    }
+    for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {
+      if (Object.hasOwn(value, key)) {
+        errors.push(...schemaExampleErrors({
+          schema: propertySchema,
+          value: value[key],
+          pointer: `${pointer}.${key}`,
+          document,
+          contractId,
+          evidencePath
+        }));
+      }
+    }
+    return errors;
+  }
+  if (schema.type === "array") {
+    if (!Array.isArray(value)) {
+      return [contractError({
+        code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+        reason: `OpenAPI example ${pointer} must be an array.`,
+        contractId,
+        evidencePath
+      })];
+    }
+    for (const [index, item] of value.entries()) {
+      errors.push(...schemaExampleErrors({
+        schema: schema.items,
+        value: item,
+        pointer: `${pointer}[${index}]`,
+        document,
+        contractId,
+        evidencePath
+      }));
+    }
+    return errors;
+  }
+  const expectedType = schema.type === "integer" ? "number" : schema.type;
+  if (expectedType && typeof value !== expectedType) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+      reason: `OpenAPI example ${pointer} must be ${schema.type}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+  return errors;
+}
+
+function exampleValues(container) {
+  const json = container?.content?.["application/json"];
+  return Object.values(json?.examples ?? {})
+    .map((example) => example?.value)
+    .filter((value) => value !== undefined);
+}
+
+function validateImplementationGradeOperation({ operation, method, routePath, contractId, evidencePath, document }) {
   const errors = [];
   const requestBodyRequired = !["get", "delete", "head"].includes(method);
   if (!operation.operationId || typeof operation.operationId !== "string") {
@@ -45,6 +135,16 @@ function validateImplementationGradeOperation({ operation, method, routePath, co
     errors.push(contractError({
       code: "HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING",
       reason: `OpenAPI operation must declare a required application/json request schema: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+  for (const value of exampleValues(operation.requestBody)) {
+    errors.push(...schemaExampleErrors({
+      schema: requestSchema,
+      value,
+      pointer: `${method.toUpperCase()} ${routePath} request example`,
+      document,
       contractId,
       evidencePath
     }));
@@ -66,6 +166,22 @@ function validateImplementationGradeOperation({ operation, method, routePath, co
       contractId,
       evidencePath
     }));
+  }
+  for (const [status, response] of Object.entries(responses)) {
+    const responseSchema = jsonSchemaObject(response);
+    if (!responseSchema) {
+      continue;
+    }
+    for (const value of exampleValues(response)) {
+      errors.push(...schemaExampleErrors({
+        schema: responseSchema,
+        value,
+        pointer: `${method.toUpperCase()} ${routePath} ${status} response example`,
+        document,
+        contractId,
+        evidencePath
+      }));
+    }
   }
 
   if (!Object.keys(responses).some((status) => /^[45]\d\d$/.test(status))) {
@@ -172,7 +288,8 @@ export async function validateOpenApiContracts({ runDir, baselineDir }) {
           method,
           routePath,
           contractId: spec.contractId,
-          evidencePath: spec.path
+          evidencePath: spec.path,
+          document
         }));
       }
     }

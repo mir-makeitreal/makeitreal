@@ -163,6 +163,42 @@ function fieldSchema(name) {
   return { type: "string" };
 }
 
+function sampleValueForSchema(schema) {
+  if (!schema || typeof schema !== "object") {
+    return null;
+  }
+  if (schema.type === "boolean") {
+    return true;
+  }
+  if (schema.type === "integer" || schema.type === "number") {
+    return 1;
+  }
+  if (schema.type === "array") {
+    return [];
+  }
+  if (schema.type === "object") {
+    const value = {};
+    for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {
+      value[key] = sampleValueForSchema(propertySchema);
+    }
+    if (Object.keys(value).length > 0) {
+      return value;
+    }
+    if (/address/i.test(String(schema.description ?? ""))) {
+      return { line1: "1 Example St", city: "Example City" };
+    }
+    return {};
+  }
+  return "example";
+}
+
+function sampleValueForField(field) {
+  return sampleValueForSchema({
+    ...fieldSchema(field),
+    description: field
+  });
+}
+
 function pluralResource(name) {
   const value = String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   if (!value) {
@@ -341,6 +377,7 @@ function componentProfileFromRequest({ request, slug }) {
   const genericProps = [
     ...[
       ["title", "string", true, "Primary text rendered by the component."],
+      ["label", "string", true, "Visible label text rendered by the component."],
       ["subtitle", "string", false, "Supporting text rendered under the primary title."],
       ["description", "string", false, "Longer descriptive copy for the component."],
       ["ctaLabel", "string", false, "Visible label for the primary call to action."],
@@ -505,6 +542,24 @@ function openApiDocument({ title, slug, apiProfile }) {
     ...fieldSchema(field),
     description: `Declared ${field} input for ${title}.`
   }]));
+  const responseDataProperties = Object.fromEntries([
+    ["id", { type: "string", description: `Stable identifier returned by ${profile.method.toUpperCase()} ${profile.routePath}.` }],
+    ["status", { type: "string", description: "Declared business status for the successful response." }],
+    ...profile.requestFields.map((field) => [field, {
+      ...fieldSchema(field),
+      description: `Echoed or persisted ${field} value in the successful response when applicable.`
+    }])
+  ]);
+  const successExample = sampleValueForSchema({
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      data: {
+        type: "object",
+        properties: responseDataProperties
+      }
+    }
+  });
   const responses = {
     [profile.successStatus]: {
       description: "Successful response",
@@ -513,10 +568,7 @@ function openApiDocument({ title, slug, apiProfile }) {
           schema: { $ref: `#/components/schemas/${responseSchemaName}` },
           examples: {
             success: {
-              value: {
-                ok: true,
-                result: {}
-              }
+              value: successExample
             }
           }
         }
@@ -543,7 +595,7 @@ function openApiDocument({ title, slug, apiProfile }) {
           schema: { $ref: `#/components/schemas/${requestSchemaName}` },
           examples: {
             sample: {
-              value: Object.fromEntries(profile.requestFields.map((field) => [field, field === "items" ? [] : "example"]))
+              value: Object.fromEntries(profile.requestFields.map((field) => [field, sampleValueForField(field)]))
             }
           }
         }
@@ -597,17 +649,19 @@ function openApiDocument({ title, slug, apiProfile }) {
         },
         [responseSchemaName]: {
           type: "object",
-          additionalProperties: true,
+          additionalProperties: false,
           properties: {
             ok: {
               type: "boolean"
             },
-            result: {
+            data: {
               type: "object",
-              additionalProperties: true
+              additionalProperties: false,
+              properties: responseDataProperties,
+              required: Object.keys(responseDataProperties)
             }
           },
-          required: ["ok", "result"]
+          required: ["ok", "data"]
         },
         [errorSchemaName]: {
           type: "object",
@@ -1142,13 +1196,6 @@ export async function generatePlanRun({
   if (usesOpenApi) {
     doneEvidence.splice(1, 0, { kind: "openapi-conformance", path: `evidence/${workItemId}.openapi-conformance.json` });
   }
-  if (componentProfile) {
-    doneEvidence.splice(1, 0,
-      { kind: "type-check", path: `evidence/${workItemId}.type-check.json` },
-      { kind: "a11y", path: `evidence/${workItemId}.a11y.json` },
-      { kind: "visual-regression", path: `evidence/${workItemId}.visual-regression.json` }
-    );
-  }
 
   const workItem = {
     schemaVersion: "1.0",
@@ -1157,7 +1204,13 @@ export async function generatePlanRun({
     prdId: prd.id,
     lane: "Contract Frozen",
     responsibilityUnitId,
-    contractIds: [contractId],
+    contractIds: mayUseContracts,
+    dependencyContracts: apiProfile?.dependencies.map((dependency) => ({
+      contractId: dependency.contractId,
+      providerResponsibilityUnitId: dependency.providerResponsibilityUnitId,
+      surface: dependency.surface,
+      allowedUse: dependency.allowedUse
+    })) ?? [],
     dependsOn: [],
     allowedPaths: owns,
     prdTrace: {

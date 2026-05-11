@@ -251,5 +251,21 @@ export async function readEvidenceSummary(runDir) {
       });
     }
   }
+  const hasCurrentWorkItemVerification = summaries.some((summary) =>
+    /^evidence\/work\..+\.verification\.json$/.test(summary.path) && summary.ok === true
+  );
+  if (hasCurrentWorkItemVerification) {
+    return summaries.map((summary) => {
+      if (summary.path === "evidence/verification.json" && summary.ok === false) {
+        return {
+          ...summary,
+          ok: null,
+          superseded: true,
+          summary: "Previous ad hoc verification failure superseded by current work-item evidence"
+        };
+      }
+      return summary;
+    });
+  }
   return summaries;
 }

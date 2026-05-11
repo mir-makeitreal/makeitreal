@@ -92,3 +92,30 @@ contract-first Claude Code development harness, not a general swarm platform.
 - wiki sync
 - Done gate
 - Claude plugin validation for `makeitreal`, `mir`, and marketplace manifest
+
+## Feedback Loop 2
+
+After commit `03a4f3c`, FE, BE/API, and Ops personas re-ran focused dogfood
+checks against the committed tree.
+
+| Persona | Score | Finding | Resolution |
+| --- | ---: | --- | --- |
+| FE | 7/10 | `StatusPill` request with `label/status/tone` lost the explicit `label` prop, and component Done evidence over-promised type/a11y/visual files the orchestrator did not produce. | Planner now preserves explicit `label` props and component work items declare only evidence the engine produces. |
+| BE/API | 7/10 -> 8.5/10 after fix | Orders API contracts had schema-mismatched examples, generic `ok/result` responses, and dependency contracts did not reach work item/native prompts. | OpenAPI examples are schema-shaped, success responses use `ok/data`, dependency contracts are copied to work items and native prompts, and `contracts openapi` rejects mismatched examples. |
+| Ops/DevEx | 6.5/10 -> 9/10 after fix | `hooks install` wrote target-project `dev-harness/hooks` paths, stale failed generic verification stayed visible after Done, and `status --run` was missing. | Hook settings now use the actual installed hook root, stale project-relative hooks are replaced, superseded generic verification failures are labelled, `--version` exists, hooks help documents `--run`, and `status --run` works. |
+
+Loop 2 verification:
+
+- `node --test test/run-status-audit.test.mjs test/plan-generator.test.mjs test/hook-settings.test.mjs test/adapters.test.mjs test/cli.test.mjs`
+  passed 33 tests.
+- `npm run release:check` passed 182 tests plus canonical render, OpenAPI
+  validation, Ready gate, verification, wiki sync, Done gate, and plugin /
+  marketplace validation.
+
+Remaining backlog:
+
+- OpenAPI validation still covers a focused schema subset rather than full JSON
+  Schema semantics such as `additionalProperties`, enums, formats, and
+  cardinality.
+- Native `orchestrator native finish` still requires structured result JSON; a
+  smoother parent-session wrapper would improve daily DX.

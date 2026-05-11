@@ -19,3 +19,16 @@ test("CLI help lists the supported commands", () => {
   assert.match(result.stdout, /wiki sync/);
   assert.match(result.stdout, /--runner scripted-simulator\|claude-code/);
 });
+
+test("CLI exposes engine version for install diagnostics", () => {
+  const result = spawnSync(process.execPath, ["bin/harness.mjs", "--version"], {
+    cwd: new URL("../", import.meta.url),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.ok, true);
+  assert.equal(output.command, "version");
+  assert.match(output.version, /^\d+\.\d+\.\d+/);
+});

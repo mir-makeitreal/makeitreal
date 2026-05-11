@@ -57,6 +57,26 @@ test("OpenAPI adapter requires implementation-grade operation contracts", async 
   });
 });
 
+test("OpenAPI adapter rejects examples that do not match their schemas", async () => {
+  await withFixture(async ({ runDir }) => {
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    spec.paths["/auth/login"].post.requestBody.content["application/json"].examples = {
+      bad: {
+        value: {
+          email: "a@example.com",
+          password: { nested: "not a string" }
+        }
+      }
+    };
+    await writeJsonFile(specPath, spec);
+
+    const result = await validateOpenApiContracts({ runDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors.some((error) => error.code === "HARNESS_OPENAPI_EXAMPLE_INVALID"), true);
+  });
+});
+
 test("OpenAPI adapter rejects breaking removals against a baseline", async () => {
   await withFixture(async ({ runDir }) => {
     const baselineRoot = await mkdtemp(path.join(os.tmpdir(), "harness-openapi-baseline-"));

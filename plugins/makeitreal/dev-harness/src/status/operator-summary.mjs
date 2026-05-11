@@ -3,7 +3,7 @@ import { listJsonFiles, readJsonFile } from "../io/json.mjs";
 
 const ACTIONS = {
   setup: "/makeitreal:setup",
-  approve: "Approve the Blueprint in chat, or run /makeitreal:plan approve",
+  approve: "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
   plan: "/makeitreal:plan <request>",
   launch: "/makeitreal:launch",
   status: "/makeitreal:status",
@@ -250,6 +250,22 @@ export async function readEvidenceSummary(runDir) {
         summary: "Evidence file could not be read."
       });
     }
+  }
+  const hasCurrentWorkItemVerification = summaries.some((summary) =>
+    /^evidence\/work\..+\.verification\.json$/.test(summary.path) && summary.ok === true
+  );
+  if (hasCurrentWorkItemVerification) {
+    return summaries.map((summary) => {
+      if (summary.path === "evidence/verification.json" && summary.ok === false) {
+        return {
+          ...summary,
+          ok: null,
+          superseded: true,
+          summary: "Previous ad hoc verification failure superseded by current work-item evidence"
+        };
+      }
+      return summary;
+    });
   }
   return summaries;
 }
