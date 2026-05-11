@@ -184,12 +184,13 @@ test("status reports stale approval separately from missing approval", async () 
   });
 });
 
-test("status preserves current-run missing failure", async () => {
+test("status reports current-run missing without failing the operator command", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-status-missing-"));
   try {
     const result = runHarness(["status", projectRoot]);
-    assert.equal(result.status, 1);
+    assert.equal(result.status, 0, result.stdout || result.stderr);
     const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, false);
     assert.equal(output.errors[0].code, "HARNESS_CURRENT_RUN_MISSING");
     assert.equal(output.phase, "planning-required");
     assert.equal(output.nextAction, "/makeitreal:plan <request>");

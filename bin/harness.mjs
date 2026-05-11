@@ -249,6 +249,15 @@ function parseDoctorRunDir(argv) {
   return positional && !positional.startsWith("--") ? positional : null;
 }
 
+function parseRunDirArg(argv, positionalIndex = 2) {
+  const flagged = parseFlag(argv, "--run");
+  if (flagged) {
+    return flagged;
+  }
+  const positional = argv[positionalIndex];
+  return positional && !positional.startsWith("--") ? positional : null;
+}
+
 function deterministicNow(argv = []) {
   return new Date(parseFlag(argv, "--now") ?? "2026-04-30T00:00:00.000Z");
 }
@@ -476,7 +485,7 @@ async function runCommand(argv) {
     }
     const result = blueprintReviewCliResult(await applyNativeBlueprintReviewDecision({
       projectRoot: resolveProjectRootArg(parseFlag(argv, "--project-root")),
-      runDir: argv[2],
+      runDir: parseRunDirArg(argv),
       decisionPayload: decisionJson,
       sessionId: parseFlag(argv, "--session") ?? "question-ui",
       env: process.env,
@@ -516,7 +525,7 @@ async function runCommand(argv) {
       now: deterministicNow(argv)
     });
     if (!result.ok) {
-      return { exitCode: 1, result };
+      return { exitCode: 0, result };
     }
     const dashboard = await refreshPreviewForTrigger({
       runDir: result.runDir,

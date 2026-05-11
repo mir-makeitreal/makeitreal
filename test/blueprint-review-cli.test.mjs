@@ -105,6 +105,42 @@ test("blueprint review records native Claude Code decision JSON", async () => {
   });
 });
 
+test("blueprint review accepts --run for native Claude command recovery", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const decision = {
+      decision: "approved",
+      launchRequested: true,
+      confidence: "high",
+      reason: "The current Claude Code session judged the operator approved the Blueprint from the review question UI."
+    };
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      "--run",
+      runDir,
+      "--decision-json",
+      JSON.stringify(decision),
+      "--session",
+      "question-ui",
+      "--project-root",
+      root,
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ]);
+    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.action, "approved");
+
+    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
+    assert.equal(review.status, "approved");
+    assert.equal(review.reviewedBy, "operator:question-ui");
+  });
+});
+
 test("blueprint review accepts native decisions with optional metadata defaults", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
