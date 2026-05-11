@@ -139,14 +139,164 @@ test("plan generator writes OpenAPI contract for API-shaped requests", async () 
     assert.equal(result.implementationReady, false);
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
     assert.equal(designPack.apiSpecs[0].kind, "openapi");
-    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "POST /invoice-search-api");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "POST /invoices/search");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "http");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "requestBody");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "200 response");
 
     const openapi = await readJsonFile(path.join(result.runDir, "contracts", "invoice-search-api.openapi.json"));
     assert.equal(openapi.openapi, "3.1.0");
-    assert.ok(openapi.paths["/invoice-search-api"]);
+    const operation = openapi.paths["/invoices/search"].post;
+    assert.equal(operation.requestBody.required, true);
+    assert.equal(operation.requestBody.content["application/json"].schema.$ref, "#/components/schemas/InvoicesSearchRequest");
+    assert.equal(operation.responses["200"].content["application/json"].schema.$ref, "#/components/schemas/InvoicesSearchResponse");
+    assert.equal(operation.responses["400"].content["application/json"].schema.$ref, "#/components/schemas/InvoicesSearchError");
+    assert.equal(openapi.components.schemas.InvoicesSearchRequest.required.includes("query"), true);
+
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.invoice-search-api.json"));
+    assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
+      "verification",
+      "openapi-conformance",
+      "wiki-sync"
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator derives API route, statuses, headers, and dependency imports from the request", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
+      runId: "orders-api",
+      apiKind: "openapi",
+      allowedPaths: ["src/api/orders/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('orders api ok')"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const openapi = await readJsonFile(path.join(result.runDir, "contracts", "orders-api.openapi.json"));
+    const operation = openapi.paths["/api/v1/orders"].post;
+    assert.deepEqual(Object.keys(operation.responses), ["201", "400", "409", "422"]);
+    assert.deepEqual(operation.parameters.map((parameter) => parameter.name), ["Idempotency-Key"]);
+    assert.deepEqual(Object.keys(openapi.components.schemas.ApiV1OrdersRequest.properties), ["customerId", "items", "shippingAddress"]);
+
+    const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
+    assert.match(prd.acceptanceCriteria[0].statement, /POST \/api\/v1\/orders/);
+    assert.match(prd.acceptanceCriteria[2].statement, /201.*400.*409.*422/);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.deepEqual(designPack.moduleInterfaces[0].imports.map((dependency) => dependency.contractId), [
+      "contract.data.persistence",
+      "contract.events.publish"
+    ]);
+    assert.equal(designPack.apiSpecs.some((spec) => spec.contractId === "contract.data.persistence"), true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator derives REST resource paths and fields without explicit path", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a REST catalog API for creating books with title, author, 201, 400, 409",
+      runId: "be-catalog-api",
+      apiKind: "rest",
+      allowedPaths: ["src/catalog-api.cjs"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('catalog api ok')"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const openapi = await readJsonFile(path.join(result.runDir, "contracts", "be-catalog-api.openapi.json"));
+    const operation = openapi.paths["/catalog/books"].post;
+    assert.deepEqual(Object.keys(operation.responses), ["201", "400", "409"]);
+    assert.deepEqual(Object.keys(openapi.components.schemas.CatalogBooksRequest.properties), ["author", "title"]);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "POST /catalog/books");
+    assert.match(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].description, /POST \/catalog\/books/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator derives frontend component contracts and evidence lanes", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a reusable React DataTable component with sorting, pagination, selection, sticky header, empty loading error states, ARIA grid keyboard navigation and Storybook stories",
+      runId: null,
+      owner: "team.frontend",
+      allowedPaths: ["src/components/DataTable/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('datatable ok')"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.runId.endsWith("-with"), false);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const surface = designPack.moduleInterfaces[0].publicSurfaces[0];
+    assert.equal(surface.name, "DataTable.props");
+    assert.equal(surface.kind, "component");
+    assert.match(surface.signature.outputs[0].description, /sorting, pagination, selection/);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "columns"), true);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "onSortChange"), true);
+
+    const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
+    assert.equal(prd.acceptanceCriteria.some((criterion) => /ARIA semantics/.test(criterion.statement)), true);
+    assert.equal(designPack.componentContracts[0].path.endsWith(".component-contract.json"), true);
+    const componentContract = await readJsonFile(path.join(result.runDir, designPack.componentContracts[0].path));
+    assert.equal(componentContract.storybookStories.includes("sticky-header"), true);
+    assert.equal(componentContract.keyboardMap.some((binding) => /ArrowUp/.test(binding.key)), true);
+
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", `${result.workItemId}.json`));
+    assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
+      "verification",
+      "type-check",
+      "a11y",
+      "visual-regression",
+      "wiki-sync"
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator derives request-specific props for card components", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a React welcome card component with title, subtitle, ctaLabel, tone variants, loading state, error state, and retry button",
+      runId: "fe-welcome-card",
+      owner: "team.frontend",
+      allowedPaths: ["src/welcome-card.cjs"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('welcome card ok')"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const surface = designPack.moduleInterfaces[0].publicSurfaces[0];
+    assert.equal(surface.name, "WelcomeCard.props");
+    assert.equal(surface.signature.inputs.some((input) => input.name === "title"), true);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "subtitle"), true);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "ctaLabel"), true);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "tone"), true);
+    assert.equal(surface.signature.inputs.some((input) => input.name === "onRetry"), true);
+
+    const componentContract = await readJsonFile(path.join(result.runDir, designPack.componentContracts[0].path));
+    assert.equal(componentContract.componentName, "WelcomeCard");
+    assert.equal(componentContract.storybookStories.includes("variants"), true);
+    assert.equal(componentContract.storybookStories.includes("loading"), true);
+    assert.equal(componentContract.storybookStories.includes("error"), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

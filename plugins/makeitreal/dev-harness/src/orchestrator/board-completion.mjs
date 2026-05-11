@@ -102,14 +102,13 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
 
   if (attemptRunnerMode === "claude-code") {
     const parentNativeTask = attempt.runner?.channel === "parent-native-task";
-    const executable = attempt.runner?.executable ?? {};
-    if (!parentNativeTask && (!executable.resolvedPath || !executable.realPath || !executable.hash)) {
+    if (!parentNativeTask) {
       return {
         ok: false,
         command: "orchestrator complete",
         errors: [createHarnessError({
           code: "HARNESS_COMPLETION_ATTEMPT_PROVENANCE_MISSING",
-          reason: `${workItemId} latest successful Claude attempt is missing executable identity provenance.`,
+          reason: `${workItemId} latest successful Claude attempt must come from the parent-session native Task path.`,
           ownerModule: workItem.responsibilityUnitId ?? null,
           evidence: [`attempts/${attempt.attemptId}.json`],
           recoverable: true
@@ -194,6 +193,7 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       shell: false,
       env: {
         ...process.env,
+        ...(normalized.command.env ?? {}),
         MAKEITREAL_BOARD_DIR: boardDir,
         MAKEITREAL_PROJECT_ROOT: projectRoot ?? "",
         MAKEITREAL_WORKSPACE: workspace.workspace,

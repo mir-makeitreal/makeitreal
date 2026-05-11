@@ -26,11 +26,10 @@ wiki sync, and Done gates.
 - Stop-hook verification on 2026-05-07 re-ran `npm run check`: 114 tests passed,
   followed by canonical `design render -> gate Ready -> verify -> wiki sync ->
   gate Done`.
-- R2 first-run golden path on 2026-05-07 added the productized
-  `npm run e2e:real-claude` command. The current flow verifies
-  `plan --runner claude-code -> dashboard dry-run -> Blueprint approval ->
-  launch -> complete -> Done` against Claude Code. Evidence:
-  `docs/e2e-evidence/real-claude-golden-path-1778137695717.json`.
+- R2 first-run work originally used a child-process Claude CLI check. That path
+  has been retired. Current real Claude Code launch verification must happen
+  through `/makeitreal:launch` or `/mir:launch` and native `Task` subagents in
+  the parent Claude Code session.
 
 ## Marketplace Installability
 

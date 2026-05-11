@@ -37,13 +37,10 @@ This fixes the previous product gap where real Claude Code execution existed but
 
 ## Opt-In Verification Command
 
-Real Claude Code E2E is intentionally outside `npm run check` because it consumes Claude Code quota:
-
-```bash
-npm run e2e:real-claude
-```
-
-The command writes evidence to `dev-harness/docs/e2e-evidence/`.
+Real Claude Code E2E is intentionally outside `npm run check` because it
+requires an interactive Claude Code session. Use `/mir:launch` or
+`/makeitreal:launch` so execution and reviewers run through native `Task`
+subagents in the parent Claude Code UI.
 
 ## Latest Evidence
 

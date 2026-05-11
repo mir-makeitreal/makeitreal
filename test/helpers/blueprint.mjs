@@ -43,9 +43,60 @@ export async function materializeBoardRunPacket(boardDir) {
       "/auth/login": {
         post: {
           operationId: "login",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    email: { type: "string" },
+                    password: { type: "string" }
+                  },
+                  required: ["email", "password"]
+                }
+              }
+            }
+          },
           responses: {
             200: {
-              description: "Successful login"
+              description: "Successful login",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    additionalProperties: true,
+                    properties: {
+                      token: { type: "string" }
+                    },
+                    required: ["token"]
+                  }
+                }
+              }
+            },
+            401: {
+              description: "Invalid credentials",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      error: {
+                        type: "object",
+                        additionalProperties: false,
+                        properties: {
+                          code: { type: "string" },
+                          message: { type: "string" }
+                        },
+                        required: ["code", "message"]
+                      }
+                    },
+                    required: ["error"]
+                  }
+                }
+              }
             }
           }
         }

@@ -52,7 +52,7 @@ Use only public next actions in the user-facing report:
 - `/makeitreal:plan <request>`
 - `/makeitreal:config`
 - Conversational Blueprint review classified by the LLM judge
-- `/makeitreal:plan approve` as the explicit/scriptable fallback
+- `/makeitreal:plan approve` as the explicit/scriptable control
 - `/makeitreal:launch`
 - `/makeitreal:status`
 - `/makeitreal:verify`

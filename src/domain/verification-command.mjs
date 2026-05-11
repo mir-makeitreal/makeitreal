@@ -8,14 +8,24 @@ export function normalizeVerificationCommand(command) {
   if (!command || typeof command !== "object" || Array.isArray(command)) {
     return {
       ok: false,
-      reason: "Verification command must be an object with file and args fields."
+      reason: "Verification command must be an object with file (or command) and args fields, for example {\"file\":\"npm\",\"args\":[\"test\"]}."
     };
   }
 
-  if (typeof command.file !== "string" || command.file.trim().length === 0) {
+  const allowedKeys = new Set(["file", "command", "args", "env"]);
+  const unsupportedKeys = Object.keys(command).filter((key) => !allowedKeys.has(key));
+  if (unsupportedKeys.length > 0) {
     return {
       ok: false,
-      reason: "Verification command file must be a non-empty string."
+      reason: `Verification command has unsupported field(s): ${unsupportedKeys.join(", ")}. Supported fields are file, command, args, and env.`
+    };
+  }
+
+  const file = command.file ?? command.command;
+  if (typeof file !== "string" || file.trim().length === 0) {
+    return {
+      ok: false,
+      reason: "Verification command file must be a non-empty string. Use {\"file\":\"npm\",\"args\":[\"test\"]}; {\"command\":\"npm\",\"args\":[\"test\"]} is accepted as an alias."
     };
   }
 
@@ -27,11 +37,20 @@ export function normalizeVerificationCommand(command) {
     };
   }
 
+  const env = command.env ?? {};
+  if (!env || typeof env !== "object" || Array.isArray(env) || Object.values(env).some((value) => typeof value !== "string")) {
+    return {
+      ok: false,
+      reason: "Verification command env must be an object with string values."
+    };
+  }
+
   return {
     ok: true,
     command: {
-      file: command.file,
-      args
+      file,
+      args,
+      ...(Object.keys(env).length > 0 ? { env } : {})
     }
   };
 }

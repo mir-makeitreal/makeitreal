@@ -35,7 +35,15 @@ Internal commands used by Make It Real skills:
   config set <projectRoot>     Update config (--profile default|quiet, --live-wiki/--dashboard-* enabled|disabled)
   wiki sync <runDir>           Sync verified work to live wiki
   contracts openapi <runDir>   Validate OpenAPI contracts
-  plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts (--runner scripted-simulator|claude-code)
+  plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts
+    --request <text>           Required work request
+    --slug <id>                Optional stable run id alias (--run also works)
+    --owner <team>             Responsibility owner for this work item
+    --allowed-path <pattern>   Repeatable ownership boundary
+    --api openapi|rest|none    API contract mode; rest maps to OpenAPI
+    --verify <json>            Repeatable verification command: {"file":"npm","args":["test"]}
+                              {"command":"npm","args":["test"]} is accepted as an alias
+    --runner scripted-simulator|claude-code
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
   blueprint review <runDir>    Classify a review answer with the LLM judge
@@ -49,7 +57,7 @@ Internal commands used by Make It Real skills:
   board ready <boardDir>       List dependency-unblocked Ready work
   board claim <boardDir>       Claim work with --work and --worker
   board mailbox send <boardDir> Send a worker-to-worker message
-  orchestrator tick <boardDir> Dispatch work attempts (--runner scripted-simulator|claude-code)
+  orchestrator tick <boardDir> Dispatch scripted fixture work attempts (--runner scripted-simulator)
   orchestrator native start <boardDir> Prepare a parent-session Claude Code Task handoff
   orchestrator native finish <boardDir> Record a parent-session Task result from --result-json or stdin
   orchestrator complete <boardDir> Complete verified board work with --work [--runner scripted-simulator|claude-code]
@@ -116,38 +124,6 @@ function parseVerificationCommands(argv) {
     commands.push(normalized.command);
   }
   return { commands, errors };
-}
-
-function parseJsonCommandFlag(argv, flagName) {
-  const raw = parseFlag(argv, flagName);
-  if (!raw) {
-    return { command: null, errors: [] };
-  }
-  try {
-    const command = JSON.parse(raw);
-    if (!command || typeof command !== "object" || Array.isArray(command) || typeof command.file !== "string" || !Array.isArray(command.args ?? [])) {
-      return {
-        command: null,
-        errors: [createHarnessError({
-          code: "HARNESS_RUNNER_COMMAND_INVALID",
-          reason: `${flagName} must be a JSON object with file and args fields.`,
-          evidence: [flagName],
-          recoverable: true
-        })]
-      };
-    }
-    return { command: { file: command.file, args: command.args ?? [] }, errors: [] };
-  } catch {
-    return {
-      command: null,
-      errors: [createHarnessError({
-        code: "HARNESS_RUNNER_COMMAND_INVALID",
-        reason: `${flagName} must be valid JSON.`,
-        evidence: [flagName],
-        recoverable: true
-      })]
-    };
-  }
 }
 
 async function readStdinText() {
@@ -383,7 +359,7 @@ async function runCommand(argv) {
     const result = await generatePlanRun({
       projectRoot: resolveProjectRootArg(argv[1]),
       request,
-      runId: parseFlag(argv, "--run"),
+      runId: parseFlag(argv, "--slug") ?? parseFlag(argv, "--run"),
       owner: parseFlag(argv, "--owner") ?? "team.implementation",
       allowedPaths: parseFlags(argv, "--allowed-path"),
       apiKind: parseFlag(argv, "--api"),
@@ -640,17 +616,6 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "orchestrator" && argv[1] === "tick") {
-    const runnerCommand = parseJsonCommandFlag(argv, "--runner-command");
-    if (runnerCommand.errors.length > 0) {
-      return {
-        exitCode: 1,
-        result: {
-          ok: false,
-          command: "orchestrator tick",
-          errors: runnerCommand.errors
-        }
-      };
-    }
     const beforeDashboard = await refreshPreviewForTrigger({
       runDir: argv[2],
       trigger: "launch",
@@ -673,8 +638,7 @@ async function runCommand(argv) {
       concurrency: Number.parseInt(parseFlag(argv, "--concurrency") ?? "1", 10),
       now: deterministicNow(argv),
       runnerScript: ["session_started", "turn_completed"],
-      runnerMode: parseFlag(argv, "--runner") ?? "scripted-simulator",
-      runnerCommand: runnerCommand.command
+      runnerMode: parseFlag(argv, "--runner") ?? "scripted-simulator"
     });
     const afterDashboard = await refreshPreviewForTrigger({
       runDir: argv[2],

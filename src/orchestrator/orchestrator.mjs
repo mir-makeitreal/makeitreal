@@ -21,7 +21,6 @@ import {
   saveRuntimeState,
   updateRunningEvent
 } from "./runtime-state.mjs";
-import { runClaudeCodeAttempt, validateClaudeRunnerCommand } from "./claude-runner.mjs";
 import { extractAgentReport, validateAgentReports } from "./dynamic-role-handoff.mjs";
 import { extractReviewReports } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
@@ -99,16 +98,25 @@ async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
   return { ok: true, board, promotedWorkItemIds: [candidate.id], errors: [] };
 }
 
-export async function orchestratorTick({ boardDir, workerId, concurrency, now, runnerScript, runnerMode = "scripted-simulator", runnerCommand = null }) {
+export async function orchestratorTick({ boardDir, workerId, concurrency, now, runnerScript, runnerMode = "scripted-simulator" }) {
+  if (runnerMode !== "scripted-simulator") {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_RUNNER_MODE_UNSUPPORTED",
+        reason: "orchestrator tick only supports the scripted simulator. Use orchestrator native start/finish for Claude Code native subagents.",
+        evidence: ["--runner"],
+        recoverable: true,
+        nextAction: "orchestrator native start <runDir>"
+      })],
+      dispatchedWorkItemIds: [],
+      retryWorkItemIds: [],
+      promotedWorkItemIds: []
+    };
+  }
   const policy = await validateRunnerPolicy(boardDir, { runnerMode });
   if (!policy.ok) {
     return { ok: false, errors: policy.errors, dispatchedWorkItemIds: [], retryWorkItemIds: [], promotedWorkItemIds: [] };
-  }
-  if (runnerMode === "claude-code") {
-    const command = validateClaudeRunnerCommand(runnerCommand);
-    if (!command.ok) {
-      return { ok: false, errors: command.errors, dispatchedWorkItemIds: [], retryWorkItemIds: [], promotedWorkItemIds: [] };
-    }
   }
 
   let board = await loadBoard(boardDir);
@@ -158,9 +166,7 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
     });
 
     const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
-    const result = runnerMode === "claude-code"
-      ? await runClaudeCodeAttempt({ boardDir, board: claimedBoard, workItem: activeWorkItem, workerId, runnerCommand, now })
-      : await runScriptedAttempt({ boardDir, workItem: activeWorkItem, workerId, script: runnerScript, now });
+    const result = await runScriptedAttempt({ boardDir, workItem: activeWorkItem, workerId, script: runnerScript, now });
     recordRunning(runtimeState, {
       workItemId: workItem.id,
       workerId,

@@ -24,7 +24,19 @@ function hasObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function validateSchema({ schema, value, pointer, errors, contractId, evidencePath }) {
+function resolveSchemaRef({ schema, document }) {
+  if (!schema || typeof schema !== "object" || typeof schema.$ref !== "string") {
+    return schema;
+  }
+  const prefix = "#/components/schemas/";
+  if (!schema.$ref.startsWith(prefix)) {
+    return schema;
+  }
+  return document.components?.schemas?.[schema.$ref.slice(prefix.length)] ?? schema;
+}
+
+function validateSchema({ schema, value, pointer, errors, contractId, evidencePath, document }) {
+  schema = resolveSchemaRef({ schema, document });
   if (!schema || typeof schema !== "object") {
     return;
   }
@@ -41,7 +53,7 @@ function validateSchema({ schema, value, pointer, errors, contractId, evidencePa
     }
     for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {
       if (Object.hasOwn(value, key)) {
-        validateSchema({ schema: propertySchema, value: value[key], pointer: `${pointer}.${key}`, errors, contractId, evidencePath });
+        validateSchema({ schema: propertySchema, value: value[key], pointer: `${pointer}.${key}`, errors, contractId, evidencePath, document });
       }
     }
     return;
@@ -53,7 +65,7 @@ function validateSchema({ schema, value, pointer, errors, contractId, evidencePa
       return;
     }
     for (const [index, item] of value.entries()) {
-      validateSchema({ schema: schema.items, value: item, pointer: `${pointer}[${index}]`, errors, contractId, evidencePath });
+      validateSchema({ schema: schema.items, value: item, pointer: `${pointer}[${index}]`, errors, contractId, evidencePath, document });
     }
     return;
   }
@@ -154,12 +166,12 @@ export async function validateOpenApiConformanceEvidence({ runDir, workItem }) {
 
     const requestSchema = operation.requestBody?.content?.["application/json"]?.schema;
     if (operation.requestBody?.required && requestSchema) {
-      validateSchema({ schema: requestSchema, value: request.body, pointer: "request.body", errors, contractId, evidencePath: relativePath });
+      validateSchema({ schema: requestSchema, value: request.body, pointer: "request.body", errors, contractId, evidencePath: relativePath, document: entry.document });
     }
 
     const responseSchema = responseSpec.content?.["application/json"]?.schema;
     if (responseSchema) {
-      validateSchema({ schema: responseSchema, value: response.body, pointer: "response.body", errors, contractId, evidencePath: relativePath });
+      validateSchema({ schema: responseSchema, value: response.body, pointer: "response.body", errors, contractId, evidencePath: relativePath, document: entry.document });
     }
   }
 

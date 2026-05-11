@@ -1,5 +1,6 @@
 import path from "node:path";
 import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conformance.mjs";
+import { validateOpenApiContracts } from "../adapters/openapi-contract.mjs";
 import { validateDesignPack } from "../domain/design-pack.mjs";
 import { readVerificationEvidence, readWikiSyncEvidence } from "../domain/evidence.mjs";
 import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
@@ -43,6 +44,9 @@ export async function runGates({ runDir, target }) {
     const designResult = validateDesignPack(artifacts.designPack);
     errors.push(...designResult.errors);
 
+    const openApiContracts = await validateOpenApiContracts({ runDir });
+    errors.push(...openApiContracts.errors);
+
     if (artifacts.designPack.prdId !== artifacts.prd.id) {
       errors.push(createHarnessError({
         code: "HARNESS_PRD_DESIGN_DRIFT",
@@ -77,13 +81,27 @@ export async function runGates({ runDir, target }) {
     }
 
     if (!hasVerificationPlan(workItem)) {
-      errors.push(createHarnessError({ code: "HARNESS_VERIFICATION_PLAN_MISSING", reason: `Ready requires at least one declared verification command: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
+      errors.push(createHarnessError({
+        code: "HARNESS_VERIFICATION_PLAN_MISSING",
+        reason: `Ready requires at least one declared verification command: ${workItem.id}. Add a command such as {"file":"npm","args":["test"]} with plan --verify or revise the work item before launch.`,
+        ownerModule: workItem.responsibilityUnitId,
+        evidence: ["work-items"],
+        recoverable: true,
+        nextAction: "/makeitreal:plan <request> --verify '{\"file\":\"npm\",\"args\":[\"test\"]}'"
+      }));
     }
 
     for (const command of workItem.verificationCommands ?? []) {
       const normalized = normalizeVerificationCommand(command);
       if (!normalized.ok) {
-        errors.push(createHarnessError({ code: "HARNESS_VERIFICATION_COMMAND_INVALID", reason: normalized.reason, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
+        errors.push(createHarnessError({
+          code: "HARNESS_VERIFICATION_COMMAND_INVALID",
+          reason: normalized.reason,
+          ownerModule: workItem.responsibilityUnitId,
+          evidence: ["work-items"],
+          recoverable: true,
+          nextAction: "/makeitreal:plan <request> --verify '{\"file\":\"npm\",\"args\":[\"test\"]}'"
+        }));
       }
     }
 

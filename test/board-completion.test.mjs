@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -11,21 +11,6 @@ import { latestSuccessfulRunAttempt } from "../src/orchestrator/attempt-store.mj
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { finishNativeClaudeTask, orchestratorTick, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
 import { loadRuntimeState } from "../src/orchestrator/runtime-state.mjs";
-
-const SAFE_CLAUDE_TOOLS = "Read,Write,Edit,MultiEdit,Glob,Grep,LS";
-const VALID_CLAUDE_ARGS = [
-  "--print",
-  "--output-format",
-  "json",
-  "--permission-mode",
-  "dontAsk",
-  "--allowedTools",
-  SAFE_CLAUDE_TOOLS,
-  "--add-dir",
-  "${workspace}",
-  "--",
-  "${prompt}"
-];
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-board-completion-"));
@@ -52,51 +37,6 @@ async function withProjectBoard(callback) {
   }
 }
 
-async function writeFakeClaude(root) {
-  const filePath = path.join(root, "claude");
-  await writeFile(filePath, `#!/usr/bin/env node
-const fs = require('fs');
-fs.mkdirSync('apps/web/auth', { recursive: true });
-fs.writeFileSync('apps/web/auth/runner-output.txt', 'inside boundary');
-console.log(JSON.stringify({
-  event: 'turn_completed',
-  makeitrealReport: {
-    role: 'implementation-worker',
-    status: 'DONE',
-    summary: 'Implemented test fixture output.',
-    changedFiles: ['apps/web/auth/runner-output.txt'],
-    tested: ['fake claude fixture'],
-    concerns: [],
-    needsContext: [],
-    blockers: []
-  }
-}));
-for (const role of ['spec-reviewer', 'quality-reviewer', 'verification-reviewer']) {
-  console.log(JSON.stringify({
-    event: 'notification',
-    makeitrealReview: {
-      role,
-      status: 'APPROVED',
-      summary: role + ' approved fixture output.',
-      findings: [],
-      evidence: ['fake claude fixture']
-    }
-  }));
-}
-`, "utf8");
-  await chmod(filePath, 0o755);
-}
-
-async function withFakeClaudeOnPath(root, callback) {
-  const previousPath = process.env.PATH;
-  process.env.PATH = `${root}${path.delimiter}${previousPath}`;
-  try {
-    return await callback();
-  } finally {
-    process.env.PATH = previousPath;
-  }
-}
-
 async function enableClaudeRunner(boardDir) {
   await writeJsonFile(path.join(boardDir, "trust-policy.json"), {
     schemaVersion: "1.0",
@@ -110,19 +50,51 @@ async function enableClaudeRunner(boardDir) {
   });
 }
 
-async function dispatchClaudeWork({ root, boardDir, now }) {
-  await writeFakeClaude(root);
-  return withFakeClaudeOnPath(root, () => orchestratorTick({
+async function dispatchNativeWork({
+  boardDir,
+  now,
+  workerId = "claude-code.parent",
+  changedFiles = ["apps/web/auth/native-output.txt"],
+  reviewStatus = "APPROVED"
+}) {
+  const started = await startNativeClaudeTask({
     boardDir,
-    workerId: "worker.frontend",
-    concurrency: 1,
-    now,
-    runnerMode: "claude-code",
-    runnerCommand: {
-      file: "claude",
-      args: VALID_CLAUDE_ARGS
-    }
-  }));
+    workerId,
+    now
+  });
+  if (!started.ok || !started.nativeTask) {
+    return started;
+  }
+
+  const resultText = JSON.stringify({
+    makeitrealReport: {
+      role: "implementation-worker",
+      status: "DONE",
+      summary: "Implemented through parent-session native Claude Code Task.",
+      changedFiles,
+      tested: ["native task fixture"],
+      concerns: [],
+      needsContext: [],
+      blockers: []
+    },
+    makeitrealReviews: ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+      role,
+      status: reviewStatus,
+      summary: `${role} approved native task output.`,
+      findings: [],
+      evidence: ["native task fixture"]
+    }))
+  });
+
+  const finished = await finishNativeClaudeTask({
+    boardDir,
+    workItemId: started.nativeTask.workItemId,
+    attemptId: started.nativeTask.attemptId,
+    workerId,
+    resultText,
+    now: new Date(now.getTime() + 1000)
+  });
+  return { ...finished, started };
 }
 
 test("orchestrator completion owns board verification, wiki sync, and Done transition", async () => {
@@ -243,11 +215,10 @@ test("orchestrator completion rejects claude-code work without successful attemp
   });
 });
 
-test("orchestrator completion accepts claude-code trust policy after real runner dispatch", async () => {
-  await withBoard(async ({ root, boardDir }) => {
+test("orchestrator completion accepts claude-code trust policy after native Task dispatch", async () => {
+  await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);
-    const dispatched = await dispatchClaudeWork({
-      root,
+    const dispatched = await dispatchNativeWork({
       boardDir,
       now: new Date("2026-04-30T00:00:00.000Z")
     });
@@ -443,10 +414,9 @@ test("orchestrator complete retries Rework verification after environment recove
 });
 
 test("orchestrator completion requires approved dynamic reviewer evidence for claude-code work", async () => {
-  await withBoard(async ({ root, boardDir }) => {
+  await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);
-    const dispatched = await dispatchClaudeWork({
-      root,
+    const dispatched = await dispatchNativeWork({
       boardDir,
       now: new Date("2026-04-30T00:00:00.000Z")
     });
@@ -475,10 +445,9 @@ test("orchestrator completion requires approved dynamic reviewer evidence for cl
 });
 
 test("orchestrator completion rejects failed dynamic reviewer evidence for claude-code work", async () => {
-  await withBoard(async ({ root, boardDir }) => {
+  await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);
-    const dispatched = await dispatchClaudeWork({
-      root,
+    const dispatched = await dispatchNativeWork({
       boardDir,
       now: new Date("2026-04-30T00:00:00.000Z")
     });
@@ -505,23 +474,24 @@ test("orchestrator completion rejects failed dynamic reviewer evidence for claud
   });
 });
 
-test("orchestrator completion verifies applied Claude workspace output in the real project root", async () => {
-  await withProjectBoard(async ({ root, projectRoot, boardDir }) => {
+test("orchestrator completion verifies native Claude task output in the real project root", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);
     await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
-    const dispatched = await dispatchClaudeWork({
-      root,
+    await writeFile(path.join(projectRoot, "apps", "web", "auth", "native-output.txt"), "inside native task");
+    const dispatched = await dispatchNativeWork({
       boardDir,
-      now: new Date("2026-04-30T00:00:00.000Z")
+      now: new Date("2026-04-30T00:00:00.000Z"),
+      changedFiles: ["apps/web/auth/native-output.txt"]
     });
     assert.equal(dispatched.ok, true, JSON.stringify(dispatched.errors));
-    assert.equal(await readFile(path.join(projectRoot, "apps", "web", "auth", "runner-output.txt"), "utf8"), "inside boundary");
+    assert.equal(await readFile(path.join(projectRoot, "apps", "web", "auth", "native-output.txt"), "utf8"), "inside native task");
 
     const board = await loadBoard(boardDir);
     const workItem = board.workItems.find((item) => item.id === "work.login-ui");
     workItem.verificationCommands = [{
       file: process.execPath,
-      args: ["-e", "const fs = require('fs'); const text = fs.readFileSync('apps/web/auth/runner-output.txt', 'utf8'); if (text !== 'inside boundary') process.exit(7);"]
+      args: ["-e", "const fs = require('fs'); const text = fs.readFileSync('apps/web/auth/native-output.txt', 'utf8'); if (text !== 'inside native task') process.exit(7);"]
     }];
     await saveBoard(boardDir, board);
 
@@ -540,18 +510,17 @@ test("orchestrator completion verifies applied Claude workspace output in the re
   });
 });
 
-test("orchestrator completion requires claude-code executable provenance", async () => {
-  await withBoard(async ({ root, boardDir }) => {
+test("orchestrator completion rejects non-native claude-code attempt provenance", async () => {
+  await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);
-    await dispatchClaudeWork({
-      root,
+    await dispatchNativeWork({
       boardDir,
       now: new Date("2026-05-06T00:00:00.000Z")
     });
 
     const attemptPath = path.join(boardDir, "attempts", "work.login-ui.1778025600000.json");
     const attempt = await readJsonFile(attemptPath);
-    delete attempt.runner.executable;
+    attempt.runner.channel = "headless-claude-cli";
     await writeJsonFile(attemptPath, attempt);
 
     const result = await completeVerifiedWork({
@@ -563,15 +532,14 @@ test("orchestrator completion requires claude-code executable provenance", async
 
     assert.equal(result.ok, false);
     assert.equal(result.errors[0].code, "HARNESS_COMPLETION_ATTEMPT_PROVENANCE_MISSING");
-    assert.match(result.errors[0].reason, /executable identity/);
+    assert.match(result.errors[0].reason, /parent-session native Task/);
   });
 });
 
 test("orchestrator completion accepts claude-code trust policy through CLI", async () => {
-  await withBoard(async ({ root, boardDir }) => {
+  await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);
-    const dispatched = await dispatchClaudeWork({
-      root,
+    const dispatched = await dispatchNativeWork({
       boardDir,
       now: new Date("2026-04-30T00:00:00.000Z")
     });

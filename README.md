@@ -103,7 +103,7 @@ approval.
 Review the generated Blueprint and browser dashboard. The plan command asks a
 Claude Code review question after showing the Blueprint; that answer, and any
 later natural-language chat reply, is classified by the same LLM judge. For
-scripts or explicit fallbacks, use:
+scripts or explicit approval controls, use:
 
 ```text
 /makeitreal:plan approve
@@ -206,11 +206,9 @@ npm run check
 npm run plugin:validate
 ```
 
-Real Claude Code E2E is opt-in because it consumes Claude Code quota:
-
-```bash
-npm run e2e:real-claude
-```
+Real Claude Code execution is exercised through `/makeitreal:launch` or
+`/mir:launch` inside Claude Code, using the native `Task` subagent UI. The
+repository does not expose a child-process `claude --print` runner.
 
 Public repository target: `https://github.com/mir-makeitreal/makeitreal`.
 License: MIT.

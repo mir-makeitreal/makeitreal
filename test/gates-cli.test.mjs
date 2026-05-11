@@ -160,3 +160,22 @@ test("Ready gate rejects PRD and responsibility boundary drift", async () => {
     assert.equal(codes.includes("HARNESS_ALLOWED_PATH_INVALID"), true);
   });
 });
+
+test("Ready gate validates declared OpenAPI contracts", async () => {
+  await withFixture(async ({ runDir }) => {
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    delete spec.paths["/auth/login"].post.requestBody;
+    await writeJsonFile(specPath, spec);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING"), true);
+  });
+});

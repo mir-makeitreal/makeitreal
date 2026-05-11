@@ -14,6 +14,71 @@ function methodsFor(pathItem) {
   );
 }
 
+function contractError({ code, reason, contractId, evidencePath }) {
+  return createHarnessError({
+    code,
+    reason,
+    contractId,
+    evidence: [evidencePath],
+    recoverable: true
+  });
+}
+
+function jsonSchemaObject(container) {
+  return container?.content?.["application/json"]?.schema;
+}
+
+function validateImplementationGradeOperation({ operation, method, routePath, contractId, evidencePath }) {
+  const errors = [];
+  const requestBodyRequired = !["get", "delete", "head"].includes(method);
+  if (!operation.operationId || typeof operation.operationId !== "string") {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_OPERATION_ID_MISSING",
+      reason: `OpenAPI operation must declare operationId: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+
+  const requestSchema = jsonSchemaObject(operation.requestBody);
+  if (requestBodyRequired && (operation.requestBody?.required !== true || !requestSchema)) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING",
+      reason: `OpenAPI operation must declare a required application/json request schema: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+
+  const responses = operation.responses ?? {};
+  const success = responses["200"] ?? responses["201"] ?? responses["204"];
+  if (!success) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_SUCCESS_RESPONSE_MISSING",
+      reason: `OpenAPI operation must declare a success response: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  } else if (String(Object.keys(responses).find((status) => responses[status] === success)) !== "204" && !jsonSchemaObject(success)) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_RESPONSE_SCHEMA_MISSING",
+      reason: `OpenAPI success response must declare an application/json schema: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+
+  if (!Object.keys(responses).some((status) => /^[45]\d\d$/.test(status))) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_ERROR_RESPONSE_MISSING",
+      reason: `OpenAPI operation must declare at least one 4xx or 5xx error response: ${method.toUpperCase()} ${routePath}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+  return errors;
+}
+
 function compareOpenApiBaseline({ baseline, current, contractId, evidencePath }) {
   const errors = [];
   for (const [routePath, baselinePathItem] of Object.entries(baseline.paths ?? {})) {
@@ -89,6 +154,27 @@ export async function validateOpenApiContracts({ runDir, baselineDir }) {
         contractId: spec.contractId,
         evidence: [spec.path]
       }));
+    }
+
+    for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
+      const methods = methodsFor(pathItem);
+      if (methods.length === 0) {
+        errors.push(contractError({
+          code: "HARNESS_OPENAPI_OPERATION_MISSING",
+          reason: `OpenAPI path must declare at least one operation: ${routePath}.`,
+          contractId: spec.contractId,
+          evidencePath: spec.path
+        }));
+      }
+      for (const method of methods) {
+        errors.push(...validateImplementationGradeOperation({
+          operation: pathItem[method],
+          method,
+          routePath,
+          contractId: spec.contractId,
+          evidencePath: spec.path
+        }));
+      }
     }
 
     if (baselineDir) {

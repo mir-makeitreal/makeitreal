@@ -34,7 +34,11 @@ export async function runVerification({ runDir }) {
     const result = spawnSync(normalized.command.file, normalized.command.args, {
       cwd: runDir,
       encoding: "utf8",
-      shell: false
+      shell: false,
+      env: {
+        ...process.env,
+        ...(normalized.command.env ?? {})
+      }
     });
     const durationMs = Date.now() - startedAt;
     const commandEvidence = {

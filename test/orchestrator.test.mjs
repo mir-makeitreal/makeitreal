@@ -36,6 +36,25 @@ test("tick dispatches only unblocked ready work within concurrency", async () =>
   });
 });
 
+test("tick refuses claude-code runner because real launch uses native Task", async () => {
+  await withBoard(async ({ boardDir }) => {
+    const result = await orchestratorTick({
+      boardDir,
+      workerId: "worker.frontend",
+      concurrency: 1,
+      now: new Date("2026-04-30T00:00:00.000Z"),
+      runnerMode: "claude-code",
+      runnerScript: ["session_started", "turn_completed"]
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_RUNNER_MODE_UNSUPPORTED");
+    assert.match(result.errors[0].reason, /native start\/finish/);
+    assert.deepEqual(result.dispatchedWorkItemIds, []);
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Ready");
+  });
+});
+
 test("failed turn moves run attempt to Failed Fast and schedules retry", async () => {
   await withBoard(async ({ boardDir }) => {
     const result = await orchestratorTick({

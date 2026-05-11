@@ -79,7 +79,8 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /Verifying` or `Rework/);
   assert.match(launchCommand, /recover `Rework -> Verifying`/);
   assert.match(launchCommand, /orchestrator complete/);
-  assert.match(launchCommand, /child-process runner only for\s+headless CI/i);
+  assert.match(launchCommand, /Do not spawn a separate `claude --print` child process/);
+  assert.doesNotMatch(launchCommand, /headless fallback|--runner-command|orchestrator tick --runner claude-code/i);
   assert.match(launchCommand, /one-command start/);
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
 
@@ -149,7 +150,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /orchestrator native finish/);
   assert.match(launchSkill, /parent-session native Task path/);
   assert.match(launchSkill, /existing work item in `Verifying` or `Rework`/);
-  assert.match(launchSkill, /child-process `claude --print` runner as a headless fallback/);
+  assert.match(launchSkill, /Do not spawn `claude --print`/);
   assert.match(launchSkill, /Ralph-like one-command start/);
 });
 
@@ -319,17 +320,10 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
   }
 });
 
-test("Make It Real exposes an opt-in real Claude golden-path E2E script", async () => {
+test("Make It Real does not expose a child-process Claude runner script", async () => {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
-  assert.equal(pkg.scripts["e2e:real-claude"], "node scripts/run-real-claude-golden-path.mjs");
-
-  const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "run-real-claude-golden-path.mjs"), "--help"], {
-    cwd: repoRoot,
-    encoding: "utf8"
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /plan --runner claude-code/);
-  assert.match(result.stdout, /consumes real Claude Code quota/);
+  assert.equal(pkg.scripts["e2e:real-claude"], undefined);
+  await assert.rejects(readFile(path.join(repoRoot, "scripts", "run-real-claude-golden-path.mjs"), "utf8"));
 });
 
 test("Make It Real exposes opt-in Claude plugin validation", async () => {

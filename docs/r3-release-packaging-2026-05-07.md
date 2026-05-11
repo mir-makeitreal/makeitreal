@@ -89,8 +89,9 @@ Before claiming release readiness, gather:
 
 - deterministic harness check output from `npm run check`
 - plugin packaging output from `npm run plugin:validate`
-- real Claude Code golden path output from `npm run e2e:real-claude` when quota
-  and time allow
+- real Claude Code golden path evidence from `/mir:launch` or
+  `/makeitreal:launch` in an interactive Claude Code session when quota and
+  time allow
 - latest dashboard/Blueprint evidence path for the tested run
 
 ## Remaining Public Release Gap

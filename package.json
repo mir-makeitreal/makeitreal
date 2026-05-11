@@ -9,10 +9,9 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "check": "node --test test/*.test.mjs && node bin/harness.mjs design render examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Ready && node bin/harness.mjs verify examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs wiki sync examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Done",
+    "check": "node --test test/*.test.mjs && node bin/harness.mjs design render examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs contracts openapi examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Ready && node bin/harness.mjs verify examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs wiki sync examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Done",
     "plugin:validate": "node scripts/validate-claude-plugin.mjs",
-    "release:check": "npm run check && npm run plugin:validate",
-    "e2e:real-claude": "node scripts/run-real-claude-golden-path.mjs"
+    "release:check": "npm run check && npm run plugin:validate"
   },
   "engines": {
     "node": ">=20"

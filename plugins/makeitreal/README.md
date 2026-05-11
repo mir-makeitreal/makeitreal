@@ -61,9 +61,9 @@ Kanban state, run-packet layout, and evidence model, see
   prerequisite for new work.
 - Blueprint approval is required before launch. The plan review question and
   later conversational replies are classified by the same LLM judge;
-  `/makeitreal:plan approve` remains the explicit scriptable fallback.
-- Launch runs through the internal engine using the `claude-code` runner trust
-  policy for real Claude Code execution.
+  `/makeitreal:plan approve` remains the explicit scriptable control.
+- Launch runs through the internal engine using the `claude-code` trust policy
+  and Claude Code native `Task` subagents for real execution.
 - The dashboard may auto-open and auto-refresh, but it remains read-only. State
   transitions stay in Claude Code conversation, hooks, and engine gates.
 - Live wiki sync is configurable. Disabling it records explicit skip evidence

@@ -172,6 +172,14 @@ async function checkConfig({ projectRoot }) {
 async function checkCurrentRun({ projectRoot, runDir, env }) {
   const result = await resolveCurrentRunDir({ projectRoot, runDir, env });
   if (!result.ok) {
+    const explicitRunRequested = Boolean(runDir ?? env.HARNESS_RUN_DIR ?? env.MAKEITREAL_RUN_DIR);
+    if (!explicitRunRequested) {
+      return skipped("No current Make It Real run is selected yet; create one with plan when you are ready.", {
+        source: result.source,
+        runDir: null,
+        nextAction: "/makeitreal:plan <request>"
+      });
+    }
     return fail({
       code: result.errors[0]?.code ?? "HARNESS_CURRENT_RUN_MISSING",
       summary: "No readable Make It Real current run is selected.",
@@ -284,6 +292,16 @@ function firstFailingNextAction(checks) {
   return "/makeitreal:status";
 }
 
+function doctorNextAction({ healthy, checks }) {
+  if (!healthy) {
+    return firstFailingNextAction(checks);
+  }
+  if (checks.currentRun?.status === "skipped" && checks.currentRun.nextAction) {
+    return checks.currentRun.nextAction;
+  }
+  return "/makeitreal:status";
+}
+
 export async function runDoctor({
   projectRoot = process.cwd(),
   runDir = null,
@@ -317,7 +335,7 @@ export async function runDoctor({
       configSource: config.source ?? null,
       currentRunSource: currentRun.source ?? null
     },
-    nextAction: healthy ? "/makeitreal:status" : firstFailingNextAction(checks),
+    nextAction: doctorNextAction({ healthy, checks }),
     generatedAt: now.toISOString(),
     errors: Object.values(checks).flatMap((check) => check.errors ?? [])
   };

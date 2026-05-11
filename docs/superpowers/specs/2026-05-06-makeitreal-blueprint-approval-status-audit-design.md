@@ -472,7 +472,7 @@ Pre-approval no-write rule:
 - no runner process spawn
 - no claim, lane, event, runtime, verification, or wiki mutation
 
-This applies to `orchestrator tick --runner claude-code`, scripted runner launch paths, and any future launch surface.
+This applies to native `orchestrator native start/finish`, scripted fixture paths, and any future launch surface.
 
 ## Gate Enforcement
 
@@ -643,15 +643,20 @@ Extend `test/kanban-cli.test.mjs` and `test/orchestrator.test.mjs`:
 - Unlinked boards reject claim/tick with `HARNESS_BLUEPRINT_AUDIT_UNLINKED`.
 - Approval allows claim and tick to proceed.
 
-### Launch Packet Tests
+### Native Launch Packet Tests
 
-Extend `test/claude-runner.test.mjs`:
+Extend `test/orchestrator.test.mjs` and `test/board-completion.test.mjs`:
 
-- Approved launch stages `blueprint-review.json` under `.makeitreal/source/`.
-- Approved launch stages every resolved `contracts/*.json` artifact under `.makeitreal/source/contracts/`.
-- `handoff.json` includes `blueprintReview`, `contractArtifacts`, and `sourceArtifacts`.
-- Pre-approval launch fails before writing `.makeitreal/handoff.json`, `.makeitreal/prompt.md`, `.makeitreal/source/**`, attempt artifacts, claims, lanes, events, or runtime state.
-- Stale/rejected/missing/unlinked Blueprint approval produces the canonical approval error before runner spawn.
+- Approved native launch returns a compact implementation prompt and reviewer
+  prompts for the current work item.
+- Attempt provenance records `runner.mode: "claude-code"` and
+  `runner.channel: "parent-native-task"`.
+- Pre-approval launch fails before writing attempt artifacts, claims, lanes,
+  events, runtime state, verification, or wiki evidence.
+- Stale/rejected/missing/unlinked Blueprint approval produces the canonical
+  approval error before any native Task handoff.
+- Completion rejects any claude-code attempt whose latest successful provenance
+  is not from the parent-session native Task path.
 
 ### Deterministic Check Contract Tests
 
@@ -674,7 +679,7 @@ Required before completion:
 
 ```bash
 node --test test/blueprint-gates.test.mjs test/run-status-audit.test.mjs test/board-status-audit.test.mjs
-node --test test/blueprint-review-cli.test.mjs test/claude-hooks.test.mjs test/kanban-cli.test.mjs test/orchestrator.test.mjs test/plan-generator.test.mjs test/claude-runner.test.mjs test/check-contract.test.mjs
+node --test test/blueprint-review-cli.test.mjs test/claude-hooks.test.mjs test/kanban-cli.test.mjs test/orchestrator.test.mjs test/plan-generator.test.mjs test/board-completion.test.mjs test/check-contract.test.mjs
 npm test
 npm run check
 ```
@@ -695,13 +700,13 @@ plan -> pending approval block -> approve -> launch real Claude Code -> verify -
 - `board status` preserves lane counts and adds audit output.
 - `board claim`, `orchestrator tick`, and mutating Claude hooks all reject unapproved work.
 - Rejected `board claim` and `orchestrator tick` attempts are no-write.
-- Pre-approval launch rejects before `.makeitreal/**`, attempt, runner, claim, lane, event, runtime, verification, or wiki writes.
+- Pre-approval launch rejects before attempt, native Task handoff, claim, lane, event, runtime, verification, or wiki writes.
 - Board-driven execution is bound to an approved co-located or linked run packet.
 - Approval is operator-controlled, rejects runner environments, and stores deterministic provenance.
 - Approval is bound to current PRD, design pack, contracts, responsibility units, work items, and board scheduling authority when applicable.
 - Changing any Blueprint-defining artifact after approval makes the approval stale.
 - JSON key-order-only changes do not make approval stale.
-- Claude runner handoff packets contain Blueprint approval evidence and contract artifacts.
+- Native Task handoff packets contain Blueprint approval evidence and contract artifacts.
 - `npm test` and `npm run check` pass with a poisoned `PATH` sentinel that proves the real `claude` binary is not invoked.
 - Existing tests and `npm run check` pass.
 
@@ -715,7 +720,7 @@ plan -> pending approval block -> approve -> launch real Claude Code -> verify -
 
 ## External Design Notes
 
-Symphony's strongest concept to absorb is authoritative orchestration state with isolated workspaces and in-repo workflow policy. Ruflo's useful concept is health/progress visibility, but its broad swarm/memory/federation surface is intentionally excluded from this phase. OMC's useful concept is hook-based workflow persistence and simple user-facing commands. Superpowers' useful concept is hard-gated design approval and zero-context plans.
+Symphony's strongest concept to absorb is authoritative orchestration state with isolated work scopes and in-repo workflow policy. Ruflo's useful concept is health/progress visibility, but its broad swarm/memory/federation surface is intentionally excluded from this phase. OMC's useful concept is hook-based workflow persistence and simple user-facing commands. Superpowers' useful concept is hard-gated design approval and zero-context plans.
 
 Make It Real should beat these systems on this axis:
 

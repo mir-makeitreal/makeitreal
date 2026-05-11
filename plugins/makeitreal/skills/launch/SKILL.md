@@ -58,27 +58,14 @@ For Claude-code attempts, implementation success alone is not Done evidence. Com
 
 - Use the scripted simulator only for fixture tests or explicit dry runs.
 - For real Claude Code execution, require `trust-policy.json` with `runnerMode: "claude-code"`, `realAgentLaunch: "enabled"`, and `commandExecution: "structured-command-only"`.
-- In interactive Claude Code, prefer the parent-session native Task path:
+- For all real Claude Code execution, use the parent-session native Task path:
   1. Run `makeitreal-engine orchestrator native start "$RUN_DIR"`.
   2. Use the returned implementation prompt with Claude Code's native `Task` tool.
   3. Use the returned reviewer prompts with native `Task` reviewers: `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`.
   4. Aggregate their JSON reports and record them with `makeitreal-engine orchestrator native finish "$RUN_DIR" --work "$WORK_ITEM_ID" --attempt "$ATTEMPT_ID" --result-stdin`.
   5. Run `makeitreal-engine orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code`.
-- Keep the child-process `claude --print` runner as a headless fallback for CI, scripted dogfood, or explicit diagnostics. A fallback command shape is:
-
-```json
-{"file":"claude","args":["--print","--output-format","json","--permission-mode","dontAsk","--allowedTools","Read,Write,Edit,MultiEdit,Glob,Grep,LS,Task","--agents","${agents}","--add-dir","${workspace}","--","${prompt}"]}
-```
-
-- The fallback engine writes `.makeitreal/handoff.json` and `.makeitreal/prompt.md` inside the deterministic work-item workspace before launching the child runner.
-- When `--agents ${agents}` is present, the engine injects native Claude Code reviewer definitions for `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`; those reviewers produce the approved evidence required by the Done gate.
-- The engine also stages source-of-truth artifacts under `.makeitreal/source/`, including PRD, design pack, board, responsibility map, Blueprint review evidence, contracts, trust policy, and the current work item when present.
-- Existing project files that match the work item's allowed paths are staged into the workspace before launch.
-- After a successful runner turn, the engine applies only changed allowed-path files from the workspace back to the real project root, then runs completion verification from the real project root.
-- The staged `.makeitreal/**` files are immutable runner inputs after launch; if Claude modifies or deletes them, the attempt fails fast.
-- Treat structured runner output as authoritative. `turn_completed` is success; failure events such as `turn_input_required`, `unsupported_tool_call`, `turn_failed`, or malformed output keep the work item out of Done.
-- The fallback runner command may use `${workspace}`, `${agents}`, `${handoffPath}`, `${promptPath}`, `${prompt}`, and `${workItemId}` placeholders. Keep `--` between `${workspace}` and prompt/handoff placeholders because Claude Code treats `--add-dir` as variadic.
-- Completion must use the latest recorded successful attempt provenance and approved reviewer evidence; do not mark work Done from a manually moved `Verifying` lane.
+- Do not spawn `claude --print`, shell out to a second Claude Code process, or hide implementation in a headless child runner. If the native `Task` tool is unavailable, stop and report that Make It Real launch requires Claude Code native subagents.
+- Completion must use the latest parent-session native Task attempt provenance and approved reviewer evidence; do not mark work Done from a manually moved `Verifying` lane.
 
 ## Rules
 

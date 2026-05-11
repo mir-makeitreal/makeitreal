@@ -183,7 +183,7 @@ Approval can be recorded in three ways:
 - Conversational review through `UserPromptSubmit`, where the same LLM judge
   classifies the latest user reply with the previous assistant Blueprint report
   as context.
-- Explicit/scriptable fallback via `/makeitreal:plan approve` or
+- Explicit/scriptable control via `/makeitreal:plan approve` or
   `/makeitreal:plan reject`.
 
 The LLM judge is only invoked while `blueprint-review.json` is pending. Once the
@@ -278,27 +278,26 @@ work outside Make It Real launch mode.
 ## Launch And Runner Execution
 
 Launch resolves the current run, verifies Ready-gate prerequisites, promotes
-eligible work, then dispatches attempts through the selected runner.
+eligible work, then prepares a Claude Code native `Task` handoff for the next
+ready work item.
 
 For real Claude Code execution, the trust policy uses `runnerMode:
-"claude-code"` and a structured runner command. The engine creates an isolated
-workspace per work item and stages:
+"claude-code"` and `realAgentLaunch: "enabled"`. The engine does not spawn a
+second Claude CLI process. Instead, it records a parent-session native attempt
+and returns:
 
-- `handoff.json`
-- `prompt.md`
-- source-of-truth PRD/design/board/contract artifacts
-- the current work item
-- Blueprint review evidence
-- trust policy
-- existing project files that match the work item's allowed paths
+- a compact implementation prompt for the work item
+- reviewer prompts for `spec-reviewer`, `quality-reviewer`, and
+  `verification-reviewer`
+- the current work item, allowed paths, contract IDs, dependency artifacts, and
+  verification command
+- Blueprint review evidence and the current project root
 
-Runner output is structured evidence. Success requires a successful attempt and
-engine-owned verification. After a successful runner turn, Make It Real applies
-only changed allowed-path files from the isolated workspace back to the real
-project root, records the applied paths in attempt provenance, and then runs
-completion verification from the real project root. Unsupported tool calls,
-missing input, malformed events, failed commands, boundary violations, or failed
-workspace apply keep the item out of Done.
+Task output is structured evidence. Success requires a successful native Task
+attempt, approved reviewer reports, and engine-owned verification. The native
+subagent edits the real project under the same Claude Code UI and Make It Real
+hooks; unsupported tool calls, missing input, malformed reports, failed
+commands, boundary violations, or failed verification keep the item out of Done.
 
 ## Verification And Done Evidence
 
@@ -370,11 +369,9 @@ npm run check
 npm run plugin:validate
 ```
 
-Real Claude Code E2E is opt-in:
-
-```bash
-npm run e2e:real-claude
-```
+Real Claude Code execution is not driven by a child CLI process. Use
+`/makeitreal:launch` or `/mir:launch` inside Claude Code so implementation and
+review run through native `Task` subagents in the visible parent session.
 
 `npm run check` covers engine tests plus the canonical Ready/Done gate chain.
 `npm run plugin:validate` validates the canonical plugin, alias plugin, and

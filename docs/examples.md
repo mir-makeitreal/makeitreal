@@ -27,7 +27,7 @@ npm run check
 Command:
 
 ```bash
-npm run e2e:real-claude
+/mir:launch
 ```
 
 Purpose:

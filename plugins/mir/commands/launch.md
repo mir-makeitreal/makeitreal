@@ -66,9 +66,9 @@ have successful attempt provenance:
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code
 ```
 
-Use the `orchestrator tick --runner claude-code` child-process runner only for
-headless CI or explicit fallback diagnostics, not as the default interactive
-Claude Code path.
+Do not spawn a separate `claude --print` child process. Make It Real launches
+real work through the parent Claude Code session's native `Task` tool so the
+user can inspect subagent activity in the normal Claude Code UI.
 
 If the command returns a dashboard refresh URL or the skill asks for the dashboard to be opened, open it:
 

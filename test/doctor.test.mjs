@@ -212,9 +212,9 @@ test("doctor exits zero and points to plan when no current run is selected", asy
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(result.stdout);
     assert.equal(output.ok, true);
-    assert.equal(output.healthy, false);
-    assert.equal(output.checks.currentRun.status, "fail");
-    assert.equal(output.checks.currentRun.errors[0].code, "HARNESS_CURRENT_RUN_MISSING");
+    assert.equal(output.healthy, true);
+    assert.equal(output.checks.currentRun.status, "skipped");
+    assert.equal(output.checks.currentRun.errors.length, 0);
     assert.equal(output.nextAction, "/makeitreal:plan <request>");
   } finally {
     await rm(root, { recursive: true, force: true });

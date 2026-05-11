@@ -52,7 +52,7 @@ Use only public next actions in the user-facing report:
 - `/mir:plan <request>`
 - `/mir:config`
 - Conversational Blueprint review classified by the LLM judge
-- `/mir:plan approve` as the explicit/scriptable fallback
+- `/mir:plan approve` as the explicit/scriptable control
 - `/mir:launch`
 - `/mir:status`
 - `/mir:verify`

@@ -70,6 +70,6 @@ If the question returns an answer, send that answer through the same LLM review 
 
 Do not branch on the selected label. The `blueprint review` command owns approval, rejection, revision-request classification, and `blueprint-review.json` writes.
 
-If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will send that reply to the same LLM review judge. `/mir:plan approve` and `/mir:plan reject` are scriptable fallbacks, not the primary UX.
+If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will send that reply to the same LLM review judge. `/mir:plan approve` and `/mir:plan reject` are scriptable controls, not the primary UX.
 
 Do not implement during planning. Launch only after Blueprint approval evidence exists.

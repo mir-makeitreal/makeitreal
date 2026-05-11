@@ -41,6 +41,22 @@ test("OpenAPI adapter validates declared contract documents", async () => {
   });
 });
 
+test("OpenAPI adapter requires implementation-grade operation contracts", async () => {
+  await withFixture(async ({ runDir }) => {
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    delete spec.paths["/auth/login"].post.requestBody;
+    delete spec.paths["/auth/login"].post.responses["401"];
+    await writeJsonFile(specPath, spec);
+
+    const result = await validateOpenApiContracts({ runDir });
+    const codes = result.errors.map((error) => error.code);
+    assert.equal(result.ok, false);
+    assert.equal(codes.includes("HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING"), true);
+    assert.equal(codes.includes("HARNESS_OPENAPI_ERROR_RESPONSE_MISSING"), true);
+  });
+});
+
 test("OpenAPI adapter rejects breaking removals against a baseline", async () => {
   await withFixture(async ({ runDir }) => {
     const baselineRoot = await mkdtemp(path.join(os.tmpdir(), "harness-openapi-baseline-"));
@@ -54,7 +70,7 @@ test("OpenAPI adapter rejects breaking removals against a baseline", async () =>
 
       const result = await validateOpenApiContracts({ runDir, baselineDir: baselineRoot });
       assert.equal(result.ok, false);
-      assert.equal(result.errors[0].code, "HARNESS_OPENAPI_RESPONSE_REMOVED");
+      assert.equal(result.errors.some((error) => error.code === "HARNESS_OPENAPI_RESPONSE_REMOVED"), true);
     } finally {
       await rm(baselineRoot, { recursive: true, force: true });
     }
@@ -101,5 +117,23 @@ test("OpenAPI conformance evidence validates implementation samples against the 
     const failing = await validateOpenApiConformanceEvidence({ runDir, workItem });
     assert.equal(failing.ok, false);
     assert.equal(failing.errors[0].code, "HARNESS_OPENAPI_CONFORMANCE_FAILED");
+
+    await writeJsonFile(path.join(runDir, "evidence", "work.feature-auth.openapi-conformance.json"), {
+      kind: "openapi-conformance",
+      ok: true,
+      workItemId: workItem.id,
+      contractId: "contract.auth.login",
+      cases: [
+        {
+          contractId: "contract.auth.login",
+          request: { method: "POST", path: "/auth/login", body: { email: "a@example.com" } },
+          response: { status: 200, body: { token: "abc" } }
+        }
+      ]
+    });
+
+    const requestSchemaFailing = await validateOpenApiConformanceEvidence({ runDir, workItem });
+    assert.equal(requestSchemaFailing.ok, false);
+    assert.match(requestSchemaFailing.errors[0].reason, /request\.body\.password is required/);
   });
 });
