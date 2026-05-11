@@ -104,6 +104,7 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /blueprint review/);
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
+  assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
 });
 
 test("Make It Real config commands use OMC-style semantic UX", async () => {
@@ -242,6 +243,7 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planCommand, /blueprint review/);
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
+  assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
 });
 
 test("Make It Real plugin binary delegates to the internal engine", () => {

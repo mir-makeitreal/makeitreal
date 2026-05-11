@@ -63,6 +63,24 @@ function defaultAllowedPaths(slug) {
   return [`modules/${slug}/**`];
 }
 
+function allowedPathsMatch(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function resolveOwnedPaths({ allowedPaths, requestAllowedPaths, slug }) {
+  const defaults = defaultAllowedPaths(slug);
+  if (requestAllowedPaths.length > 0 && allowedPathsMatch(allowedPaths, defaults)) {
+    return requestAllowedPaths;
+  }
+  if (allowedPaths.length > 0) {
+    return allowedPaths;
+  }
+  if (requestAllowedPaths.length > 0) {
+    return requestAllowedPaths;
+  }
+  return defaults;
+}
+
 function explicitAllowedPathsFromRequest(request) {
   const text = String(request ?? "");
   const candidates = [];
@@ -1250,11 +1268,7 @@ export async function generatePlanRun({
   const contractId = `contract.${slug}.boundary`;
   const workItemId = `work.${slug}`;
   const requestAllowedPaths = explicitAllowedPathsFromRequest(request);
-  const owns = allowedPaths.length > 0
-    ? allowedPaths
-    : requestAllowedPaths.length > 0
-      ? requestAllowedPaths
-      : defaultAllowedPaths(slug);
+  const owns = resolveOwnedPaths({ allowedPaths, requestAllowedPaths, slug });
   const commands = verificationCommands ?? defaultVerificationCommands();
   const invalidCommand = commands.find((command) => !normalizeVerificationCommand(command).ok);
   if (invalidCommand) {

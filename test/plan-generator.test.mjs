@@ -390,6 +390,30 @@ test("plan generator honors explicit project paths in the request", async () => 
   }
 });
 
+test("plan generator prefers request paths over generated default ownership", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript slugify-title responsibility unit at src/slugify-title.mjs exporting slugifyTitle(input). Contract: input must be a string. Tests live at test/slugify-title.test.mjs. Verification: npm test.",
+      runId: "implement-a-pure-javascript-slugify-title",
+      allowedPaths: ["modules/implement-a-pure-javascript-slugify-title/**"],
+      runnerMode: "claude-code",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.implement-a-pure-javascript-slugify-title.json"));
+    assert.deepEqual(workItem.allowedPaths, ["src/slugify-title.mjs", "test/slugify-title.test.mjs"]);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.deepEqual(designPack.responsibilityBoundaries[0].owns, ["src/slugify-title.mjs", "test/slugify-title.test.mjs"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("plan generator derives function-shaped module contracts without path false positives", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
   try {

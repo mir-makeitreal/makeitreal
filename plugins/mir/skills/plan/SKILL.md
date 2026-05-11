@@ -124,6 +124,8 @@ Use `$ARGUMENTS` as the canonical request only when it is non-empty. If `$ARGUME
 
 Derive the structured verification command from the project context. `--verify` must be JSON with `file` and `args`, not a shell string. Keep `--runner claude-code` for normal Claude Code plugin use so the generated trust policy can launch real Claude Code through `/mir:launch`; use the scripted simulator only for fixture tests or explicit dry runs. If no honest command exists yet, report the blocked Ready gate instead of inventing a placeholder. Use `--run`, `--owner`, `--allowed-path`, or `--api` only when the request or project context makes those values explicit.
 
+Never pass a generated placeholder such as `--allowed-path modules/<slug>/**` when the request already names concrete files or directories. Concrete requested paths are the responsibility boundary; guessed module workspaces create false path-boundary failures during launch.
+
 After a successful plan creates `preview/index.html`, run:
 
 ```bash

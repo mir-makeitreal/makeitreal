@@ -42,6 +42,8 @@ When the argument is not empty, or after interactive intake produced a canonical
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" plan "${CLAUDE_PROJECT_DIR:-$PWD}" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
 ```
 
+Do not add a guessed `--allowed-path modules/<slug>/**` to this command. If the request names concrete project paths such as `src/foo.mjs` or `test/foo.test.mjs`, leave `--allowed-path` out and let the engine infer those concrete paths from the canonical request. Use `--allowed-path` only when the operator explicitly gave a safe-to-change area or the project context proves the boundary.
+
 After planning, open the generated dashboard when a run directory is returned:
 
 ```bash
