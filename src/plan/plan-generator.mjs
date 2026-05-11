@@ -197,6 +197,10 @@ function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function escapeRegExp(value) {
+  return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function fieldSchema(name) {
   if (/^is[A-Z]|enabled|disabled|active|ok|required/i.test(name)) {
     return { type: "boolean" };
@@ -501,17 +505,14 @@ function moduleProfileFromRequest({ request, slug }) {
     : /parse/i.test(text)
       ? "parsedResult"
       : /format/i.test(text)
-        ? "formattedValue"
-        : "result";
-  const returnType = /\bstring\b/i.test(text) ? "string" : "module result";
-  const errorCode = text.match(/\bcode\s+([A-Z][A-Z0-9_]+)/)?.[1] ?? "BOUNDARY_CONTRACT_VIOLATION";
-  const invalidWhen = /non-string|empty/i.test(text)
-    ? "Input is non-string or normalizes to an empty value."
-    : "The call violates the declared module contract.";
+      ? "formattedValue"
+      : "result";
+  const returnType = inferModuleReturnType({ text, normalizedOutput });
+  const declaredErrors = declaredModuleErrors(text);
   const inputs = rawArgs.length > 0
     ? rawArgs.map((arg) => ({
         name: arg,
-        type: new RegExp(`\\b${arg}\\b[^.]*\\bstring\\b`, "i").test(text) || /\binput must be a string\b/i.test(text) ? "string" : "declared input",
+        type: inferModuleInputType({ text, arg }),
         required: true,
         description: `Declared ${arg} input for ${surfaceName}.`
       }))
@@ -528,14 +529,12 @@ function moduleProfileFromRequest({ request, slug }) {
       ? "Returned value after the declared normalization rules are applied."
       : "Returned value defined by the module contract."
   }];
-  const errors = [{
-    code: errorCode,
-    when: invalidWhen,
-    handling: errorCode === "BOUNDARY_CONTRACT_VIOLATION"
-      ? "Fail fast and revise the Blueprint; do not add speculative fallback branches."
-      : `Throw the declared error with code ${errorCode}; do not coerce invalid input through fallback behavior.`
-  }];
-  if (errorCode !== "BOUNDARY_CONTRACT_VIOLATION") {
+  const errors = declaredErrors.map((code) => ({
+    code,
+    when: moduleErrorWhen({ code, text }),
+    handling: `Throw the declared error with code ${code}; do not coerce invalid input through fallback behavior.`
+  }));
+  if (!declaredErrors.includes("BOUNDARY_CONTRACT_VIOLATION")) {
     errors.push({
       code: "BOUNDARY_CONTRACT_VIOLATION",
       when: "The work requires undeclared paths, undeclared cross-module imports, or behavior outside the Blueprint.",
@@ -555,6 +554,76 @@ function moduleProfileFromRequest({ request, slug }) {
       "return declared output or throw declared error"
     ]
   };
+}
+
+function declaredModuleErrors(text) {
+  const codes = [...String(text ?? "").matchAll(/\bcode\s+([A-Z][A-Z0-9_]+)/g)].map((match) => match[1]);
+  const uniqueCodes = uniqueValues(codes);
+  return uniqueCodes.length > 0 ? uniqueCodes : ["BOUNDARY_CONTRACT_VIOLATION"];
+}
+
+function inferModuleReturnType({ text, normalizedOutput }) {
+  const source = String(text ?? "");
+  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?integer\b/i.test(source)) {
+    return "integer";
+  }
+  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?number\b/i.test(source)) {
+    return "number";
+  }
+  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?boolean\b/i.test(source)) {
+    return "boolean";
+  }
+  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?string\b/i.test(source) || normalizedOutput === "normalizedValue") {
+    return "string";
+  }
+  if (normalizedOutput === "parsedResult" && /\binteger\b/i.test(source)) {
+    return "integer";
+  }
+  return "module result";
+}
+
+function inferModuleInputType({ text, arg }) {
+  const source = String(text ?? "");
+  const name = String(arg ?? "");
+  const escaped = escapeRegExp(name);
+  if (/\bmin\s+and\s+max\s+must\s+be\s+finite\s+integers\b/i.test(source) && /^(min|max)$/i.test(name)) {
+    return "integer";
+  }
+  if (new RegExp(`\\b${escaped}\\b\\s+(?:may\\s+be|can\\s+be)\\s+(?:a\\s+)?string\\s+or\\s+number`, "i").test(source)) {
+    return "string | number";
+  }
+  if (new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:a\\s+)?finite\\s+integer`, "i").test(source)
+    || new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:an?\\s+)?integer`, "i").test(source)) {
+    return "integer";
+  }
+  if (new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:a\\s+)?string`, "i").test(source)
+    || (name === "input" && /\binput\s+must\s+be\s+a\s+string\b/i.test(source))) {
+    return "string";
+  }
+  if (new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:a\\s+)?number`, "i").test(source)) {
+    return "number";
+  }
+  if (/^(min|max|limit|count|size|index|offset|page)$/i.test(name)) {
+    return "number";
+  }
+  return "declared input";
+}
+
+function moduleErrorWhen({ code, text }) {
+  const source = String(text ?? "");
+  if (/OUT_OF_RANGE/i.test(code)) {
+    return "The parsed value is outside the declared inclusive min/max range.";
+  }
+  if (/INVALID/i.test(code) && /\bmin\s+and\s+max\b/i.test(source)) {
+    return "Input is not an integer, or min/max bounds are not finite integers.";
+  }
+  if (/INVALID/i.test(code) && /non-string|empty/i.test(source)) {
+    return "Input is non-string or normalizes to an empty value.";
+  }
+  if (/INVALID/i.test(code)) {
+    return "Input violates the declared module contract.";
+  }
+  return "The call violates the declared module contract.";
 }
 
 function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile, moduleProfile }) {

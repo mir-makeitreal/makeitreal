@@ -126,11 +126,17 @@ function relativeImportPath(ownedPath) {
 
 function sampleValueForType(type) {
   const normalized = String(type ?? "").toLowerCase();
+  if (normalized.includes("integer")) {
+    return "42";
+  }
+  if (normalized.includes("string | number") || normalized.includes("number | string")) {
+    return '"42"';
+  }
   if (normalized.includes("string")) {
-    return '"  Ada   Lovelace  "';
+    return '"value"';
   }
   if (normalized.includes("number")) {
-    return "123";
+    return "42";
   }
   if (normalized.includes("boolean")) {
     return "true";
@@ -151,6 +157,18 @@ function sampleValueForInput(input) {
   }
   if (name.includes("password")) {
     return '"correct horse battery staple"';
+  }
+  if (name === "min" || name.endsWith("min")) {
+    return "1";
+  }
+  if (name === "max" || name.endsWith("max")) {
+    return "100";
+  }
+  if (name.includes("count") || name.includes("size") || name.includes("index") || name.includes("offset")) {
+    return "42";
+  }
+  if (name === "input" && String(input?.type ?? "").toLowerCase().includes("string | number")) {
+    return '"42"';
   }
   return sampleValueForType(input?.type);
 }

@@ -455,6 +455,46 @@ test("plan generator derives function-shaped module contracts without path false
   }
 });
 
+test("plan generator derives bounded integer parser signatures and declared errors", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max) and test/parse-bounded-int.test.mjs. Contract: input may be a string or number representing an integer, min and max must be finite integers with min <= max, return the integer when it is inside the inclusive range, throw RangeError with code INTEGER_OUT_OF_RANGE when outside the range, throw TypeError with code INTEGER_INVALID for non-integer input or invalid bounds. Verification command is npm test.",
+      runId: "bounded-int-parser",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const surface = designPack.moduleInterfaces[0].publicSurfaces[0];
+    assert.equal(surface.name, "parseBoundedInt");
+    assert.deepEqual(
+      surface.signature.inputs.map((input) => [input.name, input.type]),
+      [
+        ["input", "string | number"],
+        ["min", "integer"],
+        ["max", "integer"]
+      ]
+    );
+    assert.equal(surface.signature.outputs[0].name, "parsedResult");
+    assert.equal(surface.signature.outputs[0].type, "integer");
+    assert.deepEqual(surface.signature.errors.map((error) => error.code), [
+      "INTEGER_OUT_OF_RANGE",
+      "INTEGER_INVALID",
+      "BOUNDARY_CONTRACT_VIOLATION"
+    ]);
+
+    const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
+    assert.deepEqual(prd.userVisibleBehavior, [
+      "parseBoundedInt accepts input, min, max, returns parsedResult, and fails through INTEGER_OUT_OF_RANGE, INTEGER_INVALID, BOUNDARY_CONTRACT_VIOLATION."
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("plan generator rejects unsupported runner modes before writing a run", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
   try {

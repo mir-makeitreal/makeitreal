@@ -277,3 +277,31 @@ test("preview renders long implementation requests as compact reference docs", a
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("preview renders request-specific SDK examples and function signatures", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot: root,
+      request: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max) and test/parse-bounded-int.test.mjs. Contract: input may be a string or number representing an integer, min and max must be finite integers with min <= max, return the integer when it is inside the inclusive range, throw RangeError with code INTEGER_OUT_OF_RANGE when outside the range, throw TypeError with code INTEGER_INVALID for non-integer input or invalid bounds. Verification command is npm test.",
+      runId: "bounded-int-parser",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const result = await renderDesignPreview({ runDir: plan.runDir });
+    assert.equal(result.ok, true);
+
+    const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
+    assert.match(html, /<h1>Parse Bounded Int<\/h1>/);
+    assert.match(html, /parseBoundedInt\(input, min, max\): integer/);
+    assert.match(html, /const parsedResult = parseBoundedInt\(&quot;42&quot;, 1, 100\);/);
+    assert.match(html, /INTEGER_OUT_OF_RANGE/);
+    assert.match(html, /INTEGER_INVALID/);
+    assert.doesNotMatch(html, /Ada\s+Lovelace/);
+    assert.doesNotMatch(html, /parseBoundedInt\(input, min, max\): string/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
