@@ -8,6 +8,21 @@ import { resolveCurrentRunDir } from "../project/run-state.mjs";
 
 const DECISIONS = new Set(["approved", "rejected", "revision_requested", "none"]);
 const CONFIDENCE = new Set(["high", "medium", "low"]);
+const CONFIDENCE_ALIASES = new Map([
+  ["very_high", "high"],
+  ["high_confidence", "high"],
+  ["certain", "high"],
+  ["confident", "high"],
+  ["strong", "high"],
+  ["moderate", "medium"],
+  ["normal", "medium"],
+  ["default", "medium"],
+  ["medium_confidence", "medium"],
+  ["very_low", "low"],
+  ["low_confidence", "low"],
+  ["uncertain", "low"],
+  ["weak", "low"]
+]);
 const NATIVE_REVIEW_SOURCE = "makeitreal:interactive-review:native-claude";
 
 function reviewedByFrom({ sessionId }) {
@@ -86,10 +101,7 @@ function normalizeNativeDecisionPayload(payload) {
   if (typeof payload.launchRequested !== "boolean") {
     throw new Error("Native Blueprint review decision requires boolean launchRequested.");
   }
-  const confidence = payload.confidence == null ? "medium" : payload.confidence;
-  if (!CONFIDENCE.has(confidence)) {
-    throw new Error("Native Blueprint review decision confidence must be high, medium, or low when provided.");
-  }
+  const confidence = normalizeNativeConfidence(payload.confidence);
   const reason = typeof payload.reason === "string" && payload.reason.trim()
     ? payload.reason.trim()
     : "Native Claude Code judgment recorded from the current Blueprint review interaction.";
@@ -102,6 +114,17 @@ function normalizeNativeDecisionPayload(payload) {
     confidence,
     reason
   };
+}
+
+function normalizeNativeConfidence(value) {
+  if (value == null) {
+    return "medium";
+  }
+  const normalized = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (CONFIDENCE.has(normalized)) {
+    return normalized;
+  }
+  return CONFIDENCE_ALIASES.get(normalized) ?? "medium";
 }
 
 export function buildNativeReviewDelegationContext({
