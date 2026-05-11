@@ -113,8 +113,11 @@ function extractJudgePayload(stdout) {
     if (parsed.is_error) {
       throw new Error(parsed.result || "Claude approval judge returned an error result.");
     }
-    if (Object.hasOwn(parsed, "result")) {
+    if (Object.hasOwn(parsed, "result") && String(parsed.result ?? "").trim()) {
       return parseMaybeJson(parsed.result);
+    }
+    if (Object.hasOwn(parsed, "structured_output")) {
+      return parseMaybeJson(parsed.structured_output);
     }
     if (Object.hasOwn(parsed, "decision")) {
       return parsed;

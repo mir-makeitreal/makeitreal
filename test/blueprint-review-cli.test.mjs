@@ -30,6 +30,21 @@ async function writeApprovalJudgeFixture(root, result) {
   };
 }
 
+async function writeStructuredApprovalJudgeFixture(root, result) {
+  const scriptPath = `${root}/approval-judge-structured-fixture.mjs`;
+  await writeFile(scriptPath, [
+    "#!/usr/bin/env node",
+    `const structured_output = ${JSON.stringify(result)};`,
+    "process.stdout.write(JSON.stringify({ result: '', structured_output }));"
+  ].join("\n"));
+  return {
+    MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
+      file: process.execPath,
+      args: [scriptPath]
+    })
+  };
+}
+
 test("blueprint approve and reject write operator review evidence", async () => {
   await withFixture(async ({ runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
@@ -119,6 +134,45 @@ test("blueprint review classifies question UI answers through the LLM judge", as
     assert.equal(review.reviewSource, "makeitreal:interactive-review:llm");
     assert.equal(review.reviewedBy, "operator:question-ui");
     assert.match(review.decisionNote, /LLM interactive Blueprint review decision/);
+  });
+});
+
+test("blueprint review accepts Claude Code structured_output judge payloads", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const judgeEnv = await writeStructuredApprovalJudgeFixture(root, {
+      decision: "approved",
+      launchRequested: true,
+      confidence: "high",
+      reason: "Claude Code returned the schema result in structured_output."
+    });
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      runDir,
+      "--prompt",
+      "승인하고 시작합니다",
+      "--context",
+      "Blueprint preview is ready. 이 Blueprint를 승인하고 시작할까요?",
+      "--session",
+      "structured-output",
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ], {
+      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.action, "approved");
+    assert.equal(output.launchRequested, true);
+
+    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
+    assert.equal(review.status, "approved");
+    assert.equal(review.reviewSource, "makeitreal:interactive-review:llm");
+    assert.equal(review.reviewedBy, "operator:structured-output");
   });
 });
 
