@@ -28,6 +28,20 @@ function jsonSchemaObject(container) {
   return container?.content?.["application/json"]?.schema;
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function jsonEqual(left, right) {
+  return canonicalJson(left) === canonicalJson(right);
+}
+
 function resolveSchemaRef({ schema, document }) {
   if (!schema || typeof schema !== "object" || typeof schema.$ref !== "string") {
     return schema;
@@ -45,6 +59,22 @@ function schemaExampleErrors({ schema, value, pointer, document, contractId, evi
     return [];
   }
   const errors = [];
+  if (Array.isArray(schema.enum) && !schema.enum.some((candidate) => jsonEqual(candidate, value))) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+      reason: `OpenAPI example ${pointer} must be one of ${schema.enum.map((item) => JSON.stringify(item)).join(", ")}.`,
+      contractId,
+      evidencePath
+    }));
+  }
+  if (Object.hasOwn(schema, "const") && !jsonEqual(value, schema.const)) {
+    errors.push(contractError({
+      code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+      reason: `OpenAPI example ${pointer} must equal ${JSON.stringify(schema.const)}.`,
+      contractId,
+      evidencePath
+    }));
+  }
   if (schema.type === "object") {
     if (!hasObject(value)) {
       return [contractError({
@@ -62,6 +92,19 @@ function schemaExampleErrors({ schema, value, pointer, document, contractId, evi
           contractId,
           evidencePath
         }));
+      }
+    }
+    if (schema.additionalProperties === false) {
+      const declared = new Set(Object.keys(schema.properties ?? {}));
+      for (const key of Object.keys(value)) {
+        if (!declared.has(key)) {
+          errors.push(contractError({
+            code: "HARNESS_OPENAPI_EXAMPLE_INVALID",
+            reason: `OpenAPI example ${pointer}.${key} is not declared by the schema.`,
+            contractId,
+            evidencePath
+          }));
+        }
       }
     }
     for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {

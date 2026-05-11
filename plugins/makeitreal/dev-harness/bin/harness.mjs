@@ -60,7 +60,11 @@ Internal commands used by Make It Real skills:
   board mailbox send <boardDir> Send a worker-to-worker message
   orchestrator tick <boardDir> Dispatch scripted fixture work attempts (--runner scripted-simulator)
   orchestrator native start <boardDir> Prepare a parent-session Claude Code Task handoff
-  orchestrator native finish <boardDir> Record a parent-session Task result from --result-json or stdin
+  orchestrator native finish <boardDir> Record a parent-session Task result from --result-json, stdin, or shorthand flags
+    --summary <text>          Shorthand implementation summary
+    --changed-file <path>     Repeatable changed file for the implementation report
+    --tested <text>           Repeatable verification note for the implementation report
+    --review role=STATUS      Repeatable reviewer result, for spec/quality/verification reviewers
   orchestrator complete <boardDir> Complete verified board work with --work [--runner scripted-simulator|claude-code]
   orchestrator reconcile <boardDir> Reconcile claims and retry-ready work
 `);
@@ -134,6 +138,67 @@ function parseVerificationCommands(argv) {
     commands.push(normalized.command);
   }
   return { commands, errors };
+}
+
+function parseReviewShortcut(raw) {
+  const [left, ...summaryParts] = String(raw ?? "").split(":");
+  const [role, status = "APPROVED"] = left.split("=");
+  return {
+    role: String(role ?? "").trim(),
+    status: String(status ?? "APPROVED").trim(),
+    summary: summaryParts.join(":").trim()
+  };
+}
+
+function nativeFinishShortcutResult(argv) {
+  const summary = parseFlag(argv, "--summary");
+  const changedFiles = parseFlags(argv, "--changed-file");
+  const tested = parseFlags(argv, "--tested");
+  const concerns = parseFlags(argv, "--concern");
+  const needsContext = parseFlags(argv, "--needs-context");
+  const blockers = parseFlags(argv, "--blocker");
+  const reviews = parseFlags(argv, "--review").map(parseReviewShortcut);
+  const hasShortcut = Boolean(summary)
+    || changedFiles.length > 0
+    || tested.length > 0
+    || concerns.length > 0
+    || needsContext.length > 0
+    || blockers.length > 0
+    || reviews.length > 0;
+  if (!hasShortcut) {
+    return "";
+  }
+  const explicitStatus = parseFlag(argv, "--status");
+  const status = blockers.length > 0
+    ? "BLOCKED"
+    : needsContext.length > 0
+      ? "NEEDS_CONTEXT"
+      : concerns.length > 0
+        ? "DONE_WITH_CONCERNS"
+        : explicitStatus ?? "DONE";
+  const workItemId = parseFlag(argv, "--work");
+  const attemptId = parseFlag(argv, "--attempt");
+  return JSON.stringify({
+    makeitrealReport: {
+      role: "implementation-worker",
+      status,
+      summary: summary ?? "Completed native Claude Code task.",
+      changedFiles,
+      tested,
+      concerns,
+      needsContext,
+      blockers,
+      workItemId,
+      attemptId
+    },
+    makeitrealReviews: reviews.map((review) => ({
+      role: review.role,
+      status: review.status,
+      summary: review.summary || `${review.role} reported ${review.status}.`,
+      findings: [],
+      evidence: tested.length > 0 ? tested : ["native finish shorthand"]
+    }))
+  });
 }
 
 async function readStdinText() {
@@ -725,7 +790,7 @@ async function runCommand(argv) {
   if (argv[0] === "orchestrator" && argv[1] === "native" && argv[2] === "finish") {
     const resultText = argv.includes("--result-stdin")
       ? await readStdinText()
-      : parseFlag(argv, "--result-json") ?? "";
+      : parseFlag(argv, "--result-json") ?? nativeFinishShortcutResult(argv);
     const result = await finishNativeClaudeTask({
       boardDir: argv[3],
       workItemId: parseFlag(argv, "--work"),

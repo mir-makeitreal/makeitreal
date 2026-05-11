@@ -269,8 +269,8 @@ Rules:
 - Do not add fallback behavior outside declared contracts.
 - If the approved Blueprint is insufficient or the contract is wrong, stop and report NEEDS_CONTEXT or BLOCKED instead of guessing.
 - The parent session will run spec-reviewer, quality-reviewer, and verification-reviewer Task subagents after your implementation turn.
-
-Final response must include a JSON object with this shape:
+- Prefer a normal concise final response. The parent session can record the result with orchestrator native finish --summary ... --changed-file ... --tested ... --review role=APPROVED.
+- If you emit JSON directly, use this shape:
 \`\`\`json
 {
   "makeitrealReport": {

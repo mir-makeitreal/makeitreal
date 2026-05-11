@@ -77,6 +77,64 @@ test("OpenAPI adapter rejects examples that do not match their schemas", async (
   });
 });
 
+test("OpenAPI adapter enforces additionalProperties and enum in examples", async () => {
+  await withFixture(async ({ runDir }) => {
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    const requestSchema = spec.paths["/auth/login"].post.requestBody.content["application/json"].schema;
+    requestSchema.properties.email.enum = ["allowed@example.com"];
+    spec.paths["/auth/login"].post.requestBody.content["application/json"].examples = {
+      bad: {
+        value: {
+          email: "blocked@example.com",
+          password: "secret",
+          undeclared: true
+        }
+      }
+    };
+    await writeJsonFile(specPath, spec);
+
+    const result = await validateOpenApiContracts({ runDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors.some((error) => /undeclared/.test(error.reason)), true);
+    assert.equal(result.errors.some((error) => /must be one of/.test(error.reason)), true);
+  });
+});
+
+test("OpenAPI adapter compares object enum and const examples structurally", async () => {
+  await withFixture(async ({ runDir }) => {
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    spec.paths["/auth/login"].post.responses["200"].content["application/json"].schema = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        account: {
+          type: "object",
+          enum: [{ tier: "pro" }]
+        },
+        flags: {
+          type: "array",
+          const: ["verified"]
+        }
+      },
+      required: ["account", "flags"]
+    };
+    spec.paths["/auth/login"].post.responses["200"].content["application/json"].examples = {
+      good: {
+        value: {
+          account: { tier: "pro" },
+          flags: ["verified"]
+        }
+      }
+    };
+    await writeJsonFile(specPath, spec);
+
+    const result = await validateOpenApiContracts({ runDir });
+    assert.equal(result.ok, true);
+  });
+});
+
 test("OpenAPI adapter rejects breaking removals against a baseline", async () => {
   await withFixture(async ({ runDir }) => {
     const baselineRoot = await mkdtemp(path.join(os.tmpdir(), "harness-openapi-baseline-"));

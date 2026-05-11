@@ -327,6 +327,122 @@ test("parent-session native Claude task reaches completion without spawning chil
   });
 });
 
+test("native finish CLI can build reports from shorthand flags", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-finish-shorthand-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+
+    await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
+
+    const result = spawnSync(process.execPath, [
+      "bin/harness.mjs",
+      "orchestrator",
+      "native",
+      "finish",
+      boardDir,
+      "--work",
+      started.nativeTask.workItemId,
+      "--attempt",
+      started.nativeTask.attemptId,
+      "--summary",
+      "Implemented shorthand result.",
+      "--changed-file",
+      "apps/web/auth/native-output.txt",
+      "--tested",
+      "manual native shorthand test",
+      "--review",
+      "spec-reviewer=APPROVED",
+      "--review",
+      "quality-reviewer=APPROVED",
+      "--review",
+      "verification-reviewer=APPROVED"
+    ], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: started.nativeTask.workItemId });
+    assert.equal(attempt.runner.agentReports[0].summary, "Implemented shorthand result.");
+    assert.deepEqual(attempt.runner.agentReports[0].changedFiles, ["apps/web/auth/native-output.txt"]);
+    assert.deepEqual(attempt.runner.reviewReports.map((review) => review.role), [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ]);
+  });
+});
+
+test("native finish shorthand treats blockers as failed fast", async () => {
+  await withProjectBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-finish-blocker-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+
+    const result = spawnSync(process.execPath, [
+      "bin/harness.mjs",
+      "orchestrator",
+      "native",
+      "finish",
+      boardDir,
+      "--work",
+      started.nativeTask.workItemId,
+      "--attempt",
+      started.nativeTask.attemptId,
+      "--summary",
+      "Blocked on missing contract decision.",
+      "--status",
+      "DONE",
+      "--blocker",
+      "missing contract decision",
+      "--review",
+      "spec-reviewer=APPROVED",
+      "--review",
+      "quality-reviewer=APPROVED",
+      "--review",
+      "verification-reviewer=APPROVED"
+    ], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 1, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, false);
+    assert.equal(output.errors[0].code, "HARNESS_AGENT_BLOCKED");
+
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === started.nativeTask.workItemId).lane, "Failed Fast");
+  });
+});
+
 test("orchestrator complete retries Rework verification after environment recovery", async () => {
   await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);

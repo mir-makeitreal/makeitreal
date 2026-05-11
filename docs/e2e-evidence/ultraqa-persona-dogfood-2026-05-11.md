@@ -112,10 +112,28 @@ Loop 2 verification:
   validation, Ready gate, verification, wiki sync, Done gate, and plugin /
   marketplace validation.
 
-Remaining backlog:
+## Feedback Loop 3
 
-- OpenAPI validation still covers a focused schema subset rather than full JSON
-  Schema semantics such as `additionalProperties`, enums, formats, and
-  cardinality.
-- Native `orchestrator native finish` still requires structured result JSON; a
-  smoother parent-session wrapper would improve daily DX.
+Loop 3 targeted the remaining BE/API and native-finish DX concerns.
+
+| Persona | Score | Finding | Resolution |
+| --- | ---: | --- | --- |
+| BE/API | 8/10 | OpenAPI example validation still missed `additionalProperties:false`, enum, and const edge cases. | Example validation now rejects undeclared object keys, scalar enum mismatches, and structurally compares object/array enum and const values. |
+| Claude Code DX | 8/10 | The CLI supported native-finish shorthand, but the native task prompt still nudged workers to hand-build result JSON. | Native task prompts now describe shorthand finish as the preferred parent-session recording path. |
+| Code review | request changes | `--blocker` shorthand could default to `DONE`, and object enum/const used identity comparison. | `--blocker` defaults to `BLOCKED`, `--needs-context` to `NEEDS_CONTEXT`, `--concern` to `DONE_WITH_CONCERNS`, and JSON enum/const comparison is structural. |
+
+Loop 3 verification:
+
+- `node --test test/adapters.test.mjs test/board-completion.test.mjs` passed
+  22 tests after RED/GREEN regression.
+- `npm run release:check` passed 186 tests plus canonical render, OpenAPI
+  validation, Ready gate, verification, wiki sync, Done gate, and plugin /
+  marketplace validation.
+
+Remaining backlog after loop 3:
+
+- OpenAPI validation still intentionally avoids full AJV-level JSON Schema
+  semantics such as `oneOf`/`anyOf`/`allOf`, string formats, min/max
+  constraints, and array cardinality.
+- Native finish now has shorthand flags, but higher-level slash-command wording
+  can still make the wrapper more discoverable.
