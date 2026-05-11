@@ -9,8 +9,10 @@ if [[ -n "${MAKEITREAL_ENGINE_ROOT:-}" ]]; then
   ENGINE_ROOT="$MAKEITREAL_ENGINE_ROOT"
 else
   ENGINE_ROOT=""
+  PLUGIN_VERSION="$(basename "$PLUGIN_ROOT")"
   candidate_roots=(
     "$PLUGIN_ROOT/dev-harness"
+    "$PLUGIN_ROOT/../../makeitreal/$PLUGIN_VERSION/dev-harness"
     "$PLUGIN_ROOT/../makeitreal/dev-harness"
     "$PLUGIN_ROOT/../../makeitreal/dev-harness"
     "$PROJECT_ROOT"

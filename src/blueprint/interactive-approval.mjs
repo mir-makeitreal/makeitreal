@@ -127,7 +127,7 @@ export function buildNativeReviewDelegationContext({
     "- none: unrelated or ambiguous; do not write review evidence",
     "If the decision is approved, rejected, or revision_requested, record your native Claude Code judgment with:",
     "```bash",
-    `"${enginePath}" blueprint review "${runDir}" --decision-json '<JSON>' --session "${session}" --project-root "${projectRoot}"`,
+    `"${enginePath}" blueprint review "${runDir}" --prompt '<operator answer>' --decision-json '<JSON>' --session "${session}" --project-root "${projectRoot}"`,
     "```",
     "The JSON must be valid JSON with this shape. `decision` and `launchRequested` are required; `confidence` and `reason` are recommended and default to medium confidence with a generic reason if omitted.",
     "Example when the user approves and asks to start now:",

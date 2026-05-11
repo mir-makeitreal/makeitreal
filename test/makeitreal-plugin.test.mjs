@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
@@ -110,7 +110,12 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
   assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
-  assert.match(planCommand, /Never run `blueprint review` without `--decision-json`/);
+  assert.match(planCommand, /--prompt "<operator answer>" --decision-json/);
+  assert.match(planCommand, /Never run `blueprint review` without both `--prompt` and `--decision-json`/);
+
+  const planSkill = await readPluginFile("skills", "plan", "SKILL.md");
+  assert.match(planSkill, /blueprint review --prompt <operator answer> --decision-json <native judgment>/);
+  assert.match(planSkill, /Always include both `--prompt` and `--decision-json`/);
 });
 
 test("Make It Real config commands use OMC-style semantic UX", async () => {
@@ -255,7 +260,11 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
   assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
-  assert.match(planCommand, /Never run `blueprint review` without `--decision-json`/);
+  assert.match(planCommand, /--prompt "<operator answer>" --decision-json/);
+  assert.match(planCommand, /Never run `blueprint review` without both `--prompt` and `--decision-json`/);
+
+  assert.match(planSkill, /blueprint review --prompt <operator answer> --decision-json <native judgment>/);
+  assert.match(planSkill, /Always include both `--prompt` and `--decision-json`/);
 
   const launchCommand = await readAliasPluginFile("commands", "launch.md");
   assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
@@ -303,6 +312,38 @@ test("mir alias plugin binary delegates to the canonical engine", () => {
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /makeitreal-engine \(internal\)/);
+});
+
+test("mir alias plugin binary prefers the same cached makeitreal version", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-alias-cache-"));
+  const cacheRoot = path.join(root, "cache");
+  const mirRoot = path.join(cacheRoot, "52g", "mir", "0.1.17");
+  const oldEngine = path.join(cacheRoot, "52g", "makeitreal", "0.1.16", "dev-harness", "bin");
+  const sameEngine = path.join(cacheRoot, "52g", "makeitreal", "0.1.17", "dev-harness", "bin");
+  try {
+    await mkdir(mirRoot, { recursive: true });
+    await mkdir(oldEngine, { recursive: true });
+    await mkdir(sameEngine, { recursive: true });
+    await writeFile(path.join(oldEngine, "harness.mjs"), "console.log('selected 0.1.16');\n");
+    await writeFile(path.join(sameEngine, "harness.mjs"), "console.log('selected 0.1.17');\n");
+
+    const result = spawnSync(path.join(aliasPluginRoot, "bin", "makeitreal-engine"), ["--version"], {
+      cwd: "/tmp",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLAUDE_PLUGIN_ROOT: mirRoot,
+        CLAUDE_PLUGIN_CACHE_DIR: cacheRoot,
+        CLAUDE_PROJECT_DIR: "",
+        MAKEITREAL_ENGINE_ROOT: ""
+      }
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), "selected 0.1.17");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("Make It Real plugin binary is self-contained after installation", () => {

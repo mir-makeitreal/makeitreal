@@ -1,6 +1,6 @@
 {
   "name": "makeitreal",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Claude Code engineering harness for PRD-first, contract-gated software work.",
   "author": {
     "name": "Make It Real"

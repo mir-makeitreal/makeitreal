@@ -88,11 +88,11 @@ After the operator-facing Blueprint report, ask a final Claude Code `AskUserQues
 
 All review paths must converge on the current Claude Code session as the review judge and the same `blueprint-review.json` authority:
 
-- question UI answer: classify the full answer against the Blueprint report in the current Claude Code session, then call the internal `blueprint review --decision-json` command with that native judgment;
+- question UI answer: classify the full answer against the Blueprint report in the current Claude Code session, then call the internal `blueprint review --prompt <operator answer> --decision-json <native judgment>` command with that native judgment;
 - later chat reply: rely on the `UserPromptSubmit` hook, which injects the reply, previous assistant message, and native review protocol back into the current Claude Code session;
 - explicit slash command: keep `/mir:plan approve` and `/mir:plan reject` only as scriptable controls.
 
-Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --decision-json`. Always include `decision` and `launchRequested`; include `confidence` and `reason` when available, but they are evidence metadata and the engine can default them if omitted. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
+Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --prompt <operator answer> --decision-json <native judgment>`. Always include both `--prompt` and `--decision-json`; always include `decision` and `launchRequested`; include `confidence` and `reason` when available, but they are evidence metadata and the engine can default them if omitted. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
 
 ### Shared Language
 

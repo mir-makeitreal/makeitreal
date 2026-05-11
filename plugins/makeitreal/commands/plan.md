@@ -67,10 +67,10 @@ After the report, ask one Claude Code `AskUserQuestion` review question in the u
 If the question returns an answer, classify the operator's intent yourself in this same Claude Code session instead of deciding from the selected option text. Do not spawn `claude --print`, `claude --json-schema`, or a second Claude process. When the answer is approved, rejected, or revision_requested, record your native judgment with:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --decision-json '{"decision":"approved","launchRequested":true,"confidence":"high","reason":"native Claude Code judgment"}' --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --prompt "<operator answer>" --decision-json '{"decision":"approved","launchRequested":true,"confidence":"high","reason":"native Claude Code judgment"}' --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
-Never run `blueprint review` without `--decision-json`. The engine does not judge the operator's text; the current Claude Code session judges it first, then the engine records that structured judgment.
+Never run `blueprint review` without both `--prompt` and `--decision-json`. The engine does not judge the operator's text; the current Claude Code session judges it first, then the engine records that structured judgment.
 
 Do not branch on the selected label. Use the full answer and Blueprint report as context for your native Claude Code judgment; set `launchRequested:true` only when the operator asks to start now after approval, otherwise set it to `false`. Change the example JSON decision to `rejected` or `revision_requested` when that is your judgment. `decision` and `launchRequested` are required; `confidence` and `reason` are recommended evidence metadata and the engine will default them if your native judgment omits them. The `blueprint review` command only records that judgment and writes `blueprint-review.json`.
 
