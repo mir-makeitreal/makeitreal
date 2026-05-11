@@ -62,14 +62,14 @@ Do not lead with raw engine fields such as `planOk`, `implementationReady`, `HAR
 
 After the report, ask one Claude Code `AskUserQuestion` review question in the user's language. The question should offer the natural decision paths: approve and launch, request changes, or reject. Make the prompt clear that a free-form answer is also acceptable.
 
-If the question returns an answer, send that answer through the same LLM review judge instead of deciding from the selected option text:
+If the question returns an answer, classify the operator's intent yourself in this same Claude Code session instead of deciding from the selected option text. Do not spawn `claude --print`, `claude --json-schema`, or a second Claude process. When the answer is approved, rejected, or revision_requested, record your native judgment with:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --prompt "<full AskUserQuestion answer>" --context "<Blueprint report just shown>" --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --decision-json '{"decision":"approved","launchRequested":true,"confidence":"high","reason":"native Claude Code judgment"}' --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
-Do not branch on the selected label. The `blueprint review` command owns approval, rejection, revision-request classification, and `blueprint-review.json` writes.
+Do not branch on the selected label. Use the full answer and Blueprint report as context for your native Claude Code judgment; set `launchRequested:true` only when the operator asks to start now after approval, otherwise set it to `false`. Change the example JSON decision to `rejected` or `revision_requested` when that is your judgment. The `blueprint review` command only records that judgment and writes `blueprint-review.json`.
 
-If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will send that reply to the same LLM review judge. `/makeitreal:plan approve` and `/makeitreal:plan reject` are scriptable controls, not the primary UX.
+If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will inject the same native review protocol into the current Claude Code session. When approval includes launch intent, continue by executing the launch skill's native Task sequence in this same session; do not ask the operator to type `/makeitreal:launch`. `/makeitreal:plan approve` and `/makeitreal:plan reject` are scriptable controls, not the primary UX.
 
 Do not implement during planning. Launch only after Blueprint approval evidence exists.

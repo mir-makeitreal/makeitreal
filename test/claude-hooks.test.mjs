@@ -24,21 +24,6 @@ function runHook(script, input, options = {}) {
   });
 }
 
-async function writeApprovalJudgeFixture(root, result) {
-  const scriptPath = `${root}/approval-judge-fixture.mjs`;
-  await writeFile(scriptPath, [
-    "#!/usr/bin/env node",
-    `const result = ${JSON.stringify(result)};`,
-    "process.stdout.write(JSON.stringify({ result: JSON.stringify(result) }));"
-  ].join("\n"));
-  return {
-    MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
-      file: process.execPath,
-      args: [scriptPath]
-    })
-  };
-}
-
 async function setActiveExecution(runDir) {
   await writeJsonFile(path.join(runDir, "runtime-state.json"), {
     schemaVersion: "1.0",
@@ -226,19 +211,13 @@ test("Claude hooks resolve run directory from project current-run state", async 
   });
 });
 
-test("user-prompt-submit records LLM-approved Blueprint approval and launch intent", async () => {
+test("user-prompt-submit delegates pending Blueprint review to the native Claude Code session", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
       projectRoot: root,
       runDir,
       now: new Date("2026-05-06T00:01:00.000Z")
-    });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
-      decision: "approved",
-      launchRequested: true,
-      confidence: "high",
-      reason: "The user approved the Blueprint and asked to start."
     });
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
@@ -247,37 +226,32 @@ test("user-prompt-submit records LLM-approved Blueprint approval and launch inte
       prompt: "그 방향으로 갑시다"
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root, CLAUDE_PLUGIN_ROOT: "/plugin/makeitreal" }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
     assert.equal(output.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint approval has been recorded/);
-    assert.match(output.hookSpecificOutput.additionalContext, /makeitreal:launch/);
-    assert.equal(output.makeitreal.action, "approved");
-    assert.equal(output.makeitreal.launchRequested, true);
+    assert.match(output.hookSpecificOutput.additionalContext, /Judge the latest user message yourself in this same Claude Code session/);
+    assert.match(output.hookSpecificOutput.additionalContext, /--decision-json/);
+    assert.match(output.hookSpecificOutput.additionalContext, /Do not use keyword heuristics/);
+    assert.match(output.hookSpecificOutput.additionalContext, /Do not spawn `claude --print`/);
+    assert.equal(output.makeitreal.action, "native-review-delegated");
+    assert.equal(output.makeitreal.launchRequested, false);
 
     const review = await readBlueprintReview({ runDir });
-    assert.equal(review.review.status, "approved");
-    assert.equal(review.review.reviewSource, "makeitreal:interactive-review:llm");
-    assert.equal(review.review.reviewedBy, "operator:session-natural-approval");
+    assert.equal(review.review.status, "pending");
+    assert.equal(review.review.reviewSource, "makeitreal:plan");
   });
 });
 
-test("user-prompt-submit does not approve keyword-looking text when the LLM judge returns none", async () => {
+test("user-prompt-submit never writes approval evidence from keyword-looking text", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
       projectRoot: root,
       runDir,
       now: new Date("2026-05-06T00:01:00.000Z")
-    });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
-      decision: "none",
-      launchRequested: false,
-      confidence: "high",
-      reason: "The user is discussing approval mechanics, not approving the Blueprint."
     });
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
@@ -286,15 +260,13 @@ test("user-prompt-submit does not approve keyword-looking text when the LLM judg
       prompt: "승인이라는 단어가 들어있지만 아직 판단하지 마세요"
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
-    assert.equal(output.continue, true);
-    assert.equal(output.suppressOutput, true);
-    assert.equal(output.hookSpecificOutput, undefined);
-    assert.equal(output.makeitreal.action, "noop");
+    assert.equal(output.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+    assert.equal(output.makeitreal.action, "native-review-delegated");
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
@@ -316,12 +288,6 @@ test("user-prompt-submit is quiet when Blueprint review is already decided", asy
       runDir,
       now: new Date("2026-05-06T00:02:00.000Z")
     });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
-      decision: "approved",
-      launchRequested: true,
-      confidence: "high",
-      reason: "This fixture should not be reached after approval."
-    });
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
       hook_event_name: "UserPromptSubmit",
@@ -329,7 +295,7 @@ test("user-prompt-submit is quiet when Blueprint review is already decided", asy
       prompt: "일반 채팅입니다"
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
@@ -341,19 +307,13 @@ test("user-prompt-submit is quiet when Blueprint review is already decided", asy
   });
 });
 
-test("user-prompt-submit records LLM revision requests without rejecting the Blueprint", async () => {
+test("user-prompt-submit delegates revision-looking replies without mutating review evidence", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
       projectRoot: root,
       runDir,
       now: new Date("2026-05-06T00:01:00.000Z")
-    });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
-      decision: "revision_requested",
-      launchRequested: false,
-      confidence: "high",
-      reason: "The user asked to revise the Blueprint before approval."
     });
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
@@ -362,25 +322,24 @@ test("user-prompt-submit records LLM revision requests without rejecting the Blu
       prompt: "아직 승인하지 말고 책임경계를 더 쪼개서 수정해주세요"
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
-    assert.equal(output.makeitreal.action, "revision-requested");
-    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint revision request has been recorded/);
-    assert.match(output.hookSpecificOutput.additionalContext, /Do not launch implementation/);
+    assert.equal(output.makeitreal.action, "native-review-delegated");
+    assert.match(output.hookSpecificOutput.additionalContext, /revision_requested/);
+    assert.match(output.hookSpecificOutput.additionalContext, /do not write review evidence/i);
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
-    assert.equal(review.review.reviewSource, "makeitreal:interactive-review:llm");
+    assert.equal(review.review.reviewSource, "makeitreal:plan");
     assert.equal(review.review.reviewedBy, null);
-    assert.equal(review.review.revisionRequestedBy, "operator:session-revision-requested");
-    assert.match(review.review.revisionNote, /revise the Blueprint/);
+    assert.equal(review.review.revisionRequestedBy, undefined);
   });
 });
 
-test("user-prompt-submit passes short replies and assistant context to the LLM judge", async () => {
+test("user-prompt-submit passes short replies and assistant context to native review guidance", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
@@ -395,22 +354,6 @@ test("user-prompt-submit passes short replies and assistant context to the LLM j
         content: [{ type: "text", text: "Blueprint preview is ready. 이 Blueprint를 승인하고 시작할까요?" }]
       }
     })}\n`);
-    const judgeScript = `${root}/context-aware-approval-judge-fixture.mjs`;
-    await writeFile(judgeScript, [
-      "#!/usr/bin/env node",
-      "const prompt = process.argv.at(-1) ?? '';",
-      "const approved = prompt.includes('Blueprint preview is ready') && prompt.includes('\"userPrompt\": \"네\"');",
-      "const result = approved",
-      "  ? { decision: 'approved', launchRequested: false, confidence: 'high', reason: 'Short approval is grounded in the previous assistant Blueprint prompt.' }",
-      "  : { decision: 'none', launchRequested: false, confidence: 'high', reason: 'No Blueprint approval context.' };",
-      "process.stdout.write(JSON.stringify({ result: JSON.stringify(result) }));"
-    ].join("\n"));
-    const judgeEnv = {
-      MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
-        file: process.execPath,
-        args: [judgeScript]
-      })
-    };
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
       hook_event_name: "UserPromptSubmit",
@@ -419,32 +362,27 @@ test("user-prompt-submit passes short replies and assistant context to the LLM j
       transcript_path: transcriptPath
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
 
     const output = JSON.parse(result.stdout);
-    assert.equal(output.makeitreal.action, "approved");
+    assert.equal(output.makeitreal.action, "native-review-delegated");
+    assert.match(output.hookSpecificOutput.additionalContext, /Latest user message:\n네/);
+    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint preview is ready/);
 
     const review = await readBlueprintReview({ runDir });
-    assert.equal(review.review.status, "approved");
-    assert.equal(review.review.reviewedBy, "operator:session-short-approval");
+    assert.equal(review.review.status, "pending");
   });
 });
 
-test("user-prompt-submit does not approve when the LLM judge returns none", async () => {
+test("user-prompt-submit remains native even for ambiguous short replies", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     await writeCurrentRunState({
       projectRoot: root,
       runDir,
       now: new Date("2026-05-06T00:01:00.000Z")
-    });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
-      decision: "none",
-      launchRequested: false,
-      confidence: "medium",
-      reason: "The short reply is ambiguous without enough conversation context."
     });
 
     const result = runHook("hooks/claude/user-prompt-submit.mjs", {
@@ -453,14 +391,12 @@ test("user-prompt-submit does not approve when the LLM judge returns none", asyn
       prompt: "네"
     }, {
       cwd: root,
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(result.status, 0, result.stdout || result.stderr);
     const output = JSON.parse(result.stdout);
-    assert.equal(output.continue, true);
-    assert.equal(output.suppressOutput, true);
-    assert.equal(output.hookSpecificOutput, undefined);
-    assert.equal(output.makeitreal.action, "noop");
+    assert.equal(output.makeitreal.action, "native-review-delegated");
+    assert.match(output.hookSpecificOutput.additionalContext, /If decision is none, continue the conversation normally/);
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
@@ -514,6 +450,44 @@ test("pre-tool-use enforces runner boundaries from MAKEITREAL_BOARD_DIR", async 
       tool_input: { file_path: "tools-external/coder/src/middleware/token-auth.ts" }
     }, {
       cwd: root,
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: root,
+        MAKEITREAL_BOARD_DIR: runDir,
+        MAKEITREAL_WORK_ITEM_ID: "work.feature-auth",
+        MAKEITREAL_WORKSPACE: root
+      }
+    });
+
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_PATH_BOUNDARY_VIOLATION/);
+  });
+});
+
+test("pre-tool-use normalizes absolute native tool paths against CLAUDE_PROJECT_DIR", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    const allowed = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Write",
+      tool_input: { file_path: path.join(root, "apps/web/auth/LoginForm.tsx") }
+    }, {
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: root,
+        MAKEITREAL_BOARD_DIR: runDir,
+        MAKEITREAL_WORK_ITEM_ID: "work.feature-auth",
+        MAKEITREAL_WORKSPACE: root
+      }
+    });
+
+    assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
+    assert.equal(JSON.parse(allowed.stdout).hookSpecificOutput.permissionDecision, "allow");
+
+    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Write",
+      tool_input: { file_path: path.join(root, "services/auth/private.ts") }
+    }, {
       env: {
         ...process.env,
         CLAUDE_PROJECT_DIR: root,

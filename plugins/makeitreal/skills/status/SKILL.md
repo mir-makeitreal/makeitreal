@@ -51,7 +51,7 @@ Use only public next actions in the user-facing report:
 - `/makeitreal:setup`
 - `/makeitreal:plan <request>`
 - `/makeitreal:config`
-- Conversational Blueprint review classified by the LLM judge
+- Conversational Blueprint review recorded by the current Claude Code session
 - `/makeitreal:plan approve` as the explicit/scriptable control
 - `/makeitreal:launch`
 - `/makeitreal:status`

@@ -51,7 +51,7 @@ Use only public next actions in the user-facing report:
 - `/mir:setup`
 - `/mir:plan <request>`
 - `/mir:config`
-- Conversational Blueprint review classified by the LLM judge
+- Conversational Blueprint review recorded by the current Claude Code session
 - `/mir:plan approve` as the explicit/scriptable control
 - `/mir:launch`
 - `/mir:status`

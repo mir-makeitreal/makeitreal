@@ -44,7 +44,8 @@ for (const [label, readSkill] of [
     assert.match(skill, /Diagnostics are secondary/i);
     assert.match(skill, /Review Decision UX/i);
     assert.match(skill, /question UI/i);
-    assert.match(skill, /same LLM review judge/i);
+    assert.match(skill, /current Claude Code session as the review judge/i);
+    assert.match(skill, /blueprint review --decision-json/i);
     assert.match(skill, /Do not branch on option labels/i);
     assert.match(skill, /If the question is dismissed/i);
   });

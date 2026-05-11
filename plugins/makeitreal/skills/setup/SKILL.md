@@ -30,7 +30,7 @@ The normal user journey for a new feature can start directly at plan:
 
 1. `/makeitreal:plan <request>`
 2. Review the generated Blueprint preview and answer naturally in the conversation
-3. Make It Real asks an LLM judge to classify the reply and records clear approval/rejection decisions as `makeitreal:interactive-review:llm`; if approval includes launch intent, continue to `/makeitreal:launch`
+3. The current Claude Code session classifies the reply and records clear approval/rejection decisions as `makeitreal:interactive-review:native-claude`; if approval includes launch intent, execute the native launch flow in the same Claude Code session
 4. `/makeitreal:status`
 
 `/makeitreal:setup` may be run before that flow, but it is not a required gate for ordinary planning.

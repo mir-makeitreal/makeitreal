@@ -7,7 +7,7 @@ import { loadBoard } from "../src/board/board-store.mjs";
 import { claimWorkItem } from "../src/board/claim-store.mjs";
 import { getReadyWorkItems, validateDependencyGraph } from "../src/board/dependency-graph.mjs";
 import { sendMailboxMessage } from "../src/board/mailbox.mjs";
-import { applyInteractiveBlueprintApproval } from "../src/blueprint/interactive-approval.mjs";
+import { applyNativeBlueprintReviewDecision } from "../src/blueprint/interactive-approval.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled, setProjectConfigProfile } from "../src/config/project-config.mjs";
 import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
@@ -47,7 +47,7 @@ Internal commands used by Make It Real skills:
     --runner scripted-simulator|claude-code
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
-  blueprint review <runDir>    Classify a review answer with the LLM judge
+  blueprint review <runDir>    Record a native Claude Code Blueprint review decision
   setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
@@ -458,27 +458,26 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "blueprint" && argv[1] === "review") {
-    const prompt = parseFlag(argv, "--prompt");
-    if (!prompt) {
+    const decisionJson = parseFlag(argv, "--decision-json");
+    if (!decisionJson) {
       return {
         exitCode: 1,
         result: {
           ok: false,
           command: "blueprint review",
           errors: [createHarnessError({
-            code: "HARNESS_BLUEPRINT_REVIEW_PROMPT_REQUIRED",
-            reason: "blueprint review requires --prompt <operator answer>.",
-            evidence: ["--prompt"],
+            code: "HARNESS_NATIVE_REVIEW_DECISION_REQUIRED",
+            reason: "blueprint review requires --decision-json from the current Claude Code session. Do not spawn a separate Claude CLI judge.",
+            evidence: ["--decision-json"],
             recoverable: true
           })]
         }
       };
     }
-    const result = blueprintReviewCliResult(await applyInteractiveBlueprintApproval({
+    const result = blueprintReviewCliResult(await applyNativeBlueprintReviewDecision({
       projectRoot: resolveProjectRootArg(parseFlag(argv, "--project-root")),
       runDir: argv[2],
-      prompt,
-      approvalContext: parseFlag(argv, "--context") ?? "",
+      decisionPayload: decisionJson,
       sessionId: parseFlag(argv, "--session") ?? "question-ui",
       env: process.env,
       now: deterministicNow(argv)

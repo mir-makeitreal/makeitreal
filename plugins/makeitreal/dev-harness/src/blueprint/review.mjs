@@ -224,7 +224,7 @@ export async function recordBlueprintRevisionRequest({
   runDir,
   requestedBy,
   decisionNote,
-  reviewSource = "makeitreal:interactive-review:llm",
+  reviewSource = "makeitreal:interactive-review:native-claude",
   env = process.env,
   now = new Date()
 }) {

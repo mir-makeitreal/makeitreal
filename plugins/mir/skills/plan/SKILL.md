@@ -11,7 +11,7 @@ Subcommands:
 
 - `/mir:plan` with no request starts interactive intake through Claude Code `AskUserQuestion`, then generates the Blueprint from the collected canonical request.
 - `/mir:plan <request>` generates reviewable PRD/Blueprint artifacts and seeds pending approval.
-- LLM-classified conversational review is the normal path: after the Blueprint is shown, the `UserPromptSubmit` hook asks an LLM to classify the user's reply as `approved`, `rejected`, `revision_requested`, or `none`, then records clear review decisions as `makeitreal:interactive-review:llm`.
+- Native Claude Code conversational review is the normal path: after the Blueprint is shown, the `UserPromptSubmit` hook injects the pending-review protocol, the current Claude Code session classifies the user's reply as `approved`, `rejected`, `revision_requested`, or `none`, and clear review decisions are recorded as `makeitreal:interactive-review:native-claude`.
 - `/mir:plan approve` is the explicit/scriptable control that approves the current Blueprint through the internal `blueprint approve` command.
 - `/mir:plan reject` is the explicit/scriptable control that rejects the current Blueprint through the internal `blueprint reject` command.
 
@@ -86,13 +86,13 @@ Diagnostics are secondary. Only mention raw engine fields when the plan failed, 
 
 After the operator-facing Blueprint report, ask a final Claude Code `AskUserQuestion` review question. This question UI should make the normal choices obvious: approve and launch, request changes, or reject. Keep the wording in the user's language and allow free-form feedback for revisions.
 
-All review paths must converge on the same LLM review judge and the same `blueprint-review.json` authority:
+All review paths must converge on the current Claude Code session as the review judge and the same `blueprint-review.json` authority:
 
-- question UI answer: call the internal `blueprint review` command with the full answer and the Blueprint report as context;
-- later chat reply: rely on the `UserPromptSubmit` hook, which sends the reply and previous assistant message to the same LLM review judge;
+- question UI answer: classify the full answer against the Blueprint report in the current Claude Code session, then call the internal `blueprint review --decision-json` command with that native judgment;
+- later chat reply: rely on the `UserPromptSubmit` hook, which injects the reply, previous assistant message, and native review protocol back into the current Claude Code session;
 - explicit slash command: keep `/mir:plan approve` and `/mir:plan reject` only as scriptable controls.
 
-Do not branch on option labels, button text, keywords, or short replies such as "yes". The LLM review judge owns the approval, rejection, revision-request, or no-op classification. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
+Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --decision-json`. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/mir:plan approve`.
 
 ### Shared Language
 
@@ -150,7 +150,7 @@ Report the returned `dashboardUrl` so the operator can reopen the Kanban/Bluepri
 - Generated OpenAPI, schemas, AST checks, or equivalent contract evidence must be planned before launch.
 - Run the internal Ready gate when artifacts exist and report any blocking codes.
 - A reviewable plan can be waiting for Blueprint approval without being an implementation failure. Treat pending approval as normal review state in user-facing reports; keep raw engine field names out of the primary summary.
-- Do not launch or implement until the user has reviewed and approved the Blueprint. Approval may arrive through LLM-classified conversational review or the explicit `/mir:plan approve` control, but both must write `blueprint-review.json`.
-- If the LLM review judge classifies the user's reply as approval plus launch intent, continue to `/mir:launch` after the hook records the approval artifact.
+- Do not launch or implement until the user has reviewed and approved the Blueprint. Approval may arrive through Native Claude Code conversational review or the explicit `/mir:plan approve` control, but both must write `blueprint-review.json`.
+- If the current Claude Code session classifies the user's reply as approval plus launch intent, first record the decision with `blueprint review --decision-json` using `launchRequested:true`, then execute the launch skill's native Task sequence in the same session. Do not ask the operator to type `/mir:launch`.
 - After approval, launch owns the `Contract Frozen -> Ready` promotion through the Ready gate; do not mutate board lanes manually.
 - `/mir:plan <request>` may be the first Make It Real command in a project. It creates `.makeitreal/runs/...`, records the current run, and writes the git ignore entry automatically.

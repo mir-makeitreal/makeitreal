@@ -63,6 +63,20 @@ function defaultAllowedPaths(slug) {
   return [`modules/${slug}/**`];
 }
 
+function explicitAllowedPathsFromRequest(request) {
+  const text = String(request ?? "");
+  const candidates = [];
+  const tokenPattern = /(?:^|[\s("'`])([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+(?:\/|\.[A-Za-z0-9._-]+)?)(?=$|[\s)"'`,.;:!?])/g;
+  for (const match of text.matchAll(tokenPattern)) {
+    const candidate = match[1].replace(/\/+$/, "");
+    if (!candidate || candidate.startsWith("http/") || candidate.startsWith("https/")) {
+      continue;
+    }
+    candidates.push(candidate.includes(".") || candidate.endsWith("/**") ? candidate : `${candidate}/**`);
+  }
+  return uniqueValues(candidates).filter((candidate) => !invalidAllowedPathPattern(candidate));
+}
+
 function defaultVerificationCommands() {
   return [];
 }
@@ -1064,7 +1078,12 @@ export async function generatePlanRun({
   const responsibilityUnitId = `ru.${slug}`;
   const contractId = `contract.${slug}.boundary`;
   const workItemId = `work.${slug}`;
-  const owns = allowedPaths.length > 0 ? allowedPaths : defaultAllowedPaths(slug);
+  const requestAllowedPaths = explicitAllowedPathsFromRequest(request);
+  const owns = allowedPaths.length > 0
+    ? allowedPaths
+    : requestAllowedPaths.length > 0
+      ? requestAllowedPaths
+      : defaultAllowedPaths(slug);
   const commands = verificationCommands ?? defaultVerificationCommands();
   const invalidCommand = commands.find((command) => !normalizeVerificationCommand(command).ok);
   if (invalidCommand) {

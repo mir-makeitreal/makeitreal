@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
-import { applyInteractiveBlueprintApproval, buildNoopUserPromptSubmitOutput } from "../../src/blueprint/interactive-approval.mjs";
+import { applyInteractiveBlueprintApproval } from "../../src/blueprint/interactive-approval.mjs";
 
 async function readHookInput() {
   let raw = "";
@@ -42,12 +42,6 @@ async function readLastAssistantMessage(transcriptPath) {
 }
 
 async function main() {
-  if (process.env.MAKEITREAL_APPROVAL_JUDGE_ACTIVE === "1") {
-    return buildNoopUserPromptSubmitOutput({
-      reason: "Nested approval-judge Claude invocation must not trigger interactive review side effects."
-    });
-  }
-
   const input = await readHookInput();
   const approvalContext = input.last_assistant_message ?? await readLastAssistantMessage(input.transcript_path);
   return applyInteractiveBlueprintApproval({

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { seedBlueprintReview } from "../src/blueprint/review.mjs";
@@ -13,36 +13,6 @@ function runHarness(args, options = {}) {
     encoding: "utf8",
     env: options.env ?? process.env
   });
-}
-
-async function writeApprovalJudgeFixture(root, result) {
-  const scriptPath = `${root}/approval-judge-fixture.mjs`;
-  await writeFile(scriptPath, [
-    "#!/usr/bin/env node",
-    `const result = ${JSON.stringify(result)};`,
-    "process.stdout.write(JSON.stringify({ result: JSON.stringify(result) }));"
-  ].join("\n"));
-  return {
-    MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
-      file: process.execPath,
-      args: [scriptPath]
-    })
-  };
-}
-
-async function writeStructuredApprovalJudgeFixture(root, result) {
-  const scriptPath = `${root}/approval-judge-structured-fixture.mjs`;
-  await writeFile(scriptPath, [
-    "#!/usr/bin/env node",
-    `const structured_output = ${JSON.stringify(result)};`,
-    "process.stdout.write(JSON.stringify({ result: '', structured_output }));"
-  ].join("\n"));
-  return {
-    MAKEITREAL_APPROVAL_JUDGE_COMMAND_JSON: JSON.stringify({
-      file: process.execPath,
-      args: [scriptPath]
-    })
-  };
 }
 
 test("blueprint approve and reject write operator review evidence", async () => {
@@ -95,30 +65,28 @@ test("blueprint decision failures are no-write", async () => {
   });
 });
 
-test("blueprint review classifies question UI answers through the LLM judge", async () => {
+test("blueprint review records native Claude Code decision JSON", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
+    const decision = {
       decision: "approved",
       launchRequested: true,
       confidence: "high",
-      reason: "The operator approved the Blueprint from the review question UI."
-    });
+      reason: "The current Claude Code session judged the operator approved the Blueprint from the review question UI."
+    };
 
     const reviewed = runHarness([
       "blueprint",
       "review",
       runDir,
-      "--prompt",
-      "승인하고 바로 시작",
-      "--context",
-      "Blueprint review question shown after the operator-facing report.",
+      "--decision-json",
+      JSON.stringify(decision),
       "--session",
       "question-ui",
       "--now",
       "2026-05-06T00:01:00.000Z"
     ], {
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
 
@@ -131,21 +99,16 @@ test("blueprint review classifies question UI answers through the LLM judge", as
 
     const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
     assert.equal(review.status, "approved");
-    assert.equal(review.reviewSource, "makeitreal:interactive-review:llm");
+    assert.equal(review.reviewSource, "makeitreal:interactive-review:native-claude");
     assert.equal(review.reviewedBy, "operator:question-ui");
-    assert.match(review.decisionNote, /LLM interactive Blueprint review decision/);
+    assert.match(review.decisionNote, /Native Claude Code Blueprint review decision/);
   });
 });
 
-test("blueprint review accepts Claude Code structured_output judge payloads", async () => {
-  await withFixture(async ({ root, runDir }) => {
+test("blueprint review refuses prompt-only child-judge flow", async () => {
+  await withFixture(async ({ runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
-    const judgeEnv = await writeStructuredApprovalJudgeFixture(root, {
-      decision: "approved",
-      launchRequested: true,
-      confidence: "high",
-      reason: "Claude Code returned the schema result in structured_output."
-    });
+    const before = await readFile(path.join(runDir, "blueprint-review.json"), "utf8");
 
     const reviewed = runHarness([
       "blueprint",
@@ -153,53 +116,43 @@ test("blueprint review accepts Claude Code structured_output judge payloads", as
       runDir,
       "--prompt",
       "승인하고 시작합니다",
-      "--context",
-      "Blueprint preview is ready. 이 Blueprint를 승인하고 시작할까요?",
       "--session",
       "structured-output",
       "--now",
       "2026-05-06T00:01:00.000Z"
-    ], {
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
-    });
-    assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
+    ]);
+    assert.equal(reviewed.status, 1);
 
     const output = JSON.parse(reviewed.stdout);
-    assert.equal(output.ok, true);
-    assert.equal(output.action, "approved");
-    assert.equal(output.launchRequested, true);
-
-    const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
-    assert.equal(review.status, "approved");
-    assert.equal(review.reviewSource, "makeitreal:interactive-review:llm");
-    assert.equal(review.reviewedBy, "operator:structured-output");
+    assert.equal(output.ok, false);
+    assert.equal(output.errors[0].code, "HARNESS_NATIVE_REVIEW_DECISION_REQUIRED");
+    assert.match(output.errors[0].reason, /Do not spawn a separate Claude CLI judge/);
+    assert.equal(await readFile(path.join(runDir, "blueprint-review.json"), "utf8"), before);
   });
 });
 
 test("blueprint review keeps revision requests pending for rework instead of rejection", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
-    const judgeEnv = await writeApprovalJudgeFixture(root, {
+    const decision = {
       decision: "revision_requested",
       launchRequested: false,
       confidence: "high",
       reason: "The operator wants narrower frontend/backend boundaries before approval."
-    });
+    };
 
     const reviewed = runHarness([
       "blueprint",
       "review",
       runDir,
-      "--prompt",
-      "승인 전에 프론트엔드와 백엔드 책임경계를 더 쪼개주세요",
-      "--context",
-      "Blueprint review question shown after the operator-facing report.",
+      "--decision-json",
+      JSON.stringify(decision),
       "--session",
       "question-ui-revision",
       "--now",
       "2026-05-06T00:01:00.000Z"
     ], {
-      env: { ...process.env, ...judgeEnv, CLAUDE_PROJECT_DIR: root }
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
     });
     assert.equal(reviewed.status, 0, reviewed.stdout || reviewed.stderr);
 

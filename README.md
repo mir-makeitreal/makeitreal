@@ -102,7 +102,7 @@ approval.
 
 Review the generated Blueprint and browser dashboard. The plan command asks a
 Claude Code review question after showing the Blueprint; that answer, and any
-later natural-language chat reply, is classified by the same LLM judge. For
+later natural-language chat reply, is classified by the same native Claude Code review protocol. For
 scripts or explicit approval controls, use:
 
 ```text

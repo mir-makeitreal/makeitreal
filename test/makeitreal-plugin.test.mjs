@@ -56,8 +56,8 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
   }
 
   const planSkill = await readPluginFile("skills", "plan", "SKILL.md");
-  assert.match(planSkill, /LLM-classified conversational review/i);
-  assert.match(planSkill, /makeitreal:interactive-review:llm/);
+  assert.match(planSkill, /Native Claude Code conversational review/i);
+  assert.match(planSkill, /makeitreal:interactive-review:native-claude/);
   assert.match(planSkill, /--runner claude-code/);
 });
 
@@ -223,7 +223,7 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(readme, /\/mir:status/);
 
   const planSkill = await readAliasPluginFile("skills", "plan", "SKILL.md");
-  assert.match(planSkill, /makeitreal:interactive-review:llm/);
+  assert.match(planSkill, /makeitreal:interactive-review:native-claude/);
 
   const planCommand = await readAliasPluginFile("commands", "plan.md");
   assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);

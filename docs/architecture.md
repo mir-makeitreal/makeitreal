@@ -140,7 +140,7 @@ sequenceDiagram
   E->>D: render read-only dashboard
   P-->>U: show run path, blockers, dashboard URL
   U->>H: approves or requests revision in chat
-  H->>E: LLM-classified review decision
+  H->>E: Native Claude Code-classified review decision
   E->>E: write approved or rejected blueprint-review.json
 ```
 
@@ -178,15 +178,15 @@ Blueprint approval is evidence, not a conversational assumption.
 Approval can be recorded in three ways:
 
 - The plan command's Claude Code question UI can send the operator's answer to
-  the internal `blueprint review` command, where the same LLM judge classifies
+  the internal `blueprint review` command, where the same native Claude Code review protocol classifies
   it as approval, rejection, revision request, or no decision.
-- Conversational review through `UserPromptSubmit`, where the same LLM judge
+- Conversational review through `UserPromptSubmit`, where the same native Claude Code review protocol
   classifies the latest user reply with the previous assistant Blueprint report
   as context.
 - Explicit/scriptable control via `/makeitreal:plan approve` or
   `/makeitreal:plan reject`.
 
-The LLM judge is only invoked while `blueprint-review.json` is pending. Once the
+The native Claude Code review judge is only invoked while `blueprint-review.json` is pending. Once the
 Blueprint is approved or rejected, ordinary chat is ignored by the hook.
 
 ## Kanban State Model
@@ -256,7 +256,7 @@ Make It Real registers three Claude Code hooks:
 
 | Hook | Active responsibility | Inactive behavior |
 | --- | --- | --- |
-| `UserPromptSubmit` | Classify pending Blueprint review decisions with the LLM judge. | Return `continue: true` and `suppressOutput: true`. |
+| `UserPromptSubmit` | Inject the pending Blueprint review protocol so the current Claude Code session can classify and record the decision natively. | Return `continue: true` and `suppressOutput: true`. |
 | `PreToolUse` | Block mutating tools before Blueprint approval and outside active run boundaries; allow bootstrap/control commands like plan/setup/doctor/approve. | Allow read-only tools and non-mutating bootstrap commands. |
 | `Stop` | During active execution, require Done-gate evidence before the session can stop. | Return `continue: true` and `suppressOutput: true`. |
 

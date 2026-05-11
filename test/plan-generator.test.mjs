@@ -367,6 +367,28 @@ test("plan generator can prepare a Claude Code launch trust policy", async () =>
   }
 });
 
+test("plan generator honors explicit project paths in the request", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Build a math module exposing double(n) that returns n * 2. Use src/math.mjs and test/math.test.mjs with npm test.",
+      runId: "math-module",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-11T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.math-module.json"));
+    assert.deepEqual(workItem.allowedPaths, ["src/math.mjs", "test/math.test.mjs"]);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.deepEqual(designPack.moduleInterfaces[0].owns, ["src/math.mjs", "test/math.test.mjs"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("plan generator rejects unsupported runner modes before writing a run", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
   try {

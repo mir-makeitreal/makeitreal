@@ -60,7 +60,7 @@ Kanban state, run-packet layout, and evidence model, see
   `.gitignore` before runtime state is written. Setup is not a per-project
   prerequisite for new work.
 - Blueprint approval is required before launch. The plan review question and
-  later conversational replies are classified by the same LLM judge;
+  later conversational replies are classified by the same native Claude Code review protocol;
   `/makeitreal:plan approve` remains the explicit scriptable control.
 - Launch runs through the internal engine using the `claude-code` trust policy
   and Claude Code native `Task` subagents for real execution.

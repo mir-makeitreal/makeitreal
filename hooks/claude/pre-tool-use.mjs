@@ -287,7 +287,7 @@ async function main() {
   const result = await validateRunChangedPaths({
     runDir: resolved.runDir,
     changedPaths,
-    repoRoot: input.repoRoot ?? input.cwd ?? process.cwd(),
+    repoRoot: projectRoot,
     workItemId
   });
   return result.ok ? allow() : block(result.errors);
