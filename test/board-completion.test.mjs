@@ -389,6 +389,68 @@ test("native finish CLI can build reports from shorthand flags", async () => {
   });
 });
 
+test("native finish accepts Claude Task reviewer arrays under reviews", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-reviews-alias-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+
+    await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
+
+    const resultText = JSON.stringify({
+      makeitrealReport: {
+        role: "implementation-worker",
+        status: "DONE",
+        summary: "Implemented native parent task output.",
+        changedFiles: ["apps/web/auth/native-output.txt"],
+        tested: ["node -e accessSync native-output"],
+        concerns: [],
+        needsContext: [],
+        blockers: []
+      },
+      reviews: ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+        makeitrealReview: {
+          role,
+          status: "APPROVED",
+          summary: `${role} approved native parent task output.`,
+          findings: [],
+          evidence: ["native parent task fixture"]
+        }
+      }))
+    });
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: started.nativeTask.workItemId,
+      attemptId: started.nativeTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText,
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, true);
+
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: started.nativeTask.workItemId });
+    assert.deepEqual(attempt.runner.reviewReports.map((review) => review.role), [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ]);
+  });
+});
+
 test("native finish shorthand treats blockers as failed fast", async () => {
   await withProjectBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);

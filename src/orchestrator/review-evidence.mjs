@@ -35,8 +35,10 @@ function candidateReview(record) {
     ?? record.payload?.reviewReport
     ?? record.makeitrealReviews
     ?? record.reviewReports
+    ?? record.reviews
     ?? record.payload?.makeitrealReviews
     ?? record.payload?.reviewReports
+    ?? record.payload?.reviews
     ?? null;
   if (direct) {
     return direct;
@@ -47,6 +49,7 @@ function candidateReview(record) {
       ?? payload.reviewReport
       ?? payload.makeitrealReviews
       ?? payload.reviewReports
+      ?? payload.reviews
       ?? null;
     if (nested) {
       return nested;
@@ -87,7 +90,29 @@ function normalizeCandidates(candidate) {
   if (!candidate) {
     return [];
   }
-  return Array.isArray(candidate) ? candidate : [candidate];
+  if (Array.isArray(candidate)) {
+    return candidate.flatMap((item) => normalizeCandidates(item));
+  }
+  if (typeof candidate === "object") {
+    if (candidate.role || candidate.status) {
+      return [candidate];
+    }
+    const nested = candidate.makeitrealReview
+      ?? candidate.reviewReport
+      ?? candidate.makeitrealReviews
+      ?? candidate.reviewReports
+      ?? candidate.reviews
+      ?? candidate.payload?.makeitrealReview
+      ?? candidate.payload?.reviewReport
+      ?? candidate.payload?.makeitrealReviews
+      ?? candidate.payload?.reviewReports
+      ?? candidate.payload?.reviews
+      ?? null;
+    if (nested) {
+      return normalizeCandidates(nested);
+    }
+  }
+  return [candidate];
 }
 
 export function extractReviewReports({ record, workItem, workerId, attemptId, now }) {
