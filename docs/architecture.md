@@ -257,12 +257,16 @@ Make It Real registers three Claude Code hooks:
 | Hook | Active responsibility | Inactive behavior |
 | --- | --- | --- |
 | `UserPromptSubmit` | Classify pending Blueprint review decisions with the LLM judge. | Return `continue: true` and `suppressOutput: true`. |
-| `PreToolUse` | Block mutating tools outside active run boundaries; allow bootstrap commands like plan/setup/doctor. | Allow read-only tools and non-mutating bootstrap commands. |
+| `PreToolUse` | Block mutating tools before Blueprint approval and outside active run boundaries; allow bootstrap/control commands like plan/setup/doctor/approve. | Allow read-only tools and non-mutating bootstrap commands. |
 | `Stop` | During active execution, require Done-gate evidence before the session can stop. | Return `continue: true` and `suppressOutput: true`. |
 
-The hooks should not make ordinary Claude Code chat feel hijacked. A
-`current-run.json` pointer by itself is not an edit lock. `PreToolUse` enforces
-edit boundaries only when one of these is true:
+The hooks should not make ordinary Claude Code chat feel hijacked. With no
+current Make It Real run, ordinary Claude Code work is allowed. Once a project
+has a selected `current-run.json`, implementation edits are blocked until the
+Blueprint approval evidence is approved, while read-only tools and Make It Real
+control commands remain available so the operator can approve, reject, revise,
+diagnose, or replan. After approval, `PreToolUse` enforces edit boundaries when
+one of these is true:
 
 - the tool input explicitly carries a Make It Real `runDir`
 - the process environment contains the scoped runner context

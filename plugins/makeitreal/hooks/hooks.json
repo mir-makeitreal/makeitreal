@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine-hook\" user-prompt-submit",
-            "timeout": 3
+            "timeout": 20
           }
         ]
       }

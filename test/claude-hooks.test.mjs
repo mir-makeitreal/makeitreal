@@ -98,6 +98,30 @@ test("pre-tool-use blocks mutating tools before Blueprint approval", async () =>
   });
 });
 
+test("pre-tool-use blocks current-run writes while Blueprint approval is pending", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:01:00.000Z")
+    });
+
+    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Write",
+      tool_input: { file_path: "apps/web/auth/LoginForm.tsx" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_BLUEPRINT_APPROVAL_PENDING/);
+  });
+});
+
 test("stop blocks until Done gate evidence is complete", async () => {
   await withFixture(async ({ runDir }) => {
     await writeJsonFile(path.join(runDir, "board.json"), {
@@ -544,6 +568,30 @@ test("pre-tool-use allows bootstrap Make It Real Bash commands without run conte
   });
 });
 
+test("pre-tool-use allows Make It Real control Bash while Blueprint approval is pending", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:01:00.000Z")
+    });
+
+    const approve = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Bash",
+      tool_input: {
+        command: `"${harnessRoot}/plugins/makeitreal/bin/makeitreal-engine" blueprint approve "${runDir}" --by operator:test`
+      }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(approve.status, 0, approve.stdout || approve.stderr);
+    assert.equal(JSON.parse(approve.stdout).hookSpecificOutput.permissionDecision, "allow");
+  });
+});
+
 test("pre-tool-use validates mutating Bash paths against the active run boundary", async () => {
   await withFixture(async ({ runDir }) => {
     const allowed = runHook("hooks/claude/pre-tool-use.mjs", {
@@ -562,5 +610,27 @@ test("pre-tool-use validates mutating Bash paths against the active run boundary
     assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
     assert.equal(JSON.parse(blocked.stdout).hookSpecificOutput.permissionDecision, "deny");
     assert.match(JSON.parse(blocked.stdout).hookSpecificOutput.permissionDecisionReason, /HARNESS_PATH_BOUNDARY_VIOLATION/);
+  });
+});
+
+test("pre-tool-use blocks unstructured Bash mutations in an explicit run context", async () => {
+  await withFixture(async ({ runDir }) => {
+    const readOnly = runHook("hooks/claude/pre-tool-use.mjs", {
+      runDir,
+      tool_name: "Bash",
+      tool_input: { command: "git diff -- apps/web/auth/LoginForm.tsx && npm test" }
+    });
+    assert.equal(readOnly.status, 0, readOnly.stdout || readOnly.stderr);
+    assert.equal(JSON.parse(readOnly.stdout).hookSpecificOutput.permissionDecision, "allow");
+
+    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+      runDir,
+      tool_name: "Bash",
+      tool_input: { command: "git apply feature.patch" }
+    });
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_BASH_WRITE_UNSUPPORTED/);
   });
 });

@@ -56,9 +56,52 @@ function bashCommand(input) {
 
 function bashLooksMutating(command) {
   return /(^|[;&|]\s*)(touch|rm|mv|cp|mkdir|rmdir|tee)\b/.test(command)
+    || /(^|[;&|]\s*)git\s+(apply|am|checkout|cherry-pick|clean|commit|merge|rebase|reset|restore|stash|switch)\b/.test(command)
+    || /(^|[;&|]\s*)(npm|pnpm|yarn|bun)\s+(add|ci|install|i|remove|update|upgrade)\b/.test(command)
+    || /(^|[;&|]\s*)(pip|pip3|uv)\s+(add|install|remove|sync)\b/.test(command)
     || /(^|[;&|]\s*)(sed|perl)\s+[^;&|]*\s-i\b/.test(command)
     || /(^|\s)(?:[A-Za-z0-9._/-]+)?>{1,2}\s*(?!&\d)(?=["']?[A-Za-z0-9._/-])/.test(command)
     || /\b(node|python3?|ruby)\s+-e\b/.test(command) && /\b(writeFile|appendFile|mkdirSync|rmSync|open\s*\()/i.test(command);
+}
+
+function splitBashSegments(command) {
+  return command
+    .split(/\s*(?:&&|\|\||;|\n)\s*/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function stripEnvAssignments(segment) {
+  let current = segment.trim();
+  const assignment = /^[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S+)\s+/;
+  while (assignment.test(current)) {
+    current = current.replace(assignment, "").trim();
+  }
+  return current;
+}
+
+function bashLooksHarnessControl(command) {
+  return /\b(?:makeitreal-engine|harness\.mjs)\b[^;&|]*(?:\s|^)(?:setup|status|doctor|plan|blueprint|config|hooks|dashboard|gate|verify|wiki|contracts|board|orchestrator)\b/.test(command);
+}
+
+function bashSegmentLooksReadOnly(segment) {
+  const normalized = stripEnvAssignments(segment);
+  if (!normalized || /(^|\s)>{1,2}\s*(?!&\d)/.test(normalized)) {
+    return false;
+  }
+  return /^(?:pwd|date|whoami|true|false)\b/.test(normalized)
+    || /^(?:ls|cat|head|tail|wc|sort|uniq|jq|rg|grep|find|awk)\b/.test(normalized)
+    || /^sed\b(?![^;&|]*\s-i\b)/.test(normalized)
+    || /^git\s+(?:status|diff|log|show|grep|ls-files|rev-parse|branch|remote)\b/.test(normalized)
+    || /^(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+(?:test|lint|check|typecheck|build|release:check|plugin:validate)\b/.test(normalized)
+    || /^(?:pytest|go\s+test|cargo\s+test|swift\s+test|mvn\s+test|gradle\s+test)\b/.test(normalized)
+    || /^(?:node|python3?|ruby)\s+(?:--test|-m\s+pytest)\b/.test(normalized)
+    || /^cd\s+/.test(normalized);
+}
+
+function bashLooksReadOnly(command) {
+  const segments = splitBashSegments(command);
+  return segments.length > 0 && segments.every((segment) => bashSegmentLooksReadOnly(segment));
 }
 
 function collectBashPaths(command) {
@@ -149,8 +192,9 @@ async function main() {
   const input = await readHookInput();
   const changedPaths = collectPaths(input.tool_input ?? input.toolInput ?? input);
   const command = bashCommand(input);
-  const bashMutating = command ? bashLooksMutating(command) : false;
-  const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashMutating;
+  const harnessControlBash = command ? bashLooksHarnessControl(command) : false;
+  const bashRequiresBoundary = command ? !harnessControlBash && (bashLooksMutating(command) || !bashLooksReadOnly(command)) : false;
+  const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashRequiresBoundary;
 
   if (!mutatingTool) {
     return allow("Non-mutating tool request.");
@@ -183,6 +227,10 @@ async function main() {
     resolved = await resolveCurrentRunDir({ projectRoot });
     if (!resolved.ok) {
       return allow("No active Make It Real enforcement context.");
+    }
+    const approval = await validateBlueprintApproval({ runDir: resolved.runDir });
+    if (!approval.ok) {
+      return block(approval.errors);
     }
     const active = await activeExecutionContext({ runDir: resolved.runDir });
     if (!active.active) {
@@ -217,7 +265,7 @@ async function main() {
     return block(approval.errors);
   }
 
-  if (command && bashMutating) {
+  if (command && bashRequiresBoundary) {
     const bashPaths = collectBashPaths(command);
     if (bashPaths.length === 0) {
       return block([{

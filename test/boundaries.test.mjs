@@ -34,3 +34,27 @@ test("board work item boundary enforces contract permissions and allowed paths",
     assert.equal(paths.errors[0].code, "HARNESS_PATH_BOUNDARY_VIOLATION");
   });
 });
+
+test("glob directory ownership does not leak to sibling prefix paths", () => {
+  const workItem = {
+    id: "work.auth-ui",
+    responsibilityUnitId: "ru.auth-ui",
+    allowedPaths: ["apps/web/auth/**"]
+  };
+
+  assert.equal(validateChangedPaths({
+    workItem,
+    changedPaths: ["apps/web/auth/LoginForm.tsx", "apps/web/auth/nested/token.ts"]
+  }).ok, true);
+
+  const result = validateChangedPaths({
+    workItem,
+    changedPaths: ["apps/web/authz/LoginForm.tsx", "apps/web/auth-private/token.ts"]
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.errors.map((error) => error.evidence[0]), [
+    "apps/web/authz/LoginForm.tsx",
+    "apps/web/auth-private/token.ts"
+  ]);
+});

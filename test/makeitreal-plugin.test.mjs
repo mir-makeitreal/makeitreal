@@ -170,6 +170,7 @@ test("Make It Real Claude plugin registers native hooks through plugin root file
   assert.match(hooks.hooks.PreToolUse[0].hooks[0].command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine-hook/);
   assert.equal(hooks.hooks.UserPromptSubmit[0].matcher, "*");
   assert.match(hooks.hooks.UserPromptSubmit[0].hooks[0].command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine-hook/);
+  assert.equal(hooks.hooks.UserPromptSubmit[0].hooks[0].timeout, 20);
   assert.match(hooks.hooks.Stop[0].hooks[0].command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine-hook/);
 
   const cliMode = (await stat(path.join(pluginRoot, "bin", "makeitreal-engine"))).mode;

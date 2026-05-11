@@ -3,10 +3,13 @@ import { createHarnessError } from "../domain/errors.mjs";
 import { readJsonFile } from "../io/json.mjs";
 
 function matchesPattern(pattern, candidate) {
-  if (pattern.endsWith("/**")) {
-    return candidate.startsWith(pattern.slice(0, -3));
+  const normalizedPattern = pattern.replaceAll("\\", "/").replace(/\/+$/, "");
+  const normalizedCandidate = candidate.replaceAll("\\", "/").replace(/\/+$/, "");
+  if (normalizedPattern.endsWith("/**")) {
+    const base = normalizedPattern.slice(0, -3);
+    return normalizedCandidate === base || normalizedCandidate.startsWith(`${base}/`);
   }
-  return pattern === candidate;
+  return normalizedPattern === normalizedCandidate;
 }
 
 function ownsContractPath(unit, paths) {
