@@ -83,6 +83,11 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.doesNotMatch(launchCommand, /headless fallback|--runner-command|orchestrator tick --runner claude-code/i);
   assert.match(launchCommand, /one-command start/);
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
+  assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
+  assert.match(launchCommand, /code-reviewer.*spec-reviewer/i);
+  assert.match(launchCommand, /critic[\s\S]*quality-reviewer/i);
+  assert.match(launchCommand, /verifier.*verification-reviewer/i);
+  assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const planCommand = await readPluginFile("commands", "plan.md");
   assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
@@ -105,6 +110,7 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
   assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
+  assert.match(planCommand, /Never run `blueprint review` without `--decision-json`/);
 });
 
 test("Make It Real config commands use OMC-style semantic UX", async () => {
@@ -153,6 +159,11 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /existing work item in `Verifying` or `Rework`/);
   assert.match(launchSkill, /Do not spawn `claude --print`/);
   assert.match(launchSkill, /Ralph-like one-command start/);
+  assert.match(launchSkill, /evidence roles, not guaranteed installed Claude Code/i);
+  assert.match(launchSkill, /code-reviewer.*spec review/i);
+  assert.match(launchSkill, /critic.*quality review/i);
+  assert.match(launchSkill, /verifier.*verification review/i);
+  assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
 test("Make It Real skills keep the browser dashboard read-only", async () => {
@@ -244,6 +255,18 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
   assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
+  assert.match(planCommand, /Never run `blueprint review` without `--decision-json`/);
+
+  const launchCommand = await readAliasPluginFile("commands", "launch.md");
+  assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
+  assert.match(launchCommand, /code-reviewer.*spec-reviewer/i);
+  assert.match(launchCommand, /critic[\s\S]*quality-reviewer/i);
+  assert.match(launchCommand, /verifier.*verification-reviewer/i);
+  assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
+
+  const launchSkill = await readAliasPluginFile("skills", "launch", "SKILL.md");
+  assert.match(launchSkill, /evidence roles, not guaranteed installed Claude Code/i);
+  assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
 test("Make It Real plugin binary delegates to the internal engine", () => {

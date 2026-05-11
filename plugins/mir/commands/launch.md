@@ -41,7 +41,12 @@ regenerate work-item verification evidence:
 
 Then use the returned `nativeTask.implementationPrompt` with the Claude Code
 `Task` tool. After the implementation task returns, run three read-only native
-`Task` reviewers using the returned `nativeTask.reviewerPrompts`:
+`Task` reviewers using the returned `nativeTask.reviewerPrompts`. The labels
+below are Make It Real evidence roles, not guaranteed installed Claude Code
+`subagent_type` names. Choose the closest available native Task agent type for
+each review, for example `code-reviewer` for `spec-reviewer`, `critic` for
+`quality-reviewer`, and `verifier` for `verification-reviewer`; keep the exact
+Make It Real role inside the prompt and recorded JSON:
 
 - `spec-reviewer`
 - `quality-reviewer`
@@ -83,5 +88,9 @@ Report:
 - verification result
 - live wiki result or explicit wiki-skip evidence
 - dashboard URL
+
+Do not describe successful completion as a hook failure or false-positive hook
+signal. Hook diagnostics belong only in the report when a hook is the actual
+remaining blocker.
 
 Do not describe the low-level engine sequence as separate user-facing workflow commands.

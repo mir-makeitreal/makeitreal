@@ -61,7 +61,7 @@ For Claude-code attempts, implementation success alone is not Done evidence. Com
 - For all real Claude Code execution, use the parent-session native Task path:
   1. Run `makeitreal-engine orchestrator native start "$RUN_DIR"`.
   2. Use the returned implementation prompt with Claude Code's native `Task` tool.
-  3. Use the returned reviewer prompts with native `Task` reviewers: `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`.
+  3. Use the returned reviewer prompts with native `Task` reviewers. `spec-reviewer`, `quality-reviewer`, and `verification-reviewer` are Make It Real evidence roles, not guaranteed installed Claude Code `subagent_type` names. Choose the closest available native Task type, for example `code-reviewer` for spec review, `critic` for quality review, and `verifier` for verification review; preserve the Make It Real role in the prompt and JSON.
   4. Aggregate their JSON reports and record them with `makeitreal-engine orchestrator native finish "$RUN_DIR" --work "$WORK_ITEM_ID" --attempt "$ATTEMPT_ID" --result-stdin`.
   5. Run `makeitreal-engine orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code`.
 - Do not spawn `claude --print`, shell out to a second Claude Code process, or hide implementation in a headless child runner. If the native `Task` tool is unavailable, stop and report that Make It Real launch requires Claude Code native subagents.
@@ -78,3 +78,4 @@ For Claude-code attempts, implementation success alone is not Done evidence. Com
 - If verification fails, keep the work item out of Done and report the blocker.
 - If a runner fails fast, use the engine retry/reconcile path. If verification or review routed the item to `Rework`, rerun completion after the root cause is fixed; the engine may re-enter `Verifying` and regenerate work-item evidence without relaunching the implementation worker.
 - If there is no active current-run state, start with `/mir:plan <request>` or select an existing run with `/mir:setup --run <runDir>`.
+- Do not call a successful Done transition a hook failure or false-positive hook signal in the operator report. Mention hook diagnostics only when a hook is the current blocker.

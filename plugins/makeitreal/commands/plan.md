@@ -70,6 +70,8 @@ If the question returns an answer, classify the operator's intent yourself in th
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" blueprint review "$RUN_DIR" --decision-json '{"decision":"approved","launchRequested":true,"confidence":"high","reason":"native Claude Code judgment"}' --session question-ui --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
+Never run `blueprint review` without `--decision-json`. The engine does not judge the operator's text; the current Claude Code session judges it first, then the engine records that structured judgment.
+
 Do not branch on the selected label. Use the full answer and Blueprint report as context for your native Claude Code judgment; set `launchRequested:true` only when the operator asks to start now after approval, otherwise set it to `false`. Change the example JSON decision to `rejected` or `revision_requested` when that is your judgment. `decision` and `launchRequested` are required; `confidence` and `reason` are recommended evidence metadata and the engine will default them if your native judgment omits them. The `blueprint review` command only records that judgment and writes `blueprint-review.json`.
 
 If the question is dismissed or the operator answers later in chat, do not force a slash command. Tell them they can reply naturally with approval, requested changes, or rejection; the `UserPromptSubmit` hook will inject the same native review protocol into the current Claude Code session. When approval includes launch intent, continue by executing the launch skill's native Task sequence in this same session; do not ask the operator to type `/makeitreal:launch`. `/makeitreal:plan approve` and `/makeitreal:plan reject` are scriptable controls, not the primary UX.
