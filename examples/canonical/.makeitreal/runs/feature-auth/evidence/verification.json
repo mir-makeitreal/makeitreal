@@ -12,7 +12,7 @@
         "file": "node"
       },
       "commandHash": "a0a1405451329a2cd5dff3b18366a1b4f663ba1c4665aa0cf601cc9946360f5e",
-      "durationMs": 56,
+      "durationMs": 53,
       "exitCode": 0,
       "stderr": "",
       "stdout": "verification ok\n"

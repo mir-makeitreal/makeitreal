@@ -12,12 +12,12 @@
       <p class="eyebrow">Make It Real</p>
       <strong>Blueprint Reference</strong>
       <a href="#overview" class="active">Overview</a>
-      <a href="#delivery">What Will Be Delivered</a>
-      <a href="#contracts">Public Contracts</a>
-      <a href="#interfaces">Module Interfaces</a>
-      <a href="#boundaries">Responsibility Boundaries</a>
-      <a href="#flow">Sequence & Call Stack</a>
-      <a href="#evidence">Acceptance Evidence</a>
+      <a href="#usage">Usage</a>
+      <a href="#contracts">Contracts</a>
+      <a href="#interfaces">Interfaces</a>
+      <a href="#boundaries">Ownership</a>
+      <a href="#flow">Flow</a>
+      <a href="#evidence">Verification</a>
     </nav>
 
     <article class="doc-main">
@@ -27,7 +27,7 @@
           <span class="status-pill">approved</span>
         </div>
         <h1>Login Form</h1>
-        <p class="surface-line"><code>LoginForm.submit(credentials.email, credentials.password)</code></p>
+        <p class="surface-line"><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
         <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
@@ -41,18 +41,91 @@
         </div>
       </header>
 
-      <section id="delivery" class="doc-section">
-        <h2>What Will Be Delivered</h2>
-        <div class="doc-table">
-          <div class="doc-row"><div class="doc-key">Goals</div><div class="doc-value"><ul class="clean-list"><li>Deliver a contract-gated authentication UI vertical slice.</li></ul></div></div>
-          <div class="doc-row"><div class="doc-key">User-visible behavior</div><div class="doc-value"><ul class="clean-list"><li>A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</li></ul></div></div>
-          <div class="doc-row"><div class="doc-key">Non-goals</div><div class="doc-value"><ul class="clean-list"><li>Real credential validation</li><li>Production auth security</li></ul></div></div>
+      <section id="usage" class="doc-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Reference</p>
+            <h2>Usage Contract</h2>
+          </div>
+          <span>2 public surfaces</span>
         </div>
+        <div class="usage-layout">
+    <section class="reference-card">
+      <p class="eyebrow">Usage</p>
+      <h3>Call The Public Surface</h3>
+      <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
+// Call it only through the Blueprint contract; do not read implementation internals.
+const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
+    </section>
+    <section class="reference-card">
+      <p class="eyebrow">Signature</p>
+      <h3>LoginForm.submit</h3>
+      <p class="signature-title"><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
+      <p>Submits credential input and delegates authentication through the declared auth login contract.</p>
+      <div class="reference-grid compact"><div>
+    <span>Kind</span>
+    <strong>component-event</strong>
+  </div><div>
+    <span>Owner</span>
+    <strong>team.frontend</strong>
+  </div><div>
+    <span>Contracts</span>
+    <strong>contract.auth.login</strong>
+  </div><div>
+    <span>Consumers</span>
+    <strong>Auth page composition, browser interaction tests</strong>
+  </div></div>
+    </section>
+  </div>
+  <div class="spec-stack">
+    <section class="spec-block">
+    <h3>Parameters</h3>
+    <div class="spec-table" role="table" aria-label="Parameters">
+      <div class="spec-row header" role="row"><div role="columnheader">Name</div><div role="columnheader">Type</div><div role="columnheader">Required</div><div role="columnheader">Description</div></div>
+      <div class="spec-row" role="row"><div role="cell" data-label="Name"><code>credentials.email</code></div><div role="cell" data-label="Type">string</div><div role="cell" data-label="Required">required</div><div role="cell" data-label="Description">User email address collected by the login form.</div></div><div class="spec-row" role="row"><div role="cell" data-label="Name"><code>credentials.password</code></div><div role="cell" data-label="Type">string</div><div role="cell" data-label="Required">required</div><div role="cell" data-label="Description">User password collected by the login form.</div></div>
+    </div>
+  </section>
+    <section class="spec-block">
+    <h3>Returns</h3>
+    <div class="spec-table" role="table" aria-label="Returns">
+      <div class="spec-row header" role="row"><div role="columnheader">Name</div><div role="columnheader">Type</div><div role="columnheader">Description</div></div>
+      <div class="spec-row" role="row"><div role="cell" data-label="Name"><code>sessionResult</code></div><div role="cell" data-label="Type">AuthSession</div><div role="cell" data-label="Description">Session response returned by contract.auth.login.</div></div>
+    </div>
+  </section>
+    <section class="spec-block">
+    <h3>Errors</h3>
+    <div class="spec-table" role="table" aria-label="Errors">
+      <div class="spec-row header" role="row"><div role="columnheader">Code</div><div role="columnheader">When</div><div role="columnheader">Handling</div></div>
+      <div class="spec-row" role="row"><div role="cell" data-label="Code"><code>AUTH_LOGIN_REJECTED</code></div><div role="cell" data-label="When">The auth service rejects the credential payload.</div><div role="cell" data-label="Handling">Surface the declared auth error state; do not infer fallback session behavior.</div></div>
+    </div>
+  </section>
+  </div>
+        <h3>Delivery Scope</h3>
+        <div class="delivery-grid">
+    <section class="reference-card">
+      <h3>Goals</h3>
+      <ul class="clean-list"><li>Deliver a contract-gated authentication UI vertical slice.</li></ul>
+    </section>
+    <section class="reference-card">
+      <h3>Runtime Behavior</h3>
+      <ul class="clean-list"><li>A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</li></ul>
+    </section>
+    <section class="reference-card">
+      <h3>Out Of Scope</h3>
+      <ul class="clean-list"><li>Real credential validation</li><li>Production auth security</li></ul>
+    </section>
+  </div>
       </section>
 
       <section id="contracts" class="doc-section">
-        <h2>Public Contracts</h2>
-        <p class="section-note">API / IO Contract surfaces that other responsibility units must use without reading implementation internals.</p>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Boundary</p>
+            <h2>Contracts</h2>
+          </div>
+          <span>1 declared</span>
+        </div>
+        <p class="section-note">Authoritative API / IO surfaces that other responsibility units must use without reading implementation internals.</p>
         <div class="reference-table"><div class="reference-row">
     <div><span class="method ">openapi</span></div>
     <div>
@@ -64,7 +137,13 @@
       </section>
 
       <section id="interfaces" class="doc-section">
-        <h2>Module Interfaces</h2>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Reference</p>
+            <h2>Interfaces</h2>
+          </div>
+          <span>2 modules</span>
+        </div>
         <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
         <div class="module-interface-list"><article class="module-interface">
     <header>
@@ -75,32 +154,38 @@
       <span>team.frontend</span>
     </header>
     <p class="section-note">Own credential collection, client-side validation, and rendering of the declared session result.</p>
-    <div class="path-list"><code>apps/web/auth/**</code></div>
-    <section class="surface-card">
-      <div class="surface-header">
-        <div>
-          <p class="module-id">component-event</p>
-          <h4>LoginForm.submit</h4>
-        </div>
-        <div class="contract-chip-list"><code>contract.auth.login</code></div>
-      </div>
-      <p>Submits credential input and delegates authentication through the declared auth login contract.</p>
-      <p class="muted">Consumers: Auth page composition, browser interaction tests</p>
-      <div class="signature-grid">
-        <div class="signature-column">
-    <h4>Inputs</h4>
-    <div class="signature-table"><div class="signature-row"><strong>credentials.email</strong><span>string · required</span><p>User email address collected by the login form.</p></div><div class="signature-row"><strong>credentials.password</strong><span>string · required</span><p>User password collected by the login form.</p></div></div>
-  </div>
-        <div class="signature-column">
-    <h4>Outputs</h4>
-    <div class="signature-table"><div class="signature-row"><strong>sessionResult</strong><span>AuthSession</span><p>Session response returned by contract.auth.login.</p></div></div>
-  </div>
-        <div class="signature-column">
-    <h4>Error Contract</h4>
-    <div class="signature-table"><div class="signature-row"><strong>AUTH_LOGIN_REJECTED</strong><span>The auth service rejects the credential payload.</span><p>Surface the declared auth error state; do not infer fallback session behavior.</p></div></div>
-  </div>
-      </div>
-    </section>
+    <div class="reference-grid compact"><div>
+    <span>Owned paths</span>
+    <strong>apps/web/auth/**</strong>
+  </div><div>
+    <span>Public surfaces</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Imports</span>
+    <strong>1</strong>
+  </div></div>
+    <section class="surface-summary">
+    <div>
+      <p class="module-id">component-event</p>
+      <h4>LoginForm.submit</h4>
+      <p><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
+      <p class="muted">Submits credential input and delegates authentication through the declared auth login contract.</p>
+    </div>
+    <div class="reference-grid compact"><div>
+    <span>Parameters</span>
+    <strong>2</strong>
+  </div><div>
+    <span>Returns</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Errors</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Contracts</span>
+    <strong>contract.auth.login</strong>
+  </div></div>
+    <p class="muted">Consumers: Auth page composition, browser interaction tests</p>
+  </section>
     <div class="imports-list">
       <h4>Imports</h4>
       <p><code>contract.auth.login</code> Submit credential payload and consume declared session result only.</p>
@@ -114,38 +199,50 @@
       <span>team.auth</span>
     </header>
     <p class="section-note">Own login request validation and session issuance behind the OpenAPI contract.</p>
-    <div class="path-list"><code>services/auth/**</code><code>contracts/auth-login.openapi.json</code></div>
-    <section class="surface-card">
-      <div class="surface-header">
-        <div>
-          <p class="module-id">http</p>
-          <h4>POST /auth/login</h4>
-        </div>
-        <div class="contract-chip-list"><code>contract.auth.login</code></div>
-      </div>
-      <p>Authenticates credentials and returns the declared session response.</p>
-      <p class="muted">Consumers: ru.frontend</p>
-      <div class="signature-grid">
-        <div class="signature-column">
-    <h4>Inputs</h4>
-    <div class="signature-table"><div class="signature-row"><strong>request.body.email</strong><span>string · required</span><p>Email value from the auth UI.</p></div><div class="signature-row"><strong>request.body.password</strong><span>string · required</span><p>Password value from the auth UI.</p></div></div>
-  </div>
-        <div class="signature-column">
-    <h4>Outputs</h4>
-    <div class="signature-table"><div class="signature-row"><strong>200.session</strong><span>AuthSession</span><p>Authenticated session payload defined by the OpenAPI contract.</p></div></div>
-  </div>
-        <div class="signature-column">
-    <h4>Error Contract</h4>
-    <div class="signature-table"><div class="signature-row"><strong>401.INVALID_CREDENTIALS</strong><span>Credentials are syntactically valid but authentication fails.</span><p>Return the declared error response; do not issue partial sessions or fallback identities.</p></div></div>
-  </div>
-      </div>
-    </section>
+    <div class="reference-grid compact"><div>
+    <span>Owned paths</span>
+    <strong>services/auth/**, contracts/auth-login.openapi.json</strong>
+  </div><div>
+    <span>Public surfaces</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Imports</span>
+    <strong>0</strong>
+  </div></div>
+    <section class="surface-summary">
+    <div>
+      <p class="module-id">http</p>
+      <h4>POST /auth/login</h4>
+      <p><code>POST /auth/login(request.body.email, request.body.password): AuthSession</code></p>
+      <p class="muted">Authenticates credentials and returns the declared session response.</p>
+    </div>
+    <div class="reference-grid compact"><div>
+    <span>Parameters</span>
+    <strong>2</strong>
+  </div><div>
+    <span>Returns</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Errors</span>
+    <strong>1</strong>
+  </div><div>
+    <span>Contracts</span>
+    <strong>contract.auth.login</strong>
+  </div></div>
+    <p class="muted">Consumers: ru.frontend</p>
+  </section>
 
   </article></div>
       </section>
 
       <section id="boundaries" class="doc-section">
-        <h2>Responsibility Boundaries</h2>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ownership</p>
+            <h2>Responsibility Boundaries</h2>
+          </div>
+          <span>2 owners</span>
+        </div>
         <div class="boundary-grid"><article class="boundary-card">
     <strong>ru.frontend</strong>
     <div class="path-list"><code>apps/web/auth/**</code></div>
@@ -158,7 +255,12 @@
       </section>
 
       <section id="flow" class="doc-section">
-        <h2>Sequence & Call Stack</h2>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Execution</p>
+            <h2>Flow</h2>
+          </div>
+        </div>
         <h3>System Architecture</h3>
         <div class="flow-line"><span>auth-ui</span>
     <b>→</b>
@@ -167,10 +269,10 @@
         <h3>State Transition Flow</h3>
         <div class="transition-list"><span>Contract Frozen → Ready <code>design-pack</code></span><span>Human Review → Done <code>wiki</code></span></div>
         <h3>Call Stack</h3>
-        <div class="doc-table"><div class="doc-row">
-    <div class="doc-key">LoginForm.submit</div>
-    <div class="doc-value"><code>authClient.login</code> → <code>POST /auth/login</code></div>
-  </div></div>
+        <div class="callstack-list"><article class="callstack-card">
+    <header><code>LoginForm.submit</code></header>
+    <ol><li>authClient.login</li><li>POST /auth/login</li></ol>
+  </article></div>
         <h3>Sequence Diagrams</h3>
         <article class="sequence-card">
     <strong>Login request</strong>
@@ -179,7 +281,13 @@
       </section>
 
       <section id="evidence" class="doc-section">
-        <h2>Acceptance Evidence</h2>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Proof</p>
+            <h2>Verification</h2>
+          </div>
+        </div>
+        <h3>Acceptance Criteria</h3>
         <div class="criteria-list"><div class="criterion">
     <strong>AC-001</strong>
     <span>A user can submit credentials through the auth UI.</span>

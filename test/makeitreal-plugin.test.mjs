@@ -315,7 +315,9 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
     assert.equal(embeddedPkg.version, rootPkg.version);
     const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
     assert.match(renderer, /Blueprint Reference/);
-    assert.match(renderer, /Public Contracts/);
+    assert.match(renderer, /Usage Contract/);
+    assert.match(renderer, /Parameters/);
+    assert.match(renderer, /Contracts/);
     assert.match(renderer, /Developer Diagnostics/);
   } finally {
     await rm(root, { recursive: true, force: true });

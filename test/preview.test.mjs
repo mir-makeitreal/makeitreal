@@ -112,15 +112,15 @@ test("renders canonical architecture preview", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "Blueprint Reference",
-      "What Will Be Delivered",
-      "Public Contracts",
-      "Module Interfaces",
-      "Inputs",
-      "Outputs",
-      "Error Contract",
+      "Usage Contract",
+      "Contracts",
+      "Interfaces",
+      "Parameters",
+      "Returns",
+      "Errors",
       "Responsibility Boundaries",
-      "Sequence & Call Stack",
-      "Acceptance Evidence",
+      "Flow",
+      "Verification",
       "Developer Diagnostics",
       "Current Run"
     ]) {
