@@ -277,6 +277,9 @@ test("plan generator derives API route, statuses, headers, and dependency import
     assert.match(prd.acceptanceCriteria[2].statement, /201.*400.*409.*422/);
 
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.moduleInterfaces[0].moduleName, "Orders API");
+    assert.match(designPack.moduleInterfaces[0].purpose, /POST \/api\/v1\/orders/);
+    assert.doesNotMatch(designPack.moduleInterfaces[0].moduleName, /customerId/);
     assert.deepEqual(designPack.moduleInterfaces[0].imports.map((dependency) => dependency.contractId), [
       "contract.data.persistence",
       "contract.events.publish"

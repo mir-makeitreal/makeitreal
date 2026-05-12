@@ -618,6 +618,39 @@ test("preview renders long implementation requests as compact reference docs", a
   }
 });
 
+test("preview renders API dossiers with concise responsibility labels", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot: root,
+      request: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
+      runId: "orders-api-dossier",
+      apiKind: "openapi",
+      allowedPaths: ["src/api/orders/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('orders api ok')"] }],
+      now: new Date("2026-05-12T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const result = await renderDesignPreview({ runDir: plan.runDir });
+    assert.equal(result.ok, true);
+
+    const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
+    assert.match(html, /<h1>Orders API<\/h1>/);
+    assert.match(html, /<a class="nav-module" href="#module-0-orders-api">Orders API<\/a>/);
+    assert.match(html, /<a class="nav-surface" href="#module-0-orders-api-surface-0-post-api-v1-orders">POST \/api\/v1\/orders<\/a>/);
+    assert.doesNotMatch(html, /<a class="nav-surface"[^>]*>Postgres persistence<\/a>/);
+    assert.doesNotMatch(html, /<a class="nav-surface"[^>]*>Event publisher<\/a>/);
+    assert.match(html, /HTTP contract surface for POST \/api\/v1\/orders\./);
+    assert.match(html, /Payload accepted by POST \/api\/v1\/orders\./);
+    assert.match(html, /Original request/);
+    assert.doesNotMatch(html, /<h1>Build REST endpoint/);
+    assert.doesNotMatch(html, /HTTP contract surface for Build REST endpoint/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("preview Mermaid diagrams show software contracts, not harness traceability", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {

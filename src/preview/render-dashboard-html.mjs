@@ -75,6 +75,10 @@ function surfaceSignature(surface) {
 function referenceTitle(model) {
   const blueprint = model.blueprint ?? {};
   const rawTitle = blueprint.systemDossier?.title ?? blueprint.title ?? model.run.workItemId;
+  const primaryModuleName = blueprint.systemDossier?.modules?.[0]?.moduleName;
+  if (String(rawTitle).length > 90 && primaryModuleName) {
+    return primaryModuleName;
+  }
   return conciseTitleFromText(rawTitle) || "Blueprint";
 }
 
@@ -823,6 +827,15 @@ function surfaceAnchor(module, surface, moduleIndex, surfaceIndex) {
   return `${moduleAnchor(module, moduleIndex)}-surface-${surfaceIndex}-${anchorSlug(surface.name, "surface")}`;
 }
 
+function navSurfaceLinks(module, moduleIndex) {
+  const moduleName = String(module.moduleName ?? "").trim().toLowerCase();
+  return (module.publicSurfaces ?? [])
+    .map((surface, surfaceIndex) => ({ surface, surfaceIndex }))
+    .filter(({ surface }) => String(surface.name ?? "").trim().toLowerCase() !== moduleName)
+    .map(({ surface, surfaceIndex }) => `<a class="nav-surface" href="#${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}">${escapeHtml(surface.name)}</a>`)
+    .join("");
+}
+
 function renderModuleNav(dossier = {}) {
   const modules = dossier.modules ?? [];
   if (modules.length === 0) {
@@ -831,7 +844,7 @@ function renderModuleNav(dossier = {}) {
   return `<div class="nav-group">
     <span>Modules</span>
     ${modules.map((module, moduleIndex) => `<a class="nav-module" href="#${escapeHtml(moduleAnchor(module, moduleIndex))}">${escapeHtml(module.moduleName)}</a>
-      ${(module.publicSurfaces ?? []).map((surface, surfaceIndex) => `<a class="nav-surface" href="#${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}">${escapeHtml(surface.name)}</a>`).join("")}`).join("")}
+      ${navSurfaceLinks(module, moduleIndex)}`).join("")}
   </div>`;
 }
 
