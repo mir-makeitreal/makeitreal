@@ -10,7 +10,11 @@
   <main class="dossier-shell">
     <nav class="dossier-nav" aria-label="Blueprint dossier sections">
     <p class="eyebrow">Make It Real</p>
-    <strong>System Blueprint</strong>
+    <strong>Blueprint Reference</strong>
+    <label class="nav-filter">
+      <span>Filter reference</span>
+      <input type="search" data-nav-filter placeholder="Module, surface, contract">
+    </label>
     <a href="#overview" class="active">Overview</a>
     <a href="#visual-blueprint">Visual Blueprint</a>
     <a href="#system-map">System Map</a>
@@ -30,7 +34,7 @@
     <article class="dossier-main">
       <header id="overview" class="dossier-hero">
         <div class="hero-topline">
-          <p class="eyebrow">System Blueprint</p>
+          <p class="eyebrow">Blueprint SDK Reference</p>
           <span class="status-pill" data-live-blueprint-status>approved</span>
         </div>
         <h1>Authentication Vertical Slice</h1>
@@ -260,6 +264,34 @@
         </div>
         <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
         <div class="module-reference">
+    <section id="modules-directory" class="module-directory" aria-label="Module directory">
+    <header>
+      <div>
+        <p class="eyebrow">Reference Index</p>
+        <h3>Module Directory</h3>
+      </div>
+      <span>2 modules</span>
+    </header>
+    <div class="module-directory-table" role="table" aria-label="Module directory">
+      <div class="module-directory-row header" role="row">
+        <div role="columnheader">Module</div>
+        <div role="columnheader">Owner</div>
+        <div role="columnheader">Public Surfaces</div>
+        <div role="columnheader">Owned Paths</div>
+      </div>
+      <a class="module-directory-row" role="row" href="#module-0-auth-ui">
+        <div role="cell" data-label="Module"><strong>Auth UI</strong><code>ru.frontend</code></div>
+        <div role="cell" data-label="Owner">team.frontend</div>
+        <div role="cell" data-label="Public Surfaces"><code>LoginForm.submit</code></div>
+        <div role="cell" data-label="Owned Paths"><code>apps/web/auth/**</code></div>
+      </a><a class="module-directory-row" role="row" href="#module-1-auth-service">
+        <div role="cell" data-label="Module"><strong>Auth Service</strong><code>ru.auth-service</code></div>
+        <div role="cell" data-label="Owner">team.auth</div>
+        <div role="cell" data-label="Public Surfaces"><code>POST /auth/login</code></div>
+        <div role="cell" data-label="Owned Paths"><code>services/auth/**</code><code>contracts/auth-login.openapi.json</code></div>
+      </a>
+    </div>
+  </section>
     <article id="module-0-auth-ui" class="module-reference-card">
       <header>
         <div>
@@ -281,12 +313,17 @@
   </div></div>
       <section id="module-0-auth-ui-surface-0-loginform-submit" class="surface-reference">
     <section class="surface-summary">
-    <div>
-      <p class="module-id">component-event</p>
-      <h4>LoginForm.submit</h4>
-      <p><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
-      <p class="muted">Submits credential input and delegates authentication through the declared auth login contract.</p>
-    </div>
+    <header class="surface-reference-header">
+      <div>
+        <span class="method neutral">component-event</span>
+        <h4>LoginForm.submit</h4>
+        <p class="surface-signature"><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
+        <p class="muted">Submits credential input and delegates authentication through the declared auth login contract.</p>
+      </div>
+      <div class="contract-chip-list">
+        <code>contract.auth.login</code>
+      </div>
+    </header>
     <div class="reference-grid compact"><div>
     <span>Parameters</span>
     <strong>2</strong>
@@ -297,8 +334,8 @@
     <span>Errors</span>
     <strong>1</strong>
   </div><div>
-    <span>Contracts</span>
-    <strong>contract.auth.login</strong>
+    <span>Provider</span>
+    <strong>Auth UI</strong>
   </div></div>
     <p class="muted">Consumers: Auth page composition, browser interaction tests</p>
   </section>
@@ -316,9 +353,15 @@
     <div class="signature-table"><div class="signature-row"><strong>AUTH_LOGIN_REJECTED</strong><span>The auth service rejects the credential payload. · Surface the declared auth error state; do not infer fallback session behavior.</span></div></div>
   </div>
     </div>
-    <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
+    <section class="sdk-example" aria-label="Usage example">
+      <div class="sdk-panel-title">
+        <span>Usage Example</span>
+        <strong>Call only through the declared contract surface</strong>
+      </div>
+      <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
 // Call it only through the Blueprint contract; do not read implementation internals.
 const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
+    </section>
   </section>
     </article><article id="module-1-auth-service" class="module-reference-card">
       <header>
@@ -341,12 +384,17 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
   </div></div>
       <section id="module-1-auth-service-surface-0-post-auth-login" class="surface-reference">
     <section class="surface-summary">
-    <div>
-      <p class="module-id">http</p>
-      <h4>POST /auth/login</h4>
-      <p><code>POST /auth/login -&gt; AuthSession</code></p>
-      <p class="muted">Authenticates credentials and returns the declared session response.</p>
-    </div>
+    <header class="surface-reference-header">
+      <div>
+        <span class="method neutral">POST /auth/login</span>
+        <h4>POST /auth/login</h4>
+        <p class="surface-signature"><code>POST /auth/login -&gt; AuthSession</code></p>
+        <p class="muted">Authenticates credentials and returns the declared session response.</p>
+      </div>
+      <div class="contract-chip-list">
+        <code>contract.auth.login</code>
+      </div>
+    </header>
     <div class="reference-grid compact"><div>
     <span>Parameters</span>
     <strong>2</strong>
@@ -357,8 +405,8 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
     <span>Errors</span>
     <strong>1</strong>
   </div><div>
-    <span>Contracts</span>
-    <strong>contract.auth.login</strong>
+    <span>Provider</span>
+    <strong>Auth Service</strong>
   </div></div>
     <p class="muted">Consumers: ru.frontend</p>
   </section>
@@ -376,7 +424,12 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
     <div class="signature-table"><div class="signature-row"><strong>401.INVALID_CREDENTIALS</strong><span>Credentials are syntactically valid but authentication fails. · Return the declared error response; do not issue partial sessions or fallback identities.</span></div></div>
   </div>
     </div>
-    <pre class="code-block" data-language="js"><code>const requestBody = {
+    <section class="sdk-example" aria-label="Usage example">
+      <div class="sdk-panel-title">
+        <span>Usage Example</span>
+        <strong>Call only through the declared contract surface</strong>
+      </div>
+      <pre class="code-block" data-language="js"><code>const requestBody = {
   email: &quot;user@example.com&quot;,
   password: &quot;correct horse battery staple&quot;
 };
@@ -392,6 +445,7 @@ if (!httpResponse.ok) {
 }
 
 const session = await httpResponse.json();</code></pre>
+    </section>
   </section>
     </article>
   </div>
@@ -551,8 +605,34 @@ const session = await httpResponse.json();</code></pre>
       </section>
     </article>
 
-    <aside class="runtime-rail" aria-label="Runtime Snapshot">
-      <h2>Runtime Snapshot</h2>
+    <aside class="runtime-rail reference-rail" aria-label="Blueprint Reference">
+    <section class="rail-section">
+    <p class="eyebrow">Reference</p>
+    <h2>On This Blueprint</h2>
+    <nav class="rail-toc" aria-label="On this Blueprint">
+      <a href="#visual-blueprint">Visual Blueprint</a>
+      <a href="#system-map">System Map</a>
+      <a href="#contracts">Contract Matrix</a>
+      <a href="#modules-directory">Module Directory</a>
+      <a href="#module-0-auth-ui">Auth UI</a><a href="#module-1-auth-service">Auth Service</a>
+      <a href="#flows">Signal Flow</a>
+      <a href="#evidence">Evidence</a>
+    </nav>
+  </section>
+    <section class="rail-section primary-surface-rail">
+    <p class="eyebrow">Primary Surface</p>
+    <h2>LoginForm.submit</h2>
+    <p class="muted">Auth UI</p>
+    <code class="signature-chip">LoginForm.submit(credentials.email, credentials.password): AuthSession</code>
+    <details class="rail-code" open>
+      <summary>Usage</summary>
+      <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
+// Call it only through the Blueprint contract; do not read implementation internals.
+const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
+    </details>
+  </section>
+    <section class="rail-section runtime-section">
+      <p class="eyebrow">Runtime Snapshot</p>
       <details class="status-rail" data-read-only-cockpit="true" data-live-status-rail>
     <summary>
       <span>Run Status & Kanban</span>
@@ -621,7 +701,8 @@ const session = await httpResponse.json();</code></pre>
       </section>
     </div>
   </details>
-    </aside>
+    </section>
+  </aside>
   </main>
   <script src="./preview.js"></script>
   <script type="module">

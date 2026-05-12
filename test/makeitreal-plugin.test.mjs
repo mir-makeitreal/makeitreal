@@ -385,8 +385,9 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
     assert.equal(embeddedPkg.version, rootPkg.version);
     const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
-    assert.match(renderer, /System Blueprint/);
+    assert.match(renderer, /Blueprint SDK Reference/);
     assert.match(renderer, /Contract Matrix/);
+    assert.match(renderer, /Module Directory/);
     assert.match(renderer, /Module Reference/);
     assert.match(renderer, /Parameters/);
     assert.match(renderer, /Contracts/);

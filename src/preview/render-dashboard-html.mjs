@@ -331,17 +331,22 @@ function renderSurfaceSummary({ moduleInterface, surface }) {
   const outputCount = surface.signature.outputs.length;
   const errorCount = surface.signature.errors.length;
   return `<section class="surface-summary">
-    <div>
-      <p class="module-id">${escapeHtml(surface.kind)}</p>
-      <h4>${escapeHtml(surface.name)}</h4>
-      <p><code>${escapeHtml(surfaceSignature(surface))}</code></p>
-      ${surface.description ? `<p class="muted">${escapeHtml(surface.description)}</p>` : ""}
-    </div>
+    <header class="surface-reference-header">
+      <div>
+        <span class="method neutral">${escapeHtml(surfaceKindLabel(surface))}</span>
+        <h4>${escapeHtml(surface.name)}</h4>
+        <p class="surface-signature"><code>${escapeHtml(surfaceSignature(surface))}</code></p>
+        ${surface.description ? `<p class="muted">${escapeHtml(surface.description)}</p>` : ""}
+      </div>
+      <div class="contract-chip-list">
+        ${(surface.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}
+      </div>
+    </header>
     ${renderKeyValueGrid([
       { label: "Parameters", value: String(inputCount) },
       { label: "Returns", value: String(outputCount) },
       { label: "Errors", value: String(errorCount) },
-      { label: "Contracts", value: (surface.contractIds ?? []).join(", ") || "None declared" }
+      { label: "Provider", value: moduleInterface.moduleName }
     ])}
     ${(surface.consumers ?? []).length > 0 ? `<p class="muted">Consumers: ${surface.consumers.map((consumer) => escapeHtml(consumer)).join(", ")}</p>` : ""}
   </section>`;
@@ -679,7 +684,11 @@ function renderModuleNav(dossier = {}) {
 function renderDossierNav(dossier = {}) {
   return `<nav class="dossier-nav" aria-label="Blueprint dossier sections">
     <p class="eyebrow">Make It Real</p>
-    <strong>System Blueprint</strong>
+    <strong>Blueprint Reference</strong>
+    <label class="nav-filter">
+      <span>Filter reference</span>
+      <input type="search" data-nav-filter placeholder="Module, surface, contract">
+    </label>
     <a href="#overview" class="active">Overview</a>
     <a href="#visual-blueprint">Visual Blueprint</a>
     <a href="#system-map">System Map</a>
@@ -757,6 +766,40 @@ function renderContractMatrix(rows = []) {
   </div>`;
 }
 
+function surfaceKindLabel(surface) {
+  const http = httpSurface(surface);
+  return http ? `${http.method} ${http.path}` : surface.kind;
+}
+
+function renderModuleDirectory(modules = []) {
+  if (modules.length === 0) {
+    return "";
+  }
+  return `<section id="modules-directory" class="module-directory" aria-label="Module directory">
+    <header>
+      <div>
+        <p class="eyebrow">Reference Index</p>
+        <h3>Module Directory</h3>
+      </div>
+      <span>${modules.length} module${modules.length === 1 ? "" : "s"}</span>
+    </header>
+    <div class="module-directory-table" role="table" aria-label="Module directory">
+      <div class="module-directory-row header" role="row">
+        <div role="columnheader">Module</div>
+        <div role="columnheader">Owner</div>
+        <div role="columnheader">Public Surfaces</div>
+        <div role="columnheader">Owned Paths</div>
+      </div>
+      ${modules.map((module, moduleIndex) => `<a class="module-directory-row" role="row" href="#${escapeHtml(moduleAnchor(module, moduleIndex))}">
+        <div role="cell" data-label="Module"><strong>${escapeHtml(module.moduleName)}</strong><code>${escapeHtml(module.responsibilityUnitId)}</code></div>
+        <div role="cell" data-label="Owner">${escapeHtml(module.owner ?? "owner missing")}</div>
+        <div role="cell" data-label="Public Surfaces">${(module.publicSurfaces ?? []).map((surface) => `<code>${escapeHtml(surface.name)}</code>`).join("")}</div>
+        <div role="cell" data-label="Owned Paths">${(module.owns ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div>
+      </a>`).join("")}
+    </div>
+  </section>`;
+}
+
 function renderSurfaceReference({ moduleInterface, surface, moduleIndex = 0, surfaceIndex = 0 }) {
   return `<section id="${escapeHtml(surfaceAnchor(moduleInterface, surface, moduleIndex, surfaceIndex))}" class="surface-reference">
     ${renderSurfaceSummary({ moduleInterface, surface })}
@@ -765,7 +808,13 @@ function renderSurfaceReference({ moduleInterface, surface, moduleIndex = 0, sur
       ${renderSignatureTable("Returns", surface.signature?.outputs ?? [], ["type", "description"])}
       ${renderSignatureTable("Errors", surface.signature?.errors ?? [], ["when", "handling"])}
     </div>
-    ${renderCodeBlock(usageSnippet({ moduleInterface, surface }))}
+    <section class="sdk-example" aria-label="Usage example">
+      <div class="sdk-panel-title">
+        <span>Usage Example</span>
+        <strong>Call only through the declared contract surface</strong>
+      </div>
+      ${renderCodeBlock(usageSnippet({ moduleInterface, surface }))}
+    </section>
   </section>`;
 }
 
@@ -774,6 +823,7 @@ function renderModuleReference(modules = []) {
     return '<p class="empty">No module references declared.</p>';
   }
   return `<div class="module-reference">
+    ${renderModuleDirectory(modules)}
     ${modules.map((module, moduleIndex) => `<article id="${escapeHtml(moduleAnchor(module, moduleIndex))}" class="module-reference-card">
       <header>
         <div>
@@ -1021,6 +1071,53 @@ function renderOperatorCockpit(cockpit, board, status) {
   </details>`;
 }
 
+function renderOnThisBlueprint(dossier = {}) {
+  const moduleLinks = (dossier.modules ?? []).slice(0, 5).map((module, moduleIndex) =>
+    `<a href="#${escapeHtml(moduleAnchor(module, moduleIndex))}">${escapeHtml(module.moduleName)}</a>`
+  ).join("");
+  return `<section class="rail-section">
+    <p class="eyebrow">Reference</p>
+    <h2>On This Blueprint</h2>
+    <nav class="rail-toc" aria-label="On this Blueprint">
+      <a href="#visual-blueprint">Visual Blueprint</a>
+      <a href="#system-map">System Map</a>
+      <a href="#contracts">Contract Matrix</a>
+      <a href="#modules-directory">Module Directory</a>
+      ${moduleLinks}
+      <a href="#flows">Signal Flow</a>
+      <a href="#evidence">Evidence</a>
+    </nav>
+  </section>`;
+}
+
+function renderPrimarySurfaceRail(dossier = {}) {
+  const primary = firstPublicSurface(dossier);
+  if (!primary) {
+    return "";
+  }
+  return `<section class="rail-section primary-surface-rail">
+    <p class="eyebrow">Primary Surface</p>
+    <h2>${escapeHtml(primary.surface.name)}</h2>
+    <p class="muted">${escapeHtml(primary.moduleInterface.moduleName)}</p>
+    <code class="signature-chip">${escapeHtml(surfaceSignature(primary.surface))}</code>
+    <details class="rail-code" open>
+      <summary>Usage</summary>
+      ${renderCodeBlock(usageSnippet(primary))}
+    </details>
+  </section>`;
+}
+
+function renderReferenceRail(model, dossier) {
+  return `<aside class="runtime-rail reference-rail" aria-label="Blueprint Reference">
+    ${renderOnThisBlueprint(dossier)}
+    ${renderPrimarySurfaceRail(dossier)}
+    <section class="rail-section runtime-section">
+      <p class="eyebrow">Runtime Snapshot</p>
+      ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
+    </section>
+  </aside>`;
+}
+
 function publicSurfaceCount(moduleInterfaces = []) {
   return moduleInterfaces.reduce((total, moduleInterface) => total + (moduleInterface.publicSurfaces ?? []).length, 0);
 }
@@ -1052,7 +1149,7 @@ export function renderDashboardHtml(model) {
     <article class="dossier-main">
       <header id="overview" class="dossier-hero">
         <div class="hero-topline">
-          <p class="eyebrow">System Blueprint</p>
+          <p class="eyebrow">Blueprint SDK Reference</p>
           <span class="status-pill" data-live-blueprint-status>${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
         </div>
         <h1>${escapeHtml(title)}</h1>
@@ -1155,10 +1252,7 @@ export function renderDashboardHtml(model) {
       </section>
     </article>
 
-    <aside class="runtime-rail" aria-label="Runtime Snapshot">
-      <h2>Runtime Snapshot</h2>
-      ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
-    </aside>
+    ${renderReferenceRail(model, dossier)}
   </main>
   <script src="./preview.js"></script>
   <script type="module">
@@ -1335,6 +1429,7 @@ h3 {
 
 .hero-topline {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
@@ -1344,12 +1439,14 @@ h3 {
 .status-pill {
   border: 1px solid #bfd0ff;
   border-radius: 999px;
+  max-width: 100%;
   padding: 4px 9px;
   background: var(--accent-soft);
   color: #263ca8;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .request-disclosure {
@@ -2103,11 +2200,11 @@ h3 {
 
 .dossier-shell {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 320px);
-  gap: 18px;
-  max-width: 1480px;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(300px, 340px);
+  gap: 16px;
+  max-width: 1560px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
 }
 
 .dossier-nav,
@@ -2139,11 +2236,39 @@ h3 {
   font-size: 15px;
 }
 
+.nav-filter {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 10px;
+}
+
+.nav-filter span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.nav-filter input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 9px;
+}
+
 .dossier-nav a {
   padding: 8px 10px;
   border-radius: 6px;
   color: #344054;
   font-size: 13px;
+}
+
+.dossier-nav a[hidden] {
+  display: none;
 }
 
 .dossier-nav a.active,
@@ -2191,9 +2316,17 @@ h3 {
   padding: 18px;
 }
 
+.dossier-hero,
+.dossier-section,
+.diagram-card,
+.module-directory {
+  min-width: 0;
+}
+
 .dossier-hero h1 {
-  max-width: 900px;
-  font-size: clamp(28px, 3vw, 44px);
+  max-width: 980px;
+  font-size: clamp(28px, 2.4vw, 36px);
+  line-height: 1.12;
   overflow-wrap: anywhere;
 }
 
@@ -2281,6 +2414,83 @@ h3 {
   gap: 12px;
 }
 
+.module-directory {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.module-directory > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 12px 14px;
+}
+
+.module-directory h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.module-directory > header > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.module-directory-table {
+  display: grid;
+}
+
+.module-directory-row {
+  display: grid;
+  grid-template-columns: minmax(170px, .9fr) minmax(110px, .55fr) minmax(200px, 1.1fr) minmax(220px, 1.2fr);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid var(--soft-line);
+  padding: 11px 14px;
+  color: var(--ink);
+}
+
+.module-directory-row:first-child {
+  border-top: 0;
+}
+
+.module-directory-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.module-directory-row:not(.header):hover {
+  background: #fbfcff;
+}
+
+.module-directory-row > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.module-directory-row strong {
+  flex-basis: 100%;
+}
+
+.module-directory-row code {
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: var(--soft);
+  padding: 2px 7px;
+}
+
 .surface-reference {
   display: grid;
   gap: 12px;
@@ -2290,6 +2500,68 @@ h3 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
+}
+
+.surface-reference-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.surface-reference-header h4 {
+  margin: 8px 0 4px;
+  font-size: 19px;
+}
+
+.surface-signature {
+  margin: 0;
+}
+
+.surface-signature code,
+.signature-chip {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 7px 9px;
+  color: #344054;
+  overflow-wrap: anywhere;
+}
+
+.sdk-example {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.sdk-panel-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 9px 12px;
+}
+
+.sdk-panel-title span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sdk-panel-title strong {
+  color: #344054;
+  font-size: 12px;
+}
+
+.sdk-example .code-block {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .contract-matrix dl {
@@ -2318,6 +2590,66 @@ h3 {
 .runtime-rail {
   display: grid;
   gap: 12px;
+}
+
+.reference-rail {
+  align-content: start;
+}
+
+.rail-section {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 12px;
+}
+
+.rail-section h2 {
+  margin: 0;
+}
+
+.rail-toc {
+  display: grid;
+  gap: 4px;
+}
+
+.rail-toc a {
+  border-radius: 6px;
+  color: #344054;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.rail-toc a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.primary-surface-rail .signature-chip {
+  font-size: 12px;
+}
+
+.rail-code {
+  display: grid;
+  gap: 8px;
+}
+
+.rail-code summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rail-code .code-block {
+  max-height: 300px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.runtime-section {
+  background: var(--panel);
 }
 
 .runtime-rail h2 {
@@ -2350,7 +2682,7 @@ h3 {
   background: var(--soft);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1320px) {
   .doc-shell {
     grid-template-columns: 1fr;
   }
@@ -2364,7 +2696,7 @@ h3 {
   }
 
   .dossier-shell {
-    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+    grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
   }
 
   .runtime-rail {
@@ -2407,6 +2739,7 @@ h3 {
   .doc-row,
   .reference-row,
   .spec-row,
+  .module-directory-row,
   .spec-block:nth-child(2) .spec-row,
   .spec-block:nth-child(3) .spec-row,
   .criterion,
@@ -2622,6 +2955,21 @@ export function renderDashboardJs() {
     }
   }
 
+  function bindNavFilter() {
+    const input = document.querySelector("[data-nav-filter]");
+    if (!input || input.dataset.filterBound === "true") {
+      return;
+    }
+    input.dataset.filterBound = "true";
+    const links = [...document.querySelectorAll(".dossier-nav a")];
+    input.addEventListener("input", () => {
+      const needle = input.value.trim().toLowerCase();
+      for (const link of links) {
+        link.hidden = needle.length > 0 && !link.textContent.toLowerCase().includes(needle);
+      }
+    });
+  }
+
   function markAutoRefreshUnavailable() {
     document.documentElement.dataset.makeitrealAutoRefresh = "unavailable";
     if (window.location.protocol === "file:") {
@@ -2654,6 +3002,7 @@ export function renderDashboardJs() {
 
   window.makeitrealAutoReload = { checkForDashboardUpdate };
   bindCommandCopy();
+  bindNavFilter();
   checkForDashboardUpdate();
   pollTimer = window.setInterval(checkForDashboardUpdate, pollMs);
   console.info("makeitreal:auto-reload");

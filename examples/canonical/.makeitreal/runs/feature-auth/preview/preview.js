@@ -156,6 +156,21 @@
     }
   }
 
+  function bindNavFilter() {
+    const input = document.querySelector("[data-nav-filter]");
+    if (!input || input.dataset.filterBound === "true") {
+      return;
+    }
+    input.dataset.filterBound = "true";
+    const links = [...document.querySelectorAll(".dossier-nav a")];
+    input.addEventListener("input", () => {
+      const needle = input.value.trim().toLowerCase();
+      for (const link of links) {
+        link.hidden = needle.length > 0 && !link.textContent.toLowerCase().includes(needle);
+      }
+    });
+  }
+
   function markAutoRefreshUnavailable() {
     document.documentElement.dataset.makeitrealAutoRefresh = "unavailable";
     if (window.location.protocol === "file:") {
@@ -188,6 +203,7 @@
 
   window.makeitrealAutoReload = { checkForDashboardUpdate };
   bindCommandCopy();
+  bindNavFilter();
   checkForDashboardUpdate();
   pollTimer = window.setInterval(checkForDashboardUpdate, pollMs);
   console.info("makeitreal:auto-reload");

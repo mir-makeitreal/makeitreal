@@ -151,6 +151,7 @@ h3 {
 
 .hero-topline {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
@@ -160,12 +161,14 @@ h3 {
 .status-pill {
   border: 1px solid #bfd0ff;
   border-radius: 999px;
+  max-width: 100%;
   padding: 4px 9px;
   background: var(--accent-soft);
   color: #263ca8;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .request-disclosure {
@@ -919,11 +922,11 @@ h3 {
 
 .dossier-shell {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 320px);
-  gap: 18px;
-  max-width: 1480px;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(300px, 340px);
+  gap: 16px;
+  max-width: 1560px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
 }
 
 .dossier-nav,
@@ -955,11 +958,39 @@ h3 {
   font-size: 15px;
 }
 
+.nav-filter {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 10px;
+}
+
+.nav-filter span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.nav-filter input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 9px;
+}
+
 .dossier-nav a {
   padding: 8px 10px;
   border-radius: 6px;
   color: #344054;
   font-size: 13px;
+}
+
+.dossier-nav a[hidden] {
+  display: none;
 }
 
 .dossier-nav a.active,
@@ -1007,9 +1038,17 @@ h3 {
   padding: 18px;
 }
 
+.dossier-hero,
+.dossier-section,
+.diagram-card,
+.module-directory {
+  min-width: 0;
+}
+
 .dossier-hero h1 {
-  max-width: 900px;
-  font-size: clamp(28px, 3vw, 44px);
+  max-width: 980px;
+  font-size: clamp(28px, 2.4vw, 36px);
+  line-height: 1.12;
   overflow-wrap: anywhere;
 }
 
@@ -1097,6 +1136,83 @@ h3 {
   gap: 12px;
 }
 
+.module-directory {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.module-directory > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 12px 14px;
+}
+
+.module-directory h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.module-directory > header > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.module-directory-table {
+  display: grid;
+}
+
+.module-directory-row {
+  display: grid;
+  grid-template-columns: minmax(170px, .9fr) minmax(110px, .55fr) minmax(200px, 1.1fr) minmax(220px, 1.2fr);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid var(--soft-line);
+  padding: 11px 14px;
+  color: var(--ink);
+}
+
+.module-directory-row:first-child {
+  border-top: 0;
+}
+
+.module-directory-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.module-directory-row:not(.header):hover {
+  background: #fbfcff;
+}
+
+.module-directory-row > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.module-directory-row strong {
+  flex-basis: 100%;
+}
+
+.module-directory-row code {
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: var(--soft);
+  padding: 2px 7px;
+}
+
 .surface-reference {
   display: grid;
   gap: 12px;
@@ -1106,6 +1222,68 @@ h3 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
+}
+
+.surface-reference-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.surface-reference-header h4 {
+  margin: 8px 0 4px;
+  font-size: 19px;
+}
+
+.surface-signature {
+  margin: 0;
+}
+
+.surface-signature code,
+.signature-chip {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 7px 9px;
+  color: #344054;
+  overflow-wrap: anywhere;
+}
+
+.sdk-example {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.sdk-panel-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 9px 12px;
+}
+
+.sdk-panel-title span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sdk-panel-title strong {
+  color: #344054;
+  font-size: 12px;
+}
+
+.sdk-example .code-block {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .contract-matrix dl {
@@ -1134,6 +1312,66 @@ h3 {
 .runtime-rail {
   display: grid;
   gap: 12px;
+}
+
+.reference-rail {
+  align-content: start;
+}
+
+.rail-section {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 12px;
+}
+
+.rail-section h2 {
+  margin: 0;
+}
+
+.rail-toc {
+  display: grid;
+  gap: 4px;
+}
+
+.rail-toc a {
+  border-radius: 6px;
+  color: #344054;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.rail-toc a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.primary-surface-rail .signature-chip {
+  font-size: 12px;
+}
+
+.rail-code {
+  display: grid;
+  gap: 8px;
+}
+
+.rail-code summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rail-code .code-block {
+  max-height: 300px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.runtime-section {
+  background: var(--panel);
 }
 
 .runtime-rail h2 {
@@ -1166,7 +1404,7 @@ h3 {
   background: var(--soft);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1320px) {
   .doc-shell {
     grid-template-columns: 1fr;
   }
@@ -1180,7 +1418,7 @@ h3 {
   }
 
   .dossier-shell {
-    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+    grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
   }
 
   .runtime-rail {
@@ -1223,6 +1461,7 @@ h3 {
   .doc-row,
   .reference-row,
   .spec-row,
+  .module-directory-row,
   .spec-block:nth-child(2) .spec-row,
   .spec-block:nth-child(3) .spec-row,
   .criterion,

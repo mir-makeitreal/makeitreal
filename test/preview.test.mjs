@@ -298,15 +298,20 @@ test("renders canonical architecture preview", async () => {
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "System Blueprint",
+      "Blueprint SDK Reference",
+      "Blueprint Reference",
+      "On This Blueprint",
+      "Primary Surface",
       "Mermaid Blueprint",
       "System Map",
       "Dependency Graph",
       "Contract Matrix",
+      "Module Directory",
       "Module Reference",
       "Parameters",
       "Returns",
       "Errors",
+      "Usage Example",
       "Signal Flow",
       "Call Stack",
       "Verification & Evidence",
@@ -331,6 +336,7 @@ test("renders canonical architecture preview", async () => {
     assert.match(html, /data-live-status-rail/);
     assert.match(html, /data-live-kanban/);
     assert.match(html, /data-operator-kanban="true"/);
+    assert.match(html, /data-nav-filter/);
     assert.match(html, /\/makeitreal:status/);
     assert.match(html, /copy-command/);
     assert.match(html, /class="mermaid"/);
@@ -347,6 +353,8 @@ test("renders canonical architecture preview", async () => {
     assert.match(js, /preview-model\.json/);
     assert.match(js, /updateRuntime/);
     assert.match(js, /data-live-kanban/);
+    assert.match(js, /bindNavFilter/);
+    assert.match(js, /data-nav-filter/);
     assert.doesNotMatch(js, /location\.reload/);
     assert.doesNotMatch(js, /setInterval\(reloadDashboard/);
     assert.match(js, /window\.location\.protocol/);
@@ -361,8 +369,12 @@ test("renders canonical architecture preview", async () => {
     assert.match(css, /\.dossier-shell/);
     assert.match(css, /\.dossier-nav/);
     assert.match(css, /\.runtime-rail/);
+    assert.match(css, /\.reference-rail/);
     assert.match(css, /\.status-rail/);
     assert.match(css, /\.module-reference/);
+    assert.match(css, /\.module-directory/);
+    assert.match(css, /\.surface-reference-header/);
+    assert.match(css, /\.sdk-example/);
     assert.match(css, /\.signature-table/);
     assert.match(css, /\.diagram-card/);
     assert.match(css, /\.mermaid/);
@@ -405,7 +417,9 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "System Blueprint",
+      "Blueprint SDK Reference",
+      "On This Blueprint",
+      "Module Directory",
       "Mermaid Blueprint",
       "System Map",
       "Dependency Graph",
@@ -449,20 +463,25 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       ".dossier-nav",
       ".dossier-main",
       ".runtime-rail",
+      ".reference-rail",
       ".diagram-card",
       ".mermaid",
       ".nav-group",
       ".nav-module",
       ".nav-surface",
+      ".nav-filter",
       ".system-map",
       ".dependency-matrix",
+      ".module-directory",
       ".module-reference",
+      ".surface-reference-header",
+      ".sdk-example",
       ".flow-timeline"
     ]) {
       assert.match(css, new RegExp(selector.replace(".", "\\.")));
     }
     assert.match(css, /overflow-wrap:\s*anywhere/);
-    assert.match(css, /grid-template-columns:\s*minmax\(180px,\s*220px\)\s+minmax\(0,\s*1fr\)\s+minmax\(260px,\s*320px\)/);
+    assert.match(css, /grid-template-columns:\s*minmax\(220px,\s*260px\)\s+minmax\(0,\s*1fr\)\s+minmax\(300px,\s*340px\)/);
   });
 });
 
@@ -568,6 +587,9 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.match(html, /Original request/);
     assert.match(html, /display-name normalization responsibility unit/);
     assert.match(html, /Public surfaces/);
+    assert.match(html, /Blueprint SDK Reference/);
+    assert.match(html, /Module Directory/);
+    assert.match(html, /Usage Example/);
     assert.match(html, /Run Status & Kanban/);
     assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
     assert.doesNotMatch(html, /<h1>Implement a pure JavaScript display-name/);
@@ -576,7 +598,7 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
 
     const css = await readFile(path.join(plan.runDir, "preview", "preview.css"), "utf8");
-    assert.match(css, /grid-template-columns: minmax\(180px, 220px\) minmax\(0, 1fr\) minmax\(260px, 320px\)/);
+    assert.match(css, /grid-template-columns: minmax\(220px, 260px\) minmax\(0, 1fr\) minmax\(300px, 340px\)/);
     assert.match(css, /\.reference-grid/);
     assert.doesNotMatch(css, /grid-template-columns: 220px minmax\(0, 1fr\) 300px/);
   } finally {
