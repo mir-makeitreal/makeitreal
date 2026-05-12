@@ -469,6 +469,25 @@ h3 {
   color: var(--muted);
 }
 
+.signature-cases {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.signature-cases li {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(120px, 0.7fr) 1fr;
+}
+
+.signature-cases span {
+  color: var(--muted);
+}
+
 .signature-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

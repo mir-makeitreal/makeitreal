@@ -171,7 +171,7 @@ test("plan generator keeps pure JavaScript route matcher work on module IO contr
   try {
     const result = await generatePlanRun({
       projectRoot,
-      request: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request). Contract: request must be an object with method string and path string. Support GET /health and GET /users/:id. Create test/route-match.test.mjs. Verification command is npm test.",
+      request: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request). Contract: request must be an object with method string and path string. Support GET /health -> { handler: \"health\", params: {} } and GET /users/:id where id is one non-empty path segment -> { handler: \"user.show\", params: { id } }. Return null for unmatched routes. Throw TypeError with code ROUTE_REQUEST_INVALID for malformed request. Create test/route-match.test.mjs. Verification command is npm test.",
       runId: "http-route-matcher-module",
       verificationCommands: [{ file: "npm", args: ["test"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
@@ -181,9 +181,62 @@ test("plan generator keeps pure JavaScript route matcher work on module IO contr
 
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
     assert.equal(designPack.apiSpecs[0].kind, "none");
-    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "module");
+    const surface = designPack.moduleInterfaces[0].publicSurfaces[0];
+    assert.equal(surface.kind, "module");
+    assert.equal(surface.name, "matchRoute");
+    assert.equal(surface.signature.inputs[0].type, "object { method: string, path: string }");
+    assert.equal(surface.signature.outputs[0].name, "matchResult");
+    assert.equal(surface.signature.outputs[0].type, "{ handler: \"health\" | \"user.show\", params: object } | null");
+    assert.deepEqual(surface.signature.outputs[0].cases, [
+      {
+        name: "GET /health",
+        input: "GET /health",
+        output: "{ handler: \"health\", params: {} }"
+      },
+      {
+        name: "GET /users/:id",
+        input: "GET /users/:id",
+        output: "{ handler: \"user.show\", params: { id } }"
+      },
+      {
+        name: "unmatched route",
+        input: "request outside declared route cases",
+        output: "null"
+      }
+    ]);
+    assert.match(surface.signature.errors[0].when, /Input object/);
+    const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
+    assert.match(JSON.stringify(prd.acceptanceCriteria), /GET \/users\/:id/);
+    assert.match(JSON.stringify(prd.acceptanceCriteria), /user\.show/);
+    const previewModel = await readJsonFile(path.join(result.runDir, "preview", "preview-model.json"));
+    assert.equal(previewModel.generatedAt, "2026-05-06T00:00:00.000Z");
 
     const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.http-route-matcher-module.json"));
+    assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
+      "verification",
+      "wiki-sync"
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator treats local HTTP matcher module phrasing as module IO", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement matchRoute(request), a local HTTP route matcher module. Contract: request must be an object with method string and path string. Support GET /health -> { handler: \"health\", params: {} }. Return null for unmatched routes. Create src/route-match.mjs and test/route-match.test.mjs. Verification command is npm test.",
+      runId: "local-http-route-matcher",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.apiSpecs[0].kind, "none");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "module");
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.local-http-route-matcher.json"));
     assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
       "verification",
       "wiki-sync"

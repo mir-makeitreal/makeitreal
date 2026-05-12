@@ -279,6 +279,9 @@ function renderSignatureRow(item, valueKeys = []) {
   if (item.handling && !valueKeys.includes("handling")) {
     details.push(`<p>${escapeHtml(item.handling)}</p>`);
   }
+  if (item.cases?.length > 0) {
+    details.push(`<ul class="signature-cases">${item.cases.map((contractCase) => `<li><code>${escapeHtml(contractCase.input ?? contractCase.name)}</code><span>${escapeHtml(contractCase.output)}</span></li>`).join("")}</ul>`);
+  }
   return `<div class="signature-row">${details.join("")}</div>`;
 }
 
@@ -1302,6 +1305,25 @@ h3 {
 .signature-row p,
 .imports-list p {
   margin: 0;
+  color: var(--muted);
+}
+
+.signature-cases {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.signature-cases li {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(120px, 0.7fr) 1fr;
+}
+
+.signature-cases span {
   color: var(--muted);
 }
 

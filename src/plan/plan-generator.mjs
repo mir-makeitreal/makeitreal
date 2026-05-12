@@ -52,16 +52,29 @@ function isApiLike(request, explicitKind) {
   if (kind) {
     return kind === "openapi";
   }
+  if (hasPublicApiContractIntent(request)) {
+    return true;
+  }
   if (isModuleIoLike(request)) {
     return false;
   }
-  return /\b(api|apis|endpoint|route|http|rest|openapi|swagger)\b/i.test(request);
+  return /\b(openapi|swagger)\b/i.test(request);
+}
+
+function hasPublicApiContractIntent(request) {
+  const text = String(request ?? "");
+  return /\b(openapi|swagger)\b/i.test(text)
+    || /\b(?:public|external|client[-\s]?facing)?\s*(?:rest|http)?\s*api\s+(?:endpoint|contract|surface)\b/i.test(text)
+    || /\b(?:build|create|implement|add|expose)\s+(?:a\s+|an\s+)?(?:rest\s+|http\s+)?(?:api\s+)?endpoint\b/i.test(text)
+    || /\b(?:build|create|implement|add|expose)\s+(?:a\s+|an\s+)?REST\s+API\b/i.test(text);
 }
 
 function isModuleIoLike(request) {
   const text = String(request ?? "");
-  const declaresCodeSurface = /\b(exporting?|function|module|library|utility|parser|matcher|view[-\s]?model|component|class)\b/i.test(text);
-  const declaresLocalUnit = /\b(pure\s+(javascript|typescript)|responsibility\s+unit|create\s+(src|lib|test|tests)\/|contract:\s*)\b/i.test(text);
+  const declaresCodeSurface = /\b(exporting?|exposes?|function|module|library|utility|parser|matcher|normalizer|view[-\s]?model|component|class)\b/i.test(text)
+    || /\b[A-Za-z_$][\w$]*\s*\([^)]*\)/.test(text);
+  const declaresLocalUnit = /\b(local|in[-\s]?process|internal|pure\s+(javascript|typescript)|responsibility\s+unit|source|codebase|contract:\s*)\b/i.test(text)
+    || explicitAllowedPathsFromRequest(text).length > 0;
   return declaresCodeSurface && declaresLocalUnit;
 }
 
@@ -510,14 +523,9 @@ function moduleProfileFromRequest({ request, slug }) {
     .filter(Boolean) ?? [];
   const moduleName = functionName ? humanizeIdentifier(functionName) : humanizeIdentifier(slug);
   const surfaceName = functionName ?? `${slug}.execute`;
-  const normalizedOutput = /normaliz/i.test(text)
-    ? "normalizedValue"
-    : /parse/i.test(text)
-      ? "parsedResult"
-      : /format/i.test(text)
-      ? "formattedValue"
-      : "result";
-  const returnType = inferModuleReturnType({ text, normalizedOutput });
+  const cases = moduleContractCases(text);
+  const outputName = inferModuleOutputName({ text, functionName });
+  const returnType = inferModuleReturnType({ text, outputName, cases });
   const declaredErrors = declaredModuleErrors(text);
   const inputs = rawArgs.length > 0
     ? rawArgs.map((arg) => ({
@@ -533,9 +541,10 @@ function moduleProfileFromRequest({ request, slug }) {
         description: `Input accepted by ${surfaceName}; refine the Blueprint if additional fields are required.`
       }];
   const outputs = [{
-    name: normalizedOutput,
+    name: outputName,
     type: returnType,
-    description: /trim|collapse|normaliz/i.test(text)
+    cases,
+    description: outputName === "normalizedValue"
       ? "Returned value after the declared normalization rules are applied."
       : "Returned value defined by the module contract."
   }];
@@ -558,6 +567,7 @@ function moduleProfileFromRequest({ request, slug }) {
     inputs,
     outputs,
     errors,
+    cases,
     calls: [
       "validate declared inputs",
       functionName ? `execute ${functionName}` : "execute owned module behavior",
@@ -566,14 +576,67 @@ function moduleProfileFromRequest({ request, slug }) {
   };
 }
 
+function moduleContractCases(text) {
+  const source = String(text ?? "");
+  const cases = [];
+  const routeCasePattern = /\b(GET|POST|PUT|PATCH|DELETE)\s+(\/[A-Za-z0-9_/:.-]+)[\s\S]{0,180}?handler:\s*"([^"]+)"[\s\S]{0,80}?params:\s*(\{[^}]*\})/gi;
+  for (const match of source.matchAll(routeCasePattern)) {
+    cases.push({
+      name: `${match[1].toUpperCase()} ${match[2]}`,
+      input: `${match[1].toUpperCase()} ${match[2]}`,
+      output: `{ handler: "${match[3]}", params: ${match[4].trim()} }`
+    });
+  }
+  if (/\breturn\s+null\s+for\s+unmatched\b/i.test(source)) {
+    cases.push({
+      name: "unmatched route",
+      input: "request outside declared route cases",
+      output: "null"
+    });
+  }
+  return cases;
+}
+
+function inferModuleOutputName({ text, functionName }) {
+  const source = String(text ?? "");
+  const name = String(functionName ?? "");
+  if (/^match/i.test(name) || /\bmatcher\b/i.test(source)) {
+    return "matchResult";
+  }
+  if (/^parse/i.test(name) || /\bparser\b/i.test(source)) {
+    return "parsedResult";
+  }
+  if (/^format/i.test(name) || /\bformatter\b/i.test(source)) {
+    return "formattedValue";
+  }
+  if (/^normalize/i.test(name) || /\bnormalization\b/i.test(source)) {
+    return "normalizedValue";
+  }
+  return "result";
+}
+
 function declaredModuleErrors(text) {
   const codes = [...String(text ?? "").matchAll(/\bcode\s+([A-Z][A-Z0-9_]+)/g)].map((match) => match[1]);
   const uniqueCodes = uniqueValues(codes);
   return uniqueCodes.length > 0 ? uniqueCodes : ["BOUNDARY_CONTRACT_VIOLATION"];
 }
 
-function inferModuleReturnType({ text, normalizedOutput }) {
+function inferModuleReturnType({ text, outputName, cases = [] }) {
   const source = String(text ?? "");
+  const handlerCases = cases
+    .map((contractCase) => String(contractCase.output ?? "").match(/handler:\s*"([^"]+)"/)?.[1])
+    .filter(Boolean);
+  if (handlerCases.length > 0) {
+    const handlers = uniqueValues(handlerCases).map((handler) => `"${handler}"`).join(" | ");
+    const nullSuffix = cases.some((contractCase) => contractCase.output === "null") ? " | null" : "";
+    return `{ handler: ${handlers}, params: object }${nullSuffix}`;
+  }
+  if (/\breturn\s+null\s+for\s+unmatched\b/i.test(source) && /\bhandler\b/i.test(source) && /\bparams\b/i.test(source)) {
+    return "{ handler: string, params: object } | null";
+  }
+  if (/\breturn\s*\{[^}]+}\s*(?:where|\.|$)/i.test(source)) {
+    return "object";
+  }
   if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?integer\b/i.test(source)) {
     return "integer";
   }
@@ -583,10 +646,10 @@ function inferModuleReturnType({ text, normalizedOutput }) {
   if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?boolean\b/i.test(source)) {
     return "boolean";
   }
-  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?string\b/i.test(source) || normalizedOutput === "normalizedValue") {
+  if (/\breturn(?:s|ed)?\s+(?:the\s+|an?\s+)?string\b/i.test(source) || outputName === "normalizedValue") {
     return "string";
   }
-  if (normalizedOutput === "parsedResult" && /\binteger\b/i.test(source)) {
+  if (outputName === "parsedResult" && /\binteger\b/i.test(source)) {
     return "integer";
   }
   return "module result";
@@ -613,6 +676,12 @@ function inferModuleInputType({ text, arg }) {
   if (new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:a\\s+)?number`, "i").test(source)) {
     return "number";
   }
+  if (new RegExp(`\\b${escaped}\\b\\s+must\\s+be\\s+(?:an?\\s+)?object`, "i").test(source)) {
+    if (/\bmethod\s+string\b/i.test(source) && /\bpath\s+string\b/i.test(source)) {
+      return "object { method: string, path: string }";
+    }
+    return "object";
+  }
   if (/^(min|max|limit|count|size|index|offset|page)$/i.test(name)) {
     return "number";
   }
@@ -626,6 +695,9 @@ function moduleErrorWhen({ code, text }) {
   }
   if (/INVALID/i.test(code) && /\bmin\s+and\s+max\b/i.test(source)) {
     return "Input is not an integer, or min/max bounds are not finite integers.";
+  }
+  if (/INVALID/i.test(code) && /\bobject\b/i.test(source)) {
+    return "Input object is missing declared fields or contains invalid field types.";
   }
   if (/INVALID/i.test(code) && /non-string|empty/i.test(source)) {
     return "Input is non-string or normalizes to an empty value.";
@@ -721,6 +793,9 @@ function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile, modu
   if (moduleProfile) {
     const inputNames = moduleProfile.inputs.map((input) => input.name).join(", ");
     const outputNames = moduleProfile.outputs.map((output) => output.name).join(", ");
+    const caseSummary = moduleProfile.cases.length > 0
+      ? ` (${moduleProfile.cases.map((contractCase) => `${contractCase.name} -> ${contractCase.output}`).join("; ")})`
+      : "";
     const errorCodes = moduleProfile.errors.map((error) => error.code).join(", ");
     return [
       {
@@ -733,7 +808,7 @@ function acceptanceCriteriaFor({ usesOpenApi, apiProfile, componentProfile, modu
       },
       {
         id: "AC-003",
-        statement: `Successful execution returns declared output: ${outputNames}.`
+        statement: `Successful execution returns declared output: ${outputNames}${caseSummary}.`
       },
       {
         id: "AC-004",
@@ -817,9 +892,12 @@ function userVisibleBehaviorFor({ usesOpenApi, apiProfile, componentProfile, mod
   if (moduleProfile) {
     const inputs = moduleProfile.inputs.map((input) => input.name).join(", ");
     const outputs = moduleProfile.outputs.map((output) => output.name).join(", ");
+    const cases = moduleProfile.cases.length > 0
+      ? ` Cases: ${moduleProfile.cases.map((contractCase) => `${contractCase.name} -> ${contractCase.output}`).join("; ")}.`
+      : "";
     const errors = moduleProfile.errors.map((error) => error.code).join(", ");
     return [
-      `${moduleProfile.surfaceName} accepts ${inputs}, returns ${outputs}, and fails through ${errors}.`
+      `${moduleProfile.surfaceName} accepts ${inputs}, returns ${outputs}, and fails through ${errors}.${cases}`
     ];
   }
   return [
@@ -1566,7 +1644,7 @@ export async function generatePlanRun({
   const launchBoard = await materializeLaunchBoard({ runDir, runId: resolvedRunId, slug, workItem, runnerMode });
 
   const blueprintReview = await seedBlueprintReview({ runDir, now });
-  const preview = await renderDesignPreview({ runDir });
+  const preview = await renderDesignPreview({ runDir, now });
   const readyGate = await runGates({ runDir, target: "Ready" });
   const readyErrorsAreApprovalOnly = approvalErrorsOnly(readyGate.errors);
   const planOk = blueprintReview.ok && preview.ok && (readyGate.ok || readyErrorsAreApprovalOnly);
