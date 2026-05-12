@@ -43,10 +43,14 @@ Then use the returned `nativeTask.implementationPrompt` with the Claude Code
 `Task` tool. After the implementation task returns, run three read-only native
 `Task` reviewers using the returned `nativeTask.reviewerPrompts`. The labels
 below are Make It Real evidence roles, not guaranteed installed Claude Code
-`subagent_type` names. Choose the closest available native Task agent type for
-each review, for example `code-reviewer` for `spec-reviewer`, `critic` for
-`quality-reviewer`, and `verifier` for `verification-reviewer`; keep the exact
-Make It Real role inside the prompt and recorded JSON:
+`subagent_type` names. Do not pass these labels as `subagent_type` unless
+Claude Code lists them as available agents. Choose an installed native Task type
+that exists in this session, preserving the Make It Real role inside the prompt
+and recorded JSON. Good choices when available are `feature-dev:code-reviewer`
+or `oh-my-claudecode:critic` for `spec-reviewer`, `oh-my-claudecode:critic` for
+`quality-reviewer`, and `oh-my-claudecode:verifier` for
+`verification-reviewer`. If a chosen type is unavailable, immediately retry the
+same reviewer prompt with `general-purpose` rather than failing the launch:
 
 - `spec-reviewer`
 - `quality-reviewer`

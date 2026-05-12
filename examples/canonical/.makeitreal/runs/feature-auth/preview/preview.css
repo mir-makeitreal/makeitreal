@@ -845,6 +845,227 @@ h3 {
 .guide-step.current strong,
 .guide-step.blocked strong { color: var(--warn); }
 
+.dossier-shell {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 320px);
+  gap: 18px;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.dossier-nav,
+.runtime-rail,
+.dossier-hero,
+.dossier-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.dossier-nav,
+.runtime-rail {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+}
+
+.dossier-nav {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.dossier-nav strong {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.dossier-nav a {
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 13px;
+}
+
+.dossier-nav a.active,
+.dossier-nav a:hover {
+  background: var(--accent-soft);
+  color: #263ca8;
+  font-weight: 700;
+}
+
+.dossier-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dossier-hero,
+.dossier-section,
+.runtime-rail {
+  padding: 18px;
+}
+
+.dossier-hero h1 {
+  max-width: 900px;
+  font-size: clamp(28px, 3vw, 44px);
+  overflow-wrap: anywhere;
+}
+
+.system-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.module-node,
+.module-reference-card,
+.contract-matrix article {
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.module-node header,
+.module-reference-card header,
+.contract-matrix article header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.module-node strong,
+.module-reference-card h3,
+.contract-matrix code {
+  overflow-wrap: anywhere;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chip-row span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dependency-matrix {
+  display: grid;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .9fr) minmax(120px, .9fr) minmax(190px, 1fr) minmax(220px, 1.4fr);
+  border-top: 1px solid var(--soft-line);
+}
+
+.matrix-row:first-child {
+  border-top: 0;
+}
+
+.matrix-row > div {
+  min-width: 0;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+
+.matrix-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.contract-matrix,
+.module-reference,
+.flow-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.surface-reference {
+  display: grid;
+  gap: 12px;
+}
+
+.surface-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contract-matrix dl {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.contract-matrix dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.contract-matrix dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contract-matrix dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.runtime-rail {
+  display: grid;
+  gap: 12px;
+}
+
+.runtime-rail h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.runtime-rail .status-rail {
+  border: 0;
+  background: transparent;
+}
+
+.runtime-rail .status-rail > summary {
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0;
+}
+
+.runtime-rail .status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  border-top: 0;
+}
+
+.runtime-rail .status-grid section {
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
 @media (max-width: 1080px) {
   .doc-shell {
     grid-template-columns: 1fr;
@@ -857,6 +1078,15 @@ h3 {
   .doc-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dossier-shell {
+    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+  }
+
+  .runtime-rail {
+    grid-column: 2;
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
@@ -865,14 +1095,29 @@ h3 {
   }
 
   .doc-nav,
+  .dossier-shell,
   .reference-grid,
   .reference-grid.compact,
   .usage-layout,
   .delivery-grid,
   .signature-grid,
+  .surface-detail-grid,
   .boundary-grid,
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dossier-shell {
+    padding: 10px;
+  }
+
+  .dossier-nav,
+  .runtime-rail {
+    position: static;
+  }
+
+  .runtime-rail {
+    grid-column: auto;
   }
 
   .doc-row,
@@ -910,6 +1155,24 @@ h3 {
     font-size: 10px;
     font-weight: 800;
     letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .matrix-row {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-row.header {
+    display: none;
+  }
+
+  .matrix-row > div::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
     text-transform: uppercase;
   }
 }

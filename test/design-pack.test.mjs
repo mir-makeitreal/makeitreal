@@ -88,3 +88,45 @@ test("architecture edges must reference declared contracts", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.errors[0].code, "HARNESS_CONTRACT_REFERENCE_INVALID");
 });
+
+test("module imports require an explicit provider responsibility unit", async () => {
+  const designPack = await readJsonFile(designPackPath);
+  const broken = {
+    ...designPack,
+    moduleInterfaces: designPack.moduleInterfaces.map((moduleInterface) => moduleInterface.responsibilityUnitId === "ru.frontend"
+      ? {
+          ...moduleInterface,
+          imports: moduleInterface.imports.map(({ providerResponsibilityUnitId, ...dependency }) => dependency)
+        }
+      : moduleInterface)
+  };
+  const result = validateDesignPack(broken);
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].code, "HARNESS_RESPONSIBILITY_REFERENCE_INVALID");
+  assert.match(result.errors[0].reason, /providerResponsibilityUnitId/);
+});
+
+test("module imports require providers to expose the imported contract", async () => {
+  const designPack = await readJsonFile(designPackPath);
+  const broken = {
+    ...designPack,
+    apiSpecs: [
+      ...designPack.apiSpecs,
+      { kind: "none", contractId: "contract.auth.audit", reason: "Declared test contract." }
+    ],
+    moduleInterfaces: designPack.moduleInterfaces.map((moduleInterface) => moduleInterface.responsibilityUnitId === "ru.frontend"
+      ? {
+          ...moduleInterface,
+          imports: moduleInterface.imports.map((dependency) => ({
+            ...dependency,
+            contractId: "contract.auth.audit",
+            providerResponsibilityUnitId: "ru.frontend"
+          }))
+        }
+      : moduleInterface)
+  };
+  const result = validateDesignPack(broken);
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].code, "HARNESS_CONTRACT_REFERENCE_INVALID");
+  assert.match(result.errors[0].reason, /provider does not expose/);
+});

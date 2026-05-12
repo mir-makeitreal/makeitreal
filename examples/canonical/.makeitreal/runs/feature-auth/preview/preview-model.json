@@ -242,6 +242,240 @@
     "summary": [
       "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
     ],
+    "systemDossier": {
+      "callStacks": [
+        {
+          "calls": [
+            "authClient.login",
+            "POST /auth/login"
+          ],
+          "entrypoint": "LoginForm.submit"
+        }
+      ],
+      "contractMatrix": [
+        {
+          "consumers": [
+            "Auth UI"
+          ],
+          "contractId": "contract.auth.login",
+          "kind": "openapi",
+          "path": "contracts/auth-login.openapi.json",
+          "providers": [
+            "Auth Service"
+          ],
+          "summary": "openapi contract at contracts/auth-login.openapi.json"
+        }
+      ],
+      "deliveryScope": {
+        "acceptanceCriteriaIds": [
+          "AC-001",
+          "AC-002",
+          "AC-003"
+        ],
+        "ownedPaths": [
+          "apps/web/auth/**",
+          "services/auth/**"
+        ],
+        "responsibilityUnitIds": [
+          "ru.frontend",
+          "ru.auth-service"
+        ]
+      },
+      "dependencyEdges": [
+        {
+          "allowedUse": "openapi contract at contracts/auth-login.openapi.json",
+          "contractId": "contract.auth.login",
+          "contractKind": "openapi",
+          "from": "auth-ui",
+          "fromLabel": "Auth UI",
+          "to": "auth-service",
+          "toLabel": "Auth Service"
+        },
+        {
+          "allowedUse": "Submit credential payload and consume declared session result only.",
+          "contractId": "contract.auth.login",
+          "contractKind": "openapi",
+          "from": "ru.frontend",
+          "fromLabel": "Auth UI",
+          "surface": "POST /auth/login",
+          "to": "ru.auth-service",
+          "toLabel": "Auth Service"
+        }
+      ],
+      "designPatterns": [
+        {
+          "name": "Contract-first responsibility boundary",
+          "rationale": "Adjacent modules may rely only on declared public surfaces and contract IDs."
+        },
+        {
+          "name": "Fail-fast contract mismatch",
+          "rationale": "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
+        }
+      ],
+      "goals": [
+        "Deliver a contract-gated authentication UI vertical slice."
+      ],
+      "modules": [
+        {
+          "imports": [
+            {
+              "allowedUse": "Submit credential payload and consume declared session result only.",
+              "contractId": "contract.auth.login",
+              "providerResponsibilityUnitId": "ru.auth-service",
+              "surface": "POST /auth/login"
+            }
+          ],
+          "moduleName": "Auth UI",
+          "owner": "team.frontend",
+          "owns": [
+            "apps/web/auth/**"
+          ],
+          "publicSurfaces": [
+            {
+              "consumers": [
+                "Auth page composition",
+                "browser interaction tests"
+              ],
+              "contractIds": [
+                "contract.auth.login"
+              ],
+              "description": "Submits credential input and delegates authentication through the declared auth login contract.",
+              "kind": "component-event",
+              "name": "LoginForm.submit",
+              "signature": {
+                "errors": [
+                  {
+                    "code": "AUTH_LOGIN_REJECTED",
+                    "handling": "Surface the declared auth error state; do not infer fallback session behavior.",
+                    "when": "The auth service rejects the credential payload."
+                  }
+                ],
+                "inputs": [
+                  {
+                    "description": "User email address collected by the login form.",
+                    "name": "credentials.email",
+                    "required": true,
+                    "type": "string"
+                  },
+                  {
+                    "description": "User password collected by the login form.",
+                    "name": "credentials.password",
+                    "required": true,
+                    "type": "string"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "description": "Session response returned by contract.auth.login.",
+                    "name": "sessionResult",
+                    "type": "AuthSession"
+                  }
+                ]
+              }
+            }
+          ],
+          "purpose": "Own credential collection, client-side validation, and rendering of the declared session result.",
+          "responsibilityUnitId": "ru.frontend"
+        },
+        {
+          "imports": [],
+          "moduleName": "Auth Service",
+          "owner": "team.auth",
+          "owns": [
+            "services/auth/**",
+            "contracts/auth-login.openapi.json"
+          ],
+          "publicSurfaces": [
+            {
+              "consumers": [
+                "ru.frontend"
+              ],
+              "contractIds": [
+                "contract.auth.login"
+              ],
+              "description": "Authenticates credentials and returns the declared session response.",
+              "kind": "http",
+              "name": "POST /auth/login",
+              "signature": {
+                "errors": [
+                  {
+                    "code": "401.INVALID_CREDENTIALS",
+                    "handling": "Return the declared error response; do not issue partial sessions or fallback identities.",
+                    "when": "Credentials are syntactically valid but authentication fails."
+                  }
+                ],
+                "inputs": [
+                  {
+                    "description": "Email value from the auth UI.",
+                    "name": "request.body.email",
+                    "required": true,
+                    "type": "string"
+                  },
+                  {
+                    "description": "Password value from the auth UI.",
+                    "name": "request.body.password",
+                    "required": true,
+                    "type": "string"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "description": "Authenticated session payload defined by the OpenAPI contract.",
+                    "name": "200.session",
+                    "type": "AuthSession"
+                  }
+                ]
+              }
+            }
+          ],
+          "purpose": "Own login request validation and session issuance behind the OpenAPI contract.",
+          "responsibilityUnitId": "ru.auth-service"
+        }
+      ],
+      "signalFlows": [
+        {
+          "messages": [
+            {
+              "from": "User",
+              "label": "submit credentials",
+              "to": "Auth UI"
+            },
+            {
+              "from": "Auth UI",
+              "label": "POST /auth/login",
+              "to": "Auth Service"
+            },
+            {
+              "from": "Auth Service",
+              "label": "return session result",
+              "to": "Auth UI"
+            }
+          ],
+          "participants": [
+            "User",
+            "Auth UI",
+            "Auth Service"
+          ],
+          "title": "Login request"
+        }
+      ],
+      "stateTransitions": [
+        {
+          "from": "Contract Frozen",
+          "gate": "design-pack",
+          "to": "Ready"
+        },
+        {
+          "from": "Human Review",
+          "gate": "wiki",
+          "to": "Done"
+        }
+      ],
+      "summary": [
+        "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
+      ],
+      "title": "Authentication vertical slice"
+    },
     "title": "Authentication vertical slice"
   },
   "board": null,

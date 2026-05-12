@@ -3,158 +3,152 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Blueprint - Login Form</title>
+  <title>Make It Real Blueprint - Authentication Vertical Slice</title>
   <link rel="stylesheet" href="./preview.css">
 </head>
 <body>
-  <main class="doc-shell">
-    <nav class="doc-nav" aria-label="Blueprint sections">
-      <p class="eyebrow">Make It Real</p>
-      <strong>Blueprint Reference</strong>
-      <a href="#overview" class="active">Overview</a>
-      <a href="#usage">Usage</a>
-      <a href="#contracts">Contracts</a>
-      <a href="#interfaces">Interfaces</a>
-      <a href="#boundaries">Ownership</a>
-      <a href="#flow">Flow</a>
-      <a href="#evidence">Verification</a>
-    </nav>
+  <main class="dossier-shell">
+    <nav class="dossier-nav" aria-label="Blueprint dossier sections">
+    <p class="eyebrow">Make It Real</p>
+    <strong>System Blueprint</strong>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#system-map">System Map</a>
+    <a href="#dependency-graph">Dependency Graph</a>
+    <a href="#contracts">Contract Matrix</a>
+    <a href="#modules">Module Reference</a>
+    <a href="#flows">Signal Flow</a>
+    <a href="#evidence">Evidence</a>
+  </nav>
 
-    <article class="doc-main">
-      <header id="overview" class="hero-panel">
+    <article class="dossier-main">
+      <header id="overview" class="dossier-hero">
         <div class="hero-topline">
-          <p class="eyebrow">Blueprint Reference</p>
+          <p class="eyebrow">System Blueprint</p>
           <span class="status-pill">approved</span>
         </div>
-        <h1>Login Form</h1>
-        <p class="surface-line"><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
+        <h1>Authentication Vertical Slice</h1>
         <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
           <p>Authentication vertical slice</p>
         </details>
         <div class="reference-grid">
-          <div><span>Public Surface</span><strong>LoginForm.submit</strong></div>
-          <div><span>Owner</span><strong>team.frontend</strong></div>
-          <div><span>Contract</span><strong>contract.auth.login</strong></div>
+          <div><span>Modules</span><strong>2</strong></div>
+          <div><span>Contracts</span><strong>1</strong></div>
+          <div><span>Dependency Edges</span><strong>2</strong></div>
           <div><span>Verification</span><strong>Verification passed</strong></div>
         </div>
       </header>
 
-      <section id="usage" class="doc-section">
+      <section id="system-map" class="dossier-section">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Reference</p>
-            <h2>Usage Contract</h2>
+            <p class="eyebrow">Architecture</p>
+            <h2>System Map</h2>
           </div>
-          <span>2 public surfaces</span>
+          <span>2 responsibility units</span>
         </div>
-        <div class="usage-layout">
-    <section class="reference-card">
-      <p class="eyebrow">Usage</p>
-      <h3>Call The Public Surface</h3>
-      <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
-// Call it only through the Blueprint contract; do not read implementation internals.
-const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
-    </section>
-    <section class="reference-card">
-      <p class="eyebrow">Signature</p>
-      <h3>LoginForm.submit</h3>
-      <p class="signature-title"><code>LoginForm.submit(credentials.email, credentials.password): AuthSession</code></p>
-      <p>Submits credential input and delegates authentication through the declared auth login contract.</p>
-      <div class="reference-grid compact"><div>
-    <span>Kind</span>
-    <strong>component-event</strong>
-  </div><div>
-    <span>Owner</span>
-    <strong>team.frontend</strong>
-  </div><div>
-    <span>Contracts</span>
-    <strong>contract.auth.login</strong>
-  </div><div>
-    <span>Consumers</span>
-    <strong>Auth page composition, browser interaction tests</strong>
-  </div></div>
-    </section>
-  </div>
-  <div class="spec-stack">
-    <section class="spec-block">
-    <h3>Parameters</h3>
-    <div class="spec-table" role="table" aria-label="Parameters">
-      <div class="spec-row header" role="row"><div role="columnheader">Name</div><div role="columnheader">Type</div><div role="columnheader">Required</div><div role="columnheader">Description</div></div>
-      <div class="spec-row" role="row"><div role="cell" data-label="Name"><code>credentials.email</code></div><div role="cell" data-label="Type">string</div><div role="cell" data-label="Required">required</div><div role="cell" data-label="Description">User email address collected by the login form.</div></div><div class="spec-row" role="row"><div role="cell" data-label="Name"><code>credentials.password</code></div><div role="cell" data-label="Type">string</div><div role="cell" data-label="Required">required</div><div role="cell" data-label="Description">User password collected by the login form.</div></div>
+        <p class="section-note">Planned and declared responsibility units. Each unit owns its paths and exposes only declared public surfaces.</p>
+        <div class="system-map">
+    <article class="module-node">
+    <header>
+      <span>ru.frontend</span>
+      <strong>Auth UI</strong>
+    </header>
+    <p>Own credential collection, client-side validation, and rendering of the declared session result.</p>
+    <div class="chip-row">
+      <span>team.frontend</span>
+      <span>1 surface</span>
+      <span>1 import</span>
     </div>
-  </section>
-    <section class="spec-block">
-    <h3>Returns</h3>
-    <div class="spec-table" role="table" aria-label="Returns">
-      <div class="spec-row header" role="row"><div role="columnheader">Name</div><div role="columnheader">Type</div><div role="columnheader">Description</div></div>
-      <div class="spec-row" role="row"><div role="cell" data-label="Name"><code>sessionResult</code></div><div role="cell" data-label="Type">AuthSession</div><div role="cell" data-label="Description">Session response returned by contract.auth.login.</div></div>
+  </article><article class="module-node">
+    <header>
+      <span>ru.auth-service</span>
+      <strong>Auth Service</strong>
+    </header>
+    <p>Own login request validation and session issuance behind the OpenAPI contract.</p>
+    <div class="chip-row">
+      <span>team.auth</span>
+      <span>1 surface</span>
+      <span>0 imports</span>
     </div>
-  </section>
-    <section class="spec-block">
-    <h3>Errors</h3>
-    <div class="spec-table" role="table" aria-label="Errors">
-      <div class="spec-row header" role="row"><div role="columnheader">Code</div><div role="columnheader">When</div><div role="columnheader">Handling</div></div>
-      <div class="spec-row" role="row"><div role="cell" data-label="Code"><code>AUTH_LOGIN_REJECTED</code></div><div role="cell" data-label="When">The auth service rejects the credential payload.</div><div role="cell" data-label="Handling">Surface the declared auth error state; do not infer fallback session behavior.</div></div>
-    </div>
-  </section>
-  </div>
-        <h3>Delivery Scope</h3>
-        <div class="delivery-grid">
-    <section class="reference-card">
-      <h3>Goals</h3>
-      <ul class="clean-list"><li>Deliver a contract-gated authentication UI vertical slice.</li></ul>
-    </section>
-    <section class="reference-card">
-      <h3>Runtime Behavior</h3>
-      <ul class="clean-list"><li>A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</li></ul>
-    </section>
-    <section class="reference-card">
-      <h3>Out Of Scope</h3>
-      <ul class="clean-list"><li>Real credential validation</li><li>Production auth security</li></ul>
-    </section>
+  </article>
   </div>
       </section>
 
-      <section id="contracts" class="doc-section">
+      <section id="dependency-graph" class="dossier-section">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Boundary</p>
-            <h2>Contracts</h2>
+            <p class="eyebrow">Architecture</p>
+            <h2>Dependency Graph</h2>
+          </div>
+          <span>2 edges</span>
+        </div>
+        <div class="dependency-matrix" role="table" aria-label="Dependency graph">
+    <div class="matrix-row header" role="row">
+      <div role="columnheader">From</div>
+      <div role="columnheader">To</div>
+      <div role="columnheader">Contract</div>
+      <div role="columnheader">Allowed Use</div>
+    </div>
+    <div class="matrix-row" role="row">
+      <div role="cell" data-label="From">Auth UI</div>
+      <div role="cell" data-label="To">Auth Service</div>
+      <div role="cell" data-label="Contract"><code>contract.auth.login</code></div>
+      <div role="cell" data-label="Allowed Use">openapi contract at contracts/auth-login.openapi.json</div>
+    </div><div class="matrix-row" role="row">
+      <div role="cell" data-label="From">Auth UI</div>
+      <div role="cell" data-label="To">Auth Service</div>
+      <div role="cell" data-label="Contract"><code>contract.auth.login</code></div>
+      <div role="cell" data-label="Allowed Use">Submit credential payload and consume declared session result only.</div>
+    </div>
+  </div>
+      </section>
+
+      <section id="contracts" class="dossier-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Contracts</p>
+            <h2>Contract Matrix</h2>
           </div>
           <span>1 declared</span>
         </div>
-        <p class="section-note">Authoritative API / IO surfaces that other responsibility units must use without reading implementation internals.</p>
-        <div class="reference-table"><div class="reference-row">
-    <div><span class="method ">openapi</span></div>
-    <div>
-      <strong>contract.auth.login</strong>
-      <p>Authoritative machine-readable contract.</p>
-    </div>
-    <code>contracts/auth-login.openapi.json</code>
-  </div></div>
+        <div class="contract-matrix">
+    <article>
+      <header>
+        <code>contract.auth.login</code>
+        <span>openapi</span>
+      </header>
+      <p>openapi contract at contracts/auth-login.openapi.json</p>
+      <dl>
+        <div><dt>Providers</dt><dd>Auth Service</dd></div>
+        <div><dt>Consumers</dt><dd>Auth UI</dd></div>
+        <div><dt>Path</dt><dd>contracts/auth-login.openapi.json</dd></div>
+      </dl>
+    </article>
+  </div>
       </section>
 
-      <section id="interfaces" class="doc-section">
+      <section id="modules" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Reference</p>
-            <h2>Interfaces</h2>
+            <h2>Module Reference</h2>
           </div>
-          <span>2 modules</span>
+          <span>2 public surfaces</span>
         </div>
         <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
-        <div class="module-interface-list"><article class="module-interface">
-    <header>
-      <div>
-        <p class="module-id">ru.frontend</p>
-        <h3>Auth UI</h3>
-      </div>
-      <span>team.frontend</span>
-    </header>
-    <p class="section-note">Own credential collection, client-side validation, and rendering of the declared session result.</p>
-    <div class="reference-grid compact"><div>
+        <div class="module-reference">
+    <article class="module-reference-card">
+      <header>
+        <div>
+          <p class="module-id">ru.frontend</p>
+          <h3>Auth UI</h3>
+        </div>
+        <span>team.frontend</span>
+      </header>
+      <p class="section-note">Own credential collection, client-side validation, and rendering of the declared session result.</p>
+      <div class="reference-grid compact"><div>
     <span>Owned paths</span>
     <strong>apps/web/auth/**</strong>
   </div><div>
@@ -164,6 +158,7 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
     <span>Imports</span>
     <strong>1</strong>
   </div></div>
+      <section class="surface-reference">
     <section class="surface-summary">
     <div>
       <p class="module-id">component-event</p>
@@ -186,20 +181,34 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
   </div></div>
     <p class="muted">Consumers: Auth page composition, browser interaction tests</p>
   </section>
-    <div class="imports-list">
-      <h4>Imports</h4>
-      <p><code>contract.auth.login</code> Submit credential payload and consume declared session result only.</p>
+    <div class="surface-detail-grid">
+      <div class="signature-column">
+    <h4>Parameters</h4>
+    <div class="signature-table"><div class="signature-row"><strong>credentials.email</strong><span>string · required · User email address collected by the login form.</span></div><div class="signature-row"><strong>credentials.password</strong><span>string · required · User password collected by the login form.</span></div></div>
+  </div>
+      <div class="signature-column">
+    <h4>Returns</h4>
+    <div class="signature-table"><div class="signature-row"><strong>sessionResult</strong><span>AuthSession · Session response returned by contract.auth.login.</span></div></div>
+  </div>
+      <div class="signature-column">
+    <h4>Errors</h4>
+    <div class="signature-table"><div class="signature-row"><strong>AUTH_LOGIN_REJECTED</strong><span>The auth service rejects the credential payload. · Surface the declared auth error state; do not infer fallback session behavior.</span></div></div>
+  </div>
     </div>
-  </article><article class="module-interface">
-    <header>
-      <div>
-        <p class="module-id">ru.auth-service</p>
-        <h3>Auth Service</h3>
-      </div>
-      <span>team.auth</span>
-    </header>
-    <p class="section-note">Own login request validation and session issuance behind the OpenAPI contract.</p>
-    <div class="reference-grid compact"><div>
+    <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
+// Call it only through the Blueprint contract; do not read implementation internals.
+const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
+  </section>
+    </article><article class="module-reference-card">
+      <header>
+        <div>
+          <p class="module-id">ru.auth-service</p>
+          <h3>Auth Service</h3>
+        </div>
+        <span>team.auth</span>
+      </header>
+      <p class="section-note">Own login request validation and session issuance behind the OpenAPI contract.</p>
+      <div class="reference-grid compact"><div>
     <span>Owned paths</span>
     <strong>services/auth/**, contracts/auth-login.openapi.json</strong>
   </div><div>
@@ -209,11 +218,12 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
     <span>Imports</span>
     <strong>0</strong>
   </div></div>
+      <section class="surface-reference">
     <section class="surface-summary">
     <div>
       <p class="module-id">http</p>
       <h4>POST /auth/login</h4>
-      <p><code>POST /auth/login(request.body.email, request.body.password): AuthSession</code></p>
+      <p><code>POST /auth/login -&gt; AuthSession</code></p>
       <p class="muted">Authenticates credentials and returns the declared session response.</p>
     </div>
     <div class="reference-grid compact"><div>
@@ -231,60 +241,75 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
   </div></div>
     <p class="muted">Consumers: ru.frontend</p>
   </section>
+    <div class="surface-detail-grid">
+      <div class="signature-column">
+    <h4>Parameters</h4>
+    <div class="signature-table"><div class="signature-row"><strong>request.body.email</strong><span>string · required · Email value from the auth UI.</span></div><div class="signature-row"><strong>request.body.password</strong><span>string · required · Password value from the auth UI.</span></div></div>
+  </div>
+      <div class="signature-column">
+    <h4>Returns</h4>
+    <div class="signature-table"><div class="signature-row"><strong>200.session</strong><span>AuthSession · Authenticated session payload defined by the OpenAPI contract.</span></div></div>
+  </div>
+      <div class="signature-column">
+    <h4>Errors</h4>
+    <div class="signature-table"><div class="signature-row"><strong>401.INVALID_CREDENTIALS</strong><span>Credentials are syntactically valid but authentication fails. · Return the declared error response; do not issue partial sessions or fallback identities.</span></div></div>
+  </div>
+    </div>
+    <pre class="code-block" data-language="js"><code>const requestBody = {
+  email: &quot;user@example.com&quot;,
+  password: &quot;correct horse battery staple&quot;
+};
 
-  </article></div>
+const httpResponse = await fetch(&quot;/auth/login&quot;, {
+  method: &quot;POST&quot;,
+  headers: { &quot;content-type&quot;: &quot;application/json&quot; },
+  body: JSON.stringify(requestBody)
+});
+
+if (!httpResponse.ok) {
+  throw new Error(`HTTP ${httpResponse.status}`);
+}
+
+const session = await httpResponse.json();</code></pre>
+  </section>
+    </article>
+  </div>
       </section>
 
-      <section id="boundaries" class="doc-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ownership</p>
-            <h2>Responsibility Boundaries</h2>
-          </div>
-          <span>2 owners</span>
-        </div>
-        <div class="boundary-grid"><article class="boundary-card">
-    <strong>ru.frontend</strong>
-    <div class="path-list"><code>apps/web/auth/**</code></div>
-    <p>May use: <code>contract.auth.login</code></p>
-  </article><article class="boundary-card">
-    <strong>ru.auth-service</strong>
-    <div class="path-list"><code>services/auth/**</code></div>
-    <p class="muted">No cross-boundary contract dependencies.</p>
-  </article></div>
-      </section>
-
-      <section id="flow" class="doc-section">
+      <section id="flows" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Execution</p>
-            <h2>Flow</h2>
+            <h2>Signal Flow & Call Stack</h2>
           </div>
         </div>
-        <h3>System Architecture</h3>
-        <div class="flow-line"><span>auth-ui</span>
-    <b>→</b>
-    <span>auth-service</span>
-    <code>contract.auth.login</code></div>
-        <h3>State Transition Flow</h3>
-        <div class="transition-list"><span>Contract Frozen → Ready <code>design-pack</code></span><span>Human Review → Done <code>wiki</code></span></div>
-        <h3>Call Stack</h3>
-        <div class="callstack-list"><article class="callstack-card">
-    <header><code>LoginForm.submit</code></header>
-    <ol><li>authClient.login</li><li>POST /auth/login</li></ol>
-  </article></div>
-        <h3>Sequence Diagrams</h3>
-        <article class="sequence-card">
+        <div class="flow-timeline">
+    <section>
+      <h3>Signal Flow</h3>
+      <article class="sequence-card">
     <strong>Login request</strong>
     <ol><li><span>User</span> → <span>Auth UI</span>: submit credentials</li><li><span>Auth UI</span> → <span>Auth Service</span>: POST /auth/login</li><li><span>Auth Service</span> → <span>Auth UI</span>: return session result</li></ol>
   </article>
+    </section>
+    <section>
+      <h3>Call Stack</h3>
+      <div class="callstack-list"><article class="callstack-card">
+    <header><code>LoginForm.submit</code></header>
+    <ol><li>authClient.login</li><li>POST /auth/login</li></ol>
+  </article></div>
+    </section>
+    <section>
+      <h3>State Transition Flow</h3>
+      <div class="transition-list"><span>Contract Frozen → Ready <code>design-pack</code></span><span>Human Review → Done <code>wiki</code></span></div>
+    </section>
+  </div>
       </section>
 
-      <section id="evidence" class="doc-section">
+      <section id="evidence" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Proof</p>
-            <h2>Verification</h2>
+            <h2>Verification & Evidence</h2>
           </div>
         </div>
         <h3>Acceptance Criteria</h3>
@@ -310,7 +335,7 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
   </div></div>
       </section>
 
-      <section id="diagnostics" class="doc-section">
+      <section id="diagnostics" class="dossier-section">
         <details class="diagnostics-panel">
     <summary>Developer Diagnostics</summary>
     <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
@@ -339,9 +364,11 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
   </div>
   </details>
       </section>
+    </article>
 
-      <div id="runtime">
-        <details class="status-rail" data-read-only-cockpit="true">
+    <aside class="runtime-rail" aria-label="Runtime Snapshot">
+      <h2>Runtime Snapshot</h2>
+      <details class="status-rail" data-read-only-cockpit="true">
     <summary>
       <span>Run Status & Kanban</span>
       <strong>launch-ready</strong>
@@ -409,8 +436,7 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
       </section>
     </div>
   </details>
-      </div>
-    </article>
+    </aside>
   </main>
   <script src="./preview.js"></script>
 </body>

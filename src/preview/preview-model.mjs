@@ -1,6 +1,7 @@
 import path from "node:path";
 import { loadBoard } from "../board/board-store.mjs";
 import { validateDesignPack } from "../domain/design-pack.mjs";
+import { buildSystemDossier, modelBoundaries, modelContracts, modelModuleInterfaces } from "../domain/system-dossier.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 import { readBoardStatus } from "../status/board-status.mjs";
 import { readRunStatus } from "../status/run-status.mjs";
@@ -60,78 +61,9 @@ function modelBoard(board, boardStatus) {
   };
 }
 
-function modelContracts(apiSpecs = []) {
-  return apiSpecs.map((spec) => ({
-    kind: spec.kind,
-    contractId: spec.contractId ?? null,
-    path: spec.path ?? null,
-    reason: spec.reason ?? null
-  }));
-}
-
-function modelBoundaries(boundaries = []) {
-  return boundaries.map((boundary) => ({
-    responsibilityUnitId: boundary.responsibilityUnitId,
-    owns: boundary.owns ?? [],
-    mayUseContracts: boundary.mayUseContracts ?? []
-  }));
-}
-
-function unitIndex(responsibilityUnits) {
-  return new Map((responsibilityUnits?.units ?? []).map((unit) => [unit.id, unit]));
-}
-
-function normalizeSignature(signature = {}) {
-  return {
-    inputs: signature.inputs ?? [],
-    outputs: signature.outputs ?? [],
-    errors: signature.errors ?? []
-  };
-}
-
-function normalizeSurface(surface) {
-  if (typeof surface === "string") {
-    return {
-      name: surface,
-      kind: "surface",
-      description: null,
-      contractIds: [],
-      consumers: [],
-      signature: {
-        inputs: [],
-        outputs: [],
-        errors: []
-      }
-    };
-  }
-  return {
-    name: surface?.name ?? "Unnamed surface",
-    kind: surface?.kind ?? "surface",
-    description: surface?.description ?? null,
-    contractIds: surface?.contractIds ?? [],
-    consumers: surface?.consumers ?? [],
-    signature: normalizeSignature(surface?.signature)
-  };
-}
-
-function modelModuleInterfaces({ designPack, responsibilityUnits }) {
-  const units = unitIndex(responsibilityUnits);
-  return (designPack.moduleInterfaces ?? []).map((moduleInterface) => {
-    const unit = units.get(moduleInterface.responsibilityUnitId) ?? {};
-    return {
-      responsibilityUnitId: moduleInterface.responsibilityUnitId,
-      owner: moduleInterface.owner ?? unit.owner ?? null,
-      moduleName: moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId,
-      purpose: moduleInterface.purpose ?? null,
-      owns: moduleInterface.owns ?? unit.owns ?? [],
-      publicSurfaces: (moduleInterface.publicSurfaces ?? []).map(normalizeSurface),
-      imports: moduleInterface.imports ?? []
-    };
-  });
-}
-
 function modelBlueprint({ prd, designPack, responsibilityUnits }) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
+  const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
   return {
     title: prd.title,
     summary: prd.userVisibleBehavior ?? [],
@@ -141,14 +73,15 @@ function modelBlueprint({ prd, designPack, responsibilityUnits }) {
     primaryContract: contracts[0] ?? null,
     contracts,
     boundaries: modelBoundaries(designPack.responsibilityBoundaries ?? []),
-    moduleInterfaces: modelModuleInterfaces({ designPack, responsibilityUnits }),
+    moduleInterfaces,
     architecture: {
       nodes: designPack.architecture?.nodes ?? [],
       edges: designPack.architecture?.edges ?? []
     },
     stateTransitions: designPack.stateFlow?.transitions ?? [],
     callStacks: designPack.callStacks ?? [],
-    sequences: designPack.sequences ?? []
+    sequences: designPack.sequences ?? [],
+    systemDossier: buildSystemDossier({ prd, designPack, responsibilityUnits })
   };
 }
 

@@ -84,9 +84,11 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /one-command start/);
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
   assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
-  assert.match(launchCommand, /code-reviewer.*spec-reviewer/i);
-  assert.match(launchCommand, /critic[\s\S]*quality-reviewer/i);
-  assert.match(launchCommand, /verifier.*verification-reviewer/i);
+  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless\s+Claude Code lists them as available agents/i);
+  assert.match(launchCommand, /feature-dev:code-reviewer[\s\S]*spec-reviewer/i);
+  assert.match(launchCommand, /oh-my-claudecode:critic[\s\S]*quality-reviewer/i);
+  assert.match(launchCommand, /oh-my-claudecode:verifier[\s\S]*verification-reviewer/i);
+  assert.match(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const planCommand = await readPluginFile("commands", "plan.md");
@@ -268,13 +270,16 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
 
   const launchCommand = await readAliasPluginFile("commands", "launch.md");
   assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
-  assert.match(launchCommand, /code-reviewer.*spec-reviewer/i);
-  assert.match(launchCommand, /critic[\s\S]*quality-reviewer/i);
-  assert.match(launchCommand, /verifier.*verification-reviewer/i);
+  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless\s+Claude Code lists them as available agents/i);
+  assert.match(launchCommand, /feature-dev:code-reviewer[\s\S]*spec-reviewer/i);
+  assert.match(launchCommand, /oh-my-claudecode:critic[\s\S]*quality-reviewer/i);
+  assert.match(launchCommand, /oh-my-claudecode:verifier[\s\S]*verification-reviewer/i);
+  assert.match(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const launchSkill = await readAliasPluginFile("skills", "launch", "SKILL.md");
   assert.match(launchSkill, /evidence roles, not guaranteed installed Claude Code/i);
+  assert.match(launchSkill, /retry the same prompt with `general-purpose`/i);
   assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
@@ -380,8 +385,9 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
     assert.equal(embeddedPkg.version, rootPkg.version);
     const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
-    assert.match(renderer, /Blueprint Reference/);
-    assert.match(renderer, /Usage Contract/);
+    assert.match(renderer, /System Blueprint/);
+    assert.match(renderer, /Contract Matrix/);
+    assert.match(renderer, /Module Reference/);
     assert.match(renderer, /Parameters/);
     assert.match(renderer, /Contracts/);
     assert.match(renderer, /Developer Diagnostics/);

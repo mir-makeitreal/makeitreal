@@ -14,6 +14,37 @@ PRD `prd.auth` defines this responsibility boundary.
 | Owned paths | `apps/web/auth/**` |
 | May use contracts | `contract.auth.login` |
 
+## System Map
+
+| Module | Responsibility Unit | Owner | Owns | Public Surfaces |
+| --- | --- | --- | --- | --- |
+| Auth UI | `ru.frontend` | team.frontend | `apps/web/auth/**` | `LoginForm.submit` |
+| Auth Service | `ru.auth-service` | team.auth | `services/auth/**`, `contracts/auth-login.openapi.json` | `POST /auth/login` |
+
+
+## Dependency Graph
+
+| From | To | Contract | Allowed Use |
+| --- | --- | --- | --- |
+| Auth UI | Auth Service | `contract.auth.login` | openapi contract at contracts/auth-login.openapi.json |
+| Auth UI | Auth Service | `contract.auth.login` | Submit credential payload and consume declared session result only. |
+
+
+## Contract Matrix
+
+| Contract | Kind | Providers | Consumers | Path |
+| --- | --- | --- | --- | --- |
+| `contract.auth.login` | openapi | Auth Service | Auth UI | contracts/auth-login.openapi.json |
+
+
+## Call Stack
+
+### `LoginForm.submit`
+
+- authClient.login
+- POST /auth/login
+
+
 ## Contracts
 
 - `contract.auth.login`

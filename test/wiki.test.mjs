@@ -20,6 +20,15 @@ test("syncs verified work to live wiki and writes evidence", async () => {
     assert.match(markdown, /## Responsibility Boundary/);
     assert.match(markdown, /Owner unit/);
     assert.match(markdown, /`ru.frontend`/);
+    assert.match(markdown, /## System Map/);
+    assert.match(markdown, /Auth UI/);
+    assert.match(markdown, /Auth Service/);
+    assert.match(markdown, /## Dependency Graph/);
+    assert.match(markdown, /Submit credential payload/);
+    assert.match(markdown, /## Contract Matrix/);
+    assert.match(markdown, /Auth Service \| Auth UI/);
+    assert.match(markdown, /## Call Stack/);
+    assert.match(markdown, /LoginForm.submit/);
     assert.match(markdown, /## Public Surfaces/);
     assert.match(markdown, /LoginForm.submit/);
     assert.match(markdown, /credentials.email/);

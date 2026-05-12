@@ -52,7 +52,17 @@ function isApiLike(request, explicitKind) {
   if (kind) {
     return kind === "openapi";
   }
+  if (isModuleIoLike(request)) {
+    return false;
+  }
   return /\b(api|apis|endpoint|route|http|rest|openapi|swagger)\b/i.test(request);
+}
+
+function isModuleIoLike(request) {
+  const text = String(request ?? "");
+  const declaresCodeSurface = /\b(exporting?|function|module|library|utility|parser|matcher|view[-\s]?model|component|class)\b/i.test(text);
+  const declaresLocalUnit = /\b(pure\s+(javascript|typescript)|responsibility\s+unit|create\s+(src|lib|test|tests)\/|contract:\s*)\b/i.test(text);
+  return declaresCodeSurface && declaresLocalUnit;
 }
 
 function isOpsLike(request) {
@@ -994,6 +1004,7 @@ function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiPro
           name: "requestBody",
           type: "object",
           required: true,
+          fields: apiProfile.requestFields,
           description: `Payload accepted by ${apiProfile.method.toUpperCase()} ${apiProfile.routePath} for: ${title}`
         }] : [{
           name: "requestContext",
@@ -1100,6 +1111,50 @@ function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, tit
       }
     ],
     imports: apiProfile?.dependencies ?? []
+  };
+}
+
+function dependencyModuleInterfaceFor(dependency) {
+  return {
+    responsibilityUnitId: dependency.providerResponsibilityUnitId,
+    owner: "external.provider",
+    moduleName: dependency.surface,
+    purpose: `Own the declared provider side of ${dependency.contractId}.`,
+    owns: [`external contract surface: ${dependency.surface}`],
+    publicSurfaces: [
+      {
+        name: dependency.surface,
+        kind: "external-contract",
+        description: dependency.allowedUse,
+        contractIds: [dependency.contractId],
+        consumers: ["implementation responsibility unit"],
+        signature: {
+          inputs: [
+            {
+              name: "declaredRequest",
+              type: "contract input",
+              required: true,
+              description: `Input declared by ${dependency.contractId}.`
+            }
+          ],
+          outputs: [
+            {
+              name: "declaredResult",
+              type: "contract result",
+              description: `Result declared by ${dependency.contractId}.`
+            }
+          ],
+          errors: [
+            {
+              code: "DEPENDENCY_CONTRACT_MISMATCH",
+              when: `The implementation needs behavior outside ${dependency.contractId}.`,
+              handling: "Fail fast and revise the Blueprint; do not hide dependency mismatch behind fallback behavior."
+            }
+          ]
+        }
+      }
+    ],
+    imports: []
   };
 }
 
@@ -1400,6 +1455,7 @@ export async function generatePlanRun({
         reason: "Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks."
       };
   const moduleInterface = moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile });
+  const dependencyModuleInterfaces = apiProfile?.dependencies.map(dependencyModuleInterfaceFor) ?? [];
   const componentContracts = componentProfile
     ? [{ kind: "component", contractId, path: `contracts/${slug}.component-contract.json` }]
     : [];
@@ -1441,9 +1497,14 @@ export async function generatePlanRun({
     apiSpecs,
     componentContracts,
     responsibilityBoundaries: [
-      { responsibilityUnitId, owns, mayUseContracts }
+      { responsibilityUnitId, owns, mayUseContracts },
+      ...dependencyModuleInterfaces.map((dependencyInterface) => ({
+        responsibilityUnitId: dependencyInterface.responsibilityUnitId,
+        owns: dependencyInterface.owns,
+        mayUseContracts: []
+      }))
     ],
-    moduleInterfaces: [moduleInterface],
+    moduleInterfaces: [moduleInterface, ...dependencyModuleInterfaces],
     callStacks: callStacksFor({ moduleInterface, usesOpenApi, apiProfile, componentProfile, moduleProfile }),
     sequences: sequencesFor({ workItemId, contractId, usesOpenApi, apiProfile, componentProfile })
   };

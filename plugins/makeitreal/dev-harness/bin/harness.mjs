@@ -259,7 +259,7 @@ function parseRunDirArg(argv, positionalIndex = 2) {
 }
 
 function deterministicNow(argv = []) {
-  return new Date(parseFlag(argv, "--now") ?? "2026-04-30T00:00:00.000Z");
+  return new Date(parseFlag(argv, "--now") ?? process.env.MAKEITREAL_NOW ?? Date.now());
 }
 
 function defaultProjectRoot() {
@@ -329,7 +329,7 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "design" && argv[1] === "render") {
-    const result = await renderDesignPreview({ runDir: argv[2] });
+    const result = await renderDesignPreview({ runDir: argv[2], now: deterministicNow(argv) });
     return { exitCode: result.ok ? 0 : 1, result: { command: "design render", ...result } };
   }
 

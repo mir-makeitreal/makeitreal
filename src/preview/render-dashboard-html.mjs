@@ -57,34 +57,25 @@ function conciseTitleFromText(value) {
   return humanizeIdentifier(filtered || text);
 }
 
-function primarySurface(blueprint = {}) {
-  return blueprint.moduleInterfaces?.[0]?.publicSurfaces?.[0] ?? null;
-}
-
-function primaryModule(blueprint = {}) {
-  return blueprint.moduleInterfaces?.[0] ?? null;
-}
-
 function surfaceSignature(surface) {
-  if (!surface?.name) {
-    return null;
+  const http = httpSurface(surface);
+  if (http) {
+    const output = surface.signature.outputs[0].type;
+    return `${http.method} ${http.path} -> ${output}`;
   }
-  const inputs = surface.signature?.inputs ?? [];
-  const output = surface.signature?.outputs?.[0]?.type;
+  const inputs = surface.signature.inputs;
+  const output = surface.signature.outputs[0].type;
   const returnSuffix = output ? `: ${output}` : "";
   if (inputs.length === 0) {
     return `${surface.name}()${returnSuffix}`;
   }
-  return `${surface.name}(${inputs.map((input) => input.name ?? "input").join(", ")})${returnSuffix}`;
+  return `${surface.name}(${inputs.map((input) => input.name).join(", ")})${returnSuffix}`;
 }
 
 function referenceTitle(model) {
   const blueprint = model.blueprint ?? {};
-  const surface = primarySurface(blueprint);
-  if (surface?.name && !/^[a-z0-9-]+\.module$/i.test(surface.name)) {
-    return humanizeIdentifier(surface.name);
-  }
-  return conciseTitleFromText(blueprint.title ?? model.run.workItemId);
+  const rawTitle = blueprint.systemDossier?.title ?? blueprint.title ?? model.run.workItemId;
+  return conciseTitleFromText(rawTitle) || "Blueprint";
 }
 
 function verificationLabel(status = {}) {
@@ -100,20 +91,6 @@ function verificationLabel(status = {}) {
 
 function verificationTileLabel(status = {}) {
   return status.phase === "done" || (status.evidenceSummary ?? []).some((item) => String(item.kind ?? "").includes("verification")) ? "Verification" : "Next Step";
-}
-
-function renderContractReference(contracts = []) {
-  if (contracts.length === 0) {
-    return '<p class="empty">No public contracts declared.</p>';
-  }
-  return `<div class="reference-table">${contracts.map((contract) => `<div class="reference-row">
-    <div><span class="method ${contract.kind === "none" ? "neutral" : ""}">${escapeHtml(contract.kind ?? "contract")}</span></div>
-    <div>
-      <strong>${escapeHtml(contract.contractId ?? "Unnamed contract")}</strong>
-      <p>${escapeHtml(contract.kind === "none" ? contract.reason ?? "Non-API boundary contract." : "Authoritative machine-readable contract.")}</p>
-    </div>
-    <code>${escapeHtml(contract.path ?? "Declared by responsibility boundary")}</code>
-  </div>`).join("")}</div>`;
 }
 
 function relativeImportPath(ownedPath) {
@@ -173,13 +150,86 @@ function sampleValueForInput(input) {
   return sampleValueForType(input?.type);
 }
 
+function safeIdentifier(value, fallback = "result") {
+  const words = String(value ?? "")
+    .replace(/^[0-9]+[\s._-]*/, "")
+    .replace(/[^a-z0-9_$]+/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) {
+    return fallback;
+  }
+  const identifier = words
+    .map((word, index) => {
+      const normalized = word.replace(/^[^a-z_$]+/i, "");
+      if (!normalized) {
+        return "";
+      }
+      return index === 0
+        ? `${normalized[0].toLowerCase()}${normalized.slice(1)}`
+        : `${normalized[0].toUpperCase()}${normalized.slice(1)}`;
+    })
+    .join("");
+  return /^[A-Za-z_$][\w$]*$/.test(identifier) ? identifier : fallback;
+}
+
+function httpSurface(surface) {
+  const match = String(surface?.name ?? "").match(/^(GET|POST|PUT|PATCH|DELETE)\s+(\S+)$/i);
+  if (!match) {
+    return null;
+  }
+  return {
+    method: match[1].toUpperCase(),
+    path: match[2]
+  };
+}
+
+function declaredRequestBodyFields(surface) {
+  const dottedFields = surface.signature.inputs
+    .filter((input) => input.name.startsWith("request.body."))
+    .map((input) => ({ ...input, name: input.name.replace("request.body.", "") }));
+  if (dottedFields.length > 0) {
+    return dottedFields;
+  }
+
+  const wholeBody = surface.signature.inputs.find((input) => ["requestBody", "body", "payload"].includes(input.name));
+  if (wholeBody?.fields?.length > 0) {
+    return wholeBody.fields.map((field) => typeof field === "string" ? { name: field, type: "string" } : field);
+  }
+
+  throw new Error(`HARNESS_PREVIEW_MODEL_INVALID: ${surface.name} must declare request body fields.`);
+}
+
+function requestBodyDeclaration(surface) {
+  const body = declaredRequestBodyFields(surface)
+    .map((input) => `  ${input.name}: ${sampleValueForInput(input)}`)
+    .join(",\n");
+  return `const requestBody = {\n${body}\n};\n\n`;
+}
+
 function usageSnippet({ moduleInterface, surface }) {
-  if (!surface?.name) {
-    return "// Public surface not declared yet.";
+  const http = httpSurface(surface);
+  if (http) {
+    const outputName = safeIdentifier(surface.signature.outputs[0].name, "responseBody");
+    const hasRequestBody = http.method !== "GET" && http.method !== "DELETE";
+    const requestBody = hasRequestBody ? requestBodyDeclaration(surface) : "";
+    const bodyLine = hasRequestBody ? `,
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(requestBody)` : "";
+    return `${requestBody}const httpResponse = await fetch("${http.path}", {
+  method: "${http.method}"${bodyLine}
+});
+
+if (!httpResponse.ok) {
+  throw new Error(\`HTTP \${httpResponse.status}\`);
+}
+
+const ${outputName} = await httpResponse.json();`;
   }
   const importPath = relativeImportPath(moduleInterface?.owns?.[0]);
-  const outputName = surface.signature?.outputs?.[0]?.name ?? "result";
-  const args = (surface.signature?.inputs ?? [])
+  const outputName = safeIdentifier(surface.signature.outputs[0].name, "result");
+  const args = surface.signature.inputs
     .map((input) => sampleValueForInput(input))
     .join(", ");
   if (/^[A-Za-z_$][\w$]*$/.test(surface.name)) {
@@ -226,7 +276,7 @@ function renderSignatureRow(item, valueKeys = []) {
   if (item.description && !valueKeys.includes("description")) {
     details.push(`<p>${escapeHtml(item.description)}</p>`);
   }
-  if (item.handling) {
+  if (item.handling && !valueKeys.includes("handling")) {
     details.push(`<p>${escapeHtml(item.handling)}</p>`);
   }
   return `<div class="signature-row">${details.join("")}</div>`;
@@ -270,56 +320,13 @@ function renderSpecTable(title, items = [], columns = []) {
   </section>`;
 }
 
-function renderUsageReference({ moduleInterface, surface }) {
-  if (!surface) {
-    return '<p class="empty">No public surface is available for usage documentation.</p>';
-  }
-  return `<div class="usage-layout">
-    <section class="reference-card">
-      <p class="eyebrow">Usage</p>
-      <h3>Call The Public Surface</h3>
-      ${renderCodeBlock(usageSnippet({ moduleInterface, surface }))}
-    </section>
-    <section class="reference-card">
-      <p class="eyebrow">Signature</p>
-      <h3>${escapeHtml(surface.name)}</h3>
-      <p class="signature-title"><code>${escapeHtml(surfaceSignature(surface))}</code></p>
-      <p>${escapeHtml(surface.description ?? "Use only this declared surface from adjacent responsibility units.")}</p>
-      ${renderKeyValueGrid([
-        { label: "Kind", value: surface.kind ?? "surface" },
-        { label: "Owner", value: moduleInterface?.owner ?? moduleInterface?.responsibilityUnitId ?? "Not assigned" },
-        { label: "Contracts", value: (surface.contractIds ?? []).join(", ") || "None declared" },
-        { label: "Consumers", value: (surface.consumers ?? []).join(", ") || "None declared" }
-      ])}
-    </section>
-  </div>
-  <div class="spec-stack">
-    ${renderSpecTable("Parameters", surface.signature?.inputs ?? [], [
-      { key: "name", label: "Name" },
-      { key: "type", label: "Type" },
-      { key: "required", label: "Required" },
-      { key: "description", label: "Description" }
-    ])}
-    ${renderSpecTable("Returns", surface.signature?.outputs ?? [], [
-      { key: "name", label: "Name" },
-      { key: "type", label: "Type" },
-      { key: "description", label: "Description" }
-    ])}
-    ${renderSpecTable("Errors", surface.signature?.errors ?? [], [
-      { key: "code", label: "Code" },
-      { key: "when", label: "When" },
-      { key: "handling", label: "Handling" }
-    ])}
-  </div>`;
-}
-
 function renderSurfaceSummary({ moduleInterface, surface }) {
-  const inputCount = surface.signature?.inputs?.length ?? 0;
-  const outputCount = surface.signature?.outputs?.length ?? 0;
-  const errorCount = surface.signature?.errors?.length ?? 0;
+  const inputCount = surface.signature.inputs.length;
+  const outputCount = surface.signature.outputs.length;
+  const errorCount = surface.signature.errors.length;
   return `<section class="surface-summary">
     <div>
-      <p class="module-id">${escapeHtml(surface.kind ?? "surface")}</p>
+      <p class="module-id">${escapeHtml(surface.kind)}</p>
       <h4>${escapeHtml(surface.name)}</h4>
       <p><code>${escapeHtml(surfaceSignature(surface))}</code></p>
       ${surface.description ? `<p class="muted">${escapeHtml(surface.description)}</p>` : ""}
@@ -332,56 +339,6 @@ function renderSurfaceSummary({ moduleInterface, surface }) {
     ])}
     ${(surface.consumers ?? []).length > 0 ? `<p class="muted">Consumers: ${surface.consumers.map((consumer) => escapeHtml(consumer)).join(", ")}</p>` : ""}
   </section>`;
-}
-
-function renderModuleInterfaces(moduleInterfaces = []) {
-  if (moduleInterfaces.length === 0) {
-    return '<p class="empty">No module interfaces declared.</p>';
-  }
-  return `<div class="module-interface-list">${moduleInterfaces.map((moduleInterface) => `<article class="module-interface">
-    <header>
-      <div>
-        <p class="module-id">${escapeHtml(moduleInterface.responsibilityUnitId)}</p>
-        <h3>${escapeHtml(moduleInterface.moduleName)}</h3>
-      </div>
-      ${moduleInterface.owner ? `<span>${escapeHtml(moduleInterface.owner)}</span>` : ""}
-    </header>
-${moduleInterface.purpose ? `    <p class="section-note">${escapeHtml(moduleInterface.purpose)}</p>` : ""}
-    ${renderKeyValueGrid([
-      { label: "Owned paths", value: (moduleInterface.owns ?? []).join(", ") || "None declared" },
-      { label: "Public surfaces", value: String((moduleInterface.publicSurfaces ?? []).length) },
-      { label: "Imports", value: String((moduleInterface.imports ?? []).length) }
-    ])}
-    ${(moduleInterface.publicSurfaces ?? []).map((surface) => renderSurfaceSummary({ moduleInterface, surface })).join("")}
-${(moduleInterface.imports ?? []).length > 0 ? `    <div class="imports-list">
-      <h4>Imports</h4>
-      ${(moduleInterface.imports ?? []).map((dependency) => `<p><code>${escapeHtml(dependency.contractId)}</code> ${escapeHtml(dependency.allowedUse ?? dependency.surface ?? "")}</p>`).join("")}
-    </div>` : ""}
-  </article>`).join("")}</div>`;
-}
-
-function renderBoundaries(boundaries = []) {
-  if (boundaries.length === 0) {
-    return '<p class="empty">No responsibility boundaries declared.</p>';
-  }
-  return `<div class="boundary-grid">${boundaries.map((boundary) => `<article class="boundary-card">
-    <strong>${escapeHtml(boundary.responsibilityUnitId)}</strong>
-    <div class="path-list">${(boundary.owns ?? []).map((path) => `<code>${escapeHtml(path)}</code>`).join("")}</div>
-    ${(boundary.mayUseContracts ?? []).length > 0
-      ? `<p>May use: ${boundary.mayUseContracts.map((contract) => `<code>${escapeHtml(contract)}</code>`).join(" ")}</p>`
-      : '<p class="muted">No cross-boundary contract dependencies.</p>'}
-  </article>`).join("")}</div>`;
-}
-
-function renderArchitecture(architecture = {}) {
-  const edges = architecture.edges ?? [];
-  if (edges.length === 0) {
-    return '<p class="empty">No architecture edges declared.</p>';
-  }
-  return `<div class="flow-line">${edges.map((edge) => `<span>${escapeHtml(edge.from)}</span>
-    <b>→</b>
-    <span>${escapeHtml(edge.to)}</span>
-    <code>${escapeHtml(edge.contractId)}</code>`).join("")}</div>`;
 }
 
 function renderCallStacks(callStacks = []) {
@@ -409,6 +366,138 @@ function renderStateTransitions(transitions = []) {
     return '<p class="empty">No state transitions declared.</p>';
   }
   return `<div class="transition-list">${transitions.map((transition) => `<span>${escapeHtml(transition.from)} → ${escapeHtml(transition.to)} <code>${escapeHtml(transition.gate)}</code></span>`).join("")}</div>`;
+}
+
+function renderDossierNav() {
+  return `<nav class="dossier-nav" aria-label="Blueprint dossier sections">
+    <p class="eyebrow">Make It Real</p>
+    <strong>System Blueprint</strong>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#system-map">System Map</a>
+    <a href="#dependency-graph">Dependency Graph</a>
+    <a href="#contracts">Contract Matrix</a>
+    <a href="#modules">Module Reference</a>
+    <a href="#flows">Signal Flow</a>
+    <a href="#evidence">Evidence</a>
+  </nav>`;
+}
+
+function renderModuleNode(module) {
+  return `<article class="module-node">
+    <header>
+      <span>${escapeHtml(module.responsibilityUnitId)}</span>
+      <strong>${escapeHtml(module.moduleName)}</strong>
+    </header>
+    <p>${escapeHtml(module.purpose ?? "Declared responsibility unit.")}</p>
+    <div class="chip-row">
+      <span>${escapeHtml(module.owner ?? "owner missing")}</span>
+      <span>${(module.publicSurfaces ?? []).length} surface${(module.publicSurfaces ?? []).length === 1 ? "" : "s"}</span>
+      <span>${(module.imports ?? []).length} import${(module.imports ?? []).length === 1 ? "" : "s"}</span>
+    </div>
+  </article>`;
+}
+
+function renderSystemMap(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  if (modules.length === 0) {
+    return '<p class="empty">No modules declared.</p>';
+  }
+  return `<div class="system-map">
+    ${modules.map(renderModuleNode).join("")}
+  </div>`;
+}
+
+function renderDependencyMatrix(edges = []) {
+  if (edges.length === 0) {
+    return '<p class="empty">No cross-module dependencies declared.</p>';
+  }
+  return `<div class="dependency-matrix" role="table" aria-label="Dependency graph">
+    <div class="matrix-row header" role="row">
+      <div role="columnheader">From</div>
+      <div role="columnheader">To</div>
+      <div role="columnheader">Contract</div>
+      <div role="columnheader">Allowed Use</div>
+    </div>
+    ${edges.map((edge) => `<div class="matrix-row" role="row">
+      <div role="cell" data-label="From">${escapeHtml(edge.fromLabel ?? edge.from)}</div>
+      <div role="cell" data-label="To">${escapeHtml(edge.toLabel ?? edge.to)}</div>
+      <div role="cell" data-label="Contract"><code>${escapeHtml(edge.contractId ?? "none")}</code></div>
+      <div role="cell" data-label="Allowed Use">${escapeHtml(edge.allowedUse ?? "")}</div>
+    </div>`).join("")}
+  </div>`;
+}
+
+function renderContractMatrix(rows = []) {
+  if (rows.length === 0) {
+    return '<p class="empty">No contracts declared.</p>';
+  }
+  return `<div class="contract-matrix">
+    ${rows.map((row) => `<article>
+      <header>
+        <code>${escapeHtml(row.contractId)}</code>
+        <span>${escapeHtml(row.kind ?? "contract")}</span>
+      </header>
+      <p>${escapeHtml(row.summary)}</p>
+      <dl>
+        <div><dt>Providers</dt><dd>${escapeHtml((row.providers ?? []).join(", ") || "None declared")}</dd></div>
+        <div><dt>Consumers</dt><dd>${escapeHtml((row.consumers ?? []).join(", ") || "None declared")}</dd></div>
+        <div><dt>Path</dt><dd>${escapeHtml(row.path ?? "Boundary declaration")}</dd></div>
+      </dl>
+    </article>`).join("")}
+  </div>`;
+}
+
+function renderSurfaceReference({ moduleInterface, surface }) {
+  return `<section class="surface-reference">
+    ${renderSurfaceSummary({ moduleInterface, surface })}
+    <div class="surface-detail-grid">
+      ${renderSignatureTable("Parameters", surface.signature?.inputs ?? [], ["type", "required", "description"])}
+      ${renderSignatureTable("Returns", surface.signature?.outputs ?? [], ["type", "description"])}
+      ${renderSignatureTable("Errors", surface.signature?.errors ?? [], ["when", "handling"])}
+    </div>
+    ${renderCodeBlock(usageSnippet({ moduleInterface, surface }))}
+  </section>`;
+}
+
+function renderModuleReference(modules = []) {
+  if (modules.length === 0) {
+    return '<p class="empty">No module references declared.</p>';
+  }
+  return `<div class="module-reference">
+    ${modules.map((module) => `<article class="module-reference-card">
+      <header>
+        <div>
+          <p class="module-id">${escapeHtml(module.responsibilityUnitId)}</p>
+          <h3>${escapeHtml(module.moduleName)}</h3>
+        </div>
+        ${module.owner ? `<span>${escapeHtml(module.owner)}</span>` : ""}
+      </header>
+      <p class="section-note">${escapeHtml(module.purpose ?? "Declared responsibility unit.")}</p>
+      ${renderKeyValueGrid([
+        { label: "Owned paths", value: (module.owns ?? []).join(", ") || "None declared" },
+        { label: "Public surfaces", value: String((module.publicSurfaces ?? []).length) },
+        { label: "Imports", value: String((module.imports ?? []).length) }
+      ])}
+      ${(module.publicSurfaces ?? []).map((surface) => renderSurfaceReference({ moduleInterface: module, surface })).join("")}
+    </article>`).join("")}
+  </div>`;
+}
+
+function renderFlowTimeline({ signalFlows = [], callStacks = [], stateTransitions = [] }) {
+  return `<div class="flow-timeline">
+    <section>
+      <h3>Signal Flow</h3>
+      ${renderSequences(signalFlows)}
+    </section>
+    <section>
+      <h3>Call Stack</h3>
+      ${renderCallStacks(callStacks)}
+    </section>
+    <section>
+      <h3>State Transition Flow</h3>
+      ${renderStateTransitions(stateTransitions)}
+    </section>
+  </div>`;
 }
 
 function renderDelivery(blueprint) {
@@ -611,12 +700,17 @@ function publicSurfaceCount(moduleInterfaces = []) {
   return moduleInterfaces.reduce((total, moduleInterface) => total + (moduleInterface.publicSurfaces ?? []).length, 0);
 }
 
+function requireSystemDossier(model) {
+  if (!model.blueprint || !model.blueprint.systemDossier) {
+    throw new Error("HARNESS_PREVIEW_MODEL_INVALID: blueprint.systemDossier is required.");
+  }
+  return model.blueprint.systemDossier;
+}
+
 export function renderDashboardHtml(model) {
-  const blueprint = model.blueprint ?? {};
+  const dossier = requireSystemDossier(model);
+  const blueprint = model.blueprint;
   const primarySummary = (blueprint.summary ?? [])[0] ?? "No user-visible behavior recorded.";
-  const primaryContract = blueprint.primaryContract;
-  const surface = primarySurface(blueprint);
-  const moduleInterface = primaryModule(blueprint);
   const title = referenceTitle(model);
   return `<!doctype html>
 <html lang="en">
@@ -627,110 +721,94 @@ export function renderDashboardHtml(model) {
   <link rel="stylesheet" href="./preview.css">
 </head>
 <body>
-  <main class="doc-shell">
-    <nav class="doc-nav" aria-label="Blueprint sections">
-      <p class="eyebrow">Make It Real</p>
-      <strong>Blueprint Reference</strong>
-      <a href="#overview" class="active">Overview</a>
-      <a href="#usage">Usage</a>
-      <a href="#contracts">Contracts</a>
-      <a href="#interfaces">Interfaces</a>
-      <a href="#boundaries">Ownership</a>
-      <a href="#flow">Flow</a>
-      <a href="#evidence">Verification</a>
-    </nav>
+  <main class="dossier-shell">
+    ${renderDossierNav()}
 
-    <article class="doc-main">
-      <header id="overview" class="hero-panel">
+    <article class="dossier-main">
+      <header id="overview" class="dossier-hero">
         <div class="hero-topline">
-          <p class="eyebrow">Blueprint Reference</p>
+          <p class="eyebrow">System Blueprint</p>
           <span class="status-pill">${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
         </div>
         <h1>${escapeHtml(title)}</h1>
-        ${surfaceSignature(surface) ? `<p class="surface-line"><code>${escapeHtml(surfaceSignature(surface))}</code></p>` : ""}
         <p class="summary-line">${escapeHtml(primarySummary)}</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
           <p>${escapeHtml(blueprint.title ?? model.run.workItemId)}</p>
         </details>
         <div class="reference-grid">
-          <div><span>Public Surface</span><strong>${escapeHtml(surface?.name ?? "Not declared")}</strong></div>
-          <div><span>Owner</span><strong>${escapeHtml(moduleInterface?.owner ?? moduleInterface?.responsibilityUnitId ?? "Not assigned")}</strong></div>
-          <div><span>Contract</span><strong>${escapeHtml(primaryContract?.contractId ?? primaryContract?.kind ?? "none")}</strong></div>
+          <div><span>Modules</span><strong>${String((dossier.modules ?? []).length)}</strong></div>
+          <div><span>Contracts</span><strong>${String((dossier.contractMatrix ?? []).length)}</strong></div>
+          <div><span>Dependency Edges</span><strong>${String((dossier.dependencyEdges ?? []).length)}</strong></div>
           <div><span>${escapeHtml(verificationTileLabel(model.status))}</span><strong>${escapeHtml(verificationLabel(model.status))}</strong></div>
         </div>
       </header>
 
-      <section id="usage" class="doc-section">
+      <section id="system-map" class="dossier-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Architecture</p>
+            <h2>System Map</h2>
+          </div>
+          <span>${(dossier.modules ?? []).length} responsibility unit${(dossier.modules ?? []).length === 1 ? "" : "s"}</span>
+        </div>
+        <p class="section-note">Planned and declared responsibility units. Each unit owns its paths and exposes only declared public surfaces.</p>
+        ${renderSystemMap(dossier)}
+      </section>
+
+      <section id="dependency-graph" class="dossier-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Architecture</p>
+            <h2>Dependency Graph</h2>
+          </div>
+          <span>${(dossier.dependencyEdges ?? []).length} edge${(dossier.dependencyEdges ?? []).length === 1 ? "" : "s"}</span>
+        </div>
+        ${renderDependencyMatrix(dossier.dependencyEdges)}
+      </section>
+
+      <section id="contracts" class="dossier-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Contracts</p>
+            <h2>Contract Matrix</h2>
+          </div>
+          <span>${(dossier.contractMatrix ?? []).length} declared</span>
+        </div>
+        ${renderContractMatrix(dossier.contractMatrix)}
+      </section>
+
+      <section id="modules" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Reference</p>
-            <h2>Usage Contract</h2>
+            <h2>Module Reference</h2>
           </div>
-          <span>${publicSurfaceCount(blueprint.moduleInterfaces)} public surface${publicSurfaceCount(blueprint.moduleInterfaces) === 1 ? "" : "s"}</span>
-        </div>
-        ${renderUsageReference({ moduleInterface, surface })}
-        <h3>Delivery Scope</h3>
-        ${renderDelivery(blueprint)}
-      </section>
-
-      <section id="contracts" class="doc-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Boundary</p>
-            <h2>Contracts</h2>
-          </div>
-          <span>${(blueprint.contracts ?? []).length} declared</span>
-        </div>
-        <p class="section-note">Authoritative API / IO surfaces that other responsibility units must use without reading implementation internals.</p>
-        ${renderContractReference(blueprint.contracts)}
-      </section>
-
-      <section id="interfaces" class="doc-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Reference</p>
-            <h2>Interfaces</h2>
-          </div>
-          <span>${(blueprint.moduleInterfaces ?? []).length} module${(blueprint.moduleInterfaces ?? []).length === 1 ? "" : "s"}</span>
+          <span>${publicSurfaceCount(dossier.modules)} public surface${publicSurfaceCount(dossier.modules) === 1 ? "" : "s"}</span>
         </div>
         <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
-        ${renderModuleInterfaces(blueprint.moduleInterfaces)}
+        ${renderModuleReference(dossier.modules)}
       </section>
 
-      <section id="boundaries" class="doc-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ownership</p>
-            <h2>Responsibility Boundaries</h2>
-          </div>
-          <span>${(blueprint.boundaries ?? []).length} owner${(blueprint.boundaries ?? []).length === 1 ? "" : "s"}</span>
-        </div>
-        ${renderBoundaries(blueprint.boundaries)}
-      </section>
-
-      <section id="flow" class="doc-section">
+      <section id="flows" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Execution</p>
-            <h2>Flow</h2>
+            <h2>Signal Flow & Call Stack</h2>
           </div>
         </div>
-        <h3>System Architecture</h3>
-        ${renderArchitecture(blueprint.architecture)}
-        <h3>State Transition Flow</h3>
-        ${renderStateTransitions(blueprint.stateTransitions)}
-        <h3>Call Stack</h3>
-        ${renderCallStacks(blueprint.callStacks)}
-        <h3>Sequence Diagrams</h3>
-        ${renderSequences(blueprint.sequences)}
+        ${renderFlowTimeline({
+          signalFlows: dossier.signalFlows,
+          callStacks: dossier.callStacks,
+          stateTransitions: dossier.stateTransitions
+        })}
       </section>
 
-      <section id="evidence" class="doc-section">
+      <section id="evidence" class="dossier-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Proof</p>
-            <h2>Verification</h2>
+            <h2>Verification & Evidence</h2>
           </div>
         </div>
         <h3>Acceptance Criteria</h3>
@@ -739,14 +817,15 @@ export function renderDashboardHtml(model) {
         ${renderEvidenceSummary(model.status.evidenceSummary)}
       </section>
 
-      <section id="diagnostics" class="doc-section">
+      <section id="diagnostics" class="dossier-section">
         ${renderDeveloperDiagnostics(model, model.status)}
       </section>
-
-      <div id="runtime">
-        ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
-      </div>
     </article>
+
+    <aside class="runtime-rail" aria-label="Runtime Snapshot">
+      <h2>Runtime Snapshot</h2>
+      ${renderOperatorCockpit(model.operatorCockpit, model.board, model.status)}
+    </aside>
   </main>
   <script src="./preview.js"></script>
 </body>
@@ -1602,6 +1681,227 @@ h3 {
 .guide-step.current strong,
 .guide-step.blocked strong { color: var(--warn); }
 
+.dossier-shell {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 320px);
+  gap: 18px;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.dossier-nav,
+.runtime-rail,
+.dossier-hero,
+.dossier-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.dossier-nav,
+.runtime-rail {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+}
+
+.dossier-nav {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.dossier-nav strong {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.dossier-nav a {
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 13px;
+}
+
+.dossier-nav a.active,
+.dossier-nav a:hover {
+  background: var(--accent-soft);
+  color: #263ca8;
+  font-weight: 700;
+}
+
+.dossier-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dossier-hero,
+.dossier-section,
+.runtime-rail {
+  padding: 18px;
+}
+
+.dossier-hero h1 {
+  max-width: 900px;
+  font-size: clamp(28px, 3vw, 44px);
+  overflow-wrap: anywhere;
+}
+
+.system-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.module-node,
+.module-reference-card,
+.contract-matrix article {
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.module-node header,
+.module-reference-card header,
+.contract-matrix article header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.module-node strong,
+.module-reference-card h3,
+.contract-matrix code {
+  overflow-wrap: anywhere;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chip-row span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dependency-matrix {
+  display: grid;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .9fr) minmax(120px, .9fr) minmax(190px, 1fr) minmax(220px, 1.4fr);
+  border-top: 1px solid var(--soft-line);
+}
+
+.matrix-row:first-child {
+  border-top: 0;
+}
+
+.matrix-row > div {
+  min-width: 0;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+
+.matrix-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.contract-matrix,
+.module-reference,
+.flow-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.surface-reference {
+  display: grid;
+  gap: 12px;
+}
+
+.surface-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contract-matrix dl {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.contract-matrix dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.contract-matrix dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contract-matrix dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.runtime-rail {
+  display: grid;
+  gap: 12px;
+}
+
+.runtime-rail h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.runtime-rail .status-rail {
+  border: 0;
+  background: transparent;
+}
+
+.runtime-rail .status-rail > summary {
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0;
+}
+
+.runtime-rail .status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  border-top: 0;
+}
+
+.runtime-rail .status-grid section {
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
 @media (max-width: 1080px) {
   .doc-shell {
     grid-template-columns: 1fr;
@@ -1614,6 +1914,15 @@ h3 {
   .doc-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dossier-shell {
+    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+  }
+
+  .runtime-rail {
+    grid-column: 2;
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1622,14 +1931,29 @@ h3 {
   }
 
   .doc-nav,
+  .dossier-shell,
   .reference-grid,
   .reference-grid.compact,
   .usage-layout,
   .delivery-grid,
   .signature-grid,
+  .surface-detail-grid,
   .boundary-grid,
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dossier-shell {
+    padding: 10px;
+  }
+
+  .dossier-nav,
+  .runtime-rail {
+    position: static;
+  }
+
+  .runtime-rail {
+    grid-column: auto;
   }
 
   .doc-row,
@@ -1667,6 +1991,24 @@ h3 {
     font-size: 10px;
     font-weight: 800;
     letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .matrix-row {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-row.header {
+    display: none;
+  }
+
+  .matrix-row > div::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
     text-transform: uppercase;
   }
 }

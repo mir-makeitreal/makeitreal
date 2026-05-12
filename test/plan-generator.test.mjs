@@ -143,6 +143,7 @@ test("plan generator writes OpenAPI contract for API-shaped requests", async () 
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].name, "POST /invoices/search");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "http");
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "requestBody");
+    assert.deepEqual(designPack.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].fields, ["query"]);
     assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "200 response");
 
     const openapi = await readJsonFile(path.join(result.runDir, "contracts", "invoice-search-api.openapi.json"));
@@ -158,6 +159,33 @@ test("plan generator writes OpenAPI contract for API-shaped requests", async () 
     assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
       "verification",
       "openapi-conformance",
+      "wiki-sync"
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator keeps pure JavaScript route matcher work on module IO contracts", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request). Contract: request must be an object with method string and path string. Support GET /health and GET /users/:id. Create test/route-match.test.mjs. Verification command is npm test.",
+      runId: "http-route-matcher-module",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.apiSpecs[0].kind, "none");
+    assert.equal(designPack.moduleInterfaces[0].publicSurfaces[0].kind, "module");
+
+    const workItem = await readJsonFile(path.join(result.runDir, "work-items", "work.http-route-matcher-module.json"));
+    assert.deepEqual(workItem.doneEvidence.map((evidence) => evidence.kind), [
+      "verification",
       "wiki-sync"
     ]);
   } finally {

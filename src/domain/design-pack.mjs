@@ -62,6 +62,9 @@ export function validateDesignPack(designPack) {
   }
 
   const declaredResponsibilityUnitIds = new Set((designPack?.responsibilityBoundaries ?? []).map((boundary) => boundary.responsibilityUnitId).filter(Boolean));
+  const modulesByUnitId = new Map((designPack?.moduleInterfaces ?? [])
+    .filter((moduleInterface) => hasText(moduleInterface.responsibilityUnitId))
+    .map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
   for (const moduleInterface of designPack?.moduleInterfaces ?? []) {
     if (!hasText(moduleInterface.responsibilityUnitId)) {
       errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: "moduleInterfaces entries require responsibilityUnitId.", evidence: ["design-pack.json"] }));
@@ -118,6 +121,38 @@ export function validateDesignPack(designPack) {
         errors.push(createHarnessError({
           code: "HARNESS_CONTRACT_REFERENCE_INVALID",
           reason: `${moduleInterface.responsibilityUnitId} imports undeclared contract: ${dependency.contractId}`,
+          contractId: dependency.contractId,
+          ownerModule: moduleInterface.responsibilityUnitId,
+          evidence: ["design-pack.json"]
+        }));
+      }
+      if (!hasText(dependency.providerResponsibilityUnitId)) {
+        errors.push(createHarnessError({
+          code: "HARNESS_RESPONSIBILITY_REFERENCE_INVALID",
+          reason: `${moduleInterface.responsibilityUnitId} import ${dependency.contractId ?? "dependency"} requires providerResponsibilityUnitId.`,
+          contractId: dependency.contractId ?? null,
+          ownerModule: moduleInterface.responsibilityUnitId,
+          evidence: ["design-pack.json"]
+        }));
+        continue;
+      }
+      if (!declaredResponsibilityUnitIds.has(dependency.providerResponsibilityUnitId)) {
+        errors.push(createHarnessError({
+          code: "HARNESS_RESPONSIBILITY_REFERENCE_INVALID",
+          reason: `${moduleInterface.responsibilityUnitId} imports from undeclared provider responsibility unit: ${dependency.providerResponsibilityUnitId}`,
+          contractId: dependency.contractId ?? null,
+          ownerModule: moduleInterface.responsibilityUnitId,
+          evidence: ["design-pack.json"]
+        }));
+        continue;
+      }
+      const providerInterface = modulesByUnitId.get(dependency.providerResponsibilityUnitId);
+      const providerSurfaces = providerInterface?.publicSurfaces ?? [];
+      const providerDeclaresContract = providerSurfaces.some((surface) => (surface.contractIds ?? []).includes(dependency.contractId));
+      if (dependency.contractId && !providerDeclaresContract) {
+        errors.push(createHarnessError({
+          code: "HARNESS_CONTRACT_REFERENCE_INVALID",
+          reason: `${moduleInterface.responsibilityUnitId} imports ${dependency.contractId} from ${dependency.providerResponsibilityUnitId}, but the provider does not expose that contract.`,
           contractId: dependency.contractId,
           ownerModule: moduleInterface.responsibilityUnitId,
           evidence: ["design-pack.json"]

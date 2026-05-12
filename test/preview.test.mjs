@@ -6,8 +6,9 @@ import { test } from "node:test";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { buildOperatorCockpitModel } from "../src/preview/operator-cockpit-model.mjs";
+import { renderDashboardHtml } from "../src/preview/render-dashboard-html.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
-import { fileExists, readJsonFile } from "../src/io/json.mjs";
+import { fileExists, readJsonFile, writeJsonFile } from "../src/io/json.mjs";
 import { withFixture } from "./helpers/fixture.mjs";
 
 async function snapshot(paths) {
@@ -20,6 +21,174 @@ async function snapshot(paths) {
     }
   }
   return out;
+}
+
+async function addMultiModuleSystemDossierFixture(runDir) {
+  const designPackPath = path.join(runDir, "design-pack.json");
+  const responsibilityUnitsPath = path.join(runDir, "responsibility-units.json");
+
+  const designPack = await readJsonFile(designPackPath);
+  const responsibilityUnits = await readJsonFile(responsibilityUnitsPath);
+
+  designPack.apiSpecs = [
+    ...designPack.apiSpecs,
+    {
+      kind: "none",
+      contractId: "contract.auth.session",
+      reason: "Internal session contract declared for the Auth Service boundary."
+    }
+  ];
+
+  designPack.architecture = {
+    nodes: [
+      { id: "auth-ui", label: "Auth UI", responsibilityUnitId: "ru.frontend" },
+      { id: "auth-service", label: "Auth Service", responsibilityUnitId: "ru.backend" }
+    ],
+    edges: [
+      { from: "auth-ui", to: "auth-service", contractId: "contract.auth.login" },
+      { from: "auth-service", to: "auth-ui", contractId: "contract.auth.session" }
+    ]
+  };
+
+  designPack.responsibilityBoundaries = [
+    {
+      responsibilityUnitId: "ru.frontend",
+      owns: ["web/src/auth/**"],
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+    },
+    {
+      responsibilityUnitId: "ru.backend",
+      owns: ["api/src/auth/**"],
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+    }
+  ];
+
+  designPack.moduleInterfaces = [
+    {
+      responsibilityUnitId: "ru.frontend",
+      owner: "team.frontend",
+      moduleName: "Auth UI",
+      purpose: "Owns login form interaction and displays the declared session result.",
+      owns: ["web/src/auth/**"],
+      publicSurfaces: [
+        {
+          name: "LoginForm.submit",
+          kind: "component-action",
+          description: "Submits declared credentials and renders a declared session state.",
+          contractIds: ["contract.auth.login", "contract.auth.session"],
+          consumers: ["Auth Service", "Playwright auth flow"],
+          signature: {
+            inputs: [
+              { name: "credentials.email", type: "string", required: true, description: "User email." },
+              { name: "credentials.password", type: "string", required: true, description: "User password." }
+            ],
+            outputs: [
+              { name: "sessionResult", type: "AuthSessionResult", description: "Declared session outcome." }
+            ],
+            errors: [
+              { code: "AUTH_LOGIN_REJECTED", when: "Credentials are rejected.", handling: "Render declared error state." }
+            ]
+          }
+        }
+      ],
+      imports: [
+        {
+          contractId: "contract.auth.login",
+          providerResponsibilityUnitId: "ru.backend",
+          surface: "POST /auth/login",
+          allowedUse: "Submit login credentials only through the declared contract."
+        }
+      ]
+    },
+    {
+      responsibilityUnitId: "ru.backend",
+      owner: "team.backend",
+      moduleName: "Auth Service",
+      purpose: "Owns credential validation and session response creation.",
+      owns: ["api/src/auth/**"],
+      publicSurfaces: [
+        {
+          name: "POST /auth/login",
+          kind: "http",
+          description: "Validates credentials and returns a declared session result.",
+          contractIds: ["contract.auth.login"],
+          consumers: ["Auth UI"],
+          signature: {
+            inputs: [
+              { name: "requestBody", type: "AuthLoginRequest", required: true, fields: ["email", "password"], description: "Declared login request." }
+            ],
+            outputs: [
+              { name: "200 response", type: "AuthSessionResult", description: "Successful session result." }
+            ],
+            errors: [
+              { code: "401", when: "Credentials are invalid.", handling: "Return declared auth rejection." }
+            ]
+          }
+        }
+      ],
+      imports: [
+        {
+          contractId: "contract.auth.session",
+          providerResponsibilityUnitId: "ru.frontend",
+          surface: "SessionStore.issue",
+          allowedUse: "Issue a session result after credential validation."
+        }
+      ]
+    }
+  ];
+
+  designPack.callStacks = [
+    {
+      entrypoint: "LoginForm.submit",
+      calls: [
+        "validate component input contract",
+        "POST /auth/login via contract.auth.login",
+        "render AuthSessionResult or AUTH_LOGIN_REJECTED"
+      ]
+    },
+    {
+      entrypoint: "POST /auth/login",
+      calls: [
+        "validate AuthLoginRequest",
+        "validate credentials",
+        "SessionStore.issue via contract.auth.session",
+        "return AuthSessionResult or 401"
+      ]
+    }
+  ];
+
+  designPack.sequences = [
+    {
+      title: "Login session creation",
+      participants: ["User", "Auth UI", "Auth Service", "Session Store"],
+      messages: [
+        { from: "User", to: "Auth UI", label: "submit credentials" },
+        { from: "Auth UI", to: "Auth Service", label: "contract.auth.login" },
+        { from: "Auth Service", to: "Session Store", label: "contract.auth.session" },
+        { from: "Auth Service", to: "Auth UI", label: "AuthSessionResult or 401" }
+      ]
+    }
+  ];
+
+  responsibilityUnits.units = [
+    {
+      id: "ru.frontend",
+      owner: "team.frontend",
+      owns: ["web/src/auth/**"],
+      publicSurfaces: ["LoginForm.submit"],
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+    },
+    {
+      id: "ru.backend",
+      owner: "team.backend",
+      owns: ["api/src/auth/**"],
+      publicSurfaces: ["POST /auth/login"],
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+    }
+  ];
+
+  await writeJsonFile(designPackPath, designPack);
+  await writeJsonFile(responsibilityUnitsPath, responsibilityUnits);
 }
 
 test("operator cockpit maps phases to a read-only first-run guide", () => {
@@ -66,6 +235,19 @@ test("operator cockpit maps phases to a read-only first-run guide", () => {
   ]);
 });
 
+test("dashboard renderer requires the contract-first system dossier", () => {
+  assert.throws(
+    () => renderDashboardHtml({
+      blueprint: {},
+      run: { workItemId: "work.missing-dossier" },
+      status: {},
+      operatorCockpit: null,
+      board: null
+    }),
+    /HARNESS_PREVIEW_MODEL_INVALID: blueprint\.systemDossier is required/
+  );
+});
+
 test("renders canonical architecture preview", async () => {
   await withFixture(async ({ runDir }) => {
     const watched = [
@@ -107,20 +289,26 @@ test("renders canonical architecture preview", async () => {
     assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.inputs[0].name, "credentials.email");
     assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.outputs[0].name, "sessionResult");
     assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.errors[0].code, "AUTH_LOGIN_REJECTED");
+    assert.deepEqual(previewModel.blueprint.systemDossier.contractMatrix[0].providers, ["Auth Service"]);
+    assert.deepEqual(previewModel.blueprint.systemDossier.contractMatrix[0].consumers, ["Auth UI"]);
     assert.equal(previewModel.blueprint.acceptanceCriteria[0].id, "AC-001");
+    const importEdge = previewModel.blueprint.systemDossier.dependencyEdges.find((edge) => edge.from === "ru.frontend");
+    assert.equal(importEdge.toLabel, "Auth Service");
+    assert.equal(importEdge.surface, "POST /auth/login");
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "Blueprint Reference",
-      "Usage Contract",
-      "Contracts",
-      "Interfaces",
+      "System Blueprint",
+      "System Map",
+      "Dependency Graph",
+      "Contract Matrix",
+      "Module Reference",
       "Parameters",
       "Returns",
       "Errors",
-      "Responsibility Boundaries",
-      "Flow",
-      "Verification",
+      "Signal Flow",
+      "Call Stack",
+      "Verification & Evidence",
       "Developer Diagnostics",
       "Current Run"
     ]) {
@@ -130,6 +318,14 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
     assert.doesNotMatch(html, /<h2>Kanban Board<\/h2>/);
     assert.match(html, /Read-only dashboard/);
+    assert.match(html, /email: &quot;user@example\.com&quot;/);
+    assert.match(html, /password: &quot;correct horse battery staple&quot;/);
+    assert.match(html, /body: JSON\.stringify\(requestBody\)/);
+    assert.match(html, /const session = await httpResponse\.json\(\);/);
+    assert.doesNotMatch(html, /const 200\.session/);
+    assert.doesNotMatch(html, /body: JSON\.stringify\(\{\}\)/);
+    assert.doesNotMatch(html, /POST \/auth\/login\(&quot;user@example\.com&quot;/);
+    assert.doesNotMatch(html, /Surface the declared auth error state; do not infer fallback session behavior\.<\/span><p>Surface the declared auth error state/);
     assert.match(html, /data-read-only-cockpit="true"/);
     assert.match(html, /data-operator-kanban="true"/);
     assert.match(html, /\/makeitreal:status/);
@@ -151,12 +347,94 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(js, /fetch\([^)]*orchestrator/);
 
     const css = await readFile(path.join(previewDir, "preview.css"), "utf8");
-    assert.match(css, /\.doc-shell/);
-    assert.match(css, /\.doc-nav/);
+    assert.match(css, /\.dossier-shell/);
+    assert.match(css, /\.dossier-nav/);
+    assert.match(css, /\.runtime-rail/);
     assert.match(css, /\.status-rail/);
-    assert.match(css, /\.module-interface/);
+    assert.match(css, /\.module-reference/);
     assert.match(css, /\.signature-table/);
     assert.match(css, /\.compact-kanban/);
+  });
+});
+
+test("preview renders a multi-module system Blueprint dossier", async () => {
+  await withFixture(async ({ runDir }) => {
+    await addMultiModuleSystemDossierFixture(runDir);
+    const result = await renderDesignPreview({ runDir });
+    assert.equal(result.ok, true);
+
+    const previewDir = path.join(runDir, "preview");
+    const previewModel = await readJsonFile(path.join(previewDir, "preview-model.json"));
+    const dossier = previewModel.blueprint.systemDossier;
+
+    assert.equal(dossier.title, "Authentication vertical slice");
+    assert.equal(dossier.modules.length, 2);
+    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["Auth UI", "Auth Service"]);
+    assert.equal(dossier.modules[0].publicSurfaces[0].name, "LoginForm.submit");
+    assert.equal(dossier.modules[1].publicSurfaces[0].name, "POST /auth/login");
+    assert.deepEqual(dossier.dependencyEdges.map((edge) => edge.contractId), [
+      "contract.auth.login",
+      "contract.auth.session",
+      "contract.auth.login",
+      "contract.auth.session"
+    ]);
+    const loginImportEdge = dossier.dependencyEdges.find((edge) => edge.from === "ru.frontend");
+    assert.equal(loginImportEdge.to, "ru.backend");
+    assert.equal(loginImportEdge.toLabel, "Auth Service");
+    assert.equal(loginImportEdge.surface, "POST /auth/login");
+    assert.equal(dossier.contractMatrix.length, 2);
+    assert.deepEqual(dossier.contractMatrix.find((contract) => contract.contractId === "contract.auth.login").providers, ["Auth Service"]);
+    assert.deepEqual(dossier.contractMatrix.find((contract) => contract.contractId === "contract.auth.login").consumers, ["Auth UI"]);
+    assert.equal(dossier.signalFlows[0].title, "Login session creation");
+    assert.equal(dossier.callStacks.length, 2);
+    assert.equal(dossier.deliveryScope.ownedPaths.includes("web/src/auth/**"), true);
+    assert.equal(dossier.deliveryScope.ownedPaths.includes("api/src/auth/**"), true);
+
+    const html = await readFile(path.join(previewDir, "index.html"), "utf8");
+    for (const label of [
+      "System Blueprint",
+      "System Map",
+      "Dependency Graph",
+      "Contract Matrix",
+      "Module Reference",
+      "Signal Flow",
+      "Call Stack",
+      "Runtime Snapshot"
+    ]) {
+      assert.match(html, new RegExp(label));
+    }
+    assert.match(html, /Auth UI/);
+    assert.match(html, /Auth Service/);
+    assert.match(html, /LoginForm\.submit/);
+    assert.match(html, /POST \/auth\/login/);
+    assert.match(html, /const response = await httpResponse\.json\(\);/);
+    assert.match(html, /body: JSON\.stringify\(requestBody\)/);
+    assert.match(html, /contract\.auth\.login/);
+    assert.match(html, /contract\.auth\.session/);
+    assert.doesNotMatch(html, /const 200 response/);
+    assert.doesNotMatch(html, /body: JSON\.stringify\(\{\}\)/);
+    assert.doesNotMatch(html, /POST \/auth\/login\(\{\}\)/);
+    assert.match(html, /data-read-only-cockpit="true"/);
+    assert.match(html, /copy-command/);
+    assert.doesNotMatch(html, /data-harness-action=/);
+    assert.doesNotMatch(html, /makeitreal-engine blueprint approve/);
+    assert.doesNotMatch(html, /makeitreal-engine orchestrator tick/);
+
+    const css = await readFile(path.join(previewDir, "preview.css"), "utf8");
+    for (const selector of [
+      ".dossier-shell",
+      ".dossier-nav",
+      ".dossier-main",
+      ".runtime-rail",
+      ".system-map",
+      ".dependency-matrix",
+      ".module-reference",
+      ".flow-timeline"
+    ]) {
+      assert.match(css, new RegExp(selector.replace(".", "\\.")));
+    }
+    assert.match(css, /overflow-wrap:\s*anywhere/);
+    assert.match(css, /grid-template-columns:\s*minmax\(180px,\s*220px\)\s+minmax\(0,\s*1fr\)\s+minmax\(260px,\s*320px\)/);
   });
 });
 
@@ -261,7 +539,7 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.match(html, /normalizeDisplayName\(input\)/);
     assert.match(html, /Original request/);
     assert.match(html, /display-name normalization responsibility unit/);
-    assert.match(html, /Public Surface/);
+    assert.match(html, /Public surfaces/);
     assert.match(html, /Run Status & Kanban/);
     assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
     assert.doesNotMatch(html, /<h1>Implement a pure JavaScript display-name/);
@@ -270,7 +548,7 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
 
     const css = await readFile(path.join(plan.runDir, "preview", "preview.css"), "utf8");
-    assert.match(css, /grid-template-columns: 240px minmax\(0, 1fr\)/);
+    assert.match(css, /grid-template-columns: minmax\(180px, 220px\) minmax\(0, 1fr\) minmax\(260px, 320px\)/);
     assert.match(css, /\.reference-grid/);
     assert.doesNotMatch(css, /grid-template-columns: 220px minmax\(0, 1fr\) 300px/);
   } finally {
