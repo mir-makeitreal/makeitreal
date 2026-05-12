@@ -17,6 +17,12 @@
     <a href="#dependency-graph">Dependency Graph</a>
     <a href="#contracts">Contract Matrix</a>
     <a href="#modules">Module Reference</a>
+    <div class="nav-group">
+    <span>Modules</span>
+    <a class="nav-module" href="#module-0-auth-ui">Auth UI</a>
+      <a class="nav-surface" href="#module-0-auth-ui-surface-0-loginform-submit">LoginForm.submit</a><a class="nav-module" href="#module-1-auth-service">Auth Service</a>
+      <a class="nav-surface" href="#module-1-auth-service-surface-0-post-auth-login">POST /auth/login</a>
+  </div>
     <a href="#flows">Signal Flow</a>
     <a href="#evidence">Evidence</a>
   </nav>
@@ -25,7 +31,7 @@
       <header id="overview" class="dossier-hero">
         <div class="hero-topline">
           <p class="eyebrow">System Blueprint</p>
-          <span class="status-pill">approved</span>
+          <span class="status-pill" data-live-blueprint-status>approved</span>
         </div>
         <h1>Authentication Vertical Slice</h1>
         <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
@@ -33,11 +39,11 @@
           <summary>Original request</summary>
           <p>Authentication vertical slice</p>
         </details>
-        <div class="reference-grid">
-          <div><span>Modules</span><strong>2</strong></div>
-          <div><span>Contracts</span><strong>1</strong></div>
-          <div><span>Dependency Edges</span><strong>2</strong></div>
-          <div><span>Verification</span><strong>Verification passed</strong></div>
+        <div class="reference-grid" data-live-overview>
+          <div><span>Modules</span><strong data-live-module-count>2</strong></div>
+          <div><span>Contracts</span><strong data-live-contract-count>1</strong></div>
+          <div><span>Dependency Edges</span><strong data-live-edge-count>2</strong></div>
+          <div><span data-live-verification-tile-label>Verification</span><strong data-live-verification-label>Verification passed</strong></div>
         </div>
       </header>
 
@@ -254,7 +260,7 @@
         </div>
         <p class="section-note">Public surfaces and IO signatures for each responsibility unit. Adjacent teams should be able to work from this section without reading implementation code.</p>
         <div class="module-reference">
-    <article class="module-reference-card">
+    <article id="module-0-auth-ui" class="module-reference-card">
       <header>
         <div>
           <p class="module-id">ru.frontend</p>
@@ -273,7 +279,7 @@
     <span>Imports</span>
     <strong>1</strong>
   </div></div>
-      <section class="surface-reference">
+      <section id="module-0-auth-ui-surface-0-loginform-submit" class="surface-reference">
     <section class="surface-summary">
     <div>
       <p class="module-id">component-event</p>
@@ -314,7 +320,7 @@
 // Call it only through the Blueprint contract; do not read implementation internals.
 const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
   </section>
-    </article><article class="module-reference-card">
+    </article><article id="module-1-auth-service" class="module-reference-card">
       <header>
         <div>
           <p class="module-id">ru.auth-service</p>
@@ -333,7 +339,7 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
     <span>Imports</span>
     <strong>0</strong>
   </div></div>
-      <section class="surface-reference">
+      <section id="module-1-auth-service-surface-0-post-auth-login" class="surface-reference">
     <section class="surface-summary">
     <div>
       <p class="module-id">http</p>
@@ -547,42 +553,42 @@ const session = await httpResponse.json();</code></pre>
 
     <aside class="runtime-rail" aria-label="Runtime Snapshot">
       <h2>Runtime Snapshot</h2>
-      <details class="status-rail" data-read-only-cockpit="true">
+      <details class="status-rail" data-read-only-cockpit="true" data-live-status-rail>
     <summary>
       <span>Run Status & Kanban</span>
-      <strong>launch-ready</strong>
+      <strong data-live-phase>launch-ready</strong>
     </summary>
     <div class="status-grid">
       <section>
         <p class="rail-label">Current Run</p>
-        <h2>launch-ready</h2>
-        <p><strong>Blueprint is approved and ready to launch.</strong></p>
+        <h2 data-live-phase>launch-ready</h2>
+        <p><strong data-live-headline>Blueprint is approved and ready to launch.</strong></p>
         <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
         <div class="command-copy">
-          <code>/makeitreal:launch</code>
-          <button type="button" class="copy-command" data-copy="/makeitreal:launch">Copy</button>
+          <code data-live-next-command>/makeitreal:launch</code>
+          <button type="button" class="copy-command" data-live-copy-command data-copy="/makeitreal:launch">Copy</button>
         </div>
       </section>
 
       <section>
         <h3>Kanban</h3>
-        <div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div>
+        <div data-live-kanban><div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div></div>
       </section>
 
       <section>
         <h3>Blockers</h3>
-        <p class="empty">No active blockers.</p>
+        <div data-live-blockers><p class="empty">No active blockers.</p></div>
       </section>
 
       <section>
         <h3>Evidence Links</h3>
-        <div class="rail-list"><div>
+        <div data-live-evidence-links><div class="rail-list"><div>
       <a href="../evidence/verification.json">verification: verification recorded</a>
       <code>evidence/verification.json</code>
     </div><div>
       <a href="../evidence/wiki-sync.json">wiki-sync: wiki-sync recorded</a>
       <code>evidence/wiki-sync.json</code>
-    </div></div>
+    </div></div></div>
       </section>
 
       <section>

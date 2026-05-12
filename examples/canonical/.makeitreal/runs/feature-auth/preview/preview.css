@@ -945,6 +945,8 @@ h3 {
 .dossier-nav {
   display: grid;
   gap: 4px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
   padding: 14px;
 }
 
@@ -965,6 +967,32 @@ h3 {
   background: var(--accent-soft);
   color: #263ca8;
   font-weight: 700;
+}
+
+.nav-group {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+  border-top: 1px solid var(--soft-line);
+  padding-top: 8px;
+}
+
+.nav-group > span {
+  padding: 4px 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dossier-nav .nav-module {
+  font-weight: 700;
+}
+
+.dossier-nav .nav-surface {
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .dossier-main {

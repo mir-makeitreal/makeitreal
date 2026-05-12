@@ -648,7 +648,35 @@ function renderVisualBlueprint(dossier = {}) {
   return `<div class="diagram-grid">${diagrams.join("")}</div>`;
 }
 
-function renderDossierNav() {
+function anchorSlug(value, fallback = "item") {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || fallback;
+}
+
+function moduleAnchor(module, index) {
+  return `module-${index}-${anchorSlug(module.moduleName ?? module.responsibilityUnitId, "module")}`;
+}
+
+function surfaceAnchor(module, surface, moduleIndex, surfaceIndex) {
+  return `${moduleAnchor(module, moduleIndex)}-surface-${surfaceIndex}-${anchorSlug(surface.name, "surface")}`;
+}
+
+function renderModuleNav(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  if (modules.length === 0) {
+    return "";
+  }
+  return `<div class="nav-group">
+    <span>Modules</span>
+    ${modules.map((module, moduleIndex) => `<a class="nav-module" href="#${escapeHtml(moduleAnchor(module, moduleIndex))}">${escapeHtml(module.moduleName)}</a>
+      ${(module.publicSurfaces ?? []).map((surface, surfaceIndex) => `<a class="nav-surface" href="#${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}">${escapeHtml(surface.name)}</a>`).join("")}`).join("")}
+  </div>`;
+}
+
+function renderDossierNav(dossier = {}) {
   return `<nav class="dossier-nav" aria-label="Blueprint dossier sections">
     <p class="eyebrow">Make It Real</p>
     <strong>System Blueprint</strong>
@@ -658,6 +686,7 @@ function renderDossierNav() {
     <a href="#dependency-graph">Dependency Graph</a>
     <a href="#contracts">Contract Matrix</a>
     <a href="#modules">Module Reference</a>
+    ${renderModuleNav(dossier)}
     <a href="#flows">Signal Flow</a>
     <a href="#evidence">Evidence</a>
   </nav>`;
@@ -728,8 +757,8 @@ function renderContractMatrix(rows = []) {
   </div>`;
 }
 
-function renderSurfaceReference({ moduleInterface, surface }) {
-  return `<section class="surface-reference">
+function renderSurfaceReference({ moduleInterface, surface, moduleIndex = 0, surfaceIndex = 0 }) {
+  return `<section id="${escapeHtml(surfaceAnchor(moduleInterface, surface, moduleIndex, surfaceIndex))}" class="surface-reference">
     ${renderSurfaceSummary({ moduleInterface, surface })}
     <div class="surface-detail-grid">
       ${renderSignatureTable("Parameters", surface.signature?.inputs ?? [], ["type", "required", "description"])}
@@ -745,7 +774,7 @@ function renderModuleReference(modules = []) {
     return '<p class="empty">No module references declared.</p>';
   }
   return `<div class="module-reference">
-    ${modules.map((module) => `<article class="module-reference-card">
+    ${modules.map((module, moduleIndex) => `<article id="${escapeHtml(moduleAnchor(module, moduleIndex))}" class="module-reference-card">
       <header>
         <div>
           <p class="module-id">${escapeHtml(module.responsibilityUnitId)}</p>
@@ -759,7 +788,7 @@ function renderModuleReference(modules = []) {
         { label: "Public surfaces", value: String((module.publicSurfaces ?? []).length) },
         { label: "Imports", value: String((module.imports ?? []).length) }
       ])}
-      ${(module.publicSurfaces ?? []).map((surface) => renderSurfaceReference({ moduleInterface: module, surface })).join("")}
+      ${(module.publicSurfaces ?? []).map((surface, surfaceIndex) => renderSurfaceReference({ moduleInterface: module, surface, moduleIndex, surfaceIndex })).join("")}
     </article>`).join("")}
   </div>`;
 }
@@ -952,36 +981,36 @@ function renderOperatorCockpit(cockpit, board, status) {
   if (!cockpit) {
     return "";
   }
-  return `<details class="status-rail" data-read-only-cockpit="${cockpit.readOnly ? "true" : "false"}">
+  return `<details class="status-rail" data-read-only-cockpit="${cockpit.readOnly ? "true" : "false"}" data-live-status-rail>
     <summary>
       <span>Run Status & Kanban</span>
-      <strong>${escapeHtml(status.phase ?? "unknown")}</strong>
+      <strong data-live-phase>${escapeHtml(status.phase ?? "unknown")}</strong>
     </summary>
     <div class="status-grid">
       <section>
         <p class="rail-label">Current Run</p>
-        <h2>${escapeHtml(status.phase ?? "unknown")}</h2>
-        <p><strong>${escapeHtml(status.headline ?? "Status unavailable.")}</strong></p>
+        <h2 data-live-phase>${escapeHtml(status.phase ?? "unknown")}</h2>
+        <p><strong data-live-headline>${escapeHtml(status.headline ?? "Status unavailable.")}</strong></p>
         <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
         <div class="command-copy">
-          <code>${escapeHtml(status.nextCommand ?? status.nextAction ?? "none")}</code>
-          <button type="button" class="copy-command" data-copy="${escapeHtml(status.nextCommand ?? status.nextAction ?? "")}">Copy</button>
+          <code data-live-next-command>${escapeHtml(status.nextCommand ?? status.nextAction ?? "none")}</code>
+          <button type="button" class="copy-command" data-live-copy-command data-copy="${escapeHtml(status.nextCommand ?? status.nextAction ?? "")}">Copy</button>
         </div>
       </section>
 
       <section>
         <h3>Kanban</h3>
-        ${renderCompactKanban(board)}
+        <div data-live-kanban>${renderCompactKanban(board)}</div>
       </section>
 
       <section>
         <h3>Blockers</h3>
-        ${renderBlockers(status.blockers)}
+        <div data-live-blockers>${renderBlockers(status.blockers)}</div>
       </section>
 
       <section>
         <h3>Evidence Links</h3>
-        ${renderEvidenceLinks(cockpit.evidenceLinks)}
+        <div data-live-evidence-links>${renderEvidenceLinks(cockpit.evidenceLinks)}</div>
       </section>
 
       <section>
@@ -1018,13 +1047,13 @@ export function renderDashboardHtml(model) {
 </head>
 <body>
   <main class="dossier-shell">
-    ${renderDossierNav()}
+    ${renderDossierNav(dossier)}
 
     <article class="dossier-main">
       <header id="overview" class="dossier-hero">
         <div class="hero-topline">
           <p class="eyebrow">System Blueprint</p>
-          <span class="status-pill">${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
+          <span class="status-pill" data-live-blueprint-status>${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
         </div>
         <h1>${escapeHtml(title)}</h1>
         <p class="summary-line">${escapeHtml(primarySummary)}</p>
@@ -1032,11 +1061,11 @@ export function renderDashboardHtml(model) {
           <summary>Original request</summary>
           <p>${escapeHtml(blueprint.title ?? model.run.workItemId)}</p>
         </details>
-        <div class="reference-grid">
-          <div><span>Modules</span><strong>${String((dossier.modules ?? []).length)}</strong></div>
-          <div><span>Contracts</span><strong>${String((dossier.contractMatrix ?? []).length)}</strong></div>
-          <div><span>Dependency Edges</span><strong>${String((dossier.dependencyEdges ?? []).length)}</strong></div>
-          <div><span>${escapeHtml(verificationTileLabel(model.status))}</span><strong>${escapeHtml(verificationLabel(model.status))}</strong></div>
+        <div class="reference-grid" data-live-overview>
+          <div><span>Modules</span><strong data-live-module-count>${String((dossier.modules ?? []).length)}</strong></div>
+          <div><span>Contracts</span><strong data-live-contract-count>${String((dossier.contractMatrix ?? []).length)}</strong></div>
+          <div><span>Dependency Edges</span><strong data-live-edge-count>${String((dossier.dependencyEdges ?? []).length)}</strong></div>
+          <div><span data-live-verification-tile-label>${escapeHtml(verificationTileLabel(model.status))}</span><strong data-live-verification-label>${escapeHtml(verificationLabel(model.status))}</strong></div>
         </div>
       </header>
 
@@ -2100,6 +2129,8 @@ h3 {
 .dossier-nav {
   display: grid;
   gap: 4px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
   padding: 14px;
 }
 
@@ -2120,6 +2151,32 @@ h3 {
   background: var(--accent-soft);
   color: #263ca8;
   font-weight: 700;
+}
+
+.nav-group {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+  border-top: 1px solid var(--soft-line);
+  padding-top: 8px;
+}
+
+.nav-group > span {
+  padding: 4px 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dossier-nav .nav-module {
+  font-weight: 700;
+}
+
+.dossier-nav .nav-surface {
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .dossier-main {
@@ -2409,33 +2466,150 @@ h3 {
 export function renderDashboardJs() {
   return `(() => {
   const pollMs = 2000;
-  const fileFallbackMs = 5000;
   let lastSnapshot = null;
+  let lastBlueprintSnapshot = null;
   let pollTimer = null;
-  let fileFallbackTimer = null;
-  let reloadWhenVisible = false;
 
-  function reloadDashboard() {
-    if (document.visibilityState === "hidden") {
-      reloadWhenVisible = true;
-      return;
-    }
-    window.location.reload();
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
   }
 
-  function startFileFallback() {
-    if (window.location.protocol !== "file:" || fileFallbackTimer) {
-      return;
+  function setTextAll(selector, value) {
+    for (const node of document.querySelectorAll(selector)) {
+      node.textContent = String(value ?? "");
     }
-    if (pollTimer) {
-      window.clearInterval(pollTimer);
-      pollTimer = null;
+  }
+
+  function verificationLabel(status = {}) {
+    if (status.phase === "done") {
+      return "Verified and synced";
     }
-    fileFallbackTimer = window.setInterval(reloadDashboard, fileFallbackMs);
+    const verification = (status.evidenceSummary ?? []).find((item) => String(item.kind ?? "").includes("verification"));
+    if (verification?.ok === true) {
+      return "Verification passed";
+    }
+    return status.nextAction ?? "Pending review";
+  }
+
+  function verificationTileLabel(status = {}) {
+    return status.phase === "done" || (status.evidenceSummary ?? []).some((item) => String(item.kind ?? "").includes("verification")) ? "Verification" : "Next Step";
+  }
+
+  function renderRailList(items, emptyText, renderer) {
+    if (!items || items.length === 0) {
+      return '<p class="empty">' + escapeHtml(emptyText) + '</p>';
+    }
+    return '<div class="rail-list">' + items.map(renderer).join("") + '</div>';
+  }
+
+  function renderBlockers(blockers = []) {
+    return renderRailList(blockers, "No active blockers.", (blocker) => '<div><strong>' + escapeHtml(blocker.code) + '</strong><p>' + escapeHtml(blocker.message) + '</p>' + (blocker.nextAction ? '<code>' + escapeHtml(blocker.nextAction) + '</code>' : "") + '</div>');
+  }
+
+  function renderEvidenceLinks(links = []) {
+    return renderRailList(links, "No evidence recorded yet.", (link) => {
+      const label = String(link.kind ?? "") + ": " + String(link.summary || link.path || "");
+      const target = link.href ? '<a href="' + escapeHtml(link.href) + '">' + escapeHtml(label) + '</a>' : '<strong>' + escapeHtml(label) + '</strong>';
+      return '<div>' + target + '<code>' + escapeHtml(link.path ?? "") + '</code></div>';
+    });
+  }
+
+  function operatorLaneFor(workItem) {
+    if (workItem.isBlocked || workItem.isRetryReady || workItem.isRework || ["Failed Fast", "Rework"].includes(workItem.lane)) {
+      return "Blocked";
+    }
+    if (["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen"].includes(workItem.lane)) {
+      return "Planned";
+    }
+    if (["Ready", "Claimed"].includes(workItem.lane)) {
+      return "Ready";
+    }
+    if (workItem.lane === "Running") {
+      return "In Progress";
+    }
+    if (["Verifying", "Human Review"].includes(workItem.lane)) {
+      return "Review";
+    }
+    if (workItem.lane === "Done") {
+      return "Done";
+    }
+    return "Planned";
+  }
+
+  function renderWorkItemCard(workItem) {
+    const flags = [
+      workItem.isBlocked ? "blocked" : null,
+      workItem.isRetryReady ? "retry ready" : null,
+      workItem.isRework ? "rework" : null,
+      workItem.claim ? "claimed by " + workItem.claim.workerId : null
+    ].filter(Boolean);
+    return '<article class="work-card" data-work-item-id="' + escapeHtml(workItem.id) + '"><strong>' + escapeHtml(workItem.title ?? workItem.id) + '</strong><code>' + escapeHtml(workItem.id) + '</code><span>' + escapeHtml(workItem.responsibilityUnitId) + '</span>' + (flags.length > 0 ? '<em>' + escapeHtml(flags.join(" | ")) + '</em>' : "") + '</article>';
+  }
+
+  function renderKanban(board) {
+    if (!board) {
+      return '<div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div>';
+    }
+    const order = ["Planned", "Ready", "In Progress", "Review", "Done", "Blocked"];
+    const groups = new Map(order.map((name) => [name, { name, workItems: [] }]));
+    for (const lane of board.lanes ?? []) {
+      for (const workItem of lane.workItems ?? []) {
+        groups.get(operatorLaneFor(workItem)).workItems.push({ ...workItem, internalLane: lane.name });
+      }
+    }
+    return '<div class="compact-kanban" data-operator-kanban="true">' + [...groups.values()].filter((group) => group.workItems.length > 0 || group.name !== "Blocked").map((group) => '<section class="kanban-lane" data-lane="' + escapeHtml(group.name) + '"><header><span>' + escapeHtml(group.name) + '</span><strong>' + group.workItems.length + '</strong></header>' + group.workItems.slice(0, 3).map(renderWorkItemCard).join("") + (group.workItems.length > 3 ? '<p class="muted">+' + (group.workItems.length - 3) + ' more</p>' : "") + '</section>').join("") + '</div>';
+  }
+
+  function updateRuntime(model) {
+    const status = model.status ?? {};
+    const dossier = model.blueprint?.systemDossier ?? {};
+    const nextCommand = status.nextCommand ?? status.nextAction ?? "";
+
+    setTextAll("[data-live-blueprint-status]", status.blueprintStatus ?? "unknown");
+    setTextAll("[data-live-module-count]", (dossier.modules ?? []).length);
+    setTextAll("[data-live-contract-count]", (dossier.contractMatrix ?? []).length);
+    setTextAll("[data-live-edge-count]", (dossier.dependencyEdges ?? []).length);
+    setTextAll("[data-live-verification-tile-label]", verificationTileLabel(status));
+    setTextAll("[data-live-verification-label]", verificationLabel(status));
+    setTextAll("[data-live-phase]", status.phase ?? "unknown");
+    setTextAll("[data-live-headline]", status.headline ?? "Status unavailable.");
+    setTextAll("[data-live-next-command]", nextCommand || "none");
+
+    const copyButton = document.querySelector("[data-live-copy-command]");
+    if (copyButton) {
+      copyButton.setAttribute("data-copy", nextCommand);
+      copyButton.textContent = "Copy";
+    }
+    const kanban = document.querySelector("[data-live-kanban]");
+    if (kanban) {
+      kanban.innerHTML = renderKanban(model.board);
+    }
+    const blockers = document.querySelector("[data-live-blockers]");
+    if (blockers) {
+      blockers.innerHTML = renderBlockers(status.blockers ?? []);
+    }
+    const evidenceLinks = document.querySelector("[data-live-evidence-links]");
+    if (evidenceLinks) {
+      evidenceLinks.innerHTML = renderEvidenceLinks(model.operatorCockpit?.evidenceLinks ?? []);
+    }
+    const blueprintSnapshot = JSON.stringify(model.blueprint ?? {});
+    if (lastBlueprintSnapshot !== null && blueprintSnapshot !== lastBlueprintSnapshot) {
+      document.documentElement.dataset.makeitrealBlueprintChanged = "true";
+    }
+    lastBlueprintSnapshot = blueprintSnapshot;
+    bindCommandCopy();
   }
 
   function bindCommandCopy() {
     for (const button of document.querySelectorAll(".copy-command[data-copy]")) {
+      if (button.dataset.copyBound === "true") {
+        continue;
+      }
+      button.dataset.copyBound = "true";
       button.addEventListener("click", async () => {
         const text = button.getAttribute("data-copy") ?? "";
         try {
@@ -2448,31 +2622,35 @@ export function renderDashboardJs() {
     }
   }
 
+  function markAutoRefreshUnavailable() {
+    document.documentElement.dataset.makeitrealAutoRefresh = "unavailable";
+    if (window.location.protocol === "file:") {
+      console.info("makeitreal:auto-reload:file-url-no-refresh");
+    }
+  }
+
   async function checkForDashboardUpdate() {
     try {
       const response = await fetch("./preview-model.json", { cache: "no-store" });
       if (!response.ok) {
-        startFileFallback();
+        markAutoRefreshUnavailable();
         return;
       }
-      const snapshot = JSON.stringify(await response.json());
+      const model = await response.json();
+      const snapshot = JSON.stringify(model);
       if (lastSnapshot === null) {
         lastSnapshot = snapshot;
+        updateRuntime(model);
         return;
       }
       if (snapshot !== lastSnapshot) {
-        reloadDashboard();
+        updateRuntime(model);
+        lastSnapshot = snapshot;
       }
     } catch {
-      startFileFallback();
+      markAutoRefreshUnavailable();
     }
   }
-
-  document.addEventListener("visibilitychange", () => {
-    if (reloadWhenVisible && document.visibilityState === "visible") {
-      reloadDashboard();
-    }
-  });
 
   window.makeitrealAutoReload = { checkForDashboardUpdate };
   bindCommandCopy();

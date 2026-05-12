@@ -328,6 +328,8 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(html, /POST \/auth\/login\(&quot;user@example\.com&quot;/);
     assert.doesNotMatch(html, /Surface the declared auth error state; do not infer fallback session behavior\.<\/span><p>Surface the declared auth error state/);
     assert.match(html, /data-read-only-cockpit="true"/);
+    assert.match(html, /data-live-status-rail/);
+    assert.match(html, /data-live-kanban/);
     assert.match(html, /data-operator-kanban="true"/);
     assert.match(html, /\/makeitreal:status/);
     assert.match(html, /copy-command/);
@@ -343,7 +345,10 @@ test("renders canonical architecture preview", async () => {
     const js = await readFile(path.join(previewDir, "preview.js"), "utf8");
     assert.match(js, /makeitreal:auto-reload/);
     assert.match(js, /preview-model\.json/);
-    assert.match(js, /location\.reload/);
+    assert.match(js, /updateRuntime/);
+    assert.match(js, /data-live-kanban/);
+    assert.doesNotMatch(js, /location\.reload/);
+    assert.doesNotMatch(js, /setInterval\(reloadDashboard/);
     assert.match(js, /window\.location\.protocol/);
     assert.match(js, /"file:"/);
     assert.match(js, /navigator\.clipboard\.writeText/);
@@ -414,6 +419,12 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     }
     assert.match(html, /Auth UI/);
     assert.match(html, /Auth Service/);
+    assert.match(html, /href="#module-0-auth-ui"/);
+    assert.match(html, /href="#module-1-auth-service"/);
+    assert.match(html, /id="module-0-auth-ui"/);
+    assert.match(html, /id="module-1-auth-service"/);
+    assert.match(html, /id="module-0-auth-ui-surface-0-loginform-submit"/);
+    assert.match(html, /id="module-1-auth-service-surface-0-post-auth-login"/);
     assert.match(html, /LoginForm\.submit/);
     assert.match(html, /POST \/auth\/login/);
     assert.match(html, /const response = await httpResponse\.json\(\);/);
@@ -440,6 +451,9 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       ".runtime-rail",
       ".diagram-card",
       ".mermaid",
+      ".nav-group",
+      ".nav-module",
+      ".nav-surface",
       ".system-map",
       ".dependency-matrix",
       ".module-reference",
