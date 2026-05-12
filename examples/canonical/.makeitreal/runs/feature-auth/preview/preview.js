@@ -100,15 +100,9 @@
 
   function updateRuntime(model) {
     const status = model.status ?? {};
-    const dossier = model.blueprint?.systemDossier ?? {};
     const nextCommand = status.nextCommand ?? status.nextAction ?? "";
 
     setTextAll("[data-live-blueprint-status]", status.blueprintStatus ?? "unknown");
-    setTextAll("[data-live-module-count]", (dossier.modules ?? []).length);
-    setTextAll("[data-live-contract-count]", (dossier.contractMatrix ?? []).length);
-    setTextAll("[data-live-edge-count]", (dossier.dependencyEdges ?? []).length);
-    setTextAll("[data-live-verification-tile-label]", verificationTileLabel(status));
-    setTextAll("[data-live-verification-label]", verificationLabel(status));
     setTextAll("[data-live-phase]", status.phase ?? "unknown");
     setTextAll("[data-live-headline]", status.headline ?? "Status unavailable.");
     setTextAll("[data-live-next-command]", nextCommand || "none");
@@ -120,15 +114,24 @@
     }
     const kanban = document.querySelector("[data-live-kanban]");
     if (kanban) {
-      kanban.innerHTML = renderKanban(model.board);
+      const nextKanbanHtml = renderKanban(model.board);
+      if (kanban.innerHTML !== nextKanbanHtml) {
+        kanban.innerHTML = nextKanbanHtml;
+      }
     }
     const blockers = document.querySelector("[data-live-blockers]");
     if (blockers) {
-      blockers.innerHTML = renderBlockers(status.blockers ?? []);
+      const nextBlockersHtml = renderBlockers(status.blockers ?? []);
+      if (blockers.innerHTML !== nextBlockersHtml) {
+        blockers.innerHTML = nextBlockersHtml;
+      }
     }
     const evidenceLinks = document.querySelector("[data-live-evidence-links]");
     if (evidenceLinks) {
-      evidenceLinks.innerHTML = renderEvidenceLinks(model.operatorCockpit?.evidenceLinks ?? []);
+      const nextEvidenceHtml = renderEvidenceLinks(model.operatorCockpit?.evidenceLinks ?? []);
+      if (evidenceLinks.innerHTML !== nextEvidenceHtml) {
+        evidenceLinks.innerHTML = nextEvidenceHtml;
+      }
     }
     const blueprintSnapshot = JSON.stringify(model.blueprint ?? {});
     if (lastBlueprintSnapshot !== null && blueprintSnapshot !== lastBlueprintSnapshot) {
@@ -162,7 +165,7 @@
       return;
     }
     input.dataset.filterBound = "true";
-    const links = [...document.querySelectorAll(".dossier-nav a")];
+    const links = [...document.querySelectorAll(".architecture-nav a")];
     input.addEventListener("input", () => {
       const needle = input.value.trim().toLowerCase();
       for (const link of links) {

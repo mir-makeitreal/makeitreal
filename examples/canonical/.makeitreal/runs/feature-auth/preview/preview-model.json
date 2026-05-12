@@ -266,6 +266,97 @@
           "summary": "openapi contract at contracts/auth-login.openapi.json"
         }
       ],
+      "contractSurfaces": [
+        {
+          "consumers": [
+            "Auth page composition",
+            "browser interaction tests"
+          ],
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "description": "Submits credential input and delegates authentication through the declared auth login contract.",
+          "kind": "component-event",
+          "moduleName": "Auth UI",
+          "name": "LoginForm.submit",
+          "owner": "team.frontend",
+          "responsibilityUnitId": "ru.frontend",
+          "signature": {
+            "errors": [
+              {
+                "code": "AUTH_LOGIN_REJECTED",
+                "handling": "Surface the declared auth error state; do not infer fallback session behavior.",
+                "when": "The auth service rejects the credential payload."
+              }
+            ],
+            "inputs": [
+              {
+                "description": "User email address collected by the login form.",
+                "name": "credentials.email",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "description": "User password collected by the login form.",
+                "name": "credentials.password",
+                "required": true,
+                "type": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "description": "Session response returned by contract.auth.login.",
+                "name": "sessionResult",
+                "type": "AuthSession"
+              }
+            ]
+          }
+        },
+        {
+          "consumers": [
+            "ru.frontend"
+          ],
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "description": "Authenticates credentials and returns the declared session response.",
+          "kind": "http",
+          "moduleName": "Auth Service",
+          "name": "POST /auth/login",
+          "owner": "team.auth",
+          "responsibilityUnitId": "ru.auth-service",
+          "signature": {
+            "errors": [
+              {
+                "code": "401.INVALID_CREDENTIALS",
+                "handling": "Return the declared error response; do not issue partial sessions or fallback identities.",
+                "when": "Credentials are syntactically valid but authentication fails."
+              }
+            ],
+            "inputs": [
+              {
+                "description": "Email value from the auth UI.",
+                "name": "request.body.email",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "description": "Password value from the auth UI.",
+                "name": "request.body.password",
+                "required": true,
+                "type": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "description": "Authenticated session payload defined by the OpenAPI contract.",
+                "name": "200.session",
+                "type": "AuthSession"
+              }
+            ]
+          }
+        }
+      ],
       "deliveryScope": {
         "acceptanceCriteriaIds": [
           "AC-001",
@@ -326,6 +417,29 @@
             }
           ],
           "moduleName": "Auth UI",
+          "ownedFileTree": {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "name": "**",
+                        "type": "folder"
+                      }
+                    ],
+                    "name": "auth",
+                    "type": "folder"
+                  }
+                ],
+                "name": "web",
+                "type": "folder"
+              }
+            ],
+            "name": "apps",
+            "type": "folder"
+          },
           "owner": "team.frontend",
           "owns": [
             "apps/web/auth/**"
@@ -380,6 +494,40 @@
         {
           "imports": [],
           "moduleName": "Auth Service",
+          "ownedFileTree": {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "name": "**",
+                        "type": "folder"
+                      }
+                    ],
+                    "name": "auth",
+                    "type": "folder"
+                  }
+                ],
+                "name": "services",
+                "type": "folder"
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "name": "auth-login.openapi.json",
+                    "type": "file"
+                  }
+                ],
+                "name": "contracts",
+                "type": "folder"
+              }
+            ],
+            "name": "root",
+            "type": "folder"
+          },
           "owner": "team.auth",
           "owns": [
             "services/auth/**",
@@ -432,6 +580,50 @@
           "responsibilityUnitId": "ru.auth-service"
         }
       ],
+      "reviewDecisions": [
+        "Auth UI owns apps/web/auth/** and exposes LoginForm.submit.",
+        "Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.",
+        "Auth UI may call Auth Service only through contract.auth.login.",
+        "contract.auth.login is reviewed from contracts/auth-login.openapi.json."
+      ],
+      "scenarioDetails": [
+        {
+          "id": "scenario-1",
+          "messages": [
+            {
+              "from": "User",
+              "label": "submit credentials",
+              "to": "Auth UI"
+            },
+            {
+              "from": "Auth UI",
+              "label": "POST /auth/login",
+              "to": "Auth Service"
+            },
+            {
+              "from": "Auth Service",
+              "label": "return session result",
+              "to": "Auth UI"
+            }
+          ],
+          "participants": [
+            "User",
+            "Auth UI",
+            "Auth Service"
+          ],
+          "title": "Login request",
+          "visualizationKind": "mermaid"
+        }
+      ],
+      "scenarioIndex": [
+        {
+          "id": "scenario-1",
+          "participantCount": 3,
+          "stepCount": 3,
+          "title": "Login request",
+          "visualizationKind": "mermaid"
+        }
+      ],
       "signalFlows": [
         {
           "messages": [
@@ -459,6 +651,28 @@
           "title": "Login request"
         }
       ],
+      "sources": [
+        {
+          "kind": "prd",
+          "label": "PRD",
+          "path": "prd.json"
+        },
+        {
+          "kind": "design-pack",
+          "label": "Design Pack",
+          "path": "design-pack.json"
+        },
+        {
+          "kind": "responsibility-units",
+          "label": "Responsibility Units",
+          "path": "responsibility-units.json"
+        },
+        {
+          "kind": "contract",
+          "label": "contract.auth.login",
+          "path": "contracts/auth-login.openapi.json"
+        }
+      ],
       "stateTransitions": [
         {
           "from": "Contract Frozen",
@@ -474,6 +688,42 @@
       "summary": [
         "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
       ],
+      "systemPlacement": {
+        "edges": [
+          {
+            "contractId": "contract.auth.login",
+            "from": "ru.frontend",
+            "fromLabel": "Auth UI",
+            "surface": "POST /auth/login",
+            "to": "ru.auth-service",
+            "toLabel": "Auth Service"
+          },
+          {
+            "contractId": "contract.auth.login",
+            "from": "ru.frontend",
+            "fromLabel": "Auth UI",
+            "surface": null,
+            "to": "ru.auth-service",
+            "toLabel": "Auth Service"
+          }
+        ],
+        "modules": [
+          {
+            "moduleName": "Auth UI",
+            "owner": "team.frontend",
+            "purpose": "Own credential collection, client-side validation, and rendering of the declared session result.",
+            "responsibilityUnitId": "ru.frontend"
+          },
+          {
+            "moduleName": "Auth Service",
+            "owner": "team.auth",
+            "purpose": "Own login request validation and session issuance behind the OpenAPI contract.",
+            "responsibilityUnitId": "ru.auth-service"
+          }
+        ],
+        "summary": "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.",
+        "title": "Authentication vertical slice"
+      },
       "title": "Authentication vertical slice"
     },
     "title": "Authentication vertical slice"

@@ -3,8 +3,8 @@
 Make It Real is a Claude Code plugin and local engineering harness for PRD-first,
 contract-gated software work.
 
-It turns a feature request into a reviewable Blueprint, a read-only Kanban
-dashboard, module-level IO signatures, responsibility-owned work items,
+It turns a feature request into a reviewable Blueprint, a read-only Architecture
+Dossier, module-level IO signatures, responsibility-owned work items,
 declared boundary contracts, real Claude Code execution, verification evidence,
 and a Done gate that cannot be passed by assertion alone.
 
@@ -97,13 +97,14 @@ project config if needed, and keeps `.makeitreal/` ignored.
 
 For a Ralph-like one-command start, `/makeitreal:launch <feature request>` is
 also valid. With no active run it plans first, opens/reports the Blueprint
-dashboard, and stops for review. It does not execute code before Blueprint
+Architecture Dossier, and stops for review. It does not execute code before Blueprint
 approval.
 
-Review the generated Blueprint and browser dashboard. The plan command asks a
-Claude Code review question after showing the Blueprint; that answer, and any
-later natural-language chat reply, is classified by the same native Claude Code review protocol. For
-scripts or explicit approval controls, use:
+Review the generated Blueprint and browser Architecture Dossier. The plan
+command asks a Claude Code review question after showing the Blueprint; that
+answer, and any later natural-language chat reply, is classified by the same
+native Claude Code review protocol. For scripts or explicit approval controls,
+use:
 
 ```text
 /makeitreal:plan approve
@@ -154,8 +155,8 @@ Make It Real has a small public surface and a stricter internal control plane:
 - `plugins/mir/` is the short alias plugin for `/mir:*` commands.
 - `bin/harness.mjs` is the internal engine CLI used by slash commands and tests.
 - `src/` contains the deterministic engine modules for planning, gates,
-  contracts, Kanban state, hooks, runner orchestration, verification, dashboard
-  rendering, diagnostics, and wiki evidence.
+  contracts, Kanban state, hooks, runner orchestration, verification,
+  Architecture Dossier rendering, diagnostics, and wiki evidence.
 - target projects store runtime state under `.makeitreal/`, which is
   automatically ignored by git.
 
@@ -184,7 +185,8 @@ For deferred product/DX follow-ups, see [docs/backlog.md](docs/backlog.md).
   old staged workspace runner is retained only for scripted fixtures and legacy
   evidence replay.
 - Undeclared fallback behavior is rejected in favor of fail-fast evidence.
-- The browser dashboard is read-only observability, not a mutation surface.
+- The browser Architecture Dossier is read-only review documentation, not a
+  mutation surface.
 - Verification and wiki evidence are engine-owned before Done.
 
 ## Prompt Discipline

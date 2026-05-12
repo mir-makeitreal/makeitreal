@@ -298,32 +298,28 @@ test("renders canonical architecture preview", async () => {
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "Blueprint SDK Reference",
-      "Blueprint Reference",
-      "On This Blueprint",
-      "Primary Surface",
-      "Mermaid Blueprint",
-      "System Map",
-      "Dependency Graph",
-      "Contract Matrix",
-      "Module Directory",
-      "Module Reference",
-      "Parameters",
-      "Returns",
-      "Errors",
+      "Architecture Dossier",
+      "System Placement",
+      "Responsibility Map",
+      "Scenario Index",
+      "Contract Surfaces",
+      "Scenario Reference",
+      "Review Decisions",
+      "Verification Evidence",
+      "Sources",
+      "Diagnostics",
+      "Inputs",
+      "Outputs",
       "Usage Example",
-      "Signal Flow",
-      "Call Stack",
-      "Verification & Evidence",
-      "Developer Diagnostics",
-      "Current Run"
+      "Board State"
     ]) {
       assert.match(html, new RegExp(label));
     }
     assert.doesNotMatch(html, /<a href="#artifacts">Raw Artifacts<\/a>/);
     assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
     assert.doesNotMatch(html, /<h2>Kanban Board<\/h2>/);
-    assert.match(html, /Read-only dashboard/);
+    assert.doesNotMatch(html, /<div class="reference-grid"/);
+    assert.doesNotMatch(html, /<aside class="runtime-rail/);
     assert.match(html, /email: &quot;user@example\.com&quot;/);
     assert.match(html, /password: &quot;correct horse battery staple&quot;/);
     assert.match(html, /body: JSON\.stringify\(requestBody\)/);
@@ -332,17 +328,18 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(html, /body: JSON\.stringify\(\{\}\)/);
     assert.doesNotMatch(html, /POST \/auth\/login\(&quot;user@example\.com&quot;/);
     assert.doesNotMatch(html, /Surface the declared auth error state; do not infer fallback session behavior\.<\/span><p>Surface the declared auth error state/);
-    assert.match(html, /data-read-only-cockpit="true"/);
-    assert.match(html, /data-live-status-rail/);
     assert.match(html, /data-live-kanban/);
     assert.match(html, /data-operator-kanban="true"/);
     assert.match(html, /data-nav-filter/);
-    assert.match(html, /\/makeitreal:status/);
-    assert.match(html, /copy-command/);
     assert.match(html, /class="mermaid"/);
     assert.match(html, /sequenceDiagram/);
-    assert.match(html, /stateDiagram-v2/);
     assert.match(html, /flowchart LR/);
+    assert.match(html, /schema-display/);
+    assert.match(html, /file-tree/);
+    assert.match(html, /sources-list/);
+    assert.match(html, /test-results/);
+    assert.match(html, /workflow-graph/);
+    assert.match(html, /code-block/);
     assert.match(html, /cdn\.jsdelivr\.net\/npm\/mermaid/);
     assert.doesNotMatch(html, /data-harness-action=/);
     assert.doesNotMatch(html, /makeitreal-engine blueprint approve/);
@@ -355,6 +352,9 @@ test("renders canonical architecture preview", async () => {
     assert.match(js, /data-live-kanban/);
     assert.match(js, /bindNavFilter/);
     assert.match(js, /data-nav-filter/);
+    assert.doesNotMatch(js, /data-live-module-count/);
+    assert.doesNotMatch(js, /data-live-contract-count/);
+    assert.doesNotMatch(js, /data-live-edge-count/);
     assert.doesNotMatch(js, /location\.reload/);
     assert.doesNotMatch(js, /setInterval\(reloadDashboard/);
     assert.match(js, /window\.location\.protocol/);
@@ -366,18 +366,16 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(js, /fetch\([^)]*orchestrator/);
 
     const css = await readFile(path.join(previewDir, "preview.css"), "utf8");
-    assert.match(css, /\.dossier-shell/);
-    assert.match(css, /\.dossier-nav/);
-    assert.match(css, /\.runtime-rail/);
-    assert.match(css, /\.reference-rail/);
-    assert.match(css, /\.status-rail/);
-    assert.match(css, /\.module-reference/);
-    assert.match(css, /\.module-directory/);
-    assert.match(css, /\.surface-reference-header/);
+    assert.match(css, /\.architecture-shell/);
+    assert.match(css, /\.architecture-nav/);
+    assert.match(css, /\.architecture-main/);
+    assert.match(css, /\.responsibility-map/);
+    assert.match(css, /\.schema-display/);
+    assert.match(css, /\.file-tree/);
+    assert.match(css, /\.sources-list/);
+    assert.match(css, /\.test-results/);
+    assert.match(css, /\.workflow-graph/);
     assert.match(css, /\.sdk-example/);
-    assert.match(css, /\.module-reference > \*/);
-    assert.match(css, /\.surface-reference > \*/);
-    assert.match(css, /\.signature-table/);
     assert.match(css, /\.diagram-card/);
     assert.match(css, /\.mermaid/);
     assert.match(css, /\.compact-kanban/);
@@ -416,20 +414,28 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.equal(dossier.callStacks.length, 2);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("web/src/auth/**"), true);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("api/src/auth/**"), true);
+    assert.equal(dossier.systemPlacement.title, "Authentication vertical slice");
+    assert.deepEqual(dossier.systemPlacement.modules.map((module) => module.moduleName), ["Auth UI", "Auth Service"]);
+    assert.equal(dossier.scenarioIndex[0].title, "Login session creation");
+    assert.equal(dossier.scenarioIndex[0].visualizationKind, "mermaid");
+    assert.equal(dossier.scenarioDetails[0].participants.includes("Auth UI"), true);
+    assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("Auth UI")), true);
+    assert.equal(dossier.sources.some((source) => source.path === "design-pack.json"), true);
+    assert.equal(dossier.modules[0].ownedFileTree.name, "web");
+    assert.equal(dossier.contractSurfaces.some((surface) => surface.name === "POST /auth/login"), true);
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
-      "Blueprint SDK Reference",
-      "On This Blueprint",
-      "Module Directory",
-      "Mermaid Blueprint",
-      "System Map",
-      "Dependency Graph",
-      "Contract Matrix",
-      "Module Reference",
-      "Signal Flow",
-      "Call Stack",
-      "Runtime Snapshot"
+      "Architecture Dossier",
+      "System Placement",
+      "Responsibility Map",
+      "Scenario Index",
+      "Contract Surfaces",
+      "Scenario Reference",
+      "Review Decisions",
+      "Verification Evidence",
+      "Sources",
+      "Diagnostics"
     ]) {
       assert.match(html, new RegExp(label));
     }
@@ -453,37 +459,40 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.doesNotMatch(html, /const 200 response/);
     assert.doesNotMatch(html, /body: JSON\.stringify\(\{\}\)/);
     assert.doesNotMatch(html, /POST \/auth\/login\(\{\}\)/);
-    assert.match(html, /data-read-only-cockpit="true"/);
-    assert.match(html, /copy-command/);
+    assert.match(html, /schema-display/);
+    assert.match(html, /file-tree/);
+    assert.match(html, /sources-list/);
+    assert.match(html, /test-results/);
+    assert.match(html, /workflow-graph/);
     assert.doesNotMatch(html, /data-harness-action=/);
     assert.doesNotMatch(html, /makeitreal-engine blueprint approve/);
     assert.doesNotMatch(html, /makeitreal-engine orchestrator tick/);
 
     const css = await readFile(path.join(previewDir, "preview.css"), "utf8");
     for (const selector of [
-      ".dossier-shell",
-      ".dossier-nav",
-      ".dossier-main",
-      ".runtime-rail",
-      ".reference-rail",
+      ".architecture-shell",
+      ".architecture-nav",
+      ".architecture-main",
       ".diagram-card",
       ".mermaid",
       ".nav-group",
       ".nav-module",
       ".nav-surface",
       ".nav-filter",
-      ".system-map",
-      ".dependency-matrix",
-      ".module-directory",
-      ".module-reference",
-      ".surface-reference-header",
+      ".responsibility-map",
+      ".contract-surface-list",
+      ".schema-display",
+      ".file-tree",
+      ".sources-list",
+      ".test-results",
+      ".workflow-graph",
       ".sdk-example",
-      ".flow-timeline"
+      ".scenario-index"
     ]) {
       assert.match(css, new RegExp(selector.replace(".", "\\.")));
     }
     assert.match(css, /overflow-wrap:\s*anywhere/);
-    assert.match(css, /grid-template-columns:\s*minmax\(220px,\s*260px\)\s+minmax\(0,\s*1fr\)\s+minmax\(300px,\s*340px\)/);
+    assert.match(css, /grid-template-columns:\s*minmax\(220px,\s*260px\)\s+minmax\(0,\s*980px\)/);
   });
 });
 
@@ -508,8 +517,9 @@ test("preview cockpit copies replan command for rejected Blueprint", async () =>
     assert.equal(model.operatorCockpit.nextCommand, "/makeitreal:plan <request>");
 
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
-    assert.match(html, /data-copy="\/makeitreal:plan &lt;request&gt;"/);
-    assert.doesNotMatch(html, /data-copy="\/makeitreal:plan approve"/);
+    assert.match(html, /Next Claude Code action/);
+    assert.match(html, /\/makeitreal:plan &lt;request&gt;/);
+    assert.doesNotMatch(html, /\/makeitreal:plan approve/);
   });
 });
 
@@ -588,11 +598,11 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.match(html, /normalizeDisplayName\(input\)/);
     assert.match(html, /Original request/);
     assert.match(html, /display-name normalization responsibility unit/);
-    assert.match(html, /Public surfaces/);
-    assert.match(html, /Blueprint SDK Reference/);
-    assert.match(html, /Module Directory/);
+    assert.match(html, /Public Interfaces/);
+    assert.match(html, /Architecture Dossier/);
+    assert.match(html, /Responsibility Map/);
     assert.match(html, /Usage Example/);
-    assert.match(html, /Run Status & Kanban/);
+    assert.match(html, /Board State/);
     assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
     assert.doesNotMatch(html, /<h1>Implement a pure JavaScript display-name/);
     assert.doesNotMatch(html, /<strong>Implement a pure JavaScript display-name/);
@@ -600,8 +610,8 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
 
     const css = await readFile(path.join(plan.runDir, "preview", "preview.css"), "utf8");
-    assert.match(css, /grid-template-columns: minmax\(220px, 260px\) minmax\(0, 1fr\) minmax\(300px, 340px\)/);
-    assert.match(css, /\.reference-grid/);
+    assert.match(css, /grid-template-columns: minmax\(220px, 260px\) minmax\(0, 980px\)/);
+    assert.match(css, /\.architecture-shell/);
     assert.doesNotMatch(css, /grid-template-columns: 220px minmax\(0, 1fr\) 300px/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -627,7 +637,7 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
     assert.deepEqual(previewModel.blueprint.systemDossier.dependencyEdges, []);
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
-    assert.match(html, /Software Contract Topology/);
+    assert.match(html, /Module Topology/);
     assert.match(html, /Match Route: matchRoute/);
     assert.match(html, /request: object \{ method: string, path: string \}/);
     assert.match(html, /matchResult:/);

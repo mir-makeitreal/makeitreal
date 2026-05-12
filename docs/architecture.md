@@ -20,7 +20,7 @@ flowchart LR
   Hooks[Claude Code hooks]
   Engine[makeitreal-engine]
   State[Project .makeitreal state]
-  Dashboard[Read-only dashboard]
+  Dossier[Read-only Architecture Dossier]
   Runner[Claude Code runner]
   Wiki[Live wiki evidence]
 
@@ -29,7 +29,7 @@ flowchart LR
   Skills --> Engine
   Hooks --> Engine
   Engine --> State
-  Engine --> Dashboard
+  Engine --> Dossier
   Engine --> Runner
   Runner --> State
   Engine --> Wiki
@@ -46,7 +46,7 @@ flowchart LR
 | Domain modules | `src/domain/`, `src/gates/`, `src/kanban/` | Validate PRDs, design packs, transitions, contracts, paths, and errors. |
 | Board/orchestrator | `src/board/`, `src/orchestrator/` | Claims work, dispatches runner attempts, records runtime state, handles retry/reconcile, completes verified work. |
 | Hooks | `hooks/claude/*.mjs` | Enforce boundaries during Claude Code sessions without becoming noisy when inactive. |
-| Preview/dashboard | `src/preview/`, `src/dashboard/` | Render read-only Kanban, Blueprint, blocker, and evidence views. |
+| Preview / Architecture Dossier | `src/preview/`, `src/dashboard/` | Render read-only Blueprint reference documentation, module contracts, scenario flows, diagnostics, and evidence views. |
 | Project state | `.makeitreal/` in each target project | Stores config, current run pointer, run packets, evidence, workspaces, and live wiki output. |
 
 ## Public Command Surface
@@ -131,14 +131,14 @@ sequenceDiagram
   participant U as Operator
   participant P as Plan command
   participant E as Engine
-  participant D as Dashboard
+  participant D as Architecture Dossier
   participant H as UserPromptSubmit hook
 
   U->>P: /makeitreal:plan <request>
   P->>E: generate PRD, Blueprint, contracts, board
   E->>E: seed pending blueprint-review.json
-  E->>D: render read-only dashboard
-  P-->>U: show run path, blockers, dashboard URL
+  E->>D: render read-only Architecture Dossier
+  P-->>U: show run path, blockers, dossier URL
   U->>H: approves or requests revision in chat
   H->>E: Native Claude Code-classified review decision
   E->>E: write approved or rejected blueprint-review.json
@@ -154,7 +154,7 @@ Planning creates:
 - Kanban work items with dependencies, allowed paths, and verification commands.
 - Trust policy for the selected runner mode.
 - Pending Blueprint review evidence.
-- Read-only dashboard preview.
+- Read-only Architecture Dossier preview.
 
 If the incoming request spans multiple detected responsibility domains, planning
 does not collapse the work into one broad owner. It returns
@@ -320,22 +320,26 @@ Done requires:
 
 The Stop hook and Done gate both treat missing evidence as a blocker.
 
-## Dashboard
+## Architecture Dossier Preview
 
-The dashboard is read-only observability. It may show:
+The browser preview is a read-only Architecture Dossier, not a control panel.
+It is shaped like SDK/API documentation so reviewers can understand the planned
+software without opening implementation files. It shows:
 
-- current phase
-- Blueprint approval status
-- Kanban lanes
-- responsibility owners
-- contracts and allowed paths
-- blockers
-- next recommended Claude Code command
-- evidence links
+- system placement for the modules under change
+- responsibility owners and owned file trees
+- public contract surfaces with input/output/error schemas
+- scenario indexes and detailed Mermaid/workflow-style flows
+- review decisions that need human attention
+- verification evidence
+- source artifacts such as `prd.json`, `design-pack.json`, contracts, and
+  evidence files
+- diagnostics for current phase, board state, blockers, and run artifacts
 
-The dashboard must not include mutating controls for approval, launch, retry,
+The preview must not include mutating controls for approval, launch, retry,
 reconcile, wiki sync, or Done transitions. Claude Code conversation, hooks, and
-engine commands remain the control plane.
+engine commands remain the control plane. Kanban and runtime details belong in
+Diagnostics; they are not the primary review surface.
 
 ## Configuration
 
@@ -345,8 +349,8 @@ back to defaults otherwise.
 Important feature flags:
 
 - live wiki enabled/disabled
-- dashboard auto-open
-- dashboard refresh on launch/verify
+- Architecture Dossier auto-open
+- Architecture Dossier refresh on launch/verify
 
 Disabling a feature must not weaken gates. For example, disabling live wiki
 requires explicit skip evidence before Done.
@@ -359,7 +363,7 @@ requires explicit skip evidence before Done.
 - hook assets
 - config
 - current run pointer
-- dashboard preview
+- Architecture Dossier preview
 - Claude Code CLI availability
 
 If no current run exists, doctor points to `/makeitreal:plan <request>`, not
@@ -390,7 +394,7 @@ The intended extension surfaces are:
 - new evidence kinds under `src/domain/evidence.mjs`
 - additional contract validators
 - richer plan generation inputs
-- additional read-only dashboard projections
+- additional read-only Architecture Dossier projections
 - new config flags that preserve gate semantics
 
 Avoid adding new public slash commands for internal state transitions unless the
