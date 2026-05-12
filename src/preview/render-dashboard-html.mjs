@@ -367,13 +367,6 @@ function renderSequences(sequences = []) {
   </article>`).join("");
 }
 
-function renderStateTransitions(transitions = []) {
-  if (transitions.length === 0) {
-    return '<p class="empty">No state transitions declared.</p>';
-  }
-  return `<div class="transition-list">${transitions.map((transition) => `<span>${escapeHtml(transition.from)} → ${escapeHtml(transition.to)} <code>${escapeHtml(transition.gate)}</code></span>`).join("")}</div>`;
-}
-
 function mermaidLabel(value) {
   return String(value ?? "")
     .replaceAll('"', "'")
@@ -415,27 +408,109 @@ function mermaidDiagramCard({ title, description, diagram }) {
   </article>`;
 }
 
-function systemMapMermaid(dossier = {}) {
-  const modules = dossier.modules ?? [];
-  const edges = dossier.dependencyEdges ?? [];
-  if (modules.length === 0) {
+function moduleSurfaces(dossier = {}) {
+  return (dossier.modules ?? []).flatMap((moduleInterface, moduleIndex) =>
+    (moduleInterface.publicSurfaces ?? []).map((surface, surfaceIndex) => ({
+      moduleInterface,
+      moduleIndex,
+      surface,
+      surfaceIndex,
+      id: `surface_${moduleIndex}_${surfaceIndex}`
+    }))
+  );
+}
+
+function surfaceDisplayName({ moduleInterface, surface }) {
+  return `${moduleInterface.moduleName}: ${surface.name}`;
+}
+
+function signatureInputs(surface) {
+  return surface.signature?.inputs ?? [];
+}
+
+function signatureOutputs(surface) {
+  return surface.signature?.outputs ?? [];
+}
+
+function signatureErrors(surface) {
+  return surface.signature?.errors ?? [];
+}
+
+function firstPublicSurface(dossier = {}) {
+  return moduleSurfaces(dossier)[0] ?? null;
+}
+
+function findSurfaceByImport({ dossier, dependency }) {
+  const provider = (dossier.modules ?? []).find((moduleInterface) =>
+    moduleInterface.responsibilityUnitId === dependency.providerResponsibilityUnitId
+  );
+  if (!provider) {
     return null;
   }
-  const labels = [...new Set([
-    ...modules.map((module) => module.moduleName),
-    ...edges.flatMap((edge) => [edge.fromLabel ?? edge.from, edge.toLabel ?? edge.to])
-  ].map(mermaidLabel))];
-  const ids = new Map(labels.map((label, index) => [label, mermaidNodeId(index)]));
-  const nodeLines = labels.map((label) => `  ${ids.get(label)}["${label}"]`);
-  const edgeLines = edges.length > 0
-    ? edges.map((edge) => {
-        const from = ids.get(mermaidLabel(edge.fromLabel ?? edge.from));
-        const to = ids.get(mermaidLabel(edge.toLabel ?? edge.to));
-        const label = mermaidLabel(edge.contractId ?? edge.surface ?? "contract");
-        return `  ${from} -->|"${label}"| ${to}`;
-      })
-    : modules.map((module, index) => `  source["PRD"] --> ${ids.get(mermaidLabel(module.moduleName)) ?? mermaidNodeId(index)}`);
-  return ["flowchart LR", ...nodeLines, ...edgeLines].join("\n");
+  const surface = (provider.publicSurfaces ?? []).find((candidate) =>
+    candidate.name === dependency.surface || (candidate.contractIds ?? []).includes(dependency.contractId)
+  ) ?? provider.publicSurfaces?.[0];
+  if (!surface) {
+    return null;
+  }
+  const surfaceEntry = moduleSurfaces(dossier).find((entry) =>
+    entry.moduleInterface.responsibilityUnitId === provider.responsibilityUnitId &&
+    entry.surface.name === surface.name
+  );
+  return surfaceEntry ?? null;
+}
+
+function systemMapMermaid(dossier = {}) {
+  const surfaces = moduleSurfaces(dossier);
+  if (surfaces.length === 0) {
+    return null;
+  }
+
+  const lines = ["flowchart LR"];
+  const surfaceIds = new Map();
+  for (const entry of surfaces) {
+    surfaceIds.set(`${entry.moduleInterface.responsibilityUnitId}|${entry.surface.name}`, entry.id);
+    lines.push(`  ${entry.id}["${mermaidLabel(surfaceDisplayName(entry))}"]`);
+    for (const [inputIndex, input] of signatureInputs(entry.surface).entries()) {
+      const id = `input_${entry.moduleIndex}_${entry.surfaceIndex}_${inputIndex}`;
+      lines.push(`  ${id}(["${mermaidLabel(`${input.name}: ${input.type}`)}"])`);
+      lines.push(`  ${id} --> ${entry.id}`);
+    }
+    for (const [outputIndex, output] of signatureOutputs(entry.surface).entries()) {
+      const id = `output_${entry.moduleIndex}_${entry.surfaceIndex}_${outputIndex}`;
+      lines.push(`  ${entry.id} --> ${id}(["${mermaidLabel(`${output.name}: ${output.type}`)}"])`);
+    }
+    for (const [errorIndex, error] of signatureErrors(entry.surface).entries()) {
+      const id = `error_${entry.moduleIndex}_${entry.surfaceIndex}_${errorIndex}`;
+      lines.push(`  ${entry.id} -.->|"throws"| ${id}(["${mermaidLabel(error.code)}"])`);
+    }
+  }
+
+  for (const entry of surfaces) {
+    for (const dependency of entry.moduleInterface.imports ?? []) {
+      const provider = findSurfaceByImport({ dossier, dependency });
+      if (!provider) {
+        continue;
+      }
+      const providerId = surfaceIds.get(`${provider.moduleInterface.responsibilityUnitId}|${provider.surface.name}`);
+      if (providerId) {
+        lines.push(`  ${entry.id} -->|"${mermaidLabel(dependency.contractId ?? dependency.surface ?? "contract")}"| ${providerId}`);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function harnessSequence(sequence = {}) {
+  const text = [
+    ...(sequence.participants ?? []),
+    ...(sequence.messages ?? []).flatMap((message) => [message.from, message.to, message.label])
+  ].join(" ").toLowerCase();
+  return text.includes("make it real")
+    || text.includes("implementation responsibility unit")
+    || text.includes("request planned work")
+    || text.includes("assign work.");
 }
 
 function sequenceMermaid(sequences = []) {
@@ -453,17 +528,78 @@ function sequenceMermaid(sequences = []) {
   ].join("\n");
 }
 
-function stateMermaid(transitions = []) {
-  if (transitions.length === 0) {
+function derivedSoftwareSequenceMermaid(dossier = {}) {
+  const surfaces = moduleSurfaces(dossier);
+  if (surfaces.length === 0) {
     return null;
   }
-  const labels = [...new Set(transitions.flatMap((transition) => [transition.from, transition.to]).map(mermaidLabel))];
-  const ids = new Map(labels.map((label, index) => [label, `s${index}`]));
+
+  const importMessages = surfaces.flatMap((entry) =>
+    (entry.moduleInterface.imports ?? []).map((dependency) => {
+      const provider = findSurfaceByImport({ dossier, dependency });
+      return provider ? { entry, dependency, provider } : null;
+    }).filter(Boolean)
+  );
+  if (importMessages.length > 0) {
+    const participants = [...new Set(importMessages.flatMap(({ entry, provider }) => [
+      entry.moduleInterface.moduleName,
+      provider.moduleInterface.moduleName
+    ]))];
+    const ids = new Map(participants.map((label, index) => [label, `p${index}`]));
+    return [
+      "sequenceDiagram",
+      ...participants.map((label) => `  participant ${ids.get(label)} as ${label}`),
+      ...importMessages.flatMap(({ entry, dependency, provider }) => [
+        `  ${ids.get(entry.moduleInterface.moduleName)}->>${ids.get(provider.moduleInterface.moduleName)}: ${mermaidLabel(dependency.contractId ?? dependency.surface)}`,
+        `  ${ids.get(provider.moduleInterface.moduleName)}-->>${ids.get(entry.moduleInterface.moduleName)}: declared output or error`
+      ])
+    ].join("\n");
+  }
+
+  const primary = surfaces[0];
+  const inputLabel = signatureInputs(primary.surface).map((input) => input.name).join(", ") || "input";
+  const outputLabel = signatureOutputs(primary.surface).map((output) => output.name).join(", ") || "output";
+  const errorLabel = signatureErrors(primary.surface).map((error) => error.code).join(" | ") || "declared error";
   return [
-    "stateDiagram-v2",
-    ...labels.map((label) => `  state "${label}" as ${ids.get(label)}`),
-    ...transitions.map((transition) => `  ${ids.get(mermaidLabel(transition.from))} --> ${ids.get(mermaidLabel(transition.to))}: ${mermaidLabel(transition.gate)}`)
+    "sequenceDiagram",
+    "  participant caller as Caller",
+    `  participant surface as ${mermaidLabel(surfaceDisplayName(primary))}`,
+    `  caller->>surface: ${mermaidLabel(inputLabel)}`,
+    "  surface->>surface: validate declared input contract",
+    "  alt valid contract",
+    `    surface-->>caller: ${mermaidLabel(outputLabel)}`,
+    "  else declared failure",
+    `    surface--x caller: ${mermaidLabel(errorLabel)}`,
+    "  end"
   ].join("\n");
+}
+
+function softwareSequenceMermaid(dossier = {}) {
+  const realSequences = (dossier.signalFlows ?? []).filter((sequence) => !harnessSequence(sequence));
+  return sequenceMermaid(realSequences) ?? derivedSoftwareSequenceMermaid(dossier);
+}
+
+function stateMermaid(dossier = {}) {
+  const primary = firstPublicSurface(dossier);
+  if (!primary) {
+    return null;
+  }
+  const inputLabel = signatureInputs(primary.surface).map((input) => input.name).join(", ") || "input";
+  const outputLabel = signatureOutputs(primary.surface).map((output) => output.name).join(", ") || "output";
+  const errorLabel = signatureErrors(primary.surface).map((error) => error.code).join(" | ");
+  const lines = [
+    "stateDiagram-v2",
+    "  [*] --> InputReceived",
+    `  InputReceived --> ContractValid: validate ${mermaidLabel(inputLabel)}`,
+    `  ContractValid --> SurfaceExecuted: ${mermaidLabel(primary.surface.name)}`,
+    `  SurfaceExecuted --> OutputReturned: ${mermaidLabel(outputLabel)}`,
+    "  OutputReturned --> [*]"
+  ];
+  if (errorLabel) {
+    lines.push(`  ContractValid --> DeclaredError: ${mermaidLabel(errorLabel)}`);
+    lines.push("  DeclaredError --> [*]");
+  }
+  return lines.join("\n");
 }
 
 function callStackMermaid(callStacks = []) {
@@ -486,19 +622,19 @@ function callStackMermaid(callStacks = []) {
 function renderVisualBlueprint(dossier = {}) {
   const diagrams = [
     mermaidDiagramCard({
-      title: "Responsibility & Contract Graph",
-      description: "Which responsibility units talk through which declared contracts.",
+      title: "Software Contract Topology",
+      description: "Public surfaces, declared inputs, outputs, errors, and cross-module contracts.",
       diagram: systemMapMermaid(dossier)
     }),
     mermaidDiagramCard({
-      title: "Signal Sequence",
-      description: "How the request, harness, worker, and contract handoff flow.",
-      diagram: sequenceMermaid(dossier.signalFlows)
+      title: "Runtime Sequence",
+      description: "How the software surface is called and what it returns or throws.",
+      diagram: softwareSequenceMermaid(dossier)
     }),
     mermaidDiagramCard({
-      title: "Gate State Flow",
-      description: "The workflow states that must be satisfied before Done.",
-      diagram: stateMermaid(dossier.stateTransitions)
+      title: "Surface State Flow",
+      description: "The domain execution states for the primary public surface.",
+      diagram: stateMermaid(dossier)
     }),
     mermaidDiagramCard({
       title: "Call Stack",
@@ -628,34 +764,34 @@ function renderModuleReference(modules = []) {
   </div>`;
 }
 
-function renderFlowTimeline({ signalFlows = [], callStacks = [], stateTransitions = [] }) {
+function renderFlowTimeline(dossier = {}) {
+  const realSequences = (dossier.signalFlows ?? []).filter((sequence) => !harnessSequence(sequence));
   return `<div class="flow-timeline">
     <section>
       <h3>Signal Flow</h3>
       ${mermaidDiagramCard({
-        title: "Signal Sequence",
-        description: "Mermaid sequence diagram generated from the design pack.",
-        diagram: sequenceMermaid(signalFlows)
+        title: "Runtime Sequence",
+        description: "Mermaid sequence diagram generated from software module interfaces.",
+        diagram: softwareSequenceMermaid(dossier)
       })}
-      ${renderSequences(signalFlows)}
+      ${renderSequences(realSequences)}
     </section>
     <section>
       <h3>Call Stack</h3>
       ${mermaidDiagramCard({
         title: "Call Stack",
         description: "Mermaid call graph generated from declared call stack.",
-        diagram: callStackMermaid(callStacks)
+        diagram: callStackMermaid(dossier.callStacks)
       })}
-      ${renderCallStacks(callStacks)}
+      ${renderCallStacks(dossier.callStacks)}
     </section>
     <section>
-      <h3>State Transition Flow</h3>
+      <h3>Surface State Flow</h3>
       ${mermaidDiagramCard({
-        title: "Gate State Flow",
-        description: "Mermaid state diagram generated from board gates.",
-        diagram: stateMermaid(stateTransitions)
+        title: "Surface State Flow",
+        description: "Mermaid state diagram generated from the primary public surface.",
+        diagram: stateMermaid(dossier)
       })}
-      ${renderStateTransitions(stateTransitions)}
     </section>
   </div>`;
 }
@@ -912,7 +1048,7 @@ export function renderDashboardHtml(model) {
           </div>
           <span>architecture diagrams</span>
         </div>
-        <p class="section-note">Rendered from the same design pack used for gates and evidence. These diagrams are the visual review surface for module topology, signal flow, state transitions, and call stack.</p>
+        <p class="section-note">Rendered from declared software module interfaces: public surfaces, IO contracts, cross-module calls, domain state, and call stack.</p>
         ${renderVisualBlueprint(dossier)}
       </section>
 
@@ -969,11 +1105,7 @@ export function renderDashboardHtml(model) {
             <h2>Signal Flow & Call Stack</h2>
           </div>
         </div>
-        ${renderFlowTimeline({
-          signalFlows: dossier.signalFlows,
-          callStacks: dossier.callStacks,
-          stateTransitions: dossier.stateTransitions
-        })}
+        ${renderFlowTimeline(dossier)}
       </section>
 
       <section id="evidence" class="dossier-section">

@@ -570,6 +570,40 @@ test("preview renders long implementation requests as compact reference docs", a
   }
 });
 
+test("preview Mermaid diagrams show software contracts, not harness traceability", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot: root,
+      request: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request). Contract: request must be an object with method string and path string. Support GET /health -> { handler: \"health\", params: {} } and GET /users/:id where id is one non-empty path segment -> { handler: \"user.show\", params: { id } }. Return null for unmatched routes. Throw TypeError with code ROUTE_REQUEST_INVALID for malformed request. Create test/route-match.test.mjs. Verification command is npm test.",
+      runId: "route-matcher-docs",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-12T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const result = await renderDesignPreview({ runDir: plan.runDir });
+    assert.equal(result.ok, true);
+
+    const previewModel = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
+    assert.deepEqual(previewModel.blueprint.systemDossier.dependencyEdges, []);
+
+    const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
+    assert.match(html, /Software Contract Topology/);
+    assert.match(html, /Match Route: matchRoute/);
+    assert.match(html, /request: object \{ method: string, path: string \}/);
+    assert.match(html, /matchResult:/);
+    assert.match(html, /ROUTE_REQUEST_INVALID/);
+    assert.match(html, /Caller/);
+    assert.doesNotMatch(html, /PRD Source/);
+    assert.doesNotMatch(html, /Implementation Responsibility Unit/);
+    assert.doesNotMatch(html, /request planned work/);
+    assert.doesNotMatch(html, /assign work/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("preview renders request-specific SDK examples and function signatures", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {

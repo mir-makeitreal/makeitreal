@@ -49,29 +49,51 @@
           </div>
           <span>architecture diagrams</span>
         </div>
-        <p class="section-note">Rendered from the same design pack used for gates and evidence. These diagrams are the visual review surface for module topology, signal flow, state transitions, and call stack.</p>
+        <p class="section-note">Rendered from declared software module interfaces: public surfaces, IO contracts, cross-module calls, domain state, and call stack.</p>
         <div class="diagram-grid"><article class="diagram-card">
     <header>
-      <strong>Responsibility &amp; Contract Graph</strong>
-      <span>Which responsibility units talk through which declared contracts.</span>
+      <strong>Software Contract Topology</strong>
+      <span>Public surfaces, declared inputs, outputs, errors, and cross-module contracts.</span>
     </header>
     <pre class="mermaid">flowchart LR
-  n0[&quot;Auth UI&quot;]
-  n1[&quot;Auth Service&quot;]
-  n0 --&gt;|&quot;contract.auth.login&quot;| n1
-  n0 --&gt;|&quot;contract.auth.login&quot;| n1</pre>
+  surface_0_0[&quot;Auth UI: LoginForm.submit&quot;]
+  input_0_0_0([&quot;credentials.email: string&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  input_0_0_1([&quot;credentials.password: string&quot;])
+  input_0_0_1 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;sessionResult: AuthSession&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;AUTH_LOGIN_REJECTED&quot;])
+  surface_1_0[&quot;Auth Service: POST /auth/login&quot;]
+  input_1_0_0([&quot;request.body.email: string&quot;])
+  input_1_0_0 --&gt; surface_1_0
+  input_1_0_1([&quot;request.body.password: string&quot;])
+  input_1_0_1 --&gt; surface_1_0
+  surface_1_0 --&gt; output_1_0_0([&quot;200.session: AuthSession&quot;])
+  surface_1_0 -.-&gt;|&quot;throws&quot;| error_1_0_0([&quot;401.INVALID_CREDENTIALS&quot;])
+  surface_0_0 --&gt;|&quot;contract.auth.login&quot;| surface_1_0</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
       <pre class="code-block" data-language="mermaid"><code>flowchart LR
-  n0[&quot;Auth UI&quot;]
-  n1[&quot;Auth Service&quot;]
-  n0 --&gt;|&quot;contract.auth.login&quot;| n1
-  n0 --&gt;|&quot;contract.auth.login&quot;| n1</code></pre>
+  surface_0_0[&quot;Auth UI: LoginForm.submit&quot;]
+  input_0_0_0([&quot;credentials.email: string&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  input_0_0_1([&quot;credentials.password: string&quot;])
+  input_0_0_1 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;sessionResult: AuthSession&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;AUTH_LOGIN_REJECTED&quot;])
+  surface_1_0[&quot;Auth Service: POST /auth/login&quot;]
+  input_1_0_0([&quot;request.body.email: string&quot;])
+  input_1_0_0 --&gt; surface_1_0
+  input_1_0_1([&quot;request.body.password: string&quot;])
+  input_1_0_1 --&gt; surface_1_0
+  surface_1_0 --&gt; output_1_0_0([&quot;200.session: AuthSession&quot;])
+  surface_1_0 -.-&gt;|&quot;throws&quot;| error_1_0_0([&quot;401.INVALID_CREDENTIALS&quot;])
+  surface_0_0 --&gt;|&quot;contract.auth.login&quot;| surface_1_0</code></pre>
     </details>
   </article><article class="diagram-card">
     <header>
-      <strong>Signal Sequence</strong>
-      <span>How the request, harness, worker, and contract handoff flow.</span>
+      <strong>Runtime Sequence</strong>
+      <span>How the software surface is called and what it returns or throws.</span>
     </header>
     <pre class="mermaid">sequenceDiagram
   participant p0 as User
@@ -92,25 +114,27 @@
     </details>
   </article><article class="diagram-card">
     <header>
-      <strong>Gate State Flow</strong>
-      <span>The workflow states that must be satisfied before Done.</span>
+      <strong>Surface State Flow</strong>
+      <span>The domain execution states for the primary public surface.</span>
     </header>
     <pre class="mermaid">stateDiagram-v2
-  state &quot;Contract Frozen&quot; as s0
-  state &quot;Ready&quot; as s1
-  state &quot;Human Review&quot; as s2
-  state &quot;Done&quot; as s3
-  s0 --&gt; s1: design-pack
-  s2 --&gt; s3: wiki</pre>
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
       <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
-  state &quot;Contract Frozen&quot; as s0
-  state &quot;Ready&quot; as s1
-  state &quot;Human Review&quot; as s2
-  state &quot;Done&quot; as s3
-  s0 --&gt; s1: design-pack
-  s2 --&gt; s3: wiki</code></pre>
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</code></pre>
     </details>
   </article><article class="diagram-card">
     <header>
@@ -186,12 +210,12 @@
       <div role="cell" data-label="From">Auth UI</div>
       <div role="cell" data-label="To">Auth Service</div>
       <div role="cell" data-label="Contract"><code>contract.auth.login</code></div>
-      <div role="cell" data-label="Allowed Use">openapi contract at contracts/auth-login.openapi.json</div>
+      <div role="cell" data-label="Allowed Use">Submit credential payload and consume declared session result only.</div>
     </div><div class="matrix-row" role="row">
       <div role="cell" data-label="From">Auth UI</div>
       <div role="cell" data-label="To">Auth Service</div>
       <div role="cell" data-label="Contract"><code>contract.auth.login</code></div>
-      <div role="cell" data-label="Allowed Use">Submit credential payload and consume declared session result only.</div>
+      <div role="cell" data-label="Allowed Use">openapi contract at contracts/auth-login.openapi.json</div>
     </div>
   </div>
       </section>
@@ -379,8 +403,8 @@ const session = await httpResponse.json();</code></pre>
       <h3>Signal Flow</h3>
       <article class="diagram-card">
     <header>
-      <strong>Signal Sequence</strong>
-      <span>Mermaid sequence diagram generated from the design pack.</span>
+      <strong>Runtime Sequence</strong>
+      <span>Mermaid sequence diagram generated from software module interfaces.</span>
     </header>
     <pre class="mermaid">sequenceDiagram
   participant p0 as User
@@ -430,31 +454,32 @@ const session = await httpResponse.json();</code></pre>
   </article></div>
     </section>
     <section>
-      <h3>State Transition Flow</h3>
+      <h3>Surface State Flow</h3>
       <article class="diagram-card">
     <header>
-      <strong>Gate State Flow</strong>
-      <span>Mermaid state diagram generated from board gates.</span>
+      <strong>Surface State Flow</strong>
+      <span>Mermaid state diagram generated from the primary public surface.</span>
     </header>
     <pre class="mermaid">stateDiagram-v2
-  state &quot;Contract Frozen&quot; as s0
-  state &quot;Ready&quot; as s1
-  state &quot;Human Review&quot; as s2
-  state &quot;Done&quot; as s3
-  s0 --&gt; s1: design-pack
-  s2 --&gt; s3: wiki</pre>
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
       <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
-  state &quot;Contract Frozen&quot; as s0
-  state &quot;Ready&quot; as s1
-  state &quot;Human Review&quot; as s2
-  state &quot;Done&quot; as s3
-  s0 --&gt; s1: design-pack
-  s2 --&gt; s3: wiki</code></pre>
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</code></pre>
     </details>
   </article>
-      <div class="transition-list"><span>Contract Frozen → Ready <code>design-pack</code></span><span>Human Review → Done <code>wiki</code></span></div>
     </section>
   </div>
       </section>

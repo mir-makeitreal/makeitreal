@@ -165,6 +165,8 @@ For the full structure, state model, hook lifecycle, and run-packet layout, see
 For the current GSD/Spec Kit feature review and Make It Real absorption backlog,
 see [docs/research/2026-05-08-gsd-speckit-feature-review.md](docs/research/2026-05-08-gsd-speckit-feature-review.md).
 
+For deferred product/DX follow-ups, see [docs/backlog.md](docs/backlog.md).
+
 ## Core Guarantees
 
 - PRD and Blueprint artifacts are created before implementation.

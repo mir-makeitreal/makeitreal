@@ -283,21 +283,21 @@
       },
       "dependencyEdges": [
         {
-          "allowedUse": "openapi contract at contracts/auth-login.openapi.json",
-          "contractId": "contract.auth.login",
-          "contractKind": "openapi",
-          "from": "auth-ui",
-          "fromLabel": "Auth UI",
-          "to": "auth-service",
-          "toLabel": "Auth Service"
-        },
-        {
           "allowedUse": "Submit credential payload and consume declared session result only.",
           "contractId": "contract.auth.login",
           "contractKind": "openapi",
           "from": "ru.frontend",
           "fromLabel": "Auth UI",
           "surface": "POST /auth/login",
+          "to": "ru.auth-service",
+          "toLabel": "Auth Service"
+        },
+        {
+          "allowedUse": "openapi contract at contracts/auth-login.openapi.json",
+          "contractId": "contract.auth.login",
+          "contractKind": "openapi",
+          "from": "ru.frontend",
+          "fromLabel": "Auth UI",
           "to": "ru.auth-service",
           "toLabel": "Auth Service"
         }
