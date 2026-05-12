@@ -103,6 +103,12 @@ function relativeImportPath(ownedPath) {
 
 function sampleValueForType(type) {
   const normalized = String(type ?? "").toLowerCase();
+  if (normalized.includes("object") && normalized.includes("method") && normalized.includes("path")) {
+    return '{ method: "GET", path: "/health" }';
+  }
+  if (normalized.includes("object")) {
+    return "{}";
+  }
   if (normalized.includes("integer")) {
     return "42";
   }
@@ -120,9 +126,6 @@ function sampleValueForType(type) {
   }
   if (normalized.includes("array")) {
     return "[]";
-  }
-  if (normalized.includes("object")) {
-    return "{}";
   }
   return "input";
 }
@@ -371,11 +374,150 @@ function renderStateTransitions(transitions = []) {
   return `<div class="transition-list">${transitions.map((transition) => `<span>${escapeHtml(transition.from)} → ${escapeHtml(transition.to)} <code>${escapeHtml(transition.gate)}</code></span>`).join("")}</div>`;
 }
 
+function mermaidLabel(value) {
+  return String(value ?? "")
+    .replaceAll('"', "'")
+    .replaceAll("\n", " ")
+    .trim() || "Unnamed";
+}
+
+function mermaidNodeId(index) {
+  return `n${index}`;
+}
+
+function mermaidParticipants(messages = []) {
+  const labels = [];
+  for (const message of messages) {
+    for (const side of [message.from, message.to]) {
+      const label = mermaidLabel(side);
+      if (!labels.includes(label)) {
+        labels.push(label);
+      }
+    }
+  }
+  return labels;
+}
+
+function mermaidDiagramCard({ title, description, diagram }) {
+  if (!diagram) {
+    return "";
+  }
+  return `<article class="diagram-card">
+    <header>
+      <strong>${escapeHtml(title)}</strong>
+      ${description ? `<span>${escapeHtml(description)}</span>` : ""}
+    </header>
+    <pre class="mermaid">${escapeHtml(diagram)}</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      ${renderCodeBlock(diagram, "mermaid")}
+    </details>
+  </article>`;
+}
+
+function systemMapMermaid(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  const edges = dossier.dependencyEdges ?? [];
+  if (modules.length === 0) {
+    return null;
+  }
+  const labels = [...new Set([
+    ...modules.map((module) => module.moduleName),
+    ...edges.flatMap((edge) => [edge.fromLabel ?? edge.from, edge.toLabel ?? edge.to])
+  ].map(mermaidLabel))];
+  const ids = new Map(labels.map((label, index) => [label, mermaidNodeId(index)]));
+  const nodeLines = labels.map((label) => `  ${ids.get(label)}["${label}"]`);
+  const edgeLines = edges.length > 0
+    ? edges.map((edge) => {
+        const from = ids.get(mermaidLabel(edge.fromLabel ?? edge.from));
+        const to = ids.get(mermaidLabel(edge.toLabel ?? edge.to));
+        const label = mermaidLabel(edge.contractId ?? edge.surface ?? "contract");
+        return `  ${from} -->|"${label}"| ${to}`;
+      })
+    : modules.map((module, index) => `  source["PRD"] --> ${ids.get(mermaidLabel(module.moduleName)) ?? mermaidNodeId(index)}`);
+  return ["flowchart LR", ...nodeLines, ...edgeLines].join("\n");
+}
+
+function sequenceMermaid(sequences = []) {
+  const sequence = sequences[0];
+  const messages = sequence?.messages ?? [];
+  if (messages.length === 0) {
+    return null;
+  }
+  const participants = mermaidParticipants(messages);
+  const participantIds = new Map(participants.map((label, index) => [label, `p${index}`]));
+  return [
+    "sequenceDiagram",
+    ...participants.map((label) => `  participant ${participantIds.get(label)} as ${label}`),
+    ...messages.map((message) => `  ${participantIds.get(mermaidLabel(message.from))}->>${participantIds.get(mermaidLabel(message.to))}: ${mermaidLabel(message.label)}`)
+  ].join("\n");
+}
+
+function stateMermaid(transitions = []) {
+  if (transitions.length === 0) {
+    return null;
+  }
+  const labels = [...new Set(transitions.flatMap((transition) => [transition.from, transition.to]).map(mermaidLabel))];
+  const ids = new Map(labels.map((label, index) => [label, `s${index}`]));
+  return [
+    "stateDiagram-v2",
+    ...labels.map((label) => `  state "${label}" as ${ids.get(label)}`),
+    ...transitions.map((transition) => `  ${ids.get(mermaidLabel(transition.from))} --> ${ids.get(mermaidLabel(transition.to))}: ${mermaidLabel(transition.gate)}`)
+  ].join("\n");
+}
+
+function callStackMermaid(callStacks = []) {
+  const stack = callStacks[0];
+  const calls = stack?.calls ?? [];
+  if (calls.length === 0) {
+    return null;
+  }
+  return [
+    "flowchart TD",
+    `  entry["${mermaidLabel(stack.entrypoint)}"]`,
+    ...calls.map((call, index) => {
+      const id = `c${index}`;
+      const previous = index === 0 ? "entry" : `c${index - 1}`;
+      return `  ${previous} --> ${id}["${mermaidLabel(call)}"]`;
+    })
+  ].join("\n");
+}
+
+function renderVisualBlueprint(dossier = {}) {
+  const diagrams = [
+    mermaidDiagramCard({
+      title: "Responsibility & Contract Graph",
+      description: "Which responsibility units talk through which declared contracts.",
+      diagram: systemMapMermaid(dossier)
+    }),
+    mermaidDiagramCard({
+      title: "Signal Sequence",
+      description: "How the request, harness, worker, and contract handoff flow.",
+      diagram: sequenceMermaid(dossier.signalFlows)
+    }),
+    mermaidDiagramCard({
+      title: "Gate State Flow",
+      description: "The workflow states that must be satisfied before Done.",
+      diagram: stateMermaid(dossier.stateTransitions)
+    }),
+    mermaidDiagramCard({
+      title: "Call Stack",
+      description: "The declared execution path for the public surface.",
+      diagram: callStackMermaid(dossier.callStacks)
+    })
+  ].filter(Boolean);
+  if (diagrams.length === 0) {
+    return '<p class="empty">No Mermaid diagrams declared.</p>';
+  }
+  return `<div class="diagram-grid">${diagrams.join("")}</div>`;
+}
+
 function renderDossierNav() {
   return `<nav class="dossier-nav" aria-label="Blueprint dossier sections">
     <p class="eyebrow">Make It Real</p>
     <strong>System Blueprint</strong>
     <a href="#overview" class="active">Overview</a>
+    <a href="#visual-blueprint">Visual Blueprint</a>
     <a href="#system-map">System Map</a>
     <a href="#dependency-graph">Dependency Graph</a>
     <a href="#contracts">Contract Matrix</a>
@@ -490,14 +632,29 @@ function renderFlowTimeline({ signalFlows = [], callStacks = [], stateTransition
   return `<div class="flow-timeline">
     <section>
       <h3>Signal Flow</h3>
+      ${mermaidDiagramCard({
+        title: "Signal Sequence",
+        description: "Mermaid sequence diagram generated from the design pack.",
+        diagram: sequenceMermaid(signalFlows)
+      })}
       ${renderSequences(signalFlows)}
     </section>
     <section>
       <h3>Call Stack</h3>
+      ${mermaidDiagramCard({
+        title: "Call Stack",
+        description: "Mermaid call graph generated from declared call stack.",
+        diagram: callStackMermaid(callStacks)
+      })}
       ${renderCallStacks(callStacks)}
     </section>
     <section>
       <h3>State Transition Flow</h3>
+      ${mermaidDiagramCard({
+        title: "Gate State Flow",
+        description: "Mermaid state diagram generated from board gates.",
+        diagram: stateMermaid(stateTransitions)
+      })}
       ${renderStateTransitions(stateTransitions)}
     </section>
   </div>`;
@@ -747,6 +904,18 @@ export function renderDashboardHtml(model) {
         </div>
       </header>
 
+      <section id="visual-blueprint" class="dossier-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Visual Reference</p>
+            <h2>Mermaid Blueprint</h2>
+          </div>
+          <span>architecture diagrams</span>
+        </div>
+        <p class="section-note">Rendered from the same design pack used for gates and evidence. These diagrams are the visual review surface for module topology, signal flow, state transitions, and call stack.</p>
+        ${renderVisualBlueprint(dossier)}
+      </section>
+
       <section id="system-map" class="dossier-section">
         <div class="section-heading">
           <div>
@@ -831,6 +1000,21 @@ export function renderDashboardHtml(model) {
     </aside>
   </main>
   <script src="./preview.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#eef4ff",
+        primaryTextColor: "#17202a",
+        primaryBorderColor: "#b8c7f5",
+        lineColor: "#667085",
+        fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+      }
+    });
+  </script>
 </body>
 </html>
 `;
@@ -1139,6 +1323,59 @@ h3 {
 .code-block code {
   color: inherit;
   font-size: inherit;
+}
+
+.diagram-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.diagram-card {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.diagram-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 10px 12px;
+}
+
+.diagram-card header span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mermaid {
+  margin: 0;
+  min-height: 140px;
+  padding: 16px;
+  overflow: auto;
+  background: #fbfcff;
+  color: var(--ink);
+  text-align: center;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-source {
+  border-top: 1px solid var(--soft-line);
+  padding: 8px 12px 12px;
+}
+
+.mermaid-source summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .doc-table {
@@ -1862,7 +2099,7 @@ h3 {
 
 .surface-detail-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
 }
 

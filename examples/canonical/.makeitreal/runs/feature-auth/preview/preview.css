@@ -302,6 +302,59 @@ h3 {
   font-size: inherit;
 }
 
+.diagram-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.diagram-card {
+  overflow: hidden;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.diagram-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--soft-line);
+  background: var(--soft);
+  padding: 10px 12px;
+}
+
+.diagram-card header span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mermaid {
+  margin: 0;
+  min-height: 140px;
+  padding: 16px;
+  overflow: auto;
+  background: #fbfcff;
+  color: var(--ink);
+  text-align: center;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-source {
+  border-top: 1px solid var(--soft-line);
+  padding: 8px 12px 12px;
+}
+
+.mermaid-source summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .doc-table {
   overflow: hidden;
   background: var(--panel);
@@ -1023,7 +1076,7 @@ h3 {
 
 .surface-detail-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
 }
 

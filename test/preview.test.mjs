@@ -299,6 +299,7 @@ test("renders canonical architecture preview", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "System Blueprint",
+      "Mermaid Blueprint",
       "System Map",
       "Dependency Graph",
       "Contract Matrix",
@@ -330,6 +331,11 @@ test("renders canonical architecture preview", async () => {
     assert.match(html, /data-operator-kanban="true"/);
     assert.match(html, /\/makeitreal:status/);
     assert.match(html, /copy-command/);
+    assert.match(html, /class="mermaid"/);
+    assert.match(html, /sequenceDiagram/);
+    assert.match(html, /stateDiagram-v2/);
+    assert.match(html, /flowchart LR/);
+    assert.match(html, /cdn\.jsdelivr\.net\/npm\/mermaid/);
     assert.doesNotMatch(html, /data-harness-action=/);
     assert.doesNotMatch(html, /makeitreal-engine blueprint approve/);
     assert.doesNotMatch(html, /makeitreal-engine orchestrator tick/);
@@ -353,6 +359,8 @@ test("renders canonical architecture preview", async () => {
     assert.match(css, /\.status-rail/);
     assert.match(css, /\.module-reference/);
     assert.match(css, /\.signature-table/);
+    assert.match(css, /\.diagram-card/);
+    assert.match(css, /\.mermaid/);
     assert.match(css, /\.compact-kanban/);
   });
 });
@@ -393,6 +401,7 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "System Blueprint",
+      "Mermaid Blueprint",
       "System Map",
       "Dependency Graph",
       "Contract Matrix",
@@ -411,6 +420,9 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.match(html, /body: JSON\.stringify\(requestBody\)/);
     assert.match(html, /contract\.auth\.login/);
     assert.match(html, /contract\.auth\.session/);
+    assert.match(html, /class="mermaid"/);
+    assert.match(html, /Auth UI/);
+    assert.match(html, /Auth Service/);
     assert.doesNotMatch(html, /const 200 response/);
     assert.doesNotMatch(html, /body: JSON\.stringify\(\{\}\)/);
     assert.doesNotMatch(html, /POST \/auth\/login\(\{\}\)/);
@@ -426,6 +438,8 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       ".dossier-nav",
       ".dossier-main",
       ".runtime-rail",
+      ".diagram-card",
+      ".mermaid",
       ".system-map",
       ".dependency-matrix",
       ".module-reference",

@@ -69,6 +69,20 @@ function architectureNodeLabel(nodes = [], id) {
   return node?.label ?? node?.responsibilityUnitId ?? id;
 }
 
+function architectureEndpointLabel({ nodes = [], moduleByResponsibilityUnit, id }) {
+  const node = nodes.find((candidate) => candidate.id === id || candidate.responsibilityUnitId === id);
+  if (node?.id === "prd") {
+    return node.label ?? "PRD Source";
+  }
+  if (node?.responsibilityUnitId && moduleByResponsibilityUnit.has(node.responsibilityUnitId)) {
+    return moduleByResponsibilityUnit.get(node.responsibilityUnitId).moduleName;
+  }
+  if (moduleByResponsibilityUnit.has(id)) {
+    return moduleByResponsibilityUnit.get(id).moduleName;
+  }
+  return architectureNodeLabel(nodes, id);
+}
+
 function moduleLookup({ nodes = [], moduleInterfaces = [] }) {
   const lookup = new Map();
   for (const moduleInterface of moduleInterfaces) {
@@ -107,9 +121,9 @@ function modelDependencyEdges({ designPack, contracts }) {
   const moduleByResponsibilityUnit = new Map(moduleInterfaces.map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
   const architectureEdges = (architecture.edges ?? []).map((edge) => ({
     from: edge.from,
-    fromLabel: architectureNodeLabel(architecture.nodes ?? [], edge.from),
+    fromLabel: architectureEndpointLabel({ nodes: architecture.nodes ?? [], moduleByResponsibilityUnit, id: edge.from }),
     to: edge.to,
-    toLabel: architectureNodeLabel(architecture.nodes ?? [], edge.to),
+    toLabel: architectureEndpointLabel({ nodes: architecture.nodes ?? [], moduleByResponsibilityUnit, id: edge.to }),
     contractId: edge.contractId ?? null,
     contractKind: contractsById.get(edge.contractId)?.kind ?? "contract",
     allowedUse: contractSummary(contractsById.get(edge.contractId), "Architecture dependency.")

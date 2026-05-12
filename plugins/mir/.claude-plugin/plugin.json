@@ -1,6 +1,6 @@
 {
   "name": "mir",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "Short slash-command alias for the Make It Real Claude Code engineering harness.",
   "author": {
     "name": "Make It Real"
