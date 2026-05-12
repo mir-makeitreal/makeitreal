@@ -1638,6 +1638,7 @@ h3 {
 
 .doc-table {
   overflow: hidden;
+  max-width: 100%;
   background: var(--panel);
 }
 
@@ -1651,7 +1652,9 @@ h3 {
 
 .doc-key,
 .doc-value {
+  min-width: 0;
   padding: 11px 12px;
+  overflow-wrap: anywhere;
 }
 
 .doc-key {
@@ -1662,6 +1665,13 @@ h3 {
 
 .doc-value ul {
   margin: 0;
+}
+
+.doc-value code,
+.artifact-grid code,
+.rail-list code {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .clean-list {
@@ -1787,13 +1797,18 @@ h3 {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .contract-chip-list code {
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 8px;
   background: var(--panel);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .surface-card p,
@@ -2133,6 +2148,7 @@ h3 {
 }
 
 .rail-list > div {
+  min-width: 0;
   padding: 9px;
   background: var(--panel);
 }
@@ -2146,6 +2162,7 @@ h3 {
 .artifact-grid > div {
   display: grid;
   gap: 5px;
+  min-width: 0;
   border: 1px solid var(--soft-line);
   border-radius: 8px;
   background: var(--panel);
@@ -2414,7 +2431,13 @@ h3 {
   gap: 12px;
 }
 
+.module-reference > * {
+  min-width: 0;
+}
+
 .module-directory {
+  width: 100%;
+  max-width: 100%;
   overflow: hidden;
   border: 1px solid var(--soft-line);
   border-radius: 8px;
@@ -2494,6 +2517,12 @@ h3 {
 .surface-reference {
   display: grid;
   gap: 12px;
+}
+
+.surface-reference > *,
+.surface-detail-grid > *,
+.surface-summary > * {
+  min-width: 0;
 }
 
 .surface-detail-grid {
@@ -2749,6 +2778,14 @@ h3 {
 
   .section-heading {
     display: grid;
+  }
+
+  .surface-reference-header {
+    display: grid;
+  }
+
+  .contract-chip-list {
+    justify-content: flex-start;
   }
 
   .spec-row.header {

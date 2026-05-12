@@ -375,6 +375,8 @@ test("renders canonical architecture preview", async () => {
     assert.match(css, /\.module-directory/);
     assert.match(css, /\.surface-reference-header/);
     assert.match(css, /\.sdk-example/);
+    assert.match(css, /\.module-reference > \*/);
+    assert.match(css, /\.surface-reference > \*/);
     assert.match(css, /\.signature-table/);
     assert.match(css, /\.diagram-card/);
     assert.match(css, /\.mermaid/);
