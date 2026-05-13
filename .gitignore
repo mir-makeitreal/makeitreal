@@ -33,3 +33,5 @@ coverage/
 .nyc_output/
 dist/
 build/
+# CocoIndex Code (ccc)
+/.cocoindex_code/
