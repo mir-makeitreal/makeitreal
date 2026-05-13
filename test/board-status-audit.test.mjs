@@ -3,6 +3,7 @@ import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
 import { generatePlanRun } from "../src/plan/plan-generator.mjs";
@@ -31,15 +32,96 @@ async function snapshot(paths) {
   return out;
 }
 
-test("board status preserves lane counts and reports approved audit", async () => {
+test("board status blocks approved boards when Ready gate fails", async () => {
   await withBoard(async ({ boardDir }) => {
     const result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.ok, true);
     assert.deepEqual(result.laneCounts, { Done: 1, Ready: 2 });
+    assert.equal(result.audit.ok, false);
+    assert.equal(result.readyGate.ok, false);
+    assert.equal(result.phase, "blocked");
+    assert.deepEqual(result.launchableWorkItemIds, []);
+    assert.equal(result.recommendedNativeTaskConcurrency, 0);
+    assert.equal(Object.hasOwn(result, "launchableWork"), false);
+  });
+});
+
+test("board status exposes launch batch only after approved Ready gate", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-ready-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript display-name normalizer in src/normalize-name.mjs with tests.",
+      runId: "display-name-normalizer",
+      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+      verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+    const approval = await decideBlueprintReview({
+      runDir: plan.runDir,
+      status: "approved",
+      reviewedBy: "operator:board-status-test",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const result = await readBoardStatus({ boardDir: plan.runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.audit.ok, true);
+    assert.equal(result.readyGate.ok, true);
     assert.equal(result.phase, "launch-ready");
     assert.equal(result.nextAction, "/makeitreal:launch");
-  });
+    assert.deepEqual(result.launchableWorkItemIds, [plan.workItemId]);
+    assert.equal(result.recommendedNativeTaskConcurrency, 1);
+    assert.equal(Object.hasOwn(result, "launchableWork"), false);
+    assert.deepEqual(result.operatorSummary.launchableWorkItemIds, [plan.workItemId]);
+    assert.equal(result.operatorSummary.recommendedNativeTaskConcurrency, 1);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("board status recommends one native task per responsibility unit", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-ru-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot,
+      request: "Implement a pure JavaScript display-name normalizer in src/normalize-name.mjs with tests.",
+      runId: "display-name-normalizer-ru",
+      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+      verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }],
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const boardPath = path.join(plan.runDir, "board.json");
+    const board = await readJsonFile(boardPath);
+    const primary = board.workItems.find((item) => item.id === plan.workItemId);
+    board.workItems.push({
+      ...primary,
+      id: "work.display-name-docs",
+      title: "Document display-name normalizer usage",
+      lane: "Ready",
+      dependsOn: []
+    });
+    await writeJsonFile(boardPath, board);
+
+    const approval = await decideBlueprintReview({
+      runDir: plan.runDir,
+      status: "approved",
+      reviewedBy: "operator:board-status-ru-test",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const result = await readBoardStatus({ boardDir: plan.runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    assert.equal(result.readyGate.ok, true);
+    assert.deepEqual(result.launchableWorkItemIds, ["work.display-name-docs", plan.workItemId]);
+    assert.equal(result.recommendedNativeTaskConcurrency, 1);
+    assert.equal(result.operatorSummary.recommendedNativeTaskConcurrency, 1);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test("board status reports stale Blueprint work and is no-write", async () => {
@@ -89,6 +171,8 @@ test("board status blocks Contract Frozen planned work until Blueprint approval"
     assert.equal(result.phase, "approval-required");
     assert.equal(result.blockers[0].code, "HARNESS_BLUEPRINT_APPROVAL_PENDING");
     assert.deepEqual(result.audit.blueprintBlockedWorkItemIds, [plan.workItemId]);
+    assert.deepEqual(result.launchableWorkItemIds, []);
+    assert.equal(result.recommendedNativeTaskConcurrency, 0);
     assert.equal(result.nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -102,6 +186,8 @@ test("board status reports unlinked and drifted board authority", async () => {
     let result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.audit.skipped, true);
     assert.equal(result.audit.code, "HARNESS_BLUEPRINT_AUDIT_UNLINKED");
+    assert.deepEqual(result.launchableWorkItemIds, []);
+    assert.equal(result.recommendedNativeTaskConcurrency, 0);
 
     await cp(new URL("../examples/kanban/.makeitreal/board/blueprint-review.json", import.meta.url), path.join(boardDir, "blueprint-review.json"));
     const board = await readJsonFile(path.join(boardDir, "board.json"));
@@ -110,6 +196,8 @@ test("board status reports unlinked and drifted board authority", async () => {
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.audit.skipped, true);
     assert.equal(result.audit.code, "HARNESS_BLUEPRINT_APPROVAL_DRIFT");
+    assert.deepEqual(result.launchableWorkItemIds, []);
+    assert.equal(result.recommendedNativeTaskConcurrency, 0);
   });
 });
 

@@ -129,18 +129,39 @@ function failedFastNextAction(failedFast, canRetry) {
   return failedFast.errorNextAction ?? (canRetry ? ACTIONS.launch : ACTIONS.status);
 }
 
-export function summarizeBoardOperator({ board, activeClaims = [], blockedWork = [], retryReady = [], now = new Date(), audit = null }) {
+function launchBatchSummary(launchableWork) {
+  const work = launchableWork ?? [];
+  const responsibilityUnits = new Set(work.map((item) => item.responsibilityUnitId ?? item.id));
+  return {
+    launchableWorkItemIds: work.map((item) => item.id),
+    recommendedNativeTaskConcurrency: responsibilityUnits.size
+  };
+}
+
+export function summarizeBoardOperator({
+  board,
+  activeClaims = [],
+  blockedWork = [],
+  retryReady = [],
+  launchableWork = [],
+  now = new Date(),
+  audit = null
+}) {
   const errors = audit?.gateFailures ?? [];
   if (errors.length > 0) {
+    const authority = audit?.gateFailureAuthority ?? "blueprint-review";
+    const blueprintBlocked = authority === "blueprint-review";
     const blockers = errors.map((error) => blockerFromError(error, {
-      nextAction: ACTIONS.approve,
-      authority: "blueprint-review"
+      nextAction: blueprintBlocked ? ACTIONS.approve : null,
+      authority
     }));
     return {
-      phase: "approval-required",
-      headline: "Board has work blocked by Blueprint approval.",
+      phase: blueprintBlocked ? "approval-required" : "blocked",
+      headline: blueprintBlocked
+        ? "Board has work blocked by Blueprint approval."
+        : "Board has work blocked by Ready gate failures.",
       blockers,
-      nextAction: ACTIONS.approve
+      nextAction: blockers[0]?.nextAction ?? (blueprintBlocked ? ACTIONS.approve : ACTIONS.status)
     };
   }
 
@@ -199,10 +220,14 @@ export function summarizeBoardOperator({ board, activeClaims = [], blockedWork =
   if (firstByLane(board, ["Human Review"])) {
     return { phase: "human-review", headline: "Verification passed; human review/wiki completion is pending.", blockers: [], nextAction: ACTIONS.launch };
   }
-  const blockedIds = new Set(blockedWork.map((item) => item.id));
-  const launchableReady = (board.workItems ?? []).some((item) => item.lane === "Ready" && !blockedIds.has(item.id));
-  if (launchableReady || firstByLane(board, ["Contract Frozen"])) {
-    return { phase: "launch-ready", headline: "Board has work ready for launch.", blockers: [], nextAction: ACTIONS.launch };
+  if (launchableWork.length > 0) {
+    return {
+      phase: "launch-ready",
+      headline: "Board has work ready for launch.",
+      blockers: [],
+      nextAction: ACTIONS.launch,
+      ...launchBatchSummary(launchableWork)
+    };
   }
   if (blockedWork.length > 0) {
     return {

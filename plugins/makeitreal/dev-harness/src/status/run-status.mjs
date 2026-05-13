@@ -46,7 +46,7 @@ export async function readRunStatus({ projectRoot, runDir = null, now = new Date
   const runOperatorSummary = summarizeRunOperator({ resolved, blueprint, readyGate });
   const evidenceSummary = await readEvidenceSummary(resolved.runDir);
   const boardStatus = await fileExists(path.join(resolved.runDir, "board.json"))
-    ? await readBoardStatus({ boardDir: resolved.runDir, now })
+    ? await readBoardStatus({ boardDir: resolved.runDir, now, readyGate })
     : null;
   const operatorSummary = blueprint.ok && readyGate.ok && boardStatus?.operatorSummary
     ? {

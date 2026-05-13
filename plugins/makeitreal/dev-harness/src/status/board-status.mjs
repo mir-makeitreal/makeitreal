@@ -1,7 +1,9 @@
 import { loadBoard } from "../board/board-store.mjs";
 import { listClaims } from "../board/claim-store.mjs";
-import { getBlockedWorkItems } from "../board/dependency-graph.mjs";
+import { getBlockedWorkItems, getReadyWorkItems } from "../board/dependency-graph.mjs";
 import { validateBlueprintApproval, resolveBlueprintRunDir } from "../blueprint/review.mjs";
+import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
+import { runGates } from "../gates/index.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 import { readEvidenceSummary, summarizeBoardOperator } from "./operator-summary.mjs";
 import path from "node:path";
@@ -17,7 +19,48 @@ function countLanes(board) {
   return counts;
 }
 
-export async function readBoardStatus({ boardDir, now = new Date() }) {
+function emptyLaunchBatch() {
+  return {
+    launchableWorkItemIds: [],
+    recommendedNativeTaskConcurrency: 0
+  };
+}
+
+function launchBatch(workItems) {
+  const responsibilityUnits = new Set(workItems.map((item) => item.responsibilityUnitId ?? item.id));
+  return {
+    launchableWorkItemIds: workItems.map((item) => item.id),
+    recommendedNativeTaskConcurrency: responsibilityUnits.size
+  };
+}
+
+function dependenciesComplete(board, workItem) {
+  const itemsById = new Map((board.workItems ?? []).map((item) => [item.id, item]));
+  return (workItem.dependsOn ?? []).every((dependencyId) => itemsById.get(dependencyId)?.lane === "Done");
+}
+
+async function getNativeStartLaunchableWorkItems({ board, runDir }) {
+  const ready = getReadyWorkItems(board);
+  const readyIds = new Set(ready.map((item) => item.id));
+  const primary = findPrimaryWorkItem(await loadRunArtifacts(runDir));
+  const promotablePrimary = (board.workItems ?? []).find((item) =>
+    item.id === primary.id
+    && item.lane === "Contract Frozen"
+    && !readyIds.has(item.id)
+    && dependenciesComplete(board, item)
+  );
+  return promotablePrimary ? [...ready, promotablePrimary] : ready;
+}
+
+function hasRuntimePriorityLane(board) {
+  const workItems = board.workItems ?? [];
+  return workItems.length > 0 && (
+    workItems.every((item) => item.lane === "Done")
+    || workItems.some((item) => ["Failed Fast", "Rework", "Claimed", "Running", "Verifying", "Human Review"].includes(item.lane))
+  );
+}
+
+export async function readBoardStatus({ boardDir, now = new Date(), readyGate: providedReadyGate = null }) {
   const board = await loadBoard(boardDir);
   const activeClaims = await listClaims({ boardDir, now });
   const blockedWork = getBlockedWorkItems(board);
@@ -29,6 +72,7 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
     command: "board status",
     boardId: board.boardId,
     laneCounts: countLanes(board),
+    ...emptyLaunchBatch(),
     activeClaims,
     blockedWork: blockedWork.map((item) => ({ id: item.id, dependsOn: item.dependsOn ?? [] })),
     failedFast: failedFast.map((item) => ({
@@ -54,9 +98,19 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
       reason: resolved.errors[0]?.reason ?? "Board is not linked to a Blueprint run packet.",
       gateFailures: resolved.errors
     };
-    const operatorSummary = summarizeBoardOperator({ board, activeClaims, blockedWork, retryReady, now, audit });
+    const visibleLaunchBatch = emptyLaunchBatch();
+    const operatorSummary = summarizeBoardOperator({
+      board,
+      activeClaims,
+      blockedWork,
+      retryReady,
+      launchableWork: [],
+      now,
+      audit
+    });
     return {
       ...base,
+      ...visibleLaunchBatch,
       phase: operatorSummary.phase,
       headline: operatorSummary.headline,
       blockers: operatorSummary.blockers,
@@ -69,9 +123,9 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
   }
 
   const approval = await validateBlueprintApproval({ runDir: resolved.runDir });
-  const readyWorkItems = (board.workItems ?? []).filter((workItem) => workItem.lane === "Ready");
-  const auditWorkItems = readyWorkItems.length > 0
-    ? readyWorkItems
+  const auditReadyWorkItems = (board.workItems ?? []).filter((workItem) => workItem.lane === "Ready");
+  const auditWorkItems = auditReadyWorkItems.length > 0
+    ? auditReadyWorkItems
     : (board.workItems ?? []).filter((workItem) => !["Done", "Cancelled"].includes(workItem.lane));
   const audit = {
     ok: approval.ok,
@@ -86,13 +140,32 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
       evidence: error.evidence ?? []
     })))
   };
-  const operatorSummary = summarizeBoardOperator({ board, activeClaims, blockedWork, retryReady, now, audit });
+  const readyGate = approval.ok
+    ? providedReadyGate ?? await runGates({ runDir: resolved.runDir, target: "Ready" })
+    : null;
+  const effectiveAudit = readyGate?.ok === false && !hasRuntimePriorityLane(board)
+    ? { ...audit, ok: false, gateFailures: readyGate.errors, gateFailureAuthority: "ready-gate" }
+    : audit;
+  const launchableWorkItems = approval.ok && readyGate?.ok
+    ? await getNativeStartLaunchableWorkItems({ board, runDir: resolved.runDir })
+    : [];
+  const visibleLaunchBatch = launchBatch(launchableWorkItems);
+  const operatorSummary = summarizeBoardOperator({
+    board,
+    activeClaims,
+    blockedWork,
+    retryReady,
+    launchableWork: approval.ok && readyGate?.ok ? launchableWorkItems : [],
+    now,
+    audit: effectiveAudit
+  });
   const evidenceSummary = await readEvidenceSummary(resolved.runDir);
   operatorSummary.evidenceSummary = evidenceSummary;
   const runtimePath = path.join(boardDir, "runtime-state.json");
   const runtimeState = await fileExists(runtimePath) ? await readJsonFile(runtimePath) : null;
   return {
     ...base,
+    ...visibleLaunchBatch,
     phase: operatorSummary.phase,
     headline: operatorSummary.headline,
     blockers: operatorSummary.blockers,
@@ -100,7 +173,8 @@ export async function readBoardStatus({ boardDir, now = new Date() }) {
     evidenceSummary,
     operatorSummary,
     runtimeState,
-    audit,
+    audit: effectiveAudit,
+    readyGate,
     errors: []
   };
 }

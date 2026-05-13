@@ -30,6 +30,10 @@ and reviewer subagents in its normal UI:
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native start "$RUN_DIR" --concurrency 6
 ```
 
+Use `boardStatus.recommendedNativeTaskConcurrency` from status when present.
+It is derived from unblocked responsibility units, and `launchableWorkItemIds`
+shows which scoped jobs should become native Claude Code `Task` calls.
+
 If status shows a work item already in `Verifying` or `Rework`, do not start a
 new implementation task. Re-run completion for that work item instead; the
 engine can recover `Rework -> Verifying` after the root cause is fixed and will

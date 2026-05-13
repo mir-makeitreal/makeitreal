@@ -75,6 +75,8 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task"\]/);
   assert.match(launchCommand, /orchestrator native start/);
   assert.match(launchCommand, /--concurrency 6/);
+  assert.match(launchCommand, /recommendedNativeTaskConcurrency/);
+  assert.match(launchCommand, /unblocked responsibility/i);
   assert.match(launchCommand, /orchestrator native finish/);
   assert.match(launchCommand, /nativeTasks\[\]/);
   assert.match(launchCommand, /Claude Code\s+`Task` tool/);
@@ -164,6 +166,8 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /board claim/);
   assert.match(launchSkill, /orchestrator native start/);
   assert.match(launchSkill, /--concurrency 6/);
+  assert.match(launchSkill, /recommendedNativeTaskConcurrency/);
+  assert.match(launchSkill, /unblocked responsibility/i);
   assert.match(launchSkill, /orchestrator native finish/);
   assert.match(launchSkill, /nativeTasks\[\]/);
   assert.match(launchSkill, /parent-session native Task path/);

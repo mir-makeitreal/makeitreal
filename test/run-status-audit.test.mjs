@@ -224,6 +224,9 @@ test("status projects board recovery phases through the public current-run surfa
     let status = runHarness(["status", projectRoot]);
     assert.equal(status.status, 0, status.stdout || status.stderr);
     assert.equal(JSON.parse(status.stdout).phase, "launch-ready");
+    assert.deepEqual(JSON.parse(status.stdout).boardStatus.launchableWorkItemIds, [plan.workItemId]);
+    assert.equal(JSON.parse(status.stdout).boardStatus.recommendedNativeTaskConcurrency, 1);
+    assert.deepEqual(JSON.parse(status.stdout).operatorSummary.launchableWorkItemIds, [plan.workItemId]);
 
     const failed = await orchestratorTick({
       boardDir: plan.runDir,
@@ -257,6 +260,8 @@ test("status projects board recovery phases through the public current-run surfa
     output = JSON.parse(status.stdout);
     assert.equal(output.phase, "launch-ready");
     assert.equal(output.nextAction, "/makeitreal:launch");
+    assert.deepEqual(output.boardStatus.launchableWorkItemIds, [plan.workItemId]);
+    assert.equal(output.operatorSummary.recommendedNativeTaskConcurrency, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
