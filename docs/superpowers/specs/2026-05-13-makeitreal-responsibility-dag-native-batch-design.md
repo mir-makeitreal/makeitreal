@@ -229,13 +229,17 @@ topology.
 ### Phase 1: Multi-work-item Blueprint packets
 
 Generate multiple work items from `moduleInterfaces` and dependency providers
-when the request explicitly spans multiple responsibility units. Keep the
-current single-item path for small tasks.
+when the request spans multiple responsibility units. A small task with one
+true responsibility unit still becomes a one-node work-item DAG; it is not a
+fallback path and must pass through the same DAG schema, gates, and evidence
+rules.
 
 ### Phase 2: Native batch start
 
 Add `orchestrator native batch-start` or extend `native start` to return
-`nativeTasks`. Preserve current single-task compatibility for existing commands.
+`nativeTasks`. The public launch path must consume the canonical `nativeTasks`
+array. If the DAG has one runnable node, the array contains one task; no
+separate single-task compatibility path is allowed.
 
 ### Phase 3: Per-item finish and graph completion
 
