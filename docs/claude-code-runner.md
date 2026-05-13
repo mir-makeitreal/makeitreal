@@ -25,12 +25,13 @@ Code process.
 
 `/mir:launch` and `/makeitreal:launch` run this internal sequence:
 
-1. `orchestrator native start` validates Ready gates, claims one ready work
-   item, marks it `Running`, and returns scoped implementation/reviewer prompts.
-2. Claude Code native `Task` implements the work item in the visible parent
-   session UI.
-3. Claude Code native reviewer `Task`s run as `spec-reviewer`,
-   `quality-reviewer`, and `verification-reviewer`.
+1. `orchestrator native start` validates Ready gates, claims every unblocked
+   ready work item up to the requested concurrency, marks each one `Running`,
+   and returns a canonical `nativeTasks[]` batch.
+2. Claude Code native `Task` implements each returned work item in the visible
+   parent session UI.
+3. Claude Code native reviewer `Task`s run for each returned work item as
+   `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`.
 4. `orchestrator native finish` records the implementation and review JSON
    evidence and moves successful work to `Verifying`.
 5. `orchestrator complete` runs verification from the project root and moves the

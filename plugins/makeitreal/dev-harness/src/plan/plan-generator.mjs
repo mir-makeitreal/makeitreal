@@ -1068,6 +1068,22 @@ function surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile, modul
   return moduleProfile?.surfaceName ?? `${slug}.execute`;
 }
 
+function apiModuleName(apiProfile, fallbackSlug) {
+  const resource = String(apiProfile?.routePath ?? "")
+    .split("/")
+    .filter((part) => part && !/^v\d+$/i.test(part) && part.toLowerCase() !== "api")
+    .filter((part) => !part.startsWith(":"))
+    .at(-1);
+  return `${humanizeIdentifier(resource || fallbackSlug)} API`;
+}
+
+function moduleDisplayNameFor({ title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
+  if (usesOpenApi) {
+    return apiModuleName(apiProfile, slug);
+  }
+  return componentProfile?.componentName ?? moduleProfile?.moduleName ?? title;
+}
+
 function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiProfile, componentProfile, moduleProfile }) {
   if (usesOpenApi) {
     return {
@@ -1083,7 +1099,7 @@ function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiPro
           type: "object",
           required: true,
           fields: apiProfile.requestFields,
-          description: `Payload accepted by ${apiProfile.method.toUpperCase()} ${apiProfile.routePath} for: ${title}`
+          description: `Payload accepted by ${apiProfile.method.toUpperCase()} ${apiProfile.routePath}.`
         }] : [{
           name: "requestContext",
           type: "http request context",
@@ -1165,13 +1181,15 @@ function moduleSignatureFor({ contractId, owns, title, usesOpenApi, slug, apiPro
 
 function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile }) {
   const surfaceName = surfaceNameFor({ usesOpenApi, slug, apiProfile, componentProfile, moduleProfile });
-  const moduleName = componentProfile?.componentName ?? moduleProfile?.moduleName ?? title;
+  const moduleName = moduleDisplayNameFor({ title, slug, usesOpenApi, apiProfile, componentProfile, moduleProfile });
   return {
     responsibilityUnitId,
     owner,
     moduleName,
     purpose: usesOpenApi || componentProfile
-      ? `Own delivery of "${title}" through declared paths and public surfaces only.`
+      ? usesOpenApi
+        ? `Own ${apiProfile.method.toUpperCase()} ${apiProfile.routePath} through declared paths, response statuses, and dependency contracts only.`
+        : `Own delivery of "${title}" through declared paths and public surfaces only.`
       : moduleProfile?.purpose ?? `Own delivery of "${title}" through declared paths and public surfaces only.`,
     owns,
     publicSurfaces: [
@@ -1179,7 +1197,7 @@ function moduleInterfaceFor({ responsibilityUnitId, owner, owns, contractId, tit
         name: surfaceName,
         kind: usesOpenApi ? "http" : componentProfile ? "component" : "module",
         description: usesOpenApi
-          ? `HTTP contract surface for ${title}.`
+          ? `HTTP contract surface for ${apiProfile.method.toUpperCase()} ${apiProfile.routePath}.`
           : componentProfile
             ? `Component contract surface for ${componentProfile.componentName}.`
             : `Module boundary surface for ${moduleName}.`,
@@ -1351,6 +1369,15 @@ async function materializeLaunchBoard({ runDir, runId, slug, workItem, runnerMod
     boardId: `board.${slug}`,
     blueprintRunDir: ".",
     lanes: LANES,
+    workItemDAG: {
+      schemaVersion: "1.0",
+      nodes: [{
+        workItemId: workItem.id,
+        responsibilityUnitId: workItem.responsibilityUnitId,
+        dependsOn: workItem.dependsOn
+      }],
+      edges: []
+    },
     workItems: [workItem]
   };
   await writeJsonFile(path.join(runDir, "board.json"), board);

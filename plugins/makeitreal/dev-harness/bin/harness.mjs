@@ -59,7 +59,7 @@ Internal commands used by Make It Real skills:
   board claim <boardDir>       Claim work with --work and --worker
   board mailbox send <boardDir> Send a worker-to-worker message
   orchestrator tick <boardDir> Dispatch scripted fixture work attempts (--runner scripted-simulator)
-  orchestrator native start <boardDir> Prepare a parent-session Claude Code Task handoff
+  orchestrator native start <boardDir> Prepare parent-session Claude Code Task handoffs (--concurrency N)
   orchestrator native finish <boardDir> Record a parent-session Task result from --result-json, stdin, or shorthand flags
     --summary <text>          Shorthand implementation summary
     --changed-file <path>     Repeatable changed file for the implementation report
@@ -776,6 +776,7 @@ async function runCommand(argv) {
     const result = await startNativeClaudeTask({
       boardDir: argv[3],
       workerId: parseFlag(argv, "--worker") ?? "claude-code.parent",
+      concurrency: Number.parseInt(parseFlag(argv, "--concurrency") ?? "1", 10),
       now: deterministicNow(argv)
     });
     const afterDashboard = await refreshPreviewForTrigger({

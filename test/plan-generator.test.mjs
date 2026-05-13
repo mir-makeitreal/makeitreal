@@ -67,6 +67,15 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
     assert.equal(board.workItems.length, 1);
     assert.equal(board.workItems[0].id, "work.summary-widget");
     assert.equal(board.workItems[0].lane, "Contract Frozen");
+    assert.deepEqual(board.workItemDAG, {
+      schemaVersion: "1.0",
+      nodes: [{
+        workItemId: "work.summary-widget",
+        responsibilityUnitId: "ru.summary-widget",
+        dependsOn: []
+      }],
+      edges: []
+    });
 
     const trustPolicy = await readJsonFile(path.join(result.runDir, "trust-policy.json"));
     assert.equal(trustPolicy.runnerMode, "scripted-simulator");

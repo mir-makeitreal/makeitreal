@@ -74,7 +74,9 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   const launchCommand = await readPluginFile("commands", "launch.md");
   assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task"\]/);
   assert.match(launchCommand, /orchestrator native start/);
+  assert.match(launchCommand, /--concurrency 6/);
   assert.match(launchCommand, /orchestrator native finish/);
+  assert.match(launchCommand, /nativeTasks\[\]/);
   assert.match(launchCommand, /Claude Code\s+`Task` tool/);
   assert.match(launchCommand, /Verifying` or `Rework/);
   assert.match(launchCommand, /recover `Rework -> Verifying`/);
@@ -161,7 +163,9 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /Do not convert internal commands/);
   assert.match(launchSkill, /board claim/);
   assert.match(launchSkill, /orchestrator native start/);
+  assert.match(launchSkill, /--concurrency 6/);
   assert.match(launchSkill, /orchestrator native finish/);
+  assert.match(launchSkill, /nativeTasks\[\]/);
   assert.match(launchSkill, /parent-session native Task path/);
   assert.match(launchSkill, /existing work item in `Verifying` or `Rework`/);
   assert.match(launchSkill, /Do not spawn `claude --print`/);
@@ -385,10 +389,11 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
     assert.equal(embeddedPkg.version, rootPkg.version);
     const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
-    assert.match(renderer, /Blueprint SDK Reference/);
+    assert.match(renderer, /Blueprint Reference/);
+    assert.match(renderer, /Visual Blueprint/);
     assert.match(renderer, /Contract Matrix/);
     assert.match(renderer, /Module Directory/);
-    assert.match(renderer, /Module Reference/);
+    assert.match(renderer, /Usage Example/);
     assert.match(renderer, /Parameters/);
     assert.match(renderer, /Contracts/);
     assert.match(renderer, /Developer Diagnostics/);

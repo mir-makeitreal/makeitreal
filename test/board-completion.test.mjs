@@ -50,6 +50,13 @@ async function enableClaudeRunner(boardDir) {
   });
 }
 
+function onlyNativeTask(started) {
+  assert.equal(Object.hasOwn(started, "nativeTask"), false);
+  assert.equal(Array.isArray(started.nativeTasks), true);
+  assert.equal(started.nativeTasks.length, 1);
+  return started.nativeTasks[0];
+}
+
 async function dispatchNativeWork({
   boardDir,
   now,
@@ -62,9 +69,10 @@ async function dispatchNativeWork({
     workerId,
     now
   });
-  if (!started.ok || !started.nativeTask) {
+  if (!started.ok || (started.nativeTasks ?? []).length === 0) {
     return started;
   }
+  const nativeTask = onlyNativeTask(started);
 
   const resultText = JSON.stringify({
     makeitrealReport: {
@@ -88,8 +96,8 @@ async function dispatchNativeWork({
 
   const finished = await finishNativeClaudeTask({
     boardDir,
-    workItemId: started.nativeTask.workItemId,
-    attemptId: started.nativeTask.attemptId,
+    workItemId: nativeTask.workItemId,
+    attemptId: nativeTask.attemptId,
     workerId,
     resultText,
     now: new Date(now.getTime() + 1000)
@@ -268,9 +276,10 @@ test("parent-session native Claude task reaches completion without spawning chil
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(started.ok, true);
-    assert.equal(started.nativeTask.workItemId, "work.login-ui");
-    assert.match(started.nativeTask.implementationPrompt, /Do not spawn a separate claude CLI process/);
-    assert.deepEqual(started.nativeTask.reviewerPrompts.map((prompt) => prompt.role), [
+    const nativeTask = onlyNativeTask(started);
+    assert.equal(nativeTask.workItemId, "work.login-ui");
+    assert.match(nativeTask.implementationPrompt, /Do not spawn a separate claude CLI process/);
+    assert.deepEqual(nativeTask.reviewerPrompts.map((prompt) => prompt.role), [
       "spec-reviewer",
       "quality-reviewer",
       "verification-reviewer"
@@ -301,8 +310,8 @@ test("parent-session native Claude task reaches completion without spawning chil
 
     const finished = await finishNativeClaudeTask({
       boardDir,
-      workItemId: started.nativeTask.workItemId,
-      attemptId: started.nativeTask.attemptId,
+      workItemId: nativeTask.workItemId,
+      attemptId: nativeTask.attemptId,
       workerId: "claude-code.parent",
       resultText,
       now: new Date("2026-04-30T00:00:01.000Z")
@@ -327,6 +336,43 @@ test("parent-session native Claude task reaches completion without spawning chil
   });
 });
 
+test("native Claude start returns every unblocked ready node through nativeTasks", async () => {
+  await withBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const board = await loadBoard(boardDir);
+    const auditWork = board.workItems.find((item) => item.id === "work.audit-log");
+    auditWork.dependsOn = [];
+    await saveBoard(boardDir, board);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-batch-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      concurrency: 2,
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+
+    assert.equal(started.ok, true);
+    assert.equal(Object.hasOwn(started, "nativeTask"), false);
+    assert.equal(started.nativeTasks.length, 2);
+    assert.deepEqual(started.nativeTasks.map((task) => task.workItemId), [
+      "work.login-ui",
+      "work.audit-log"
+    ]);
+    assert.equal(started.nativeTasks.every((task) => task.implementationPrompt.includes("Do not spawn a separate claude CLI process")), true);
+
+    const running = await loadBoard(boardDir);
+    assert.equal(running.workItems.find((item) => item.id === "work.login-ui").lane, "Running");
+    assert.equal(running.workItems.find((item) => item.id === "work.audit-log").lane, "Running");
+  });
+});
+
 test("native finish CLI can build reports from shorthand flags", async () => {
   await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);
@@ -344,6 +390,7 @@ test("native finish CLI can build reports from shorthand flags", async () => {
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
 
     await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
     await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
@@ -355,9 +402,9 @@ test("native finish CLI can build reports from shorthand flags", async () => {
       "finish",
       boardDir,
       "--work",
-      started.nativeTask.workItemId,
+      nativeTask.workItemId,
       "--attempt",
-      started.nativeTask.attemptId,
+      nativeTask.attemptId,
       "--summary",
       "Implemented shorthand result.",
       "--changed-file",
@@ -378,7 +425,7 @@ test("native finish CLI can build reports from shorthand flags", async () => {
     const output = JSON.parse(result.stdout);
     assert.equal(output.ok, true);
 
-    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: started.nativeTask.workItemId });
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: nativeTask.workItemId });
     assert.equal(attempt.runner.agentReports[0].summary, "Implemented shorthand result.");
     assert.deepEqual(attempt.runner.agentReports[0].changedFiles, ["apps/web/auth/native-output.txt"]);
     assert.deepEqual(attempt.runner.reviewReports.map((review) => review.role), [
@@ -406,6 +453,7 @@ test("native finish accepts Claude Task reviewer arrays under reviews", async ()
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
 
     await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
     await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
@@ -434,15 +482,15 @@ test("native finish accepts Claude Task reviewer arrays under reviews", async ()
 
     const finished = await finishNativeClaudeTask({
       boardDir,
-      workItemId: started.nativeTask.workItemId,
-      attemptId: started.nativeTask.attemptId,
+      workItemId: nativeTask.workItemId,
+      attemptId: nativeTask.attemptId,
       workerId: "claude-code.parent",
       resultText,
       now: new Date("2026-04-30T00:00:01.000Z")
     });
     assert.equal(finished.ok, true);
 
-    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: started.nativeTask.workItemId });
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: nativeTask.workItemId });
     assert.deepEqual(attempt.runner.reviewReports.map((review) => review.role), [
       "spec-reviewer",
       "quality-reviewer",
@@ -468,6 +516,7 @@ test("native finish shorthand treats blockers as failed fast", async () => {
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
 
     const result = spawnSync(process.execPath, [
       "bin/harness.mjs",
@@ -476,9 +525,9 @@ test("native finish shorthand treats blockers as failed fast", async () => {
       "finish",
       boardDir,
       "--work",
-      started.nativeTask.workItemId,
+      nativeTask.workItemId,
       "--attempt",
-      started.nativeTask.attemptId,
+      nativeTask.attemptId,
       "--summary",
       "Blocked on missing contract decision.",
       "--status",
@@ -501,7 +550,7 @@ test("native finish shorthand treats blockers as failed fast", async () => {
     assert.equal(output.errors[0].code, "HARNESS_AGENT_BLOCKED");
 
     const board = await loadBoard(boardDir);
-    assert.equal(board.workItems.find((item) => item.id === started.nativeTask.workItemId).lane, "Failed Fast");
+    assert.equal(board.workItems.find((item) => item.id === nativeTask.workItemId).lane, "Failed Fast");
   });
 });
 
@@ -529,6 +578,7 @@ test("orchestrator complete retries Rework verification after environment recove
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
 
     const resultText = JSON.stringify({
       makeitrealReport: {
@@ -552,8 +602,8 @@ test("orchestrator complete retries Rework verification after environment recove
 
     const finished = await finishNativeClaudeTask({
       boardDir,
-      workItemId: started.nativeTask.workItemId,
-      attemptId: started.nativeTask.attemptId,
+      workItemId: nativeTask.workItemId,
+      attemptId: nativeTask.attemptId,
       workerId: "claude-code.parent",
       resultText,
       now: new Date("2026-04-30T00:00:01.000Z")

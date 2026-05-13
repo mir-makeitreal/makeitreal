@@ -329,117 +329,136 @@ Review only this work item. Do not edit files. Return JSON:
 `;
 }
 
-export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.parent", now }) {
+export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.parent", concurrency = 1, now }) {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    return {
+      ok: false,
+      command: "orchestrator native start",
+      nativeTasks: [],
+      errors: [createHarnessError({
+        code: "HARNESS_NATIVE_CONCURRENCY_INVALID",
+        reason: "Native Claude Task concurrency must be a positive integer.",
+        evidence: ["--concurrency"],
+        recoverable: true
+      })]
+    };
+  }
+
   const policy = await validateRunnerPolicy(boardDir, { runnerMode: "claude-code" });
   if (!policy.ok) {
-    return { ok: false, command: "orchestrator native start", errors: policy.errors };
+    return { ok: false, command: "orchestrator native start", nativeTasks: [], errors: policy.errors };
   }
 
   let board = await loadBoard(boardDir);
   const graph = validateDependencyGraph(board);
   if (!graph.ok) {
-    return { ok: false, command: "orchestrator native start", errors: graph.errors };
+    return { ok: false, command: "orchestrator native start", nativeTasks: [], errors: graph.errors };
   }
 
   const readyPromotion = await promoteReadyGateApprovedWork({ boardDir, board, now });
   if (!readyPromotion.ok) {
-    return { ok: false, command: "orchestrator native start", errors: readyPromotion.errors };
+    return { ok: false, command: "orchestrator native start", nativeTasks: [], errors: readyPromotion.errors };
   }
   board = readyPromotion.board;
 
-  const [workItem] = getReadyWorkItems(board);
-  if (!workItem) {
+  const readyWorkItems = getReadyWorkItems(board).slice(0, concurrency);
+  if (readyWorkItems.length === 0) {
     return {
       ok: true,
       command: "orchestrator native start",
-      nativeTask: null,
+      nativeTasks: [],
       promotedWorkItemIds: readyPromotion.promotedWorkItemIds,
       errors: []
     };
   }
 
-  const claim = await claimWorkItem({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60 * 60 * 1000 });
-  if (!claim.ok) {
-    return { ok: false, command: "orchestrator native start", errors: claim.errors };
-  }
-
-  const claimedBoard = await loadBoard(boardDir);
-  const running = transitionLane(claimedBoard, workItem.id, "Running");
-  if (!running.ok) {
-    await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
-    return { ok: false, command: "orchestrator native start", errors: running.errors };
-  }
-  await saveBoard(boardDir, claimedBoard);
-
-  const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
-  const attempt = await createRunAttempt({ boardDir, workItem: activeWorkItem, workerId, now });
-  const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
-  const implementationPrompt = renderNativeTaskPrompt({
-    boardDir,
-    workItem: activeWorkItem,
-    attemptId: attempt.attemptId,
-    projectRoot
-  });
-  const reviewerPrompts = ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
-    role,
-    prompt: renderNativeReviewerPrompt({ role, boardDir, workItem: activeWorkItem, attemptId: attempt.attemptId, projectRoot })
-  }));
-
-  const runtimeState = await loadRuntimeState(boardDir);
-  recordClaimed(runtimeState, claim.claim);
-  recordRunning(runtimeState, {
-    workItemId: activeWorkItem.id,
-    workerId,
-    attemptId: attempt.attemptId,
-    startedAt: now.toISOString(),
-    lastEventAt: now.toISOString()
-  });
-  updateRunningEvent(runtimeState, { workItemId: activeWorkItem.id, event: "session_started", timestamp: now.toISOString() });
-  await saveRuntimeState(boardDir, runtimeState);
-
-  await updateRunAttempt({
-    boardDir,
-    attemptId: attempt.attemptId,
-    patch: {
-      events: ["session_started"],
-      runner: {
-        mode: "claude-code",
-        channel: "parent-native-task",
-        projectRoot,
-        implementationPrompt,
-        reviewerPrompts
-      }
+  const nativeTasks = [];
+  for (const workItem of readyWorkItems) {
+    const claim = await claimWorkItem({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60 * 60 * 1000 });
+    if (!claim.ok) {
+      return { ok: false, command: "orchestrator native start", nativeTasks, errors: claim.errors };
     }
-  });
-  await appendBoardEvent(boardDir, {
-    event: "work_started",
-    timestamp: now.toISOString(),
-    workItemId: activeWorkItem.id,
-    workerId,
-    attemptId: attempt.attemptId,
-    payload: { runnerMode: "claude-code", channel: "parent-native-task" }
-  });
-  await appendBoardEvent(boardDir, {
-    event: "session_started",
-    timestamp: now.toISOString(),
-    workItemId: activeWorkItem.id,
-    workerId,
-    attemptId: attempt.attemptId,
-    payload: { runnerMode: "claude-code", channel: "parent-native-task" }
-  });
 
-  return {
-    ok: true,
-    command: "orchestrator native start",
-    promotedWorkItemIds: readyPromotion.promotedWorkItemIds,
-    nativeTask: {
+    const claimedBoard = await loadBoard(boardDir);
+    const running = transitionLane(claimedBoard, workItem.id, "Running");
+    if (!running.ok) {
+      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      return { ok: false, command: "orchestrator native start", nativeTasks, errors: running.errors };
+    }
+    await saveBoard(boardDir, claimedBoard);
+
+    const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
+    const attempt = await createRunAttempt({ boardDir, workItem: activeWorkItem, workerId, now });
+    const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
+    const implementationPrompt = renderNativeTaskPrompt({
+      boardDir,
+      workItem: activeWorkItem,
+      attemptId: attempt.attemptId,
+      projectRoot
+    });
+    const reviewerPrompts = ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+      role,
+      prompt: renderNativeReviewerPrompt({ role, boardDir, workItem: activeWorkItem, attemptId: attempt.attemptId, projectRoot })
+    }));
+
+    const runtimeState = await loadRuntimeState(boardDir);
+    recordClaimed(runtimeState, claim.claim);
+    recordRunning(runtimeState, {
+      workItemId: activeWorkItem.id,
+      workerId,
+      attemptId: attempt.attemptId,
+      startedAt: now.toISOString(),
+      lastEventAt: now.toISOString()
+    });
+    updateRunningEvent(runtimeState, { workItemId: activeWorkItem.id, event: "session_started", timestamp: now.toISOString() });
+    await saveRuntimeState(boardDir, runtimeState);
+
+    await updateRunAttempt({
+      boardDir,
+      attemptId: attempt.attemptId,
+      patch: {
+        events: ["session_started"],
+        runner: {
+          mode: "claude-code",
+          channel: "parent-native-task",
+          projectRoot,
+          implementationPrompt,
+          reviewerPrompts
+        }
+      }
+    });
+    await appendBoardEvent(boardDir, {
+      event: "work_started",
+      timestamp: now.toISOString(),
+      workItemId: activeWorkItem.id,
+      workerId,
+      attemptId: attempt.attemptId,
+      payload: { runnerMode: "claude-code", channel: "parent-native-task" }
+    });
+    await appendBoardEvent(boardDir, {
+      event: "session_started",
+      timestamp: now.toISOString(),
+      workItemId: activeWorkItem.id,
+      workerId,
+      attemptId: attempt.attemptId,
+      payload: { runnerMode: "claude-code", channel: "parent-native-task" }
+    });
+
+    nativeTasks.push({
       workItemId: activeWorkItem.id,
       attemptId: attempt.attemptId,
       workerId,
       projectRoot,
       implementationPrompt,
       reviewerPrompts
-    },
+    });
+  }
+
+  return {
+    ok: true,
+    command: "orchestrator native start",
+    promotedWorkItemIds: readyPromotion.promotedWorkItemIds,
+    nativeTasks,
     errors: []
   };
 }

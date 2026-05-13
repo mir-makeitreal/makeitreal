@@ -190,9 +190,165 @@ function modelContractMatrix({ designPack, contracts, moduleInterfaces }) {
   });
 }
 
+function fileTreeFromPaths(paths = []) {
+  const root = { name: "root", type: "folder", children: [] };
+  for (const pathValue of uniqueText(paths)) {
+    const parts = pathValue.split("/").filter(Boolean);
+    let cursor = root;
+    for (const [index, part] of parts.entries()) {
+      const type = index === parts.length - 1 && !part.endsWith("**") ? "file" : "folder";
+      let child = cursor.children.find((candidate) => candidate.name === part);
+      if (!child) {
+        child = { name: part, type, children: [] };
+        cursor.children.push(child);
+      }
+      cursor = child;
+    }
+  }
+  return root.children.length === 1 ? root.children[0] : root;
+}
+
+function modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }) {
+  return {
+    title: prd.title,
+    summary: (prd.userVisibleBehavior ?? [])[0] ?? "",
+    modules: moduleInterfaces.map((moduleInterface) => ({
+      responsibilityUnitId: moduleInterface.responsibilityUnitId,
+      moduleName: moduleInterface.moduleName,
+      purpose: moduleInterface.purpose ?? "",
+      owner: moduleInterface.owner ?? null
+    })),
+    edges: dependencyEdges.map((edge) => ({
+      from: edge.from,
+      fromLabel: edge.fromLabel,
+      to: edge.to,
+      toLabel: edge.toLabel,
+      contractId: edge.contractId,
+      surface: edge.surface ?? null
+    }))
+  };
+}
+
+function scenarioVisualizationKind(sequence = {}) {
+  const messageCount = (sequence.messages ?? []).length;
+  if (messageCount > 0 && messageCount <= 8) {
+    return "mermaid";
+  }
+  if (messageCount > 8) {
+    return "workflow";
+  }
+  return "text";
+}
+
+function harnessSequence(sequence = {}) {
+  const text = [
+    ...(sequence.participants ?? []),
+    ...(sequence.messages ?? []).flatMap((message) => [message.from, message.to, message.label])
+  ].join(" ").toLowerCase();
+  return text.includes("make it real")
+    || text.includes("implementation responsibility unit")
+    || text.includes("request planned work")
+    || text.includes("assign work")
+    || text.includes("plan to implementation handoff");
+}
+
+function derivedScenarioFromFirstSurface(moduleInterfaces = []) {
+  const moduleInterface = moduleInterfaces.find((candidate) => (candidate.publicSurfaces ?? []).length > 0);
+  const surface = moduleInterface?.publicSurfaces?.[0];
+  if (!moduleInterface || !surface) {
+    return null;
+  }
+  const outputNames = (surface.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
+  const errorNames = (surface.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
+  return {
+    id: "scenario-declared-surface-call",
+    title: `${surface.name} contract call`,
+    participants: ["Caller", moduleInterface.moduleName],
+    messages: [
+      { from: "Caller", to: moduleInterface.moduleName, label: surface.name },
+      { from: moduleInterface.moduleName, to: "Caller", label: `${outputNames} or ${errorNames}` }
+    ]
+  };
+}
+
+function softwareScenarios({ designPack, moduleInterfaces }) {
+  const declared = (designPack.sequences ?? []).filter((sequence) => !harnessSequence(sequence));
+  if (declared.length > 0) {
+    return declared;
+  }
+  const derived = derivedScenarioFromFirstSurface(moduleInterfaces);
+  return derived ? [derived] : [];
+}
+
+function modelScenarioIndex({ designPack, moduleInterfaces }) {
+  return softwareScenarios({ designPack, moduleInterfaces }).map((sequence, index) => ({
+    id: sequence.id ?? `scenario-${index + 1}`,
+    title: sequence.title ?? `Scenario ${index + 1}`,
+    participantCount: uniqueText(sequence.participants ?? []).length,
+    stepCount: (sequence.messages ?? []).length,
+    visualizationKind: scenarioVisualizationKind(sequence)
+  }));
+}
+
+function modelScenarioDetails({ designPack, moduleInterfaces }) {
+  return softwareScenarios({ designPack, moduleInterfaces }).map((sequence, index) => ({
+    id: sequence.id ?? `scenario-${index + 1}`,
+    title: sequence.title ?? `Scenario ${index + 1}`,
+    participants: uniqueText(sequence.participants ?? []),
+    messages: sequence.messages ?? [],
+    visualizationKind: scenarioVisualizationKind(sequence)
+  }));
+}
+
+function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }) {
+  const responsibilityDecisions = moduleInterfaces.map((moduleInterface) =>
+    `${moduleInterface.moduleName} owns ${uniqueText(moduleInterface.owns).join(", ") || "no declared paths"} and exposes ${(moduleInterface.publicSurfaces ?? []).map((surface) => surface.name).join(", ") || "no public surfaces"}.`
+  );
+  const dependencyDecisions = dependencyEdges.map((edge) =>
+    `${edge.fromLabel} may call ${edge.toLabel} only through ${edge.contractId ?? edge.surface ?? "a declared contract"}.`
+  );
+  const contractDecisions = contracts.map((contract) =>
+    `${contract.contractId ?? contract.kind} is reviewed from ${contract.path ?? contract.reason ?? "the boundary declaration"}.`
+  );
+  return uniqueText([...responsibilityDecisions, ...dependencyDecisions, ...contractDecisions]);
+}
+
+function modelSources({ designPack }) {
+  const contractSources = (designPack.apiSpecs ?? [])
+    .filter((spec) => spec.path)
+    .map((spec) => ({
+      label: spec.contractId ?? spec.kind,
+      path: spec.path,
+      kind: "contract"
+    }));
+  return [
+    { label: "PRD", path: "prd.json", kind: "prd" },
+    { label: "Design Pack", path: "design-pack.json", kind: "design-pack" },
+    { label: "Responsibility Units", path: "responsibility-units.json", kind: "responsibility-units" },
+    ...contractSources
+  ];
+}
+
+function modelContractSurfaces({ moduleInterfaces }) {
+  return moduleInterfaces.flatMap((moduleInterface) =>
+    (moduleInterface.publicSurfaces ?? []).map((surface) => ({
+      responsibilityUnitId: moduleInterface.responsibilityUnitId,
+      moduleName: moduleInterface.moduleName,
+      owner: moduleInterface.owner,
+      name: surface.name,
+      kind: surface.kind,
+      description: surface.description,
+      contractIds: surface.contractIds ?? [],
+      consumers: surface.consumers ?? [],
+      signature: surface.signature
+    }))
+  );
+}
+
 export function buildSystemDossier({ prd, designPack, responsibilityUnits }) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
   const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
+  const dependencyEdges = modelDependencyEdges({ designPack, contracts });
   return {
     title: prd.title,
     summary: prd.userVisibleBehavior ?? [],
@@ -203,11 +359,18 @@ export function buildSystemDossier({ prd, designPack, responsibilityUnits }) {
       owner: moduleInterface.owner,
       purpose: moduleInterface.purpose,
       owns: moduleInterface.owns,
+      ownedFileTree: fileTreeFromPaths(moduleInterface.owns),
       publicSurfaces: moduleInterface.publicSurfaces,
       imports: moduleInterface.imports
     })),
-    dependencyEdges: modelDependencyEdges({ designPack, contracts }),
+    dependencyEdges,
     contractMatrix: modelContractMatrix({ designPack, contracts, moduleInterfaces }),
+    contractSurfaces: modelContractSurfaces({ moduleInterfaces }),
+    systemPlacement: modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }),
+    scenarioIndex: modelScenarioIndex({ designPack, moduleInterfaces }),
+    scenarioDetails: modelScenarioDetails({ designPack, moduleInterfaces }),
+    reviewDecisions: modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }),
+    sources: modelSources({ designPack }),
     signalFlows: designPack.sequences ?? [],
     callStacks: designPack.callStacks ?? [],
     stateTransitions: designPack.stateFlow?.transitions ?? [],

@@ -1369,6 +1369,15 @@ async function materializeLaunchBoard({ runDir, runId, slug, workItem, runnerMod
     boardId: `board.${slug}`,
     blueprintRunDir: ".",
     lanes: LANES,
+    workItemDAG: {
+      schemaVersion: "1.0",
+      nodes: [{
+        workItemId: workItem.id,
+        responsibilityUnitId: workItem.responsibilityUnitId,
+        dependsOn: workItem.dependsOn
+      }],
+      edges: []
+    },
     workItems: [workItem]
   };
   await writeJsonFile(path.join(runDir, "board.json"), board);

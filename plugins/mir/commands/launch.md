@@ -27,7 +27,7 @@ and reviewer subagents in its normal UI:
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" status "${CLAUDE_PROJECT_DIR:-$PWD}"
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" gate "$RUN_DIR" --target Ready
-"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native start "$RUN_DIR"
+"${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native start "$RUN_DIR" --concurrency 6
 ```
 
 If status shows a work item already in `Verifying` or `Rework`, do not start a
@@ -39,9 +39,10 @@ regenerate work-item verification evidence:
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator complete "$RUN_DIR" --work "$WORK_ITEM_ID" --runner claude-code
 ```
 
-Then use the returned `nativeTask.implementationPrompt` with the Claude Code
-`Task` tool. After the implementation task returns, run three read-only native
-`Task` reviewers using the returned `nativeTask.reviewerPrompts`. The labels
+Then iterate over the returned `nativeTasks[]` array. For each entry, use
+`nativeTasks[].implementationPrompt` with the Claude Code `Task` tool. After
+that implementation task returns, run three read-only native `Task` reviewers
+using the returned `nativeTasks[].reviewerPrompts`. The labels
 below are Make It Real evidence roles, not guaranteed installed Claude Code
 `subagent_type` names. Do not pass these labels as `subagent_type` unless
 Claude Code lists them as available agents. Choose an installed native Task type
