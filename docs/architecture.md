@@ -21,7 +21,7 @@ flowchart LR
   Engine[makeitreal-engine]
   State[Project .makeitreal state]
   Dossier[Read-only Architecture Dossier]
-  Runner[Claude Code runner]
+  NativeTasks[Claude Code native Tasks]
   Wiki[Live wiki evidence]
 
   User --> Slash
@@ -30,8 +30,8 @@ flowchart LR
   Hooks --> Engine
   Engine --> State
   Engine --> Dossier
-  Engine --> Runner
-  Runner --> State
+  Engine --> NativeTasks
+  NativeTasks --> State
   Engine --> Wiki
 ```
 
@@ -96,14 +96,18 @@ automatically added to `.gitignore` by `plan` and `setup`.
       prd.json
       design-pack.json
       responsibility-units.json
+      work-item-dag.json
       blueprint-review.json
       trust-policy.json
+      native-role-mapping.json
       board.json
       runtime-state.json
       contracts/
         *.openapi.json
       work-items/
         work.<id>.json
+      agent-packets/
+        work.<id>.implementation.json
       preview/
         index.html
         preview-model.json
@@ -123,6 +127,24 @@ automatically added to `.gitignore` by `plan` and `setup`.
 
 `current-run.json` is only a pointer. The run packet under `runs/<run-id>/` is
 the source of truth for gates and execution.
+
+## Responsibility DAG Authority
+
+`work-item-dag.json` is the canonical execution graph. It declares every graph
+node, node kind, responsibility unit, required-for-Done flag, and dependency
+edge. `board.workItemDAG` is only a regenerated projection for board
+compatibility and must not become the authority for graph-aware gates.
+
+Ready and Done gates validate every `requiredForDone` DAG node. The legacy
+`designPack.workItemId` field is display metadata for the primary slice; it must
+not be used as graph authority once a run has multiple responsibility nodes.
+
+## Native Project Root Rule
+
+Native Claude Code Tasks edit the real project root under parent-session hooks.
+`.makeitreal/runs/*/workspaces/*` is legacy scripted-simulator state only and
+must not receive native implementation edits. Native completion rejects reports
+that claim project work while changed files are under run workspaces.
 
 ## Planning Pipeline
 
@@ -152,6 +174,7 @@ Planning creates:
 - Responsibility units with exactly one owner per executable work item.
 - Boundary contracts and contract IDs used by work items.
 - Kanban work items with dependencies, allowed paths, and verification commands.
+- Canonical `work-item-dag.json` plus the `board.workItemDAG` projection.
 - Trust policy for the selected runner mode.
 - Pending Blueprint review evidence.
 - Read-only Architecture Dossier preview.
@@ -246,6 +269,8 @@ Boundary checks happen in multiple places:
 - Native Claude Code launch gives the parent session a scoped Task handoff with
   the relevant contract, allowed paths, and verification plan. Scripted
   workspace staging remains only for fixtures and legacy runner evidence.
+- Native completion verifies that implementation evidence came from the
+  parent-session Task path and the real project root.
 
 This intentionally rejects undeclared fallback behavior. If a dependency, SDK,
 API, or module violates its contract, the harness should fail fast and record
@@ -291,9 +316,11 @@ For real Claude Code execution, the trust policy uses `runnerMode:
 second Claude CLI process. Instead, it records a parent-session native attempt
 and returns:
 
-- a compact implementation prompt for the work item
-- reviewer prompts for `spec-reviewer`, `quality-reviewer`, and
-  `verification-reviewer`
+- a `nativeTasks[]` batch, one item per launchable responsibility node
+- an `agentPacketPath` for each work item
+- hook-visible `hookContext` carrying run and work-item scope
+- reviewer prompts mapped by `native-role-mapping.json` for `spec-reviewer`,
+  `quality-reviewer`, and `verification-reviewer`
 - the current work item, allowed paths, contract IDs, dependency artifacts, and
   verification command
 - Blueprint review evidence and the current project root
@@ -326,7 +353,11 @@ The browser preview is a read-only Architecture Dossier, not a control panel.
 It is shaped like SDK/API documentation so reviewers can understand the planned
 software without opening implementation files. It shows:
 
+- approval scope: required work items, authorized paths, required contracts, and
+  Blueprint fingerprint
 - system placement for the modules under change
+- task DAG and dependency contracts for native Task fan-out
+- worker topology mapping work items to planned native evidence roles
 - responsibility owners and owned file trees
 - public contract surfaces with input/output/error schemas
 - scenario indexes and detailed Mermaid/workflow-style flows
