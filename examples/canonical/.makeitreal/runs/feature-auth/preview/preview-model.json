@@ -243,6 +243,18 @@
       "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
     ],
     "systemDossier": {
+      "approvalScope": {
+        "authorizedPaths": [
+          "apps/web/auth/**"
+        ],
+        "blueprintFingerprint": "sha256:494a957b3d6dbfa2add0c2dee8811ab997afa85438a2f3acd184e5f4efbbf2df",
+        "requiredContracts": [
+          "contract.auth.login"
+        ],
+        "requiredWorkItems": [
+          "work.feature-auth"
+        ]
+      },
       "callStacks": [
         {
           "calls": [
@@ -668,6 +680,16 @@
           "path": "responsibility-units.json"
         },
         {
+          "kind": "work-item-dag",
+          "label": "Work Item DAG",
+          "path": "work-item-dag.json"
+        },
+        {
+          "kind": "work-item",
+          "label": "work.feature-auth",
+          "path": "work-items/work.feature-auth.json"
+        },
+        {
           "kind": "contract",
           "label": "contract.auth.login",
           "path": "contracts/auth-login.openapi.json"
@@ -724,7 +746,51 @@
         "summary": "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.",
         "title": "Authentication vertical slice"
       },
-      "title": "Authentication vertical slice"
+      "taskDag": {
+        "edges": [],
+        "nodes": [
+          {
+            "allowedPaths": [
+              "apps/web/auth/**"
+            ],
+            "contractIds": [
+              "contract.auth.login"
+            ],
+            "id": "work.feature-auth",
+            "kind": "implementation",
+            "lane": "Contract Frozen",
+            "moduleName": "Auth UI",
+            "owner": "team.frontend",
+            "requiredForDone": true,
+            "responsibilityUnitId": "ru.frontend",
+            "title": "work.feature-auth"
+          }
+        ]
+      },
+      "title": "Authentication vertical slice",
+      "workerTopology": {
+        "assignments": [
+          {
+            "allowedPaths": [
+              "apps/web/auth/**"
+            ],
+            "contractIds": [
+              "contract.auth.login"
+            ],
+            "evidenceRole": "implementation-worker",
+            "handoff": "Native Claude Code Task receives this work item packet and may edit only the authorized paths.",
+            "moduleName": "Auth UI",
+            "owner": "team.frontend",
+            "responsibilityUnitId": "ru.frontend",
+            "workItemId": "work.feature-auth"
+          }
+        ],
+        "reviewRoles": [
+          "spec-reviewer",
+          "quality-reviewer",
+          "verification-reviewer"
+        ]
+      }
     },
     "title": "Authentication vertical slice"
   },

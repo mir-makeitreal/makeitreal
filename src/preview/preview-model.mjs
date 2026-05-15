@@ -2,7 +2,7 @@ import path from "node:path";
 import { loadBoard } from "../board/board-store.mjs";
 import { validateDesignPack } from "../domain/design-pack.mjs";
 import { buildSystemDossier, modelBoundaries, modelContracts, modelModuleInterfaces } from "../domain/system-dossier.mjs";
-import { fileExists, readJsonFile } from "../io/json.mjs";
+import { fileExists, listJsonFiles, readJsonFile } from "../io/json.mjs";
 import { readBoardStatus } from "../status/board-status.mjs";
 import { readRunStatus } from "../status/run-status.mjs";
 import { buildOperatorCockpitModel } from "./operator-cockpit-model.mjs";
@@ -61,7 +61,7 @@ function modelBoard(board, boardStatus) {
   };
 }
 
-function modelBlueprint({ prd, designPack, responsibilityUnits }) {
+function modelBlueprint({ prd, designPack, responsibilityUnits, workItems, workItemDag, blueprintReview }) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
   const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
   return {
@@ -81,7 +81,14 @@ function modelBlueprint({ prd, designPack, responsibilityUnits }) {
     stateTransitions: designPack.stateFlow?.transitions ?? [],
     callStacks: designPack.callStacks ?? [],
     sequences: designPack.sequences ?? [],
-    systemDossier: buildSystemDossier({ prd, designPack, responsibilityUnits })
+    systemDossier: buildSystemDossier({
+      prd,
+      designPack,
+      responsibilityUnits,
+      workItems,
+      workItemDag,
+      blueprintFingerprint: blueprintReview?.blueprintFingerprint ?? null
+    })
   };
 }
 
@@ -104,6 +111,11 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
   const hasBoard = await fileExists(path.join(resolvedRunDir, "board.json"));
   const boardStatus = hasBoard ? await readBoardStatus({ boardDir: resolvedRunDir, now }) : null;
   const board = hasBoard ? await loadBoard(resolvedRunDir) : null;
+  const workItemDag = await readJsonFile(path.join(resolvedRunDir, "work-item-dag.json"));
+  const workItemFiles = await listJsonFiles(path.join(resolvedRunDir, "work-items"));
+  const workItems = await Promise.all(workItemFiles.map(readJsonFile));
+  const blueprintReviewPath = path.join(resolvedRunDir, "blueprint-review.json");
+  const blueprintReview = await fileExists(blueprintReviewPath) ? await readJsonFile(blueprintReviewPath) : null;
   const statusModel = {
     phase: runStatus.phase,
     blueprintStatus: runStatus.blueprintStatus,
@@ -125,7 +137,7 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
         workItemId: designPack.workItemId,
         prdId: designPack.prdId
       },
-      blueprint: modelBlueprint({ prd, designPack, responsibilityUnits }),
+      blueprint: modelBlueprint({ prd, designPack, responsibilityUnits, workItems, workItemDag, blueprintReview }),
       design: {
         architectureEdges: designPack.architecture.edges.map((edge) => `${edge.from} -> ${edge.to} (${edge.contractId})`),
         stateTransitions: designPack.stateFlow.transitions.map((transition) => `${transition.from} -> ${transition.to} via ${transition.gate}`),

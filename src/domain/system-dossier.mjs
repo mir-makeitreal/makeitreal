@@ -208,6 +208,100 @@ function fileTreeFromPaths(paths = []) {
   return root.children.length === 1 ? root.children[0] : root;
 }
 
+function workItemIndex(workItems = []) {
+  return new Map(workItems.map((workItem) => [workItem.id, workItem]));
+}
+
+function moduleInterfaceIndex(moduleInterfaces = []) {
+  return new Map(moduleInterfaces.map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
+}
+
+function requiredWorkItemIds({ workItemDag, workItems }) {
+  const dagIds = (workItemDag.nodes ?? [])
+    .filter((node) => node.requiredForDone !== false)
+    .map((node) => node.id);
+  if (dagIds.length > 0) {
+    return dagIds;
+  }
+  return workItems.map((workItem) => workItem.id);
+}
+
+function modelApprovalScope({ workItemDag, workItems, blueprintFingerprint }) {
+  const workItemsById = workItemIndex(workItems);
+  const requiredIds = requiredWorkItemIds({ workItemDag, workItems });
+  const requiredItems = requiredIds.map((id) => workItemsById.get(id)).filter(Boolean);
+  return {
+    blueprintFingerprint: blueprintFingerprint ?? null,
+    requiredWorkItems: requiredIds,
+    authorizedPaths: uniqueText(requiredItems.flatMap((workItem) => workItem.allowedPaths ?? [])),
+    requiredContracts: uniqueText(requiredItems.flatMap((workItem) => workItem.contractIds ?? []))
+  };
+}
+
+function modelTaskDag({ workItemDag, workItems, moduleInterfaces }) {
+  const workItemsById = workItemIndex(workItems);
+  const modulesByResponsibilityUnit = moduleInterfaceIndex(moduleInterfaces);
+  return {
+    nodes: (workItemDag.nodes ?? []).map((node) => {
+      const workItem = workItemsById.get(node.id);
+      const moduleInterface = modulesByResponsibilityUnit.get(node.responsibilityUnitId);
+      return {
+        id: node.id,
+        kind: node.kind,
+        requiredForDone: node.requiredForDone !== false,
+        responsibilityUnitId: node.responsibilityUnitId,
+        moduleName: moduleInterface?.moduleName ?? node.responsibilityUnitId,
+        owner: moduleInterface?.owner ?? null,
+        title: workItem?.title ?? node.id,
+        lane: workItem?.lane ?? null,
+        allowedPaths: workItem?.allowedPaths ?? [],
+        contractIds: workItem?.contractIds ?? []
+      };
+    }),
+    edges: (workItemDag.edges ?? []).map((edge) => {
+      const fromWorkItem = workItemsById.get(edge.from);
+      const toWorkItem = workItemsById.get(edge.to);
+      return {
+        from: edge.from,
+        to: edge.to,
+        contractId: edge.contractId ?? null,
+        fromLabel: fromWorkItem?.title ?? edge.from,
+        toLabel: toWorkItem?.title ?? edge.to
+      };
+    })
+  };
+}
+
+function evidenceRoleForNodeKind(kind) {
+  if (kind === "domain-pm") {
+    return "domain-pm";
+  }
+  if (kind === "integration-evidence") {
+    return "integration-evidence-reviewer";
+  }
+  return "implementation-worker";
+}
+
+function modelWorkerTopology({ taskDag, moduleInterfaces }) {
+  const modulesByResponsibilityUnit = moduleInterfaceIndex(moduleInterfaces);
+  return {
+    assignments: taskDag.nodes.map((node) => {
+      const moduleInterface = modulesByResponsibilityUnit.get(node.responsibilityUnitId);
+      return {
+        workItemId: node.id,
+        evidenceRole: evidenceRoleForNodeKind(node.kind),
+        responsibilityUnitId: node.responsibilityUnitId,
+        moduleName: node.moduleName,
+        owner: node.owner ?? moduleInterface?.owner ?? null,
+        contractIds: node.contractIds,
+        allowedPaths: node.allowedPaths,
+        handoff: "Native Claude Code Task receives this work item packet and may edit only the authorized paths."
+      };
+    }),
+    reviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+  };
+}
+
 function modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }) {
   return {
     title: prd.title,
@@ -313,7 +407,7 @@ function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }) 
   return uniqueText([...responsibilityDecisions, ...dependencyDecisions, ...contractDecisions]);
 }
 
-function modelSources({ designPack }) {
+function modelSources({ designPack, workItems = [] }) {
   const contractSources = (designPack.apiSpecs ?? [])
     .filter((spec) => spec.path)
     .map((spec) => ({
@@ -325,6 +419,12 @@ function modelSources({ designPack }) {
     { label: "PRD", path: "prd.json", kind: "prd" },
     { label: "Design Pack", path: "design-pack.json", kind: "design-pack" },
     { label: "Responsibility Units", path: "responsibility-units.json", kind: "responsibility-units" },
+    { label: "Work Item DAG", path: "work-item-dag.json", kind: "work-item-dag" },
+    ...workItems.map((workItem) => ({
+      label: workItem.id,
+      path: `work-items/${workItem.id}.json`,
+      kind: "work-item"
+    })),
     ...contractSources
   ];
 }
@@ -345,10 +445,18 @@ function modelContractSurfaces({ moduleInterfaces }) {
   );
 }
 
-export function buildSystemDossier({ prd, designPack, responsibilityUnits }) {
+export function buildSystemDossier({
+  prd,
+  designPack,
+  responsibilityUnits,
+  workItems = [],
+  workItemDag = { nodes: [], edges: [] },
+  blueprintFingerprint = null
+}) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
   const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
   const dependencyEdges = modelDependencyEdges({ designPack, contracts });
+  const taskDag = modelTaskDag({ workItemDag, workItems, moduleInterfaces });
   return {
     title: prd.title,
     summary: prd.userVisibleBehavior ?? [],
@@ -363,6 +471,9 @@ export function buildSystemDossier({ prd, designPack, responsibilityUnits }) {
       publicSurfaces: moduleInterface.publicSurfaces,
       imports: moduleInterface.imports
     })),
+    approvalScope: modelApprovalScope({ workItemDag, workItems, blueprintFingerprint }),
+    taskDag,
+    workerTopology: modelWorkerTopology({ taskDag, moduleInterfaces }),
     dependencyEdges,
     contractMatrix: modelContractMatrix({ designPack, contracts, moduleInterfaces }),
     contractSurfaces: modelContractSurfaces({ moduleInterfaces }),
@@ -370,7 +481,7 @@ export function buildSystemDossier({ prd, designPack, responsibilityUnits }) {
     scenarioIndex: modelScenarioIndex({ designPack, moduleInterfaces }),
     scenarioDetails: modelScenarioDetails({ designPack, moduleInterfaces }),
     reviewDecisions: modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }),
-    sources: modelSources({ designPack }),
+    sources: modelSources({ designPack, workItems }),
     signalFlows: designPack.sequences ?? [],
     callStacks: designPack.callStacks ?? [],
     stateTransitions: designPack.stateFlow?.transitions ?? [],

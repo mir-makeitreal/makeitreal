@@ -16,7 +16,10 @@
       <input type="search" data-nav-filter placeholder="Module, surface, contract">
     </label>
     <a href="#overview" class="active">Overview</a>
+    <a href="#approval-scope">Approval Scope</a>
     <a href="#system-placement">System Placement</a>
+    <a href="#task-dag">Task DAG</a>
+    <a href="#worker-topology">Worker Topology</a>
     <a href="#responsibility-map">Responsibility Map</a>
     <a href="#scenario-index">Scenario Index</a>
     <a href="#contract-surfaces">Contract Surfaces</a>
@@ -53,6 +56,21 @@
         </div>
       </header>
 
+      <section id="approval-scope" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Approval Packet</p>
+        <h2>Approval Scope</h2>
+      </div>
+    </div>
+    <p class="section-note">Approve this Blueprint only if these paths, contracts, and required work items match the intended software change.</p>
+    <div class="doc-table approval-scope-table">
+      <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value"><code>work.feature-auth</code></div></div>
+      <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value"><code>apps/web/auth/**</code></div></div>
+      <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:494a957b3d6dbfa2add0c2dee8811ab997afa85438a2f3acd184e5f4efbbf2df</code></div></div>
+    </div>
+  </section>
       <section id="system-placement" class="architecture-section">
     <div class="section-heading">
       <div>
@@ -119,6 +137,69 @@
         </div>
       </div>
     </div>
+  </section>
+      <section id="task-dag" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Execution Graph</p>
+        <h2>Task DAG</h2>
+      </div>
+    </div>
+    <p class="section-note">Work is split by responsibility boundary. A child Task can execute a node without reading sibling implementation context.</p>
+    <article class="diagram-card">
+    <header>
+      <strong>Responsibility Task Graph</strong>
+      <span>Required work items and dependency contracts for native Claude Code Task fan-out.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  task_0[&quot;Auth UI\nimplementation\nwork.feature-auth&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  task_0[&quot;Auth UI\nimplementation\nwork.feature-auth&quot;]</code></pre>
+    </details>
+  </article>
+    <div class="task-dag-table" role="table" aria-label="Task DAG">
+      <div class="task-dag-row header" role="row">
+        <div role="columnheader">Work Item</div>
+        <div role="columnheader">Responsibility</div>
+        <div role="columnheader">Contracts</div>
+        <div role="columnheader">Authorized Paths</div>
+      </div>
+      <div class="task-dag-row" role="row">
+        <div role="cell" data-label="Work Item"><strong>Work Feature Auth</strong><code>work.feature-auth</code><span>implementation</span></div>
+        <div role="cell" data-label="Responsibility"><strong>Auth UI</strong><code>ru.frontend</code></div>
+        <div role="cell" data-label="Contracts"><code>contract.auth.login</code></div>
+        <div role="cell" data-label="Authorized Paths"><code>apps/web/auth/**</code></div>
+      </div>
+    </div>
+  </section>
+      <section id="worker-topology" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Native Agents</p>
+        <h2>Worker Topology</h2>
+      </div>
+    </div>
+    <p class="section-note">Each assignment is the planned native Task packet: one responsibility unit, declared contracts, and authorized paths.</p>
+    <div class="worker-topology-list">
+      <article class="worker-assignment">
+        <header>
+          <div>
+            <p class="module-id">work.feature-auth</p>
+            <h3>Auth UI</h3>
+          </div>
+          <code>implementation-worker</code>
+        </header>
+        <p>Native Claude Code Task receives this work item packet and may edit only the authorized paths.</p>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Responsibility Unit</div><div class="doc-value"><code>ru.frontend</code></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
+          <div class="doc-row"><div class="doc-key">Paths</div><div class="doc-value"><code>apps/web/auth/**</code></div></div>
+        </div>
+      </article>
+    </div>
+    <p class="section-note">Review roles: <code>spec-reviewer</code> <code>quality-reviewer</code> <code>verification-reviewer</code></p>
   </section>
       <section id="responsibility-map" class="architecture-section">
     <div class="section-heading">
@@ -322,6 +403,90 @@ const session = await httpResponse.json();</code></pre>
             <h2>Scenario Reference</h2>
           </div>
         </div>
+        <div class="flow-timeline">
+    <section>
+      <h3>Signal Flow</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Runtime Sequence</strong>
+      <span>Mermaid sequence diagram generated from software module interfaces.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant p0 as User
+  participant p1 as Auth UI
+  participant p2 as Auth Service
+  p0-&gt;&gt;p1: submit credentials
+  p1-&gt;&gt;p2: POST /auth/login
+  p2-&gt;&gt;p1: return session result</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant p0 as User
+  participant p1 as Auth UI
+  participant p2 as Auth Service
+  p0-&gt;&gt;p1: submit credentials
+  p1-&gt;&gt;p2: POST /auth/login
+  p2-&gt;&gt;p1: return session result</code></pre>
+    </details>
+  </article>
+      <article class="sequence-card">
+    <strong>Login request</strong>
+    <ol><li><span>User</span> → <span>Auth UI</span>: submit credentials</li><li><span>Auth UI</span> → <span>Auth Service</span>: POST /auth/login</li><li><span>Auth Service</span> → <span>Auth UI</span>: return session result</li></ol>
+  </article>
+    </section>
+    <section>
+      <h3>Call Stack</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Call Stack</strong>
+      <span>Mermaid call graph generated from declared call stack.</span>
+    </header>
+    <pre class="mermaid">flowchart TD
+  entry[&quot;LoginForm.submit&quot;]
+  entry --&gt; c0[&quot;authClient.login&quot;]
+  c0 --&gt; c1[&quot;POST /auth/login&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TD
+  entry[&quot;LoginForm.submit&quot;]
+  entry --&gt; c0[&quot;authClient.login&quot;]
+  c0 --&gt; c1[&quot;POST /auth/login&quot;]</code></pre>
+    </details>
+  </article>
+      <div class="callstack-list"><article class="callstack-card">
+    <header><code>LoginForm.submit</code></header>
+    <ol><li>authClient.login</li><li>POST /auth/login</li></ol>
+  </article></div>
+    </section>
+    <section>
+      <h3>Surface State Flow</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Surface State Flow</strong>
+      <span>Mermaid state diagram generated from the primary public surface.</span>
+    </header>
+    <pre class="mermaid">stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
+  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
+  SurfaceExecuted --&gt; OutputReturned: sessionResult
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
+  DeclaredError --&gt; [*]</code></pre>
+    </details>
+  </article>
+    </section>
+  </div>
         <div class="scenario-reference">
     <article id="scenario-1" class="scenario-detail">
       <header>
@@ -440,6 +605,14 @@ const session = await httpResponse.json();</code></pre>
       <span>Responsibility Units</span>
       <code>responsibility-units.json</code>
       <em>responsibility-units</em>
+    </li><li>
+      <span>Work Item DAG</span>
+      <code>work-item-dag.json</code>
+      <em>work-item-dag</em>
+    </li><li>
+      <span>work.feature-auth</span>
+      <code>work-items/work.feature-auth.json</code>
+      <em>work-item</em>
     </li><li>
       <span>contract.auth.login</span>
       <code>contracts/auth-login.openapi.json</code>

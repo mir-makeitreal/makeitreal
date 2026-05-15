@@ -1191,6 +1191,100 @@ h3 {
   display: grid;
 }
 
+.task-dag-table,
+.worker-topology-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.task-dag-table {
+  gap: 0;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.task-dag-row {
+  display: grid;
+  grid-template-columns: minmax(180px, .9fr) minmax(170px, .8fr) minmax(190px, 1fr) minmax(220px, 1.2fr);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid var(--soft-line);
+  padding: 11px 14px;
+}
+
+.task-dag-row:first-child {
+  border-top: 0;
+}
+
+.task-dag-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.task-dag-row > div,
+.worker-assignment .doc-value,
+.approval-scope-table .doc-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-dag-row strong {
+  flex-basis: 100%;
+}
+
+.task-dag-row code,
+.worker-assignment code,
+.approval-scope-table code {
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: var(--soft);
+  padding: 2px 7px;
+}
+
+.task-dag-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.worker-assignment {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.worker-assignment header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.worker-assignment h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.worker-assignment p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.compact-doc-table .doc-row {
+  grid-template-columns: 150px minmax(0, 1fr);
+}
+
 .module-directory-row {
   display: grid;
   grid-template-columns: minmax(170px, .9fr) minmax(110px, .55fr) minmax(200px, 1.1fr) minmax(220px, 1.2fr);
@@ -1864,6 +1958,7 @@ h3 {
   .reference-row,
   .spec-row,
   .module-directory-row,
+  .task-dag-row,
   .sources-list li,
   .spec-block:nth-child(2) .spec-row,
   .spec-block:nth-child(3) .spec-row,

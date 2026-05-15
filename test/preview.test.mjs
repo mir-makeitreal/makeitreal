@@ -187,8 +187,62 @@ async function addMultiModuleSystemDossierFixture(runDir) {
     }
   ];
 
+  const authUiWorkItem = {
+    schemaVersion: "1.0",
+    id: "work.auth-ui",
+    prdId: designPack.prdId,
+    title: "Implement Auth UI login boundary",
+    lane: "Contract Frozen",
+    responsibilityUnitId: "ru.frontend",
+    contractIds: ["contract.auth.login", "contract.auth.session"],
+    dependencyContracts: [
+      {
+        contractId: "contract.auth.login",
+        providerResponsibilityUnitId: "ru.backend",
+        surface: "POST /auth/login",
+        allowedUse: "Submit login credentials only through the declared contract."
+      }
+    ],
+    dependsOn: ["work.auth-service"],
+    allowedPaths: ["web/src/auth/**"],
+    doneEvidence: [
+      { kind: "verification", path: "evidence/work.auth-ui.verification.json" },
+      { kind: "wiki-sync", path: "evidence/work.auth-ui.wiki-sync.json" }
+    ]
+  };
+  const authServiceWorkItem = {
+    schemaVersion: "1.0",
+    id: "work.auth-service",
+    prdId: designPack.prdId,
+    title: "Implement Auth Service login contract",
+    lane: "Contract Frozen",
+    responsibilityUnitId: "ru.backend",
+    contractIds: ["contract.auth.login"],
+    dependencyContracts: [],
+    dependsOn: [],
+    allowedPaths: ["api/src/auth/**"],
+    doneEvidence: [
+      { kind: "verification", path: "evidence/work.auth-service.verification.json" },
+      { kind: "wiki-sync", path: "evidence/work.auth-service.wiki-sync.json" }
+    ]
+  };
+  const workItemDag = {
+    schemaVersion: "1.0",
+    runId: designPack.runId,
+    nodes: [
+      { id: "work.auth-service", kind: "implementation", responsibilityUnitId: "ru.backend", requiredForDone: true },
+      { id: "work.auth-ui", kind: "implementation", responsibilityUnitId: "ru.frontend", requiredForDone: true }
+    ],
+    edges: [
+      { from: "work.auth-service", to: "work.auth-ui", contractId: "contract.auth.login" }
+    ]
+  };
+
   await writeJsonFile(designPackPath, designPack);
   await writeJsonFile(responsibilityUnitsPath, responsibilityUnits);
+  await writeJsonFile(path.join(runDir, "work-items", "work.auth-ui.json"), authUiWorkItem);
+  await writeJsonFile(path.join(runDir, "work-items", "work.auth-service.json"), authServiceWorkItem);
+  await writeJsonFile(path.join(runDir, "work-item-dag.json"), workItemDag);
 }
 
 test("operator cockpit maps phases to a read-only first-run guide", () => {
@@ -291,6 +345,11 @@ test("renders canonical architecture preview", async () => {
     assert.equal(previewModel.blueprint.moduleInterfaces[0].publicSurfaces[0].signature.errors[0].code, "AUTH_LOGIN_REJECTED");
     assert.deepEqual(previewModel.blueprint.systemDossier.contractMatrix[0].providers, ["Auth Service"]);
     assert.deepEqual(previewModel.blueprint.systemDossier.contractMatrix[0].consumers, ["Auth UI"]);
+    assert.deepEqual(previewModel.blueprint.systemDossier.approvalScope.requiredWorkItems, ["work.feature-auth"]);
+    assert.equal(previewModel.blueprint.systemDossier.approvalScope.authorizedPaths.includes("apps/web/auth/**"), true);
+    assert.equal(previewModel.blueprint.systemDossier.approvalScope.requiredContracts.includes("contract.auth.login"), true);
+    assert.equal(previewModel.blueprint.systemDossier.taskDag.nodes.some((node) => node.id === "work.feature-auth"), true);
+    assert.equal(previewModel.blueprint.systemDossier.workerTopology.assignments.some((assignment) => assignment.evidenceRole === "implementation-worker"), true);
     assert.equal(previewModel.blueprint.acceptanceCriteria[0].id, "AC-001");
     const importEdge = previewModel.blueprint.systemDossier.dependencyEdges.find((edge) => edge.from === "ru.frontend");
     assert.equal(importEdge.toLabel, "Auth Service");
@@ -299,7 +358,10 @@ test("renders canonical architecture preview", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "Architecture Dossier",
+      "Approval Scope",
       "System Placement",
+      "Task DAG",
+      "Worker Topology",
       "Responsibility Map",
       "Scenario Index",
       "Contract Surfaces",
@@ -339,6 +401,11 @@ test("renders canonical architecture preview", async () => {
     assert.match(html, /sources-list/);
     assert.match(html, /test-results/);
     assert.match(html, /workflow-graph/);
+    assert.match(html, /task-dag-table/);
+    assert.match(html, /worker-topology-list/);
+    assert.match(html, /apps\/web\/auth\/\*\*/);
+    assert.match(html, /work\.feature-auth/);
+    assert.match(html, /implementation-worker/);
     assert.match(html, /code-block/);
     assert.match(html, /cdn\.jsdelivr\.net\/npm\/mermaid/);
     assert.doesNotMatch(html, /data-harness-action=/);
@@ -377,6 +444,8 @@ test("renders canonical architecture preview", async () => {
     assert.match(css, /\.workflow-graph/);
     assert.match(css, /\.sdk-example/);
     assert.match(css, /\.diagram-card/);
+    assert.match(css, /\.task-dag-table/);
+    assert.match(css, /\.worker-topology-list/);
     assert.match(css, /\.mermaid/);
     assert.match(css, /\.compact-kanban/);
   });
@@ -412,6 +481,14 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.deepEqual(dossier.contractMatrix.find((contract) => contract.contractId === "contract.auth.login").consumers, ["Auth UI"]);
     assert.equal(dossier.signalFlows[0].title, "Login session creation");
     assert.equal(dossier.callStacks.length, 2);
+    assert.deepEqual(dossier.approvalScope.requiredWorkItems, ["work.auth-service", "work.auth-ui"]);
+    assert.equal(dossier.approvalScope.authorizedPaths.includes("web/src/auth/**"), true);
+    assert.equal(dossier.approvalScope.authorizedPaths.includes("api/src/auth/**"), true);
+    assert.equal(dossier.approvalScope.requiredContracts.includes("contract.auth.login"), true);
+    assert.equal(dossier.taskDag.nodes.some((node) => node.id === "work.auth-ui" && node.moduleName === "Auth UI"), true);
+    assert.equal(dossier.taskDag.nodes.some((node) => node.id === "work.auth-service" && node.moduleName === "Auth Service"), true);
+    assert.equal(dossier.taskDag.edges.some((edge) => edge.from === "work.auth-service" && edge.to === "work.auth-ui" && edge.contractId === "contract.auth.login"), true);
+    assert.equal(dossier.workerTopology.assignments.some((assignment) => assignment.workItemId === "work.auth-ui" && assignment.evidenceRole === "implementation-worker"), true);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("web/src/auth/**"), true);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("api/src/auth/**"), true);
     assert.equal(dossier.systemPlacement.title, "Authentication vertical slice");
@@ -427,7 +504,10 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "Architecture Dossier",
+      "Approval Scope",
       "System Placement",
+      "Task DAG",
+      "Worker Topology",
       "Responsibility Map",
       "Scenario Index",
       "Contract Surfaces",
@@ -453,6 +533,10 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.match(html, /body: JSON\.stringify\(requestBody\)/);
     assert.match(html, /contract\.auth\.login/);
     assert.match(html, /contract\.auth\.session/);
+    assert.match(html, /work\.auth-ui/);
+    assert.match(html, /work\.auth-service/);
+    assert.match(html, /api\/src\/auth\/\*\*/);
+    assert.match(html, /Native Claude Code Task/);
     assert.match(html, /class="mermaid"/);
     assert.match(html, /Auth UI/);
     assert.match(html, /Auth Service/);
@@ -487,6 +571,8 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       ".test-results",
       ".workflow-graph",
       ".sdk-example",
+      ".task-dag-table",
+      ".worker-topology-list",
       ".scenario-index"
     ]) {
       assert.match(css, new RegExp(selector.replace(".", "\\.")));
