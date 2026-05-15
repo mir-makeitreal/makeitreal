@@ -1,5 +1,6 @@
 import path from "node:path";
 import { seedBlueprintReview, decideBlueprintReview } from "../../src/blueprint/review.mjs";
+import { projectBoardDag } from "../../src/domain/work-item-dag.mjs";
 import { readJsonFile, writeJsonFile } from "../../src/io/json.mjs";
 
 export async function approveRun(runDir, {
@@ -26,6 +27,24 @@ export async function approveRun(runDir, {
 
 export async function materializeBoardRunPacket(boardDir) {
   const board = await readJsonFile(path.join(boardDir, "board.json"));
+  const workItemDag = {
+    schemaVersion: "1.0",
+    runId: path.basename(boardDir),
+    nodes: (board.workItems ?? []).map((workItem) => ({
+      id: workItem.id,
+      kind: "implementation",
+      responsibilityUnitId: workItem.responsibilityUnitId,
+      requiredForDone: workItem.id === "work.login-ui"
+    })),
+    edges: (board.workItems ?? []).flatMap((workItem) => (workItem.dependsOn ?? []).map((dependencyId) => ({
+      from: dependencyId,
+      to: workItem.id,
+      contractId: workItem.contractIds?.[0] ?? null
+    })))
+  };
+  board.workItemDAG = projectBoardDag(workItemDag);
+  await writeJsonFile(path.join(boardDir, "board.json"), board);
+  await writeJsonFile(path.join(boardDir, "work-item-dag.json"), workItemDag);
   for (const workItem of board.workItems ?? []) {
     await writeJsonFile(path.join(boardDir, "work-items", `${workItem.id}.json`), {
       schemaVersion: "1.0",

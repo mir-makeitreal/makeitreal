@@ -1,0 +1,36 @@
+{
+  "edges": [
+    {
+      "contractId": "contract.auth.login",
+      "from": "work.auth-contract",
+      "to": "work.login-ui"
+    },
+    {
+      "contractId": "contract.audit.write",
+      "from": "work.login-ui",
+      "to": "work.audit-log"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "work.auth-contract",
+      "kind": "implementation",
+      "requiredForDone": false,
+      "responsibilityUnitId": "ru.auth-service"
+    },
+    {
+      "id": "work.login-ui",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru.frontend"
+    },
+    {
+      "id": "work.audit-log",
+      "kind": "implementation",
+      "requiredForDone": false,
+      "responsibilityUnitId": "ru.audit"
+    }
+  ],
+  "runId": "board",
+  "schemaVersion": "1.0"
+}

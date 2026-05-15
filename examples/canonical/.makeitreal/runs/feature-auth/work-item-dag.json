@@ -1,0 +1,13 @@
+{
+  "edges": [],
+  "nodes": [
+    {
+      "id": "work.feature-auth",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru.frontend"
+    }
+  ],
+  "runId": "feature-auth",
+  "schemaVersion": "1.0"
+}

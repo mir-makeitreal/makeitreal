@@ -71,11 +71,15 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
       schemaVersion: "1.0",
       nodes: [{
         workItemId: "work.summary-widget",
-        responsibilityUnitId: "ru.summary-widget",
-        dependsOn: []
+        kind: "implementation",
+        requiredForDone: true
       }],
       edges: []
     });
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.equal(dag.nodes[0].id, "work.summary-widget");
+    assert.equal(dag.nodes[0].kind, "implementation");
+    assert.deepEqual(dag.edges, []);
 
     const trustPolicy = await readJsonFile(path.join(result.runDir, "trust-policy.json"));
     assert.equal(trustPolicy.runnerMode, "scripted-simulator");
@@ -95,6 +99,68 @@ test("plan generator creates a reviewable run packet with pending Blueprint appr
 
     const gitignore = await readFile(path.join(projectRoot, ".gitignore"), "utf8");
     assert.match(gitignore, /^\/\.makeitreal\/$/m);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator writes a canonical one-node work item DAG", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-dag-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Create src/math.mjs exporting add(a, b) and test/math.test.mjs.",
+      verificationCommands: [{ file: "node", args: ["--test", "test/math.test.mjs"] }]
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.equal(dag.nodes.length, 1);
+    assert.equal(dag.nodes[0].id, result.workItemId);
+    assert.equal(dag.nodes[0].kind, "implementation");
+    assert.deepEqual(dag.edges, []);
+    const board = await readJsonFile(path.join(result.runDir, "board.json"));
+    assert.deepEqual(board.workItemDAG.nodes[0], {
+      workItemId: result.workItemId,
+      kind: "implementation",
+      requiredForDone: true
+    });
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator creates API plus persistence responsibility DAG from explicit boundaries", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-api-data-dag-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: [
+        "Implement POST /orders in src/api/orders/**.",
+        "Persist orders through repository contract in src/data/orders/**.",
+        "Use tests in test/api/orders/** and test/data/orders/**."
+      ].join(" "),
+      allowedPaths: [
+        "src/api/orders/**",
+        "test/api/orders/**",
+        "src/data/orders/**",
+        "test/data/orders/**"
+      ],
+      apiKind: "openapi",
+      verificationCommands: [{ file: "node", args: ["--test"] }]
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.equal(dag.nodes.some((node) => node.id === "work.orders-api"), true);
+    assert.equal(dag.nodes.some((node) => node.id === "work.orders-repository"), true);
+    assert.equal(dag.edges.some((edge) =>
+      edge.from === "work.orders-repository"
+      && edge.to === "work.orders-api"
+      && edge.contractId === "contract.orders.persistence"
+    ), true);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.orders-api"), true);
+    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.orders-repository"), true);
+    assert.equal(designPack.apiSpecs.some((spec) => spec.contractId === "contract.orders.persistence"), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

@@ -1,6 +1,38 @@
 {
   "schemaVersion": "1.0",
   "boardId": "board.auth",
+  "workItemDAG": {
+    "schemaVersion": "1.0",
+    "nodes": [
+      {
+        "workItemId": "work.auth-contract",
+        "kind": "implementation",
+        "requiredForDone": false
+      },
+      {
+        "workItemId": "work.login-ui",
+        "kind": "implementation",
+        "requiredForDone": true
+      },
+      {
+        "workItemId": "work.audit-log",
+        "kind": "implementation",
+        "requiredForDone": false
+      }
+    ],
+    "edges": [
+      {
+        "from": "work.auth-contract",
+        "to": "work.login-ui",
+        "contractId": "contract.auth.login"
+      },
+      {
+        "from": "work.login-ui",
+        "to": "work.audit-log",
+        "contractId": "contract.audit.write"
+      }
+    ]
+  },
   "lanes": [
     "Intake",
     "Discovery",
