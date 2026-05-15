@@ -92,7 +92,8 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /feature-dev:code-reviewer[\s\S]*spec-reviewer/i);
   assert.match(launchCommand, /oh-my-claudecode:critic[\s\S]*quality-reviewer/i);
   assert.match(launchCommand, /oh-my-claudecode:verifier[\s\S]*verification-reviewer/i);
-  assert.match(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
+  assert.match(launchCommand, /HARNESS_NATIVE_ROLE_MAPPING_MISSING/i);
+  assert.doesNotMatch(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const planCommand = await readPluginFile("commands", "plan.md");
@@ -178,6 +179,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /code-reviewer.*spec review/i);
   assert.match(launchSkill, /critic.*quality review/i);
   assert.match(launchSkill, /verifier.*verification review/i);
+  assert.doesNotMatch(launchSkill, /retry.*general-purpose/i);
   assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
@@ -282,12 +284,14 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(launchCommand, /feature-dev:code-reviewer[\s\S]*spec-reviewer/i);
   assert.match(launchCommand, /oh-my-claudecode:critic[\s\S]*quality-reviewer/i);
   assert.match(launchCommand, /oh-my-claudecode:verifier[\s\S]*verification-reviewer/i);
-  assert.match(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
+  assert.match(launchCommand, /HARNESS_NATIVE_ROLE_MAPPING_MISSING/i);
+  assert.doesNotMatch(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const launchSkill = await readAliasPluginFile("skills", "launch", "SKILL.md");
   assert.match(launchSkill, /evidence roles, not guaranteed installed Claude Code/i);
-  assert.match(launchSkill, /retry the same prompt with `general-purpose`/i);
+  assert.match(launchSkill, /HARNESS_NATIVE_ROLE_MAPPING_MISSING/i);
+  assert.doesNotMatch(launchSkill, /retry the same prompt with `general-purpose`/i);
   assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 

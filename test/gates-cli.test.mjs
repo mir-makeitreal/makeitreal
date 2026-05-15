@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
@@ -9,6 +9,54 @@ import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { withFixture } from "./helpers/fixture.mjs";
 import { approveRun } from "./helpers/blueprint.mjs";
+
+async function addRequiredAuditNode(runDir, overrides = {}) {
+  const workItem = {
+    schemaVersion: "1.0",
+    id: "work.audit-log",
+    lane: "Contract Frozen",
+    prdId: "prd.auth",
+    responsibilityUnitId: "ru.audit-log",
+    contractIds: ["contract.auth.login"],
+    dependsOn: ["work.feature-auth"],
+    allowedPaths: ["services/audit/**"],
+    verificationCommands: [{ file: "node", args: ["-e", "console.log('audit ok')"] }],
+    doneEvidence: [
+      { kind: "verification", path: "evidence/work.audit-log.verification.json" },
+      { kind: "wiki-sync", path: "evidence/work.audit-log.wiki-sync.json" }
+    ],
+    prdTrace: { acceptanceCriteriaIds: ["AC-003"] },
+    ...overrides
+  };
+  await writeJsonFile(path.join(runDir, "work-items", `${workItem.id}.json`), workItem);
+
+  const dagPath = path.join(runDir, "work-item-dag.json");
+  const dag = await readJsonFile(dagPath);
+  dag.nodes.push({
+    id: workItem.id,
+    kind: "implementation",
+    responsibilityUnitId: workItem.responsibilityUnitId,
+    requiredForDone: true
+  });
+  dag.edges.push({
+    from: "work.feature-auth",
+    to: workItem.id,
+    contractId: "contract.auth.login"
+  });
+  await writeJsonFile(dagPath, dag);
+
+  const responsibilityPath = path.join(runDir, "responsibility-units.json");
+  const responsibilityUnits = await readJsonFile(responsibilityPath);
+  responsibilityUnits.units.push({
+    id: workItem.responsibilityUnitId,
+    owner: "team.audit",
+    owns: workItem.allowedPaths,
+    publicSurfaces: ["AuditLog.record"],
+    mayUseContracts: ["contract.auth.login"]
+  });
+  await writeJsonFile(responsibilityPath, responsibilityUnits);
+  return workItem;
+}
 
 test("Ready gate requires rendered preview", async () => {
   await withFixture(async ({ runDir }) => {
@@ -33,6 +81,22 @@ test("Ready gate passes after preview render", async () => {
   });
 });
 
+test("Ready gate validates every required DAG node", async () => {
+  await withFixture(async ({ runDir }) => {
+    await addRequiredAuditNode(runDir, { allowedPaths: [] });
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_ALLOWED_PATH_INVALID"), true);
+  });
+});
+
 test("Done gate requires verification and wiki evidence", async () => {
   await withFixture(async ({ runDir }) => {
     await renderDesignPreview({ runDir });
@@ -43,6 +107,51 @@ test("Done gate requires verification and wiki evidence", async () => {
     });
     assert.equal(result.status, 1);
     assert.equal(JSON.parse(result.stdout).errors[0].code, "HARNESS_EVIDENCE_MISSING");
+  });
+});
+
+test("Done gate requires evidence for every required DAG node", async () => {
+  await withFixture(async ({ runDir }) => {
+    await renderDesignPreview({ runDir });
+    const primaryPath = path.join(runDir, "work-items", "work.feature-auth.json");
+    const primary = await readJsonFile(primaryPath);
+    primary.doneEvidence = [
+      { kind: "verification", path: `evidence/${primary.id}.verification.json` },
+      { kind: "wiki-sync", path: `evidence/${primary.id}.wiki-sync.json` }
+    ];
+    await writeJsonFile(primaryPath, primary);
+    await addRequiredAuditNode(runDir);
+    await approveRun(runDir);
+    await mkdir(path.join(runDir, "evidence"), { recursive: true });
+
+    await writeJsonFile(path.join(runDir, "evidence", `${primary.id}.verification.json`), {
+      producer: BOARD_VERIFICATION_PRODUCER,
+      kind: "board-verification",
+      ok: true,
+      workItemId: primary.id,
+      commandHashes: primary.verificationCommands.map(hashCommand),
+      commands: primary.verificationCommands.map((command) => ({
+        command,
+        commandHash: hashCommand(command),
+        exitCode: 0,
+        stdout: "ok",
+        stderr: "",
+        durationMs: 1
+      }))
+    });
+    await writeJsonFile(path.join(runDir, "evidence", `${primary.id}.wiki-sync.json`), {
+      kind: "board-wiki-sync",
+      workItemId: primary.id,
+      outputPath: "wiki/live/work.feature-auth.md"
+    });
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Done"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_EVIDENCE_MISSING"), true);
   });
 });
 

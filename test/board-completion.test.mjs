@@ -50,12 +50,201 @@ async function enableClaudeRunner(boardDir) {
   });
 }
 
+async function addGraphNodeWorkItem({ boardDir, workItem, node }) {
+  const board = await loadBoard(boardDir);
+  for (const item of board.workItems) {
+    if (item.lane === "Ready") {
+      item.lane = "Done";
+    }
+  }
+  board.workItems.push(workItem);
+  board.workItemDAG.nodes.push({
+    workItemId: workItem.id,
+    kind: node.kind,
+    requiredForDone: node.requiredForDone !== false
+  });
+  await saveBoard(boardDir, board);
+
+  const dagPath = path.join(boardDir, "work-item-dag.json");
+  const dag = await readJsonFile(dagPath);
+  dag.nodes.push({
+    id: workItem.id,
+    kind: node.kind,
+    responsibilityUnitId: workItem.responsibilityUnitId,
+    requiredForDone: node.requiredForDone !== false
+  });
+  await writeJsonFile(dagPath, dag);
+
+  await writeJsonFile(path.join(boardDir, "work-items", `${workItem.id}.json`), {
+    schemaVersion: "1.0",
+    prdId: "prd.auth-kanban",
+    ...workItem
+  });
+
+  const responsibilityPath = path.join(boardDir, "responsibility-units.json");
+  const responsibilityUnits = await readJsonFile(responsibilityPath);
+  responsibilityUnits.units.push({
+    id: workItem.responsibilityUnitId,
+    owner: node.kind === "domain-pm" ? "team.pm" : "team.verification",
+    owns: workItem.allowedPaths ?? [],
+    publicSurfaces: [workItem.title],
+    mayUseContracts: workItem.contractIds ?? []
+  });
+  await writeJsonFile(responsibilityPath, responsibilityUnits);
+}
+
 function onlyNativeTask(started) {
   assert.equal(Object.hasOwn(started, "nativeTask"), false);
   assert.equal(Array.isArray(started.nativeTasks), true);
   assert.equal(started.nativeTasks.length, 1);
   return started.nativeTasks[0];
 }
+
+test("domain PM node completes from pm report without changed files", async () => {
+  await withProjectBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await addGraphNodeWorkItem({
+      boardDir,
+      node: { kind: "domain-pm" },
+      workItem: {
+        id: "work.auth-pm",
+        title: "Coordinate auth responsibility split",
+        lane: "Ready",
+        responsibilityUnitId: "ru.auth-pm",
+        contractIds: ["contract.auth.login"],
+        dependsOn: [],
+        allowedPaths: ["docs/auth/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('pm ok')"] }],
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.auth-pm.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.auth-pm.wiki-sync.json" }
+        ]
+      }
+    });
+    await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:domain-pm-node-test",
+      now: new Date("2026-05-15T00:00:00.000Z")
+    });
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      concurrency: 1,
+      now: new Date("2026-05-15T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true, JSON.stringify(started.errors));
+    const task = onlyNativeTask(started);
+    assert.equal(task.workItemId, "work.auth-pm");
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: "work.auth-pm",
+      attemptId: task.attemptId,
+      resultText: JSON.stringify({
+        makeitrealPmReport: {
+          role: "domain-pm",
+          status: "DONE",
+          summary: "No child split required.",
+          childWorkProposal: null,
+          workItemId: "work.auth-pm",
+          attemptId: task.attemptId
+        },
+        makeitrealReviews: [{
+          role: "spec-reviewer",
+          status: "APPROVED",
+          summary: "PM split is consistent with Blueprint.",
+          findings: [],
+          evidence: [],
+          workItemId: "work.auth-pm",
+          attemptId: task.attemptId
+        }]
+      }),
+      now: new Date("2026-05-15T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, true, JSON.stringify(finished.errors));
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === "work.auth-pm").lane, "Verifying");
+  });
+});
+
+test("integration evidence node completes with verification reviewer and no changed files", async () => {
+  await withProjectBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await addGraphNodeWorkItem({
+      boardDir,
+      node: { kind: "integration-evidence" },
+      workItem: {
+        id: "work.auth-integration-evidence",
+        title: "Record auth integration evidence",
+        lane: "Ready",
+        responsibilityUnitId: "ru.auth-evidence",
+        contractIds: ["contract.auth.login"],
+        dependsOn: [],
+        allowedPaths: ["evidence/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('integration evidence ok')"] }],
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.auth-integration-evidence.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.auth-integration-evidence.wiki-sync.json" }
+        ]
+      }
+    });
+    await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:integration-evidence-node-test",
+      now: new Date("2026-05-15T00:00:00.000Z")
+    });
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      concurrency: 1,
+      now: new Date("2026-05-15T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true, JSON.stringify(started.errors));
+    const task = onlyNativeTask(started);
+    assert.equal(task.workItemId, "work.auth-integration-evidence");
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: "work.auth-integration-evidence",
+      attemptId: task.attemptId,
+      resultText: JSON.stringify({
+        makeitrealEvidenceReport: {
+          role: "integration-evidence",
+          status: "DONE",
+          summary: "Integration evidence is ready for engine-owned verification.",
+          tested: ["node -e integration evidence ok"],
+          workItemId: "work.auth-integration-evidence",
+          attemptId: task.attemptId
+        },
+        makeitrealReviews: [{
+          role: "verification-reviewer",
+          status: "APPROVED",
+          summary: "Verification evidence path is sufficient.",
+          findings: [],
+          evidence: ["integration evidence fixture"],
+          workItemId: "work.auth-integration-evidence",
+          attemptId: task.attemptId
+        }]
+      }),
+      now: new Date("2026-05-15T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, true, JSON.stringify(finished.errors));
+
+    const completed = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.auth-integration-evidence",
+      runnerMode: "claude-code",
+      now: new Date("2026-05-15T00:00:02.000Z")
+    });
+    assert.equal(completed.ok, true, JSON.stringify(completed.errors));
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === "work.auth-integration-evidence").lane, "Done");
+  });
+});
 
 async function dispatchNativeWork({
   boardDir,

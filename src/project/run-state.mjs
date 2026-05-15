@@ -21,6 +21,7 @@ export async function writeCurrentRunState({
   projectRoot,
   runDir,
   source = "makeitreal:setup",
+  enforcement = "attached",
   now = new Date()
 }) {
   const resolvedProjectRoot = path.resolve(projectRoot);
@@ -45,6 +46,7 @@ export async function writeCurrentRunState({
   const state = {
     schemaVersion: "1.0",
     currentRunDir: relativeToProject(resolvedProjectRoot, resolvedRunDir),
+    enforcement,
     source,
     updatedAt: now.toISOString()
   };
@@ -129,6 +131,8 @@ export async function resolveCurrentRunDir({
     source: "current-run",
     projectRoot: resolvedProjectRoot,
     runDir: current.runDir,
+    state: current.state,
+    statePath: current.statePath,
     errors: []
   };
 }

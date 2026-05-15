@@ -443,6 +443,29 @@ test("pre-tool-use allows unrelated edits when only an inactive current-run poin
   });
 });
 
+test("pre-tool-use allows ordinary edits when current run is detached", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      enforcement: "detached",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    const result = runHook("hooks/claude/pre-tool-use.mjs", {
+      cwd: root,
+      tool_name: "Edit",
+      tool_input: { file_path: "unrelated/file.ts" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /detached/);
+  });
+});
+
 test("pre-tool-use enforces runner boundaries from MAKEITREAL_BOARD_DIR", async () => {
   await withFixture(async ({ root, runDir }) => {
     const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
@@ -463,6 +486,62 @@ test("pre-tool-use enforces runner boundaries from MAKEITREAL_BOARD_DIR", async 
     const output = JSON.parse(blocked.stdout);
     assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_PATH_BOUNDARY_VIOLATION/);
+  });
+});
+
+test("pre-tool-use uses explicit makeitreal hook context for concurrent native work", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    const denied = runHook("hooks/claude/pre-tool-use.mjs", {
+      cwd: root,
+      makeitreal: { runDir, workItemId: "work.feature-auth" },
+      tool_name: "Edit",
+      tool_input: { file_path: "services/auth/private.ts" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(denied.status, 0, denied.stdout || denied.stderr);
+    assert.equal(JSON.parse(denied.stdout).hookSpecificOutput.permissionDecision, "deny");
+
+    const allowed = runHook("hooks/claude/pre-tool-use.mjs", {
+      cwd: root,
+      makeitreal: { runDir, workItemId: "work.feature-auth" },
+      tool_name: "Edit",
+      tool_input: { file_path: "apps/web/auth/LoginForm.tsx" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(allowed.status, 0, allowed.stdout || allowed.stderr);
+    assert.equal(JSON.parse(allowed.stdout).hookSpecificOutput.permissionDecision, "allow");
+  });
+});
+
+test("pre-tool-use denies scoped native read of provider private implementation", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    const result = runHook("hooks/claude/pre-tool-use.mjs", {
+      cwd: root,
+      makeitreal: {
+        runDir,
+        workItemId: "work.feature-auth",
+        agentPacket: {
+          scope: { responsibilityUnitId: "ru.frontend" },
+          readScope: {
+            requiredReads: ["prd.json", "design-pack.json"],
+            forbiddenReads: ["services/auth/**"]
+          }
+        }
+      },
+      tool_name: "Read",
+      tool_input: { file_path: "services/auth/private.ts" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_READ_SCOPE_VIOLATION/);
   });
 });
 

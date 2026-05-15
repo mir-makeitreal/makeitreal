@@ -54,8 +54,8 @@ that exists in this session, preserving the Make It Real role inside the prompt
 and recorded JSON. Good choices when available are `feature-dev:code-reviewer`
 or `oh-my-claudecode:critic` for `spec-reviewer`, `oh-my-claudecode:critic` for
 `quality-reviewer`, and `oh-my-claudecode:verifier` for
-`verification-reviewer`. If a chosen type is unavailable, immediately retry the
-same reviewer prompt with `general-purpose` rather than failing the launch:
+`verification-reviewer`. If a chosen type is unavailable, stop launch and report
+`HARNESS_NATIVE_ROLE_MAPPING_MISSING`; update `native-role-mapping.json` before dispatch:
 
 - `spec-reviewer`
 - `quality-reviewer`

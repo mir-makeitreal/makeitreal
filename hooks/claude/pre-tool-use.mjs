@@ -16,6 +16,7 @@ const RUNNER_CONTEXT_KEYS = [
   "MAKEITREAL_RESPONSIBILITY_UNIT_ID"
 ];
 const ACTIVE_EXECUTION_LANES = new Set(["Claimed", "Running", "Verifying", "Human Review"]);
+const READ_TOOLS = new Set(["Read", "Grep", "Glob"]);
 
 async function readHookInput() {
   let raw = "";
@@ -44,6 +45,24 @@ function collectPaths(value, paths = []) {
   }
 
   return paths;
+}
+
+function matchesPattern(pattern, candidate) {
+  const normalizedPattern = String(pattern ?? "").replaceAll("\\", "/").replace(/\/+$/, "");
+  const normalizedCandidate = String(candidate ?? "").replaceAll("\\", "/").replace(/\/+$/, "");
+  if (normalizedPattern.endsWith("/**")) {
+    const base = normalizedPattern.slice(0, -3);
+    return normalizedCandidate === base || normalizedCandidate.startsWith(`${base}/`);
+  }
+  return normalizedPattern === normalizedCandidate;
+}
+
+function readScopeViolations({ readScope, paths }) {
+  const forbiddenReads = readScope?.forbiddenReads ?? [];
+  if (!Array.isArray(forbiddenReads) || forbiddenReads.length === 0) {
+    return [];
+  }
+  return paths.filter((candidate) => forbiddenReads.some((pattern) => matchesPattern(pattern, candidate)));
 }
 
 function bashCommand(input) {
@@ -190,21 +209,40 @@ function runnerContextState(env = process.env) {
 
 async function main() {
   const input = await readHookInput();
+  const explicitMakeItReal = input.makeitreal ?? input.tool_input?.makeitreal ?? input.toolInput?.makeitreal ?? null;
   const changedPaths = collectPaths(input.tool_input ?? input.toolInput ?? input);
   const command = bashCommand(input);
   const harnessControlBash = command ? bashLooksHarnessControl(command) : false;
   const bashRequiresBoundary = command ? !harnessControlBash && (bashLooksMutating(command) || !bashLooksReadOnly(command)) : false;
   const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashRequiresBoundary;
+  const readScopedTool = READ_TOOLS.has(input?.tool_name) || (command && !bashRequiresBoundary && bashLooksReadOnly(command));
+
+  if (explicitMakeItReal?.agentPacket?.readScope && readScopedTool) {
+    const violations = readScopeViolations({
+      readScope: explicitMakeItReal.agentPacket.readScope,
+      paths: changedPaths
+    });
+    if (violations.length > 0) {
+      return block(violations.map((candidate) => ({
+        code: "HARNESS_READ_SCOPE_VIOLATION",
+        reason: `${candidate} is outside the native packet read scope.`,
+        contractId: null,
+        ownerModule: explicitMakeItReal.agentPacket.scope?.responsibilityUnitId ?? null,
+        evidence: [candidate],
+        recoverable: true
+      })));
+    }
+  }
 
   if (!mutatingTool) {
     return allow("Non-mutating tool request.");
   }
 
   const projectRoot = input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
-  const explicitRunDir = input.runDir ?? input.makeitreal?.runDir ?? null;
+  const explicitRunDir = explicitMakeItReal?.runDir ?? input.runDir ?? null;
   const runnerContext = runnerContextState(process.env);
   const runnerRunDir = process.env.MAKEITREAL_BOARD_DIR ?? null;
-  let workItemId = process.env.MAKEITREAL_WORK_ITEM_ID ?? input.makeitreal?.workItemId ?? null;
+  let workItemId = explicitMakeItReal?.workItemId ?? process.env.MAKEITREAL_WORK_ITEM_ID ?? null;
   let resolved = null;
 
   if (runnerContext.active && !runnerContext.complete) {
@@ -227,6 +265,9 @@ async function main() {
     resolved = await resolveCurrentRunDir({ projectRoot });
     if (!resolved.ok) {
       return allow("No active Make It Real enforcement context.");
+    }
+    if (resolved.state?.enforcement === "detached") {
+      return allow("Current Make It Real run is detached from hook enforcement.");
     }
     const approval = await validateBlueprintApproval({ runDir: resolved.runDir });
     if (!approval.ok) {
