@@ -68,3 +68,35 @@ export function formatVerificationCommand(command) {
   }
   return [normalized.command.file, ...normalized.command.args].join(" ");
 }
+
+function commandRunsNodeTest(command, output) {
+  const normalized = normalizeVerificationCommand(command);
+  if (!normalized.ok) {
+    return false;
+  }
+  const file = normalized.command.file.split(/[\\/]/).at(-1);
+  if (file === "node" && normalized.command.args.includes("--test")) {
+    return true;
+  }
+  return /(?:^|\n)>\s+node\s+--test(?:\s|$)/.test(output)
+    || /(?:^|\n)\s*TAP version \d+/.test(output)
+    || /(?:^|\n)\s*#\s*tests\s+\d+\s*(?:\n|$)/i.test(output)
+    || /(?:^|\n)\s*ℹ\s*tests\s+\d+\s*(?:\n|$)/i.test(output);
+}
+
+function nodeTestCount(output) {
+  const match = output.match(/(?:^|\n)\s*(?:#|ℹ)?\s*tests\s+(\d+)\s*(?:\n|$)/i);
+  return match ? Number(match[1]) : null;
+}
+
+export function diagnoseVerificationCommandResult({ command, stdout = "", stderr = "", exitCode }) {
+  const output = `${stdout ?? ""}\n${stderr ?? ""}`;
+  if (exitCode === 0 && commandRunsNodeTest(command, output) && nodeTestCount(output) === 0) {
+    return {
+      ok: false,
+      code: "HARNESS_VERIFICATION_NO_TESTS_EXECUTED",
+      reason: `Verification command passed without executing tests: ${formatVerificationCommand(command)}`
+    };
+  }
+  return { ok: true };
+}

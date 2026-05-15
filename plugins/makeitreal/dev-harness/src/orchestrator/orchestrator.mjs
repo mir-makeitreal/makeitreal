@@ -3,7 +3,7 @@ import { claimWorkItem, listClaims, releaseClaim } from "../board/claim-store.mj
 import { getReadyWorkItems, validateDependencyGraph } from "../board/dependency-graph.mjs";
 import { validateChangedPaths } from "../board/responsibility-boundaries.mjs";
 import { resolveBlueprintRunDir } from "../blueprint/review.mjs";
-import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
+import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { runGates } from "../gates/index.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
@@ -26,6 +26,29 @@ import { extractReviewReports } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
+const COMPLETION_POLICIES = Object.freeze({
+  "implementation": {
+    reportRole: "implementation-worker",
+    reportKeys: ["makeitrealReport", "agentReport"],
+    requiresChangedFiles: true,
+    requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+  },
+  "domain-pm": {
+    reportRole: "domain-pm",
+    reportKeys: ["makeitrealPmReport", "pmReport"],
+    requiresChangedFiles: false,
+    requiredReviewRoles: ["spec-reviewer"]
+  },
+  "integration-evidence": {
+    reportRole: "integration-evidence",
+    reportKeys: ["makeitrealEvidenceReport", "evidenceReport"],
+    requiresChangedFiles: false,
+    requiredReviewRoles: ["verification-reviewer"]
+  }
+});
+
+const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
+
 function transitionLane(board, workItemId, lane, context = { gates: {} }, extra = {}) {
   const workItem = board.workItems.find((item) => item.id === workItemId);
   const transition = canTransition({ from: workItem.lane, to: lane, context });
@@ -34,6 +57,134 @@ function transitionLane(board, workItemId, lane, context = { gates: {} }, extra 
   }
   Object.assign(workItem, { lane }, extra);
   return { ok: true, errors: [] };
+}
+
+async function nodeKindForWorkItem({ runDir, workItemId }) {
+  const artifacts = await loadRunArtifacts(runDir);
+  return artifacts.workItemDag.nodes?.find((node) => node.id === workItemId)?.kind ?? "implementation";
+}
+
+function reportArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
+function reportCandidate(record, keys) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  for (const key of keys) {
+    const direct = record[key] ?? record.payload?.[key] ?? null;
+    if (direct) {
+      return direct;
+    }
+  }
+  return null;
+}
+
+function extractPolicyReport({ record, policy, workItem, workerId, attemptId, now }) {
+  const candidate = reportCandidate(record, policy.reportKeys);
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+  return {
+    schemaVersion: "1.0",
+    role: String(candidate.role ?? policy.reportRole),
+    status: String(candidate.status ?? ""),
+    summary: String(candidate.summary ?? ""),
+    changedFiles: reportArray(candidate.changedFiles),
+    tested: reportArray(candidate.tested),
+    concerns: reportArray(candidate.concerns),
+    needsContext: reportArray(candidate.needsContext),
+    blockers: reportArray(candidate.blockers),
+    childWorkProposal: candidate.childWorkProposal ?? null,
+    workItemId: String(candidate.workItemId ?? workItem.id),
+    workerId,
+    attemptId: String(candidate.attemptId ?? attemptId),
+    reportedAt: now.toISOString()
+  };
+}
+
+function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, reviewReports, changedFiles, workItem, attemptId }) {
+  const policy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
+  const errors = [];
+  const report = policyReport ?? agentReports.find((candidate) => candidate.role === policy.reportRole) ?? null;
+
+  if (!report) {
+    errors.push(createHarnessError({
+      code: "HARNESS_AGENT_REPORT_MISSING",
+      reason: `${nodeKind} node requires a ${policy.reportRole} report before verification.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: ["runner.stdout"],
+      recoverable: true
+    }));
+  } else if (report.status !== "DONE") {
+    const codes = {
+      DONE_WITH_CONCERNS: "HARNESS_AGENT_DONE_WITH_CONCERNS",
+      NEEDS_CONTEXT: "HARNESS_AGENT_NEEDS_CONTEXT",
+      BLOCKED: "HARNESS_AGENT_BLOCKED"
+    };
+    errors.push(createHarnessError({
+      code: codes[report.status] ?? "HARNESS_AGENT_STATUS_INVALID",
+      reason: `${policy.reportRole} reported ${report.status || "(missing)"}.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: ["runner.stdout", `attempts/${attemptId}.json`],
+      recoverable: true
+    }));
+  }
+
+  if (policy.requiresChangedFiles && changedFiles.length === 0) {
+    errors.push(createHarnessError({
+      code: "HARNESS_AGENT_CHANGED_FILES_MISSING",
+      reason: `${nodeKind} node requires at least one changed file in the native task report.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: ["runner.stdout"],
+      recoverable: true
+    }));
+  }
+
+  const latestByRole = new Map(reviewReports.map((report) => [report.role, report]));
+  const missing = policy.requiredReviewRoles.filter((role) => !latestByRole.has(role));
+  if (missing.length > 0) {
+    errors.push(createHarnessError({
+      code: "HARNESS_REVIEW_EVIDENCE_MISSING",
+      reason: `${nodeKind} node requires approved review evidence for: ${missing.join(", ")}.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: [`attempts/${attemptId}.json`],
+      recoverable: true
+    }));
+  }
+
+  const rejected = policy.requiredReviewRoles
+    .map((role) => latestByRole.get(role))
+    .find((report) => report && !APPROVED_REVIEW_STATUSES.has(report.status));
+  if (rejected) {
+    errors.push(createHarnessError({
+      code: "HARNESS_REVIEW_REJECTED",
+      reason: `${rejected.role} reported ${rejected.status}.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: [`attempts/${attemptId}.json`],
+      recoverable: true
+    }));
+  }
+
+  const workspaceChangedFile = changedFiles.find((filePath) =>
+    filePath.replaceAll("\\", "/").includes(".makeitreal/runs/")
+    && filePath.replaceAll("\\", "/").includes("/workspaces/")
+  );
+  if (workspaceChangedFile) {
+    errors.push(createHarnessError({
+      code: "HARNESS_NATIVE_WORKSPACE_EDIT_INVALID",
+      reason: `Native Claude work must edit the project root, not legacy workspace path: ${workspaceChangedFile}`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: [workspaceChangedFile],
+      recoverable: true
+    }));
+  }
+
+  return { ok: errors.length === 0, errors };
 }
 
 async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
@@ -47,9 +198,10 @@ async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
     return { ok: false, board, promotedWorkItemIds: [], errors: resolved.errors };
   }
 
-  let primaryWorkItem = null;
+  let graphNodeIds = null;
   try {
-    primaryWorkItem = findPrimaryWorkItem(await loadRunArtifacts(resolved.runDir));
+    const artifacts = await loadRunArtifacts(resolved.runDir);
+    graphNodeIds = new Set((artifacts.workItemDag.nodes ?? []).map((node) => node.id));
   } catch (cause) {
     return {
       ok: false,
@@ -58,13 +210,13 @@ async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
       errors: [createHarnessError({
         code: "HARNESS_READY_PROMOTION_INVALID",
         reason: cause instanceof Error ? cause.message : String(cause),
-        evidence: ["design-pack.json", "work-items"]
+        evidence: ["work-item-dag.json", "work-items"]
       })]
     };
   }
 
-  const candidate = frozen.find((item) => item.id === primaryWorkItem.id);
-  if (!candidate) {
+  const candidates = frozen.filter((item) => graphNodeIds.has(item.id));
+  if (candidates.length === 0) {
     return { ok: true, board, promotedWorkItemIds: [], errors: [] };
   }
 
@@ -73,29 +225,35 @@ async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
     return { ok: false, board, promotedWorkItemIds: [], errors: readyGate.errors };
   }
 
-  const transition = transitionLane(board, candidate.id, "Ready", {
-    gates: {
-      design: true,
-      contract: true,
-      responsibility: true,
-      blueprintApproval: true
+  const promotedWorkItemIds = [];
+  for (const candidate of candidates) {
+    const transition = transitionLane(board, candidate.id, "Ready", {
+      gates: {
+        design: true,
+        contract: true,
+        responsibility: true,
+        blueprintApproval: true
+      }
+    });
+    if (!transition.ok) {
+      return { ok: false, board, promotedWorkItemIds, errors: transition.errors };
     }
-  });
-  if (!transition.ok) {
-    return { ok: false, board, promotedWorkItemIds: [], errors: transition.errors };
+    promotedWorkItemIds.push(candidate.id);
   }
 
   await saveBoard(boardDir, board);
-  const event = await appendBoardEvent(boardDir, {
-    event: "work_ready",
-    timestamp: now.toISOString(),
-    workItemId: candidate.id,
-    payload: { source: "Ready gate" }
-  });
-  if (!event.ok) {
-    return { ok: false, board, promotedWorkItemIds: [], errors: event.errors };
+  for (const workItemId of promotedWorkItemIds) {
+    const event = await appendBoardEvent(boardDir, {
+      event: "work_ready",
+      timestamp: now.toISOString(),
+      workItemId,
+      payload: { source: "Ready gate" }
+    });
+    if (!event.ok) {
+      return { ok: false, board, promotedWorkItemIds, errors: event.errors };
+    }
   }
-  return { ok: true, board, promotedWorkItemIds: [candidate.id], errors: [] };
+  return { ok: true, board, promotedWorkItemIds, errors: [] };
 }
 
 export async function orchestratorTick({ boardDir, workerId, concurrency, now, runnerScript, runnerMode = "scripted-simulator" }) {
@@ -505,17 +663,32 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
 
   const attempt = await readRunAttempt({ boardDir, attemptId });
   const record = parseNativeResultRecord(resultText);
+  const nodeKind = await nodeKindForWorkItem({ runDir: boardDir, workItemId: workItem.id });
+  const policy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
   const agent = extractAgentReport({ record, workItem, workerId, attemptId, now });
+  const policyReport = extractPolicyReport({ record, policy, workItem, workerId, attemptId, now });
   const reviews = extractReviewReports({ record, workItem, workerId, attemptId, now });
-  const agentReports = agent.report ? [agent.report] : [];
+  const agentReports = [agent.report, policyReport]
+    .filter(Boolean)
+    .filter((report, index, reports) => reports.findIndex((candidate) => candidate.role === report.role) === index);
   const agentValidation = validateAgentReports({ reports: agentReports, workItem });
-  const changedFiles = agent.report?.changedFiles ?? [];
+  const changedFiles = policyReport?.changedFiles ?? agent.report?.changedFiles ?? [];
   const boundary = validateChangedPaths({ workItem, changedPaths: changedFiles });
+  const policyValidation = validateNativeCompletionPolicy({
+    nodeKind,
+    policyReport,
+    agentReports,
+    reviewReports: reviews.reports ?? [],
+    changedFiles,
+    workItem,
+    attemptId
+  });
   const errors = [
     ...(agent.errors ?? []),
     ...(reviews.errors ?? []),
     ...agentValidation.errors,
-    ...boundary.errors
+    ...boundary.errors,
+    ...policyValidation.errors
   ];
   const ok = errors.length === 0;
   const runtimeState = await loadRuntimeState(boardDir);
@@ -569,6 +742,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
         ...(attempt.runner ?? {}),
         mode: "claude-code",
         channel: "parent-native-task",
+        nodeKind,
         agentReports,
         reviewReports: reviews.reports ?? [],
         resultText: String(resultText ?? "")

@@ -23,6 +23,7 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
   const claudeManifest = JSON.parse(await readPluginFile(".claude-plugin", "plugin.json"));
   assert.equal(manifest.name, "makeitreal");
   assert.equal(claudeManifest.name, "makeitreal");
+  assert.equal(manifest.version, claudeManifest.version);
   assert.equal(manifest.repository, "https://github.com/mir-makeitreal/makeitreal");
   assert.equal(manifest.homepage, "https://github.com/mir-makeitreal/makeitreal");
   assert.equal(manifest.author.url, "https://github.com/mir-makeitreal/makeitreal");
@@ -410,6 +411,15 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
   }
 });
 
+test("Make It Real embedded plugin engine stays synchronized", () => {
+  const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "sync-plugin-engine.mjs"), "--check"], {
+    cwd: repoRoot,
+    encoding: "utf8"
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /in sync/);
+});
+
 test("Make It Real does not expose a child-process Claude runner script", async () => {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.equal(pkg.scripts["e2e:real-claude"], undefined);
@@ -419,7 +429,8 @@ test("Make It Real does not expose a child-process Claude runner script", async 
 test("Make It Real exposes opt-in Claude plugin validation", async () => {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.equal(pkg.scripts["plugin:validate"], "node scripts/validate-claude-plugin.mjs");
-  assert.equal(pkg.scripts["release:check"], "npm run check && npm run plugin:validate");
+  assert.equal(pkg.scripts["plugin:sync"], "node scripts/sync-plugin-engine.mjs");
+  assert.equal(pkg.scripts["release:check"], "npm run check && npm run plugin:sync -- --check && npm run plugin:validate");
 
   const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "validate-claude-plugin.mjs"), "--help"], {
     cwd: repoRoot,

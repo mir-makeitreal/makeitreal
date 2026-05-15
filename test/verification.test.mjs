@@ -37,6 +37,27 @@ test("failed verification writes failing evidence", async () => {
   });
 });
 
+test("verification rejects node test output with zero executed tests", async () => {
+  await withFixture(async ({ runDir }) => {
+    const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
+    const workItem = await readJsonFile(workItemPath);
+    workItem.verificationCommands = [{
+      file: "node",
+      args: ["-e", "console.log('> node --test test/*.test.mjs\\n\\nℹ tests 0\\nℹ suites 0\\nℹ pass 0\\nℹ fail 0')"]
+    }];
+    await writeJsonFile(workItemPath, workItem);
+
+    const result = await runVerification({ runDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+
+    const evidence = await readJsonFile(path.join(runDir, "evidence", "verification.json"));
+    assert.equal(evidence.ok, false);
+    assert.equal(evidence.commands[0].exitCode, 0);
+    assert.match(evidence.commands[0].stdout, /tests 0/);
+  });
+});
+
 test("verification commands preserve declared environment", async () => {
   await withFixture(async ({ runDir }) => {
     const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");

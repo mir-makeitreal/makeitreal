@@ -3,16 +3,36 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conformance.mjs";
 import { appendBoardEvent, loadBoard, saveBoard } from "../board/board-store.mjs";
+import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
-import { BOARD_VERIFICATION_PRODUCER, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
+import { BOARD_VERIFICATION_PRODUCER, diagnoseVerificationCommandResult, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
-import { validateCompletionReviews } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
+
+const COMPLETION_POLICIES = Object.freeze({
+  "implementation": {
+    reportRole: "implementation-worker",
+    requiresChangedFiles: true,
+    requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+  },
+  "domain-pm": {
+    reportRole: "domain-pm",
+    requiresChangedFiles: false,
+    requiredReviewRoles: ["spec-reviewer"]
+  },
+  "integration-evidence": {
+    reportRole: "integration-evidence",
+    requiresChangedFiles: false,
+    requiredReviewRoles: ["verification-reviewer"]
+  }
+});
+
+const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 
 function transitionWorkItem(workItem, to, context) {
   const transition = canTransition({ from: workItem.lane, to, context });
@@ -20,6 +40,94 @@ function transitionWorkItem(workItem, to, context) {
     return transition;
   }
   workItem.lane = to;
+  return { ok: true, errors: [] };
+}
+
+async function nodeKindForWorkItem({ runDir, workItemId }) {
+  const artifacts = await loadRunArtifacts(runDir);
+  return artifacts.workItemDag.nodes?.find((node) => node.id === workItemId)?.kind ?? "implementation";
+}
+
+function validateCompletionReviewsForNode({ attempt, workItem, nodeKind }) {
+  const policy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
+  const reports = attempt?.runner?.reviewReports ?? [];
+  const latestByRole = new Map();
+  for (const report of reports) {
+    if (report?.workItemId === workItem.id && report?.attemptId === attempt.attemptId) {
+      latestByRole.set(report.role, report);
+    }
+  }
+
+  const missing = policy.requiredReviewRoles.filter((role) => !latestByRole.has(role));
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_REVIEW_EVIDENCE_MISSING",
+        reason: `Completion requires approved review evidence for: ${missing.join(", ")}.`,
+        ownerModule: workItem.responsibilityUnitId ?? null,
+        evidence: [`attempts/${attempt.attemptId}.json`],
+        recoverable: true
+      })]
+    };
+  }
+
+  const rejected = policy.requiredReviewRoles
+    .map((role) => latestByRole.get(role))
+    .find((report) => !APPROVED_REVIEW_STATUSES.has(report.status));
+  if (rejected) {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_REVIEW_REJECTED",
+        reason: `${rejected.role} reported ${rejected.status}.`,
+        ownerModule: workItem.responsibilityUnitId ?? null,
+        evidence: [`attempts/${attempt.attemptId}.json`],
+        recoverable: true
+      })]
+    };
+  }
+
+  const latestReport = (attempt?.runner?.agentReports ?? [])
+    .filter((report) => report?.workItemId === workItem.id && report?.attemptId === attempt.attemptId && report?.role === policy.reportRole)
+    .at(-1);
+  if (!latestReport) {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_AGENT_REPORT_MISSING",
+        reason: `Completion requires a ${policy.reportRole} report for ${nodeKind}.`,
+        ownerModule: workItem.responsibilityUnitId ?? null,
+        evidence: [`attempts/${attempt.attemptId}.json`],
+        recoverable: true
+      })]
+    };
+  }
+  if (latestReport.status !== "DONE") {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_AGENT_STATUS_INVALID",
+        reason: `${latestReport.role} reported ${latestReport.status}.`,
+        ownerModule: workItem.responsibilityUnitId ?? null,
+        evidence: [`attempts/${attempt.attemptId}.json`],
+        recoverable: true
+      })]
+    };
+  }
+  if (policy.requiresChangedFiles && (latestReport.changedFiles ?? []).length === 0) {
+    return {
+      ok: false,
+      errors: [createHarnessError({
+        code: "HARNESS_AGENT_CHANGED_FILES_MISSING",
+        reason: `Completion requires changed-file evidence for ${nodeKind}.`,
+        ownerModule: workItem.responsibilityUnitId ?? null,
+        evidence: [`attempts/${attempt.attemptId}.json`],
+        recoverable: true
+      })]
+    };
+  }
+
   return { ok: true, errors: [] };
 }
 
@@ -116,7 +224,8 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       };
     }
 
-    const reviews = validateCompletionReviews({ attempt, workItem });
+    const nodeKind = attempt.runner?.nodeKind ?? await nodeKindForWorkItem({ runDir: boardDir, workItemId });
+    const reviews = validateCompletionReviewsForNode({ attempt, workItem, nodeKind });
     if (!reviews.ok) {
       const rework = transitionWorkItem(workItem, "Rework", { gates: {} });
       if (rework.ok) {
@@ -214,6 +323,19 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       errors.push(createHarnessError({
         code: "HARNESS_VERIFICATION_COMMAND_FAILED",
         reason: `Verification command failed: ${formatVerificationCommand(command)}`,
+        evidence: [`evidence/${workItemId}.verification.json`]
+      }));
+    }
+    const diagnosis = diagnoseVerificationCommandResult({
+      command,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.status
+    });
+    if (!diagnosis.ok) {
+      errors.push(createHarnessError({
+        code: diagnosis.code,
+        reason: diagnosis.reason,
         evidence: [`evidence/${workItemId}.verification.json`]
       }));
     }

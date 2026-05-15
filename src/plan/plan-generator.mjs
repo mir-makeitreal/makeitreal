@@ -1645,7 +1645,8 @@ export async function generatePlanRun({
     contractId,
     moduleInterface,
     workItem,
-    allowedPaths: owns
+    allowedPaths: owns,
+    request
   });
   const declaredApiSpecs = [
     ...designPack.apiSpecs,
@@ -1655,14 +1656,30 @@ export async function generatePlanRun({
   const decomposedModuleIds = new Set(decomposition.moduleInterfaces.map((item) => item.responsibilityUnitId));
   designPack.workItemId = decomposition.primaryWorkItemId;
   designPack.apiSpecs = declaredApiSpecs;
-  designPack.architecture.nodes = [
-    ...designPack.architecture.nodes,
-    ...decomposition.architectureNodes.filter((node) => !designPack.architecture.nodes.some((candidate) => candidate.id === node.id))
-  ];
-  designPack.architecture.edges = [
-    ...designPack.architecture.edges,
-    ...decomposition.architectureEdges
-  ];
+  if (decomposition.workItems.length > 1) {
+    const provideContractByUnit = new Map(decomposition.responsibilityUnits.map((unit) => [unit.id, unit.mustProvideContracts[0]]));
+    designPack.architecture.nodes = [
+      { id: "prd", label: "PRD Source" },
+      ...decomposition.architectureNodes
+    ];
+    designPack.architecture.edges = [
+      ...decomposition.architectureNodes.map((node) => ({
+        from: "prd",
+        to: node.id,
+        contractId: provideContractByUnit.get(node.responsibilityUnitId)
+      })),
+      ...decomposition.architectureEdges
+    ];
+  } else {
+    designPack.architecture.nodes = [
+      ...designPack.architecture.nodes,
+      ...decomposition.architectureNodes.filter((node) => !designPack.architecture.nodes.some((candidate) => candidate.id === node.id))
+    ];
+    designPack.architecture.edges = [
+      ...designPack.architecture.edges,
+      ...decomposition.architectureEdges
+    ];
+  }
   designPack.responsibilityBoundaries = [
     ...decomposition.responsibilityUnits.map((unit) => ({
       responsibilityUnitId: unit.id,

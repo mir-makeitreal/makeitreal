@@ -2,7 +2,7 @@ import { loadBoard } from "../board/board-store.mjs";
 import { listClaims } from "../board/claim-store.mjs";
 import { getBlockedWorkItems, getReadyWorkItems } from "../board/dependency-graph.mjs";
 import { validateBlueprintApproval, resolveBlueprintRunDir } from "../blueprint/review.mjs";
-import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
+import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { runGates } from "../gates/index.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 import { readEvidenceSummary, summarizeBoardOperator } from "./operator-summary.mjs";
@@ -42,14 +42,15 @@ function dependenciesComplete(board, workItem) {
 async function getNativeStartLaunchableWorkItems({ board, runDir }) {
   const ready = getReadyWorkItems(board);
   const readyIds = new Set(ready.map((item) => item.id));
-  const primary = findPrimaryWorkItem(await loadRunArtifacts(runDir));
-  const promotablePrimary = (board.workItems ?? []).find((item) =>
-    item.id === primary.id
+  const artifacts = await loadRunArtifacts(runDir);
+  const graphNodeIds = new Set((artifacts.workItemDag.nodes ?? []).map((node) => node.id));
+  const promotable = (board.workItems ?? []).filter((item) =>
+    graphNodeIds.has(item.id)
     && item.lane === "Contract Frozen"
     && !readyIds.has(item.id)
     && dependenciesComplete(board, item)
   );
-  return promotablePrimary ? [...ready, promotablePrimary] : ready;
+  return [...ready, ...promotable];
 }
 
 function hasRuntimePriorityLane(board) {

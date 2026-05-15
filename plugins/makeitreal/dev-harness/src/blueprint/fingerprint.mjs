@@ -57,7 +57,8 @@ export async function listBlueprintFingerprintFiles({ runDir }) {
   const required = [
     "prd.json",
     "design-pack.json",
-    "responsibility-units.json"
+    "responsibility-units.json",
+    "work-item-dag.json"
   ];
   if (await fileExists(path.join(runDir, "board.json"))) {
     required.push("board.json");

@@ -1,6 +1,6 @@
 {
   "name": "@52g-tools/makeitreal-engine",
-  "version": "0.1.28",
+  "version": "0.1.30",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -10,8 +10,9 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "check": "node --test test/*.test.mjs && node bin/harness.mjs design render examples/canonical/.makeitreal/runs/feature-auth --now 2026-04-30T00:00:00.000Z && node bin/harness.mjs contracts openapi examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Ready && node bin/harness.mjs verify examples/canonical/.makeitreal/runs/feature-auth --now 2026-04-30T00:00:00.000Z && node bin/harness.mjs wiki sync examples/canonical/.makeitreal/runs/feature-auth && node bin/harness.mjs gate examples/canonical/.makeitreal/runs/feature-auth --target Done",
+    "plugin:sync": "node scripts/sync-plugin-engine.mjs",
     "plugin:validate": "node scripts/validate-claude-plugin.mjs",
-    "release:check": "npm run check && npm run plugin:validate"
+    "release:check": "npm run check && npm run plugin:sync -- --check && npm run plugin:validate"
   },
   "engines": {
     "node": ">=20"

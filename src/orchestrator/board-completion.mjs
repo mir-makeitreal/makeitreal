@@ -5,7 +5,7 @@ import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conforma
 import { appendBoardEvent, loadBoard, saveBoard } from "../board/board-store.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
-import { BOARD_VERIFICATION_PRODUCER, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
+import { BOARD_VERIFICATION_PRODUCER, diagnoseVerificationCommandResult, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
@@ -323,6 +323,19 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       errors.push(createHarnessError({
         code: "HARNESS_VERIFICATION_COMMAND_FAILED",
         reason: `Verification command failed: ${formatVerificationCommand(command)}`,
+        evidence: [`evidence/${workItemId}.verification.json`]
+      }));
+    }
+    const diagnosis = diagnoseVerificationCommandResult({
+      command,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.status
+    });
+    if (!diagnosis.ok) {
+      errors.push(createHarnessError({
+        code: diagnosis.code,
+        reason: diagnosis.reason,
         evidence: [`evidence/${workItemId}.verification.json`]
       }));
     }

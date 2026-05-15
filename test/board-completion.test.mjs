@@ -927,6 +927,53 @@ test("orchestrator completion verifies native Claude task output in the real pro
   });
 });
 
+test("orchestrator completion sends work to Rework when Node test output executes zero tests", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps", "web", "auth", "native-output.txt"), "inside native task");
+
+    const board = await loadBoard(boardDir);
+    const workItem = board.workItems.find((item) => item.id === "work.login-ui");
+    workItem.verificationCommands = [{
+      file: "node",
+      args: ["-e", "console.log('> node --test test/*.test.mjs\\n\\nℹ tests 0\\nℹ suites 0\\nℹ pass 0\\nℹ fail 0')"]
+    }];
+    await saveBoard(boardDir, board);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:zero-test-regression",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true, JSON.stringify(approval.errors));
+
+    const dispatched = await dispatchNativeWork({
+      boardDir,
+      now: new Date("2026-04-30T00:00:00.000Z"),
+      changedFiles: ["apps/web/auth/native-output.txt"]
+    });
+    assert.equal(dispatched.ok, true, JSON.stringify(dispatched.errors));
+
+    const result = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.login-ui",
+      runnerMode: "claude-code",
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    const completed = await loadBoard(boardDir);
+    const completedItem = completed.workItems.find((item) => item.id === "work.login-ui");
+    assert.equal(completedItem.lane, "Rework");
+    assert.equal(completedItem.errorCode, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    const evidence = await readJsonFile(path.join(boardDir, "evidence", "work.login-ui.verification.json"));
+    assert.equal(evidence.ok, false);
+    assert.match(evidence.commands[0].stdout, /tests 0/);
+  });
+});
+
 test("orchestrator completion rejects non-native claude-code attempt provenance", async () => {
   await withBoard(async ({ boardDir }) => {
     await enableClaudeRunner(boardDir);

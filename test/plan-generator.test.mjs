@@ -166,6 +166,55 @@ test("plan generator creates API plus persistence responsibility DAG from explic
   }
 });
 
+test("plan generator preserves explicit API handler surface when splitting API and repository units", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-api-handler-dag-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: [
+        "Implement POST /orders as two explicit responsibility units.",
+        "Repository: src/data/orders/repository.mjs owns persistence, exports createOrderRepository(), createOrder({ sku, quantity }), listOrders().",
+        "API: src/api/orders/handler.mjs owns request handling, exports handlePostOrders(request, repository), depends only on repository contract.",
+        "Tests live in test/data/orders/repository.test.mjs and test/api/orders/handler.test.mjs.",
+        "Verification command is npm test."
+      ].join(" "),
+      allowedPaths: [
+        "src/data/orders/repository.mjs",
+        "test/data/orders/repository.test.mjs",
+        "src/api/orders/handler.mjs",
+        "test/api/orders/handler.test.mjs"
+      ],
+      verificationCommands: [{ file: "npm", args: ["test"] }]
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const apiModule = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.orders-api");
+    const repositoryModule = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.orders-repository");
+    assert.equal(apiModule.publicSurfaces[0].name, "handlePostOrders");
+    assert.deepEqual(apiModule.publicSurfaces[0].signature.inputs.map((input) => input.name), ["request", "repository"]);
+    assert.deepEqual(repositoryModule.publicSurfaces.map((surface) => surface.name), [
+      "createOrderRepository",
+      "createOrder",
+      "listOrders"
+    ]);
+
+    const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
+    const apiUnit = responsibilityUnits.units.find((unit) => unit.id === "ru.orders-api");
+    const repositoryUnit = responsibilityUnits.units.find((unit) => unit.id === "ru.orders-repository");
+    assert.deepEqual(apiUnit.publicSurfaces, ["handlePostOrders"]);
+    assert.deepEqual(repositoryUnit.publicSurfaces, ["createOrderRepository", "createOrder", "listOrders"]);
+
+    const validUnitIds = new Set(responsibilityUnits.units.map((unit) => unit.id));
+    assert.equal(designPack.architecture.nodes.every((node) =>
+      !node.responsibilityUnitId || validUnitIds.has(node.responsibilityUnitId)
+    ), true);
+    assert.equal(designPack.architecture.nodes.some((node) => node.responsibilityUnitId === "ru.implement-post-orders-as-two-explicit"), false);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("plan generator blocks plan and current-run updates without a real verification plan", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
   try {

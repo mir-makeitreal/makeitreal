@@ -179,6 +179,33 @@ test("Done gate rejects failed verification evidence", async () => {
   });
 });
 
+test("Done gate rejects zero-test verification evidence", async () => {
+  await withFixture(async ({ runDir }) => {
+    await renderDesignPreview({ runDir });
+    const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
+    const workItem = await readJsonFile(workItemPath);
+    workItem.verificationCommands = [{
+      file: "node",
+      args: ["-e", "console.log('> node --test test/*.test.mjs\\n\\nℹ tests 0\\nℹ suites 0\\nℹ pass 0\\nℹ fail 0')"]
+    }];
+    await writeJsonFile(workItemPath, workItem);
+    await approveRun(runDir);
+    await runVerification({ runDir });
+    await writeJsonFile(path.join(runDir, "evidence", "wiki-sync.json"), {
+      kind: "wiki-sync",
+      workItemId: "work.feature-auth",
+      outputPath: "manual"
+    });
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Done"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 1);
+    assert.equal(JSON.parse(result.stdout).errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+  });
+});
+
 test("Done gate rejects forged verification evidence for a different command", async () => {
   await withFixture(async ({ runDir }) => {
     await renderDesignPreview({ runDir });

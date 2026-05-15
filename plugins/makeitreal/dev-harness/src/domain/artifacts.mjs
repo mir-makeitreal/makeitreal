@@ -2,10 +2,11 @@ import path from "node:path";
 import { listJsonFiles, readJsonFile } from "../io/json.mjs";
 
 export async function loadRunArtifacts(runDir) {
-  const [prd, designPack, responsibilityUnits] = await Promise.all([
+  const [prd, designPack, responsibilityUnits, workItemDag] = await Promise.all([
     readJsonFile(path.join(runDir, "prd.json")),
     readJsonFile(path.join(runDir, "design-pack.json")),
-    readJsonFile(path.join(runDir, "responsibility-units.json"))
+    readJsonFile(path.join(runDir, "responsibility-units.json")),
+    readJsonFile(path.join(runDir, "work-item-dag.json"))
   ]);
 
   const contractFiles = await listJsonFiles(path.join(runDir, "contracts"));
@@ -17,6 +18,7 @@ export async function loadRunArtifacts(runDir) {
     prd,
     designPack,
     responsibilityUnits,
+    workItemDag,
     contracts: await Promise.all(contractFiles.map(readJsonFile)),
     contractFiles,
     workItems: await Promise.all(workItemFiles.map(readJsonFile)),

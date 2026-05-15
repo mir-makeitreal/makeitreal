@@ -2,6 +2,7 @@ import path from "node:path";
 import { createHarnessError } from "../domain/errors.mjs";
 import { invalidAllowedPathPattern } from "../domain/path-policy.mjs";
 import { normalizeVerificationCommand } from "../domain/verification-command.mjs";
+import { projectBoardDag } from "../domain/work-item-dag.mjs";
 import { renderDesignPreview } from "../preview/render-preview.mjs";
 import { ensureMakeItRealGitIgnore } from "../project/bootstrap.mjs";
 import { writeCurrentRunState } from "../project/run-state.mjs";
@@ -10,6 +11,7 @@ import { writeJsonFile } from "../io/json.mjs";
 import { approvalErrorsOnly, seedBlueprintReview } from "../blueprint/review.mjs";
 import { LANES } from "../kanban/lanes.mjs";
 import { loadRuntimeState } from "../orchestrator/runtime-state.mjs";
+import { decomposeResponsibilities } from "./responsibility-decomposer.mjs";
 
 export function slugifyTask(value) {
   const normalized = String(value ?? "")
@@ -1363,22 +1365,14 @@ function trustPolicyFor({ runnerMode, runId }) {
   };
 }
 
-async function materializeLaunchBoard({ runDir, runId, slug, workItem, runnerMode }) {
+async function materializeLaunchBoard({ runDir, runId, slug, workItems, workItemDag, runnerMode }) {
   const board = {
     schemaVersion: "1.0",
     boardId: `board.${slug}`,
     blueprintRunDir: ".",
     lanes: LANES,
-    workItemDAG: {
-      schemaVersion: "1.0",
-      nodes: [{
-        workItemId: workItem.id,
-        responsibilityUnitId: workItem.responsibilityUnitId,
-        dependsOn: workItem.dependsOn
-      }],
-      edges: []
-    },
-    workItems: [workItem]
+    workItemDAG: projectBoardDag(workItemDag),
+    workItems
   };
   await writeJsonFile(path.join(runDir, "board.json"), board);
   await writeJsonFile(path.join(runDir, "trust-policy.json"), trustPolicyFor({ runnerMode, runId }));
@@ -1614,19 +1608,6 @@ export async function generatePlanRun({
     sequences: sequencesFor({ workItemId, contractId, usesOpenApi, apiProfile, componentProfile })
   };
 
-  const responsibilityUnits = {
-    schemaVersion: "1.0",
-    units: [
-      {
-        id: responsibilityUnitId,
-        owner,
-        owns,
-        publicSurfaces: moduleInterface.publicSurfaces.map((surface) => surface.name),
-        mayUseContracts
-      }
-    ]
-  };
-
   const doneEvidence = [
     { kind: "verification", path: `evidence/${workItemId}.verification.json` },
     { kind: "wiki-sync", path: `evidence/${workItemId}.wiki-sync.json` }
@@ -1657,18 +1638,100 @@ export async function generatePlanRun({
     doneEvidence,
     verificationCommands: commands
   };
+  const decomposition = decomposeResponsibilities({
+    slug,
+    owner,
+    owns,
+    contractId,
+    moduleInterface,
+    workItem,
+    allowedPaths: owns,
+    request
+  });
+  const declaredApiSpecs = [
+    ...designPack.apiSpecs,
+    ...decomposition.additionalApiSpecs
+  ].filter((spec, index, specs) => specs.findIndex((candidate) => candidate.contractId === spec.contractId) === index);
+  const dependencyInterfaceIds = new Set(dependencyModuleInterfaces.map((item) => item.responsibilityUnitId));
+  const decomposedModuleIds = new Set(decomposition.moduleInterfaces.map((item) => item.responsibilityUnitId));
+  designPack.workItemId = decomposition.primaryWorkItemId;
+  designPack.apiSpecs = declaredApiSpecs;
+  if (decomposition.workItems.length > 1) {
+    const provideContractByUnit = new Map(decomposition.responsibilityUnits.map((unit) => [unit.id, unit.mustProvideContracts[0]]));
+    designPack.architecture.nodes = [
+      { id: "prd", label: "PRD Source" },
+      ...decomposition.architectureNodes
+    ];
+    designPack.architecture.edges = [
+      ...decomposition.architectureNodes.map((node) => ({
+        from: "prd",
+        to: node.id,
+        contractId: provideContractByUnit.get(node.responsibilityUnitId)
+      })),
+      ...decomposition.architectureEdges
+    ];
+  } else {
+    designPack.architecture.nodes = [
+      ...designPack.architecture.nodes,
+      ...decomposition.architectureNodes.filter((node) => !designPack.architecture.nodes.some((candidate) => candidate.id === node.id))
+    ];
+    designPack.architecture.edges = [
+      ...designPack.architecture.edges,
+      ...decomposition.architectureEdges
+    ];
+  }
+  designPack.responsibilityBoundaries = [
+    ...decomposition.responsibilityUnits.map((unit) => ({
+      responsibilityUnitId: unit.id,
+      owns: unit.owns,
+      mayUseContracts: unit.mayUseContracts
+    })),
+    ...dependencyModuleInterfaces
+      .filter((dependencyInterface) => !decomposedModuleIds.has(dependencyInterface.responsibilityUnitId))
+      .map((dependencyInterface) => ({
+        responsibilityUnitId: dependencyInterface.responsibilityUnitId,
+        owns: dependencyInterface.owns,
+        mayUseContracts: []
+      }))
+  ];
+  designPack.moduleInterfaces = [
+    ...decomposition.moduleInterfaces,
+    ...dependencyModuleInterfaces.filter((dependencyInterface) => !decomposedModuleIds.has(dependencyInterface.responsibilityUnitId))
+  ];
+  designPack.callStacks = decomposition.moduleInterfaces.flatMap((item) => callStacksFor({
+    moduleInterface: item,
+    usesOpenApi: item.responsibilityUnitId.endsWith("-api") ? usesOpenApi : false,
+    apiProfile,
+    componentProfile: item.responsibilityUnitId === responsibilityUnitId ? componentProfile : null,
+    moduleProfile: item.responsibilityUnitId === responsibilityUnitId ? moduleProfile : null
+  }));
+
+  const responsibilityUnits = {
+    schemaVersion: "1.0",
+    units: decomposition.responsibilityUnits.filter((unit) => !dependencyInterfaceIds.has(unit.id))
+  };
 
   await writeJsonFile(path.join(runDir, "prd.json"), prd);
   await writeJsonFile(path.join(runDir, "design-pack.json"), designPack);
   await writeJsonFile(path.join(runDir, "responsibility-units.json"), responsibilityUnits);
-  await writeJsonFile(path.join(runDir, "work-items", `${workItemId}.json`), workItem);
+  for (const item of decomposition.workItems) {
+    await writeJsonFile(path.join(runDir, "work-items", `${item.id}.json`), item);
+  }
+  await writeJsonFile(path.join(runDir, "work-item-dag.json"), decomposition.workItemDag);
   if (usesOpenApi) {
     await writeJsonFile(path.join(runDir, "contracts", `${slug}.openapi.json`), openApiDocument({ title, slug, apiProfile }));
   }
   if (componentProfile) {
     await writeJsonFile(path.join(runDir, "contracts", `${slug}.component-contract.json`), componentContractDocument({ componentProfile, contractId, title }));
   }
-  const launchBoard = await materializeLaunchBoard({ runDir, runId: resolvedRunId, slug, workItem, runnerMode });
+  const launchBoard = await materializeLaunchBoard({
+    runDir,
+    runId: resolvedRunId,
+    slug,
+    workItems: decomposition.workItems,
+    workItemDag: decomposition.workItemDag,
+    runnerMode
+  });
 
   const blueprintReview = await seedBlueprintReview({ runDir, now });
   const preview = await renderDesignPreview({ runDir, now });

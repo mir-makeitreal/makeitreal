@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createHarnessError } from "./errors.mjs";
-import { BOARD_VERIFICATION_PRODUCER, VERIFICATION_PRODUCER, hashCommand } from "./verification-command.mjs";
+import { BOARD_VERIFICATION_PRODUCER, VERIFICATION_PRODUCER, diagnoseVerificationCommandResult, hashCommand } from "./verification-command.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 
 function evidencePlanPath(workItem, kind, fallbackPath) {
@@ -54,6 +54,14 @@ export async function readVerificationEvidence(runDir, { workItem = null } = {})
   const evidence = await readJsonFile(evidencePath);
   const commands = Array.isArray(evidence.commands) ? evidence.commands : [];
   const failedCommands = commands.filter((command) => command.exitCode !== 0);
+  const commandDiagnostics = commands
+    .map((command) => diagnoseVerificationCommandResult({
+      command: command.command,
+      stdout: command.stdout,
+      stderr: command.stderr,
+      exitCode: command.exitCode
+    }))
+    .filter((diagnosis) => !diagnosis.ok);
   const producerInvalid = ![VERIFICATION_PRODUCER, BOARD_VERIFICATION_PRODUCER].includes(evidence.producer);
   const kindInvalid = !["verification", "board-verification"].includes(evidence.kind);
   const workItemInvalid = workItem && evidence.workItemId && evidence.workItemId !== workItem.id;
@@ -62,13 +70,14 @@ export async function readVerificationEvidence(runDir, { workItem = null } = {})
   const hashesInvalid = expectedHashes
     ? actualHashes.length !== expectedHashes.length || actualHashes.some((hash, index) => hash !== expectedHashes[index])
     : false;
-  if (kindInvalid || evidence.ok !== true || commands.length === 0 || failedCommands.length > 0 || producerInvalid || hashesInvalid || workItemInvalid) {
+  if (kindInvalid || evidence.ok !== true || commands.length === 0 || failedCommands.length > 0 || commandDiagnostics.length > 0 || producerInvalid || hashesInvalid || workItemInvalid) {
+    const diagnostic = commandDiagnostics[0];
     return {
       ok: false,
       evidence,
       errors: [createHarnessError({
-        code: "HARNESS_VERIFICATION_FAILED",
-        reason: "Done requires passing verification evidence produced by makeitreal-engine for the current work item.",
+        code: diagnostic?.code ?? "HARNESS_VERIFICATION_FAILED",
+        reason: diagnostic?.reason ?? "Done requires passing verification evidence produced by makeitreal-engine for the current work item.",
         evidence: [relativePath]
       })]
     };

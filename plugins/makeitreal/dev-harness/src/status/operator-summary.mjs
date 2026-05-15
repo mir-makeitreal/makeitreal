@@ -22,6 +22,15 @@ export function actionForErrorCode(code) {
       return ACTIONS.approve;
     case "HARNESS_BLUEPRINT_APPROVAL_REJECTED":
       return ACTIONS.plan;
+    case "HARNESS_DAG_INVALID":
+    case "HARNESS_DAG_NODE_INVALID":
+    case "HARNESS_DAG_NODE_KIND_INVALID":
+    case "HARNESS_DAG_NODE_WORK_ITEM_MISSING":
+    case "HARNESS_DAG_EDGE_INVALID":
+    case "HARNESS_DAG_DEPENDENCY_DRIFT":
+    case "HARNESS_DAG_CYCLE":
+    case "HARNESS_DAG_PATH_OVERLAP":
+      return ACTIONS.plan;
     case "HARNESS_VERIFICATION_PLAN_MISSING":
     case "HARNESS_VERIFICATION_FAILED":
     case "HARNESS_DONE_EVIDENCE_MISSING":

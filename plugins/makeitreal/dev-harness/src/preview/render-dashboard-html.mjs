@@ -665,6 +665,27 @@ function systemMapMermaid(dossier = {}) {
   return lines.join("\n");
 }
 
+function taskDagMermaid(dossier = {}) {
+  const nodes = dossier.taskDag?.nodes ?? [];
+  if (nodes.length === 0) {
+    return null;
+  }
+  const nodeIds = new Map(nodes.map((node, index) => [node.id, `task_${index}`]));
+  const lines = ["flowchart LR"];
+  for (const node of nodes) {
+    const label = `${node.moduleName ?? node.responsibilityUnitId}\\n${node.kind ?? "implementation"}\\n${node.id}`;
+    lines.push(`  ${nodeIds.get(node.id)}["${mermaidLabel(label)}"]`);
+  }
+  for (const edge of dossier.taskDag?.edges ?? []) {
+    const from = nodeIds.get(edge.from);
+    const to = nodeIds.get(edge.to);
+    if (from && to) {
+      lines.push(`  ${from} -->|"${mermaidLabel(edge.contractId ?? "depends on")}"| ${to}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 function harnessSequence(sequence = {}) {
   const text = [
     ...(sequence.participants ?? []),
@@ -857,7 +878,10 @@ function renderDossierNav(dossier = {}) {
       <input type="search" data-nav-filter placeholder="Module, surface, contract">
     </label>
     <a href="#overview" class="active">Overview</a>
+    <a href="#approval-scope">Approval Scope</a>
     <a href="#system-placement">System Placement</a>
+    <a href="#task-dag">Task DAG</a>
+    <a href="#worker-topology">Worker Topology</a>
     <a href="#responsibility-map">Responsibility Map</a>
     <a href="#scenario-index">Scenario Index</a>
     <a href="#contract-surfaces">Contract Surfaces</a>
@@ -1086,6 +1110,90 @@ function renderSystemPlacement(dossier = {}) {
         </div>
       </div>`).join("")}
     </div>
+  </section>`;
+}
+
+function renderApprovalScope(dossier = {}) {
+  const scope = dossier.approvalScope ?? {};
+  return `<section id="approval-scope" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Approval Packet</p>
+        <h2>Approval Scope</h2>
+      </div>
+    </div>
+    <p class="section-note">Approve this Blueprint only if these paths, contracts, and required work items match the intended software change.</p>
+    <div class="doc-table approval-scope-table">
+      <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value">${(scope.requiredWorkItems ?? []).map((id) => `<code>${escapeHtml(id)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
+      <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value">${(scope.authorizedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
+      <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value">${(scope.requiredContracts ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>${escapeHtml(scope.blueprintFingerprint ?? "pending review seed")}</code></div></div>
+    </div>
+  </section>`;
+}
+
+function renderTaskDag(dossier = {}) {
+  const taskDag = dossier.taskDag ?? {};
+  const nodes = taskDag.nodes ?? [];
+  return `<section id="task-dag" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Execution Graph</p>
+        <h2>Task DAG</h2>
+      </div>
+    </div>
+    <p class="section-note">Work is split by responsibility boundary. A child Task can execute a node without reading sibling implementation context.</p>
+    ${mermaidDiagramCard({
+      title: "Responsibility Task Graph",
+      description: "Required work items and dependency contracts for native Claude Code Task fan-out.",
+      diagram: taskDagMermaid(dossier)
+    }) || '<p class="empty">No task graph declared.</p>'}
+    <div class="task-dag-table" role="table" aria-label="Task DAG">
+      <div class="task-dag-row header" role="row">
+        <div role="columnheader">Work Item</div>
+        <div role="columnheader">Responsibility</div>
+        <div role="columnheader">Contracts</div>
+        <div role="columnheader">Authorized Paths</div>
+      </div>
+      ${nodes.map((node) => `<div class="task-dag-row" role="row">
+        <div role="cell" data-label="Work Item"><strong>${escapeHtml(conciseTitleFromText(node.title))}</strong><code>${escapeHtml(node.id)}</code><span>${escapeHtml(node.kind)}</span></div>
+        <div role="cell" data-label="Responsibility"><strong>${escapeHtml(node.moduleName ?? node.responsibilityUnitId)}</strong><code>${escapeHtml(node.responsibilityUnitId)}</code></div>
+        <div role="cell" data-label="Contracts">${(node.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}</div>
+        <div role="cell" data-label="Authorized Paths">${(node.allowedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div>
+      </div>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderWorkerTopology(dossier = {}) {
+  const topology = dossier.workerTopology ?? {};
+  const assignments = topology.assignments ?? [];
+  return `<section id="worker-topology" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Native Agents</p>
+        <h2>Worker Topology</h2>
+      </div>
+    </div>
+    <p class="section-note">Each assignment is the planned native Task packet: one responsibility unit, declared contracts, and authorized paths.</p>
+    <div class="worker-topology-list">
+      ${assignments.map((assignment) => `<article class="worker-assignment">
+        <header>
+          <div>
+            <p class="module-id">${escapeHtml(assignment.workItemId)}</p>
+            <h3>${escapeHtml(assignment.moduleName)}</h3>
+          </div>
+          <code>${escapeHtml(assignment.evidenceRole)}</code>
+        </header>
+        <p>${escapeHtml(assignment.handoff)}</p>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Responsibility Unit</div><div class="doc-value"><code>${escapeHtml(assignment.responsibilityUnitId)}</code></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value">${(assignment.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}</div></div>
+          <div class="doc-row"><div class="doc-key">Paths</div><div class="doc-value">${(assignment.allowedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div></div>
+        </div>
+      </article>`).join("")}
+    </div>
+    <p class="section-note">Review roles: ${(topology.reviewRoles ?? []).map((role) => `<code>${escapeHtml(role)}</code>`).join(" ")}</p>
   </section>`;
 }
 
@@ -1476,7 +1584,10 @@ export function renderDashboardHtml(model) {
         </div>
       </header>
 
+      ${renderApprovalScope(dossier)}
       ${renderSystemPlacement(dossier)}
+      ${renderTaskDag(dossier)}
+      ${renderWorkerTopology(dossier)}
       ${renderResponsibilityMap(dossier.modules)}
 
       <section id="scenario-index" class="architecture-section">
@@ -1499,6 +1610,7 @@ export function renderDashboardHtml(model) {
             <h2>Scenario Reference</h2>
           </div>
         </div>
+        ${renderFlowTimeline(dossier)}
         ${renderScenarioDetails(dossier.scenarioDetails)}
       </section>
 
@@ -2733,6 +2845,100 @@ h3 {
   display: grid;
 }
 
+.task-dag-table,
+.worker-topology-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.task-dag-table {
+  gap: 0;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.task-dag-row {
+  display: grid;
+  grid-template-columns: minmax(180px, .9fr) minmax(170px, .8fr) minmax(190px, 1fr) minmax(220px, 1.2fr);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid var(--soft-line);
+  padding: 11px 14px;
+}
+
+.task-dag-row:first-child {
+  border-top: 0;
+}
+
+.task-dag-row.header {
+  background: #f1f4f8;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.task-dag-row > div,
+.worker-assignment .doc-value,
+.approval-scope-table .doc-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-dag-row strong {
+  flex-basis: 100%;
+}
+
+.task-dag-row code,
+.worker-assignment code,
+.approval-scope-table code {
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: var(--soft);
+  padding: 2px 7px;
+}
+
+.task-dag-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.worker-assignment {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.worker-assignment header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.worker-assignment h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.worker-assignment p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.compact-doc-table .doc-row {
+  grid-template-columns: 150px minmax(0, 1fr);
+}
+
 .module-directory-row {
   display: grid;
   grid-template-columns: minmax(170px, .9fr) minmax(110px, .55fr) minmax(200px, 1.1fr) minmax(220px, 1.2fr);
@@ -3406,6 +3612,7 @@ h3 {
   .reference-row,
   .spec-row,
   .module-directory-row,
+  .task-dag-row,
   .sources-list li,
   .spec-block:nth-child(2) .spec-row,
   .spec-block:nth-child(3) .spec-row,

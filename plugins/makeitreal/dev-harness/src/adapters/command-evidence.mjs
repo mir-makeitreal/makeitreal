@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
-import { VERIFICATION_PRODUCER, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
+import { VERIFICATION_PRODUCER, diagnoseVerificationCommandResult, formatVerificationCommand, hashCommand, normalizeVerificationCommand } from "../domain/verification-command.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 
 export async function runVerification({ runDir }) {
@@ -55,6 +55,19 @@ export async function runVerification({ runDir }) {
       errors.push(createHarnessError({
         code: "HARNESS_VERIFICATION_COMMAND_FAILED",
         reason: `Verification command failed: ${formatVerificationCommand(command)}`,
+        evidence: ["evidence/verification.json"]
+      }));
+    }
+    const diagnosis = diagnoseVerificationCommandResult({
+      command,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.status
+    });
+    if (!diagnosis.ok) {
+      errors.push(createHarnessError({
+        code: diagnosis.code,
+        reason: diagnosis.reason,
         evidence: ["evidence/verification.json"]
       }));
     }
