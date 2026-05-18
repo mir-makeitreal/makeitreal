@@ -467,6 +467,30 @@ test("pre-tool-use allows parent-session edits outside the project when current-
   });
 });
 
+test("pre-tool-use allows parent-session project edits when current-run artifacts are stale and not executing", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    await rm(path.join(runDir, "work-item-dag.json"), { force: true });
+
+    const result = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "api/services/inner_api_v2/admin_access_service.py" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /not executing/);
+  });
+});
+
 test("pre-tool-use allows ordinary edits when current run is detached", async () => {
   await withFixture(async ({ root, runDir }) => {
     await writeCurrentRunState({

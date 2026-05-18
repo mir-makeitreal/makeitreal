@@ -228,6 +228,29 @@ async function activeExecutionContext({ runDir }) {
   };
 }
 
+async function safeActiveExecutionContext({ runDir }) {
+  try {
+    return await activeExecutionContext({ runDir });
+  } catch {
+    return {
+      active: false,
+      workItemId: null,
+      ambiguous: false,
+      workItemIds: [],
+      stale: true
+    };
+  }
+}
+
+function onlyStaleApprovalErrors(errors = []) {
+  return errors.length > 0 && errors.every((error) => [
+    "HARNESS_BLUEPRINT_REVIEW_INVALID",
+    "HARNESS_BLUEPRINT_APPROVAL_MISSING",
+    "HARNESS_BLUEPRINT_APPROVAL_DRIFT",
+    "HARNESS_BLUEPRINT_APPROVAL_STALE"
+  ].includes(error.code));
+}
+
 function runnerContextState(env = process.env) {
   const present = RUNNER_CONTEXT_KEYS.filter((key) => env[key]);
   return {
@@ -305,11 +328,14 @@ async function main() {
     if (resolved.state?.enforcement === "detached") {
       return allow("Current Make It Real run is detached from hook enforcement.");
     }
+    const active = await safeActiveExecutionContext({ runDir: resolved.runDir });
     const approval = await validateBlueprintApproval({ runDir: resolved.runDir });
     if (!approval.ok) {
+      if (!active.active && onlyStaleApprovalErrors(approval.errors)) {
+        return allow("Current Make It Real run is stale and not executing.");
+      }
       return block(approval.errors);
     }
-    const active = await activeExecutionContext({ runDir: resolved.runDir });
     if (!active.active) {
       return allow("Current Make It Real run is not executing.");
     }
