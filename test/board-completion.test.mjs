@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { loadBoard, saveBoard } from "../src/board/board-store.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
-import { latestSuccessfulRunAttempt } from "../src/orchestrator/attempt-store.mjs";
+import { latestSuccessfulRunAttempt, readRunAttempt } from "../src/orchestrator/attempt-store.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { finishNativeClaudeTask, orchestratorTick, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
 import { loadRuntimeState } from "../src/orchestrator/runtime-state.mjs";
@@ -657,6 +657,49 @@ test("native finish CLI can build reports from shorthand flags", async () => {
       "quality-reviewer",
       "verification-reviewer"
     ]);
+  });
+});
+
+test("native finish rejects missing structured reports without mutating running work", async () => {
+  await withProjectBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-finish-input-contract-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
+
+    const finished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: nativeTask.workItemId,
+      attemptId: nativeTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText: "",
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+    assert.equal(finished.ok, false);
+    assert.equal(finished.errors[0].code, "HARNESS_NATIVE_RESULT_REQUIRED");
+
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === nativeTask.workItemId).lane, "Running");
+
+    const runtime = await loadRuntimeState(boardDir);
+    assert.equal(runtime.running[nativeTask.workItemId].attemptId, nativeTask.attemptId);
+    assert.equal(runtime.retryAttempts[nativeTask.workItemId], undefined);
+
+    const attempt = await readRunAttempt({ boardDir, attemptId: nativeTask.attemptId });
+    assert.equal(attempt.status, "running");
+    assert.deepEqual(attempt.events, ["session_started"]);
   });
 });
 

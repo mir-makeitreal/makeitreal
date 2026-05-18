@@ -301,6 +301,36 @@ test("pre-tool-use infers the native work item from changed paths during concurr
   });
 });
 
+test("pre-tool-use leaves scoped native lifecycle commands to the engine during concurrent execution", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await addAuthServiceWorkItem(runDir);
+    await decideBlueprintReview({
+      runDir,
+      status: "approved",
+      reviewedBy: "operator:native-lifecycle-hook-test",
+      now: new Date("2026-05-06T00:00:30.000Z")
+    });
+    await setConcurrentActiveExecution(runDir);
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:01:00.000Z")
+    });
+
+    const result = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Bash",
+      tool_input: {
+        command: `MAKEITREAL_WORK_ITEM_ID=work.feature-auth "${harnessRoot}/plugins/makeitreal/bin/makeitreal-engine" orchestrator native finish "${runDir}" --work work.feature-auth --attempt attempt.frontend --result-stdin < /tmp/makeitreal-report.json`
+      }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, "allow");
+  });
+});
+
 test("user-prompt-submit delegates pending Blueprint review to the native Claude Code session", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
