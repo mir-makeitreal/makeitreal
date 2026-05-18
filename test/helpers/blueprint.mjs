@@ -36,11 +36,22 @@ export async function materializeBoardRunPacket(boardDir) {
       responsibilityUnitId: workItem.responsibilityUnitId,
       requiredForDone: workItem.id === "work.login-ui"
     })),
-    edges: (board.workItems ?? []).flatMap((workItem) => (workItem.dependsOn ?? []).map((dependencyId) => ({
-      from: dependencyId,
-      to: workItem.id,
-      contractId: workItem.contractIds?.[0] ?? null
-    })))
+    edges: (board.workItems ?? []).flatMap((workItem) => (workItem.dependsOn ?? []).map((dependencyId) => {
+      const dependency = (workItem.dependencyContracts ?? []).find((contract) => contract.providerResponsibilityUnitId
+        && (board.workItems ?? []).some((candidate) => candidate.id === dependencyId && candidate.responsibilityUnitId === contract.providerResponsibilityUnitId));
+      return dependency
+        ? {
+            from: dependencyId,
+            to: workItem.id,
+            kind: "contract-dependency",
+            contractId: dependency.contractId
+          }
+        : {
+            from: dependencyId,
+            to: workItem.id,
+            kind: "coordination"
+          };
+    }))
   };
   board.workItemDAG = projectBoardDag(workItemDag);
   await writeJsonFile(path.join(boardDir, "board.json"), board);

@@ -344,7 +344,12 @@ export function decomposeResponsibilities({
     responsibilityUnitId: integrationUnitId,
     allowedPaths: [],
     contractIds: uniqueValues([contractId, persistenceContractId]),
-    dependencyContracts: [],
+    dependencyContracts: [{
+      contractId,
+      providerResponsibilityUnitId: apiUnitId,
+      surface: apiModule.publicSurfaces[0].name,
+      allowedUse: "Exercise the public API contract as cross-boundary integration evidence; do not inspect implementation internals."
+    }],
     dependsOn: [apiWorkItemId],
     doneEvidence: evidenceFor(integrationWorkItemId, workItem.doneEvidence)
       .filter((item) => item.kind !== "openapi-conformance")
@@ -421,16 +426,18 @@ export function decomposeResponsibilities({
         {
           from: pmWorkItemId,
           to: repositoryWorkItemId,
-          contractId
+          kind: "coordination"
         },
         {
           from: repositoryWorkItemId,
           to: apiWorkItemId,
+          kind: "contract-dependency",
           contractId: persistenceContractId
         },
         {
           from: apiWorkItemId,
           to: integrationWorkItemId,
+          kind: "integration-proof",
           contractId
         }
       ]

@@ -3,11 +3,12 @@
     {
       "contractId": "contract.auth.login",
       "from": "work.auth-contract",
+      "kind": "contract-dependency",
       "to": "work.login-ui"
     },
     {
-      "contractId": "contract.audit.write",
       "from": "work.login-ui",
+      "kind": "coordination",
       "to": "work.audit-log"
     }
   ],

@@ -284,10 +284,10 @@ test("plan generator expands broad test ownership for unit-labeled split respons
       ["work.orders-api", "implementation"],
       ["work.orders-integration-evidence", "integration-evidence"]
     ]);
-    assert.deepEqual(dag.edges.map((edge) => [edge.from, edge.to]), [
-      ["work.orders-pm", "work.orders-repository"],
-      ["work.orders-repository", "work.orders-api"],
-      ["work.orders-api", "work.orders-integration-evidence"]
+    assert.deepEqual(dag.edges.map((edge) => [edge.from, edge.to, edge.kind, edge.contractId ?? null]), [
+      ["work.orders-pm", "work.orders-repository", "coordination", null],
+      ["work.orders-repository", "work.orders-api", "contract-dependency", "contract.orders.persistence"],
+      ["work.orders-api", "work.orders-integration-evidence", "integration-proof", result.contractId]
     ]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

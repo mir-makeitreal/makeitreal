@@ -24,12 +24,13 @@
       {
         "from": "work.auth-contract",
         "to": "work.login-ui",
+        "kind": "contract-dependency",
         "contractId": "contract.auth.login"
       },
       {
         "from": "work.login-ui",
         "to": "work.audit-log",
-        "contractId": "contract.audit.write"
+        "kind": "coordination"
       }
     ]
   },
@@ -67,6 +68,14 @@
       "lane": "Ready",
       "responsibilityUnitId": "ru.frontend",
       "contractIds": ["contract.auth.login"],
+      "dependencyContracts": [
+        {
+          "contractId": "contract.auth.login",
+          "providerResponsibilityUnitId": "ru.auth-service",
+          "surface": "POST /auth/login",
+          "allowedUse": "Submit credentials through the declared auth login contract only."
+        }
+      ],
       "dependsOn": ["work.auth-contract"],
       "allowedPaths": ["apps/web/auth/**"],
       "verificationCommands": [{"file":"node","args":["-e","console.log('login ui ok')"]}]

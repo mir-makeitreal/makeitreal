@@ -6,21 +6,24 @@
       "owner": "team.auth",
       "owns": ["contracts/**"],
       "publicSurfaces": ["POST /auth/login"],
-      "mayUseContracts": []
+      "mayUseContracts": [],
+      "mustProvideContracts": ["contract.auth.login"]
     },
     {
       "id": "ru.frontend",
       "owner": "team.frontend",
       "owns": ["apps/web/auth/**"],
       "publicSurfaces": ["LoginForm.submit"],
-      "mayUseContracts": ["contract.auth.login"]
+      "mayUseContracts": ["contract.auth.login"],
+      "mustProvideContracts": []
     },
     {
       "id": "ru.audit",
       "owner": "team.audit",
       "owns": ["services/audit/**"],
       "publicSurfaces": ["AuditLog.write"],
-      "mayUseContracts": ["contract.audit.write"]
+      "mayUseContracts": ["contract.audit.write"],
+      "mustProvideContracts": ["contract.audit.write"]
     }
   ]
 }

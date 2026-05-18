@@ -1,6 +1,7 @@
 import { createHarnessError } from "./errors.mjs";
 
 const VALID_NODE_KINDS = new Set(["implementation", "domain-pm", "integration-evidence"]);
+const VALID_EDGE_KINDS = new Set(["contract-dependency", "coordination", "integration-proof"]);
 
 function workById(workItems = []) {
   return new Map(workItems.map((item) => [item.id, item]));
@@ -8,6 +9,33 @@ function workById(workItems = []) {
 
 function nodeById(dag) {
   return new Map((dag.nodes ?? []).map((node) => [node.id, node]));
+}
+
+function workItemContractIds(workItem) {
+  return new Set([
+    ...(workItem?.contractIds ?? []),
+    ...(workItem?.dependencyContracts ?? []).map((dependency) => dependency.contractId).filter(Boolean)
+  ]);
+}
+
+function responsibilityUnitsById(responsibilityUnits) {
+  const units = Array.isArray(responsibilityUnits)
+    ? responsibilityUnits
+    : responsibilityUnits?.units ?? [];
+  return new Map(units.map((unit) => [unit.id, unit]));
+}
+
+function responsibilityUnitIdFor({ node, workItem }) {
+  return node?.responsibilityUnitId ?? workItem?.responsibilityUnitId ?? null;
+}
+
+function providerSurfaceFor({ workItem, contractId, providerResponsibilityUnitId }) {
+  return (workItem?.dependencyContracts ?? []).find((dependency) =>
+    dependency.contractId === contractId
+    && dependency.providerResponsibilityUnitId === providerResponsibilityUnitId
+    && typeof dependency.surface === "string"
+    && dependency.surface.trim().length > 0
+  );
 }
 
 function normalizePattern(pattern) {
@@ -73,12 +101,13 @@ export function projectBoardDag(dag) {
     edges: (dag.edges ?? []).map((edge) => ({
       from: edge.from,
       to: edge.to,
-      contractId: edge.contractId
+      kind: edge.kind,
+      ...(edge.contractId ? { contractId: edge.contractId } : {})
     }))
   };
 }
 
-export function validateWorkItemDag({ dag, workItems = [] }) {
+export function validateWorkItemDag({ dag, workItems = [], responsibilityUnits = null }) {
   const errors = [];
   if (!dag || typeof dag !== "object") {
     return {
@@ -110,12 +139,51 @@ export function validateWorkItemDag({ dag, workItems = [] }) {
   }
 
   const nodes = nodeById(dag);
+  const unitsById = responsibilityUnitsById(responsibilityUnits);
   const driftErrors = [];
   for (const edge of dag.edges ?? []) {
     if (!nodes.has(edge.from) || !nodes.has(edge.to)) {
       errors.push(createDagError("HARNESS_DAG_EDGE_INVALID", `DAG edge references missing node: ${edge.from} -> ${edge.to}.`));
     }
+    if (!VALID_EDGE_KINDS.has(edge.kind)) {
+      errors.push(createDagError("HARNESS_DAG_EDGE_KIND_INVALID", `DAG edge ${edge.from} -> ${edge.to} requires kind contract-dependency, coordination, or integration-proof.`));
+    }
+    const source = workItemsById.get(edge.from);
     const target = workItemsById.get(edge.to);
+
+    if (edge.kind === "coordination") {
+      if (edge.contractId) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONTRACT_INVALID", `Coordination edge ${edge.from} -> ${edge.to} must not masquerade as software contract ${edge.contractId}.`));
+      }
+    } else {
+      if (!edge.contractId) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONTRACT_MISSING", `DAG edge ${edge.from} -> ${edge.to} must declare contractId.`));
+        continue;
+      }
+      if (source && !new Set(source.contractIds ?? []).has(edge.contractId)) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONTRACT_INVALID", `${edge.from} -> ${edge.to} references ${edge.contractId}, but ${edge.from} does not provide that contract.`));
+      }
+      if (target && !workItemContractIds(target).has(edge.contractId)) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONTRACT_INVALID", `${edge.from} -> ${edge.to} references ${edge.contractId}, but ${edge.to} does not declare that contract.`));
+      }
+
+      const sourceResponsibilityUnitId = responsibilityUnitIdFor({ node: nodes.get(edge.from), workItem: source });
+      const targetResponsibilityUnitId = responsibilityUnitIdFor({ node: nodes.get(edge.to), workItem: target });
+      const sourceUnit = unitsById.get(sourceResponsibilityUnitId);
+      if (sourceUnit && !(sourceUnit.mustProvideContracts ?? []).includes(edge.contractId)) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_PROVIDER_INVALID", `${edge.from} -> ${edge.to} references ${edge.contractId}, but ${sourceResponsibilityUnitId} does not provide that contract.`));
+      }
+      if (target && !providerSurfaceFor({ workItem: target, contractId: edge.contractId, providerResponsibilityUnitId: sourceResponsibilityUnitId })) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONSUMER_INVALID", `${edge.from} -> ${edge.to} references ${edge.contractId}, but ${edge.to} has no dependencyContract for provider ${sourceResponsibilityUnitId}.`));
+      }
+      if (edge.kind === "integration-proof" && nodes.get(edge.to)?.kind !== "integration-evidence") {
+        errors.push(createDagError("HARNESS_DAG_EDGE_KIND_INVALID", `${edge.from} -> ${edge.to} is integration-proof but ${edge.to} is not an integration-evidence node.`));
+      }
+      if (edge.kind === "contract-dependency" && !targetResponsibilityUnitId) {
+        errors.push(createDagError("HARNESS_DAG_EDGE_CONSUMER_INVALID", `${edge.from} -> ${edge.to} has no target responsibility unit.`));
+      }
+    }
+
     if (target && !(target.dependsOn ?? []).includes(edge.from)) {
       driftErrors.push(createDagError("HARNESS_DAG_DEPENDENCY_DRIFT", `${edge.to} must dependOn ${edge.from}.`));
     }

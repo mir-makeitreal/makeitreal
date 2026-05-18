@@ -209,7 +209,11 @@ export async function runGates({ runDir, target }) {
     const designResult = validateDesignPack(artifacts.designPack);
     errors.push(...designResult.errors);
 
-    const dagResult = validateWorkItemDag({ dag: artifacts.workItemDag, workItems });
+    const dagResult = validateWorkItemDag({
+      dag: artifacts.workItemDag,
+      workItems,
+      responsibilityUnits: artifacts.responsibilityUnits
+    });
     errors.push(...dagResult.errors);
 
     const openApiContracts = await validateOpenApiContracts({ runDir });
