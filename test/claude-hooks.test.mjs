@@ -41,6 +41,46 @@ async function setActiveExecution(runDir) {
   });
 }
 
+async function setConcurrentActiveExecution(runDir) {
+  await writeJsonFile(path.join(runDir, "runtime-state.json"), {
+    schemaVersion: "1.0",
+    running: {
+      "work.feature-auth": {
+        attemptId: "attempt.frontend",
+        lastEventAt: "2026-05-06T00:00:00.000Z",
+        startedAt: "2026-05-06T00:00:00.000Z",
+        workerId: "worker.frontend",
+        workItemId: "work.feature-auth"
+      },
+      "work.auth-service": {
+        attemptId: "attempt.auth-service",
+        lastEventAt: "2026-05-06T00:00:00.000Z",
+        startedAt: "2026-05-06T00:00:00.000Z",
+        workerId: "worker.auth-service",
+        workItemId: "work.auth-service"
+      }
+    },
+    retries: {},
+    terminals: {}
+  });
+}
+
+async function addAuthServiceWorkItem(runDir) {
+  await writeJsonFile(path.join(runDir, "work-items", "work.auth-service.json"), {
+    schemaVersion: "1.0",
+    id: "work.auth-service",
+    lane: "Running",
+    prdId: "prd.auth",
+    responsibilityUnitId: "ru.auth-service",
+    allowedPaths: ["services/auth/**"],
+    contractIds: ["contract.auth.login"],
+    dependsOn: [],
+    verificationCommands: [
+      { file: "node", args: ["-e", "console.log('auth service ok')"] }
+    ]
+  });
+}
+
 test("pre-tool-use blocks writes outside allowed paths", async () => {
   await withFixture(async ({ runDir }) => {
     const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
@@ -208,6 +248,56 @@ test("Claude hooks resolve run directory from project current-run state", async 
     });
     assert.equal(stop.status, 0, stop.stdout || stop.stderr);
     assert.equal(JSON.parse(stop.stdout).decision, "block");
+  });
+});
+
+test("pre-tool-use infers the native work item from changed paths during concurrent execution", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await addAuthServiceWorkItem(runDir);
+    await decideBlueprintReview({
+      runDir,
+      status: "approved",
+      reviewedBy: "operator:concurrent-native-test",
+      now: new Date("2026-05-06T00:00:30.000Z")
+    });
+    await setConcurrentActiveExecution(runDir);
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:01:00.000Z")
+    });
+
+    const frontend = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "apps/web/auth/LoginForm.tsx" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(frontend.status, 0, frontend.stdout || frontend.stderr);
+    assert.equal(JSON.parse(frontend.stdout).hookSpecificOutput.permissionDecision, "allow");
+
+    const backend = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "services/auth/handler.ts" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(backend.status, 0, backend.stdout || backend.stderr);
+    assert.equal(JSON.parse(backend.stdout).hookSpecificOutput.permissionDecision, "allow");
+
+    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: "package.json" }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
+    const output = JSON.parse(blocked.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /No active work item owns all changed paths/);
   });
 });
 

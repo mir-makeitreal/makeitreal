@@ -87,6 +87,32 @@ function matchesPattern(pattern, candidate) {
   return normalizedPattern === normalizedCandidate;
 }
 
+function toProjectRelativePath({ candidate, projectRoot, runDir }) {
+  const value = expandHomePath(candidate);
+  if (!value) {
+    return value;
+  }
+  if (!path.isAbsolute(value)) {
+    return value.replaceAll("\\", "/").replace(/^\.\//, "");
+  }
+
+  const roots = [projectRoot, runDir].filter(Boolean).map((root) => path.resolve(root));
+  const resolved = path.resolve(value);
+  for (const root of roots) {
+    const relative = path.relative(root, resolved);
+    if (relative && !relative.startsWith("..") && !path.isAbsolute(relative)) {
+      return relative.replaceAll("\\", "/");
+    }
+  }
+  return value.replaceAll("\\", "/");
+}
+
+function workItemOwnsEveryPath({ workItem, paths }) {
+  return paths.length > 0 && paths.every((candidate) =>
+    (workItem.allowedPaths ?? []).some((pattern) => matchesPattern(pattern, candidate))
+  );
+}
+
 function readScopeViolations({ readScope, paths }) {
   const forbiddenReads = readScope?.forbiddenReads ?? [];
   if (!Array.isArray(forbiddenReads) || forbiddenReads.length === 0) {
@@ -242,6 +268,41 @@ async function safeActiveExecutionContext({ runDir }) {
   }
 }
 
+async function inferActiveWorkItemFromPaths({ runDir, workItemIds, changedPaths, projectRoot }) {
+  const scopedPaths = [...new Set(changedPaths
+    .map((candidate) => toProjectRelativePath({ candidate, projectRoot, runDir }))
+    .filter(Boolean))];
+  if (scopedPaths.length === 0) {
+    return {
+      ok: false,
+      workItemId: null,
+      reason: "No mutating file path is available for active work-item inference.",
+      matchedWorkItemIds: []
+    };
+  }
+
+  const matchedWorkItemIds = [];
+  for (const workItemId of workItemIds) {
+    const workItem = await readOptionalJson(path.join(runDir, "work-items", `${workItemId}.json`));
+    if (workItem && workItemOwnsEveryPath({ workItem, paths: scopedPaths })) {
+      matchedWorkItemIds.push(workItemId);
+    }
+  }
+
+  if (matchedWorkItemIds.length !== 1) {
+    return {
+      ok: false,
+      workItemId: null,
+      reason: matchedWorkItemIds.length === 0
+        ? `No active work item owns all changed paths: ${scopedPaths.join(", ")}.`
+        : `Changed paths match multiple active work items: ${matchedWorkItemIds.join(", ")}.`,
+      matchedWorkItemIds
+    };
+  }
+
+  return { ok: true, workItemId: matchedWorkItemIds[0], reason: null, matchedWorkItemIds };
+}
+
 function onlyStaleApprovalErrors(errors = []) {
   return errors.length > 0 && errors.every((error) => [
     "HARNESS_BLUEPRINT_REVIEW_INVALID",
@@ -340,16 +401,26 @@ async function main() {
       return allow("Current Make It Real run is not executing.");
     }
     if (active.ambiguous) {
-      return block([{
-        code: "HARNESS_RUN_CONTEXT_MISSING",
-        reason: `Active Make It Real execution has multiple work items; scoped work item context is required: ${active.workItemIds.join(", ")}.`,
-        contractId: null,
-        ownerModule: null,
-        evidence: ["runtime-state.json", "board.json", "MAKEITREAL_WORK_ITEM_ID"],
-        recoverable: true
-      }]);
+      const inferred = await inferActiveWorkItemFromPaths({
+        runDir: resolved.runDir,
+        workItemIds: active.workItemIds,
+        changedPaths: scopedPaths,
+        projectRoot
+      });
+      if (!inferred.ok) {
+        return block([{
+          code: "HARNESS_RUN_CONTEXT_MISSING",
+          reason: `Active Make It Real execution has multiple work items; scoped work item context is required. ${inferred.reason}`,
+          contractId: null,
+          ownerModule: null,
+          evidence: ["runtime-state.json", "board.json", "work-items", "MAKEITREAL_WORK_ITEM_ID"],
+          recoverable: true
+        }]);
+      }
+      workItemId = inferred.workItemId;
+    } else {
+      workItemId = active.workItemId;
     }
-    workItemId = active.workItemId;
   }
 
   if (!resolved.ok) {
