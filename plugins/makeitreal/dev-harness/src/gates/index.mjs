@@ -1,6 +1,7 @@
 import path from "node:path";
 import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conformance.mjs";
 import { validateOpenApiContracts } from "../adapters/openapi-contract.mjs";
+import { validateModuleSurfaceConformance } from "../adapters/module-surface-conformance.mjs";
 import { validateDesignPack } from "../domain/design-pack.mjs";
 import { readVerificationEvidence, readWikiSyncEvidence } from "../domain/evidence.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
@@ -11,6 +12,7 @@ import { normalizeVerificationCommand } from "../domain/verification-command.mjs
 import { requiredDagNodeIds, validateWorkItemDag } from "../domain/work-item-dag.mjs";
 import { fileExists } from "../io/json.mjs";
 import { validateBlueprintApproval } from "../blueprint/review.mjs";
+import { resolveProjectRootForRun } from "../orchestrator/workspace-manager.mjs";
 
 function hasSingleOwner(artifacts, responsibilityUnitId) {
   return artifacts.responsibilityUnits.units.filter((unit) => unit.id === responsibilityUnitId && unit.owner).length === 1;
@@ -160,6 +162,7 @@ export async function runGates({ runDir, target }) {
   }
 
   if (target === "Done") {
+    const projectRoot = resolveProjectRootForRun({ runDir });
     for (const workItem of requiredWorkItems) {
       const verification = await readVerificationEvidence(runDir, { workItem });
       errors.push(...verification.errors);
@@ -169,6 +172,9 @@ export async function runGates({ runDir, target }) {
 
       const openApiConformance = await validateOpenApiConformanceEvidence({ runDir, workItem });
       errors.push(...openApiConformance.errors);
+
+      const moduleSurfaceConformance = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+      errors.push(...moduleSurfaceConformance.errors);
     }
   }
 

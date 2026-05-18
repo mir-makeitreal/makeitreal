@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conformance.mjs";
+import { validateModuleSurfaceConformance } from "../adapters/module-surface-conformance.mjs";
 import { appendBoardEvent, loadBoard, saveBoard } from "../board/board-store.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
@@ -379,6 +380,10 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   if (errors.length === 0) {
     const openApiConformance = await validateOpenApiConformanceEvidence({ runDir: boardDir, workItem });
     errors.push(...openApiConformance.errors);
+  }
+  if (errors.length === 0) {
+    const moduleSurfaceConformance = await validateModuleSurfaceConformance({ runDir: boardDir, projectRoot, workItem });
+    errors.push(...moduleSurfaceConformance.errors);
   }
 
   if (errors.length > 0) {
