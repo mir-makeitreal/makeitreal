@@ -97,6 +97,71 @@ test("Ready gate validates every required DAG node", async () => {
   });
 });
 
+test("Ready gate rejects implementation work without a frozen module interface", async () => {
+  await withFixture(async ({ runDir }) => {
+    await addRequiredAuditNode(runDir);
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_MODULE_INTERFACE_MISSING"), true);
+  });
+});
+
+test("Ready gate rejects implementation work without its module contract binding", async () => {
+  await withFixture(async ({ runDir }) => {
+    await addRequiredAuditNode(runDir);
+
+    const designPackPath = path.join(runDir, "design-pack.json");
+    const designPack = await readJsonFile(designPackPath);
+    designPack.apiSpecs.push({
+      kind: "none",
+      contractId: "contract.audit.module",
+      reason: "Non-API module contract for the audit logging public surface."
+    });
+    designPack.responsibilityBoundaries.push({
+      responsibilityUnitId: "ru.audit-log",
+      owns: ["services/audit/**"],
+      mayUseContracts: ["contract.audit.module"]
+    });
+    designPack.moduleInterfaces.push({
+      responsibilityUnitId: "ru.audit-log",
+      owner: "team.audit",
+      moduleName: "Audit Log",
+      purpose: "Own the audit logging SDK/module surface.",
+      owns: ["services/audit/audit-log.mjs"],
+      publicSurfaces: [{
+        name: "recordAuditEvent",
+        kind: "module",
+        contractIds: ["contract.audit.module"],
+        signature: {
+          inputs: [{ name: "event", type: "object", required: true, fields: ["eventId"] }],
+          outputs: [{ name: "record", type: "object" }],
+          errors: [{ code: "AUDIT_EVENT_INVALID", when: "The event violates the module contract.", handling: "Fail fast." }]
+        }
+      }],
+      imports: []
+    });
+    await writeJsonFile(designPackPath, designPack);
+
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_MODULE_CONTRACT_MISSING"), true);
+  });
+});
+
 test("Ready gate rejects API work items without an OpenAPI contract binding", async () => {
   await withFixture(async ({ runDir }) => {
     const workItem = {

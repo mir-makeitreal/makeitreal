@@ -36,8 +36,12 @@ function nodeKindForWorkItem(artifacts, workItem) {
   return artifacts.workItemDag.nodes?.find((node) => node.id === workItem.id)?.kind ?? "implementation";
 }
 
+function moduleInterfacesForWorkItem(artifacts, workItem) {
+  return artifacts.designPack.moduleInterfaces.filter((moduleInterface) => moduleInterface.responsibilityUnitId === workItem.responsibilityUnitId);
+}
+
 function moduleInterfaceForWorkItem(artifacts, workItem) {
-  return artifacts.designPack.moduleInterfaces.find((moduleInterface) => moduleInterface.responsibilityUnitId === workItem.responsibilityUnitId) ?? null;
+  return moduleInterfacesForWorkItem(artifacts, workItem)[0] ?? null;
 }
 
 function ownsApiPath(workItem) {
@@ -55,6 +59,13 @@ function openApiContractIds(artifacts) {
   return new Set(artifacts.designPack.apiSpecs
     .filter((spec) => spec.kind === "openapi")
     .map((spec) => spec.contractId)
+    .filter(Boolean));
+}
+
+function publicSurfaceContractIds(moduleInterfaces) {
+  return new Set(moduleInterfaces
+    .flatMap((moduleInterface) => moduleInterface.publicSurfaces ?? [])
+    .flatMap((surface) => surface.contractIds ?? [])
     .filter(Boolean));
 }
 
@@ -76,6 +87,8 @@ function workItemsForRequiredNodes({ dag, workItems }) {
 
 function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
   const nodeKind = nodeKindForWorkItem(artifacts, workItem);
+  const workItemModuleInterfaces = moduleInterfacesForWorkItem(artifacts, workItem);
+  const workItemSurfaceContractIds = publicSurfaceContractIds(workItemModuleInterfaces);
   const apiContractIds = openApiContractIds(artifacts);
   const traceResult = validateWorkItemPrdTrace({ prd: artifacts.prd, workItem });
   errors.push(...traceResult.errors);
@@ -120,6 +133,27 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
 
   if (!hasDoneEvidencePlan(workItem)) {
     errors.push(createHarnessError({ code: "HARNESS_DONE_EVIDENCE_PLAN_MISSING", reason: `Ready requires planned verification and wiki-sync Done evidence: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
+  }
+
+  if (nodeKind === "implementation" && workItemModuleInterfaces.length === 0) {
+    errors.push(createHarnessError({
+      code: "HARNESS_MODULE_INTERFACE_MISSING",
+      reason: `Implementation work item must freeze a public module interface before launch: ${workItem.id}.`,
+      ownerModule: workItem.responsibilityUnitId,
+      evidence: ["design-pack.json", "work-items"],
+      recoverable: true
+    }));
+  }
+
+  const workItemContractIds = workItem.contractIds ?? [];
+  if (nodeKind === "implementation" && workItemSurfaceContractIds.size > 0 && !workItemContractIds.some((contractId) => workItemSurfaceContractIds.has(contractId))) {
+    errors.push(createHarnessError({
+      code: "HARNESS_MODULE_CONTRACT_MISSING",
+      reason: `Implementation work item must bind one of its declared public surface contracts before launch: ${workItem.id}.`,
+      ownerModule: workItem.responsibilityUnitId,
+      evidence: ["design-pack.json", "work-items"],
+      recoverable: true
+    }));
   }
 
   const requiresOpenApiContract = nodeKind === "implementation" && isApiResponsibilityUnit({ artifacts, workItem });
