@@ -23,6 +23,7 @@
     <a href="#responsibility-map">Responsibility Map</a>
     <a href="#scenario-index">Scenario Index</a>
     <a href="#contract-surfaces">Contract Surfaces</a>
+    <a href="#surface-trace-reference">Surface Trace Reference</a>
     <div class="nav-group">
     <span>Modules</span>
     <a class="nav-module" href="#module-0-auth-ui">Auth UI</a>
@@ -395,6 +396,52 @@ const session = await httpResponse.json();</code></pre>
         </article>
     </div>
   </section>
+      <section id="surface-trace-reference" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Trace</p>
+        <h2>Surface Trace Reference</h2>
+      </div>
+    </div>
+    <p class="section-note">Use this as the reviewer map from public surface to provider, consumers, allowed use, and scenario evidence. It is the SDK-style trace for multi-module Blueprints.</p>
+    <div class="surface-trace-list">
+      <article class="surface-trace-card">
+        <header>
+          <div>
+            <p class="eyebrow">component-event</p>
+            <h3>LoginForm.submit</h3>
+          </div>
+          <code>ru.frontend</code>
+        </header>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Provider</div><div class="doc-value"><strong>Auth UI</strong><span>team.frontend</span></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
+          <div class="doc-row"><div class="doc-key">Provider Work</div><div class="doc-value"><code>work.feature-auth</code></div></div>
+          <div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value"><span>Auth page composition</span><span>browser interaction tests</span></div></div>
+          <div class="doc-row"><div class="doc-key">Allowed Use</div><div class="doc-value"><span>Declared surface consumer.</span></div></div>
+          <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value"><code>LoginForm.submit</code></div></div>
+          <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value"><span class="empty">None declared.</span></div></div>
+        </div>
+      </article><article class="surface-trace-card">
+        <header>
+          <div>
+            <p class="eyebrow">http</p>
+            <h3>POST /auth/login</h3>
+          </div>
+          <code>ru.auth-service</code>
+        </header>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Provider</div><div class="doc-value"><strong>Auth Service</strong><span>team.auth</span></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
+          <div class="doc-row"><div class="doc-key">Provider Work</div><div class="doc-value"><span class="empty">None declared.</span></div></div>
+          <div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value"><span>Auth UI</span><span>ru.frontend</span></div></div>
+          <div class="doc-row"><div class="doc-key">Allowed Use</div><div class="doc-value"><span>Submit credential payload and consume declared session result only.</span><span>Declared surface consumer.</span></div></div>
+          <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value"><code>LoginForm.submit</code></div></div>
+          <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value"><span>Login request</span></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
 
       <section id="scenario-reference" class="architecture-section">
         <div class="section-heading">
@@ -564,7 +611,7 @@ const session = await httpResponse.json();</code></pre>
         <h2>Review Decisions</h2>
       </div>
     </div>
-    <ol class="review-decisions"><li>Auth UI owns apps/web/auth/** and exposes LoginForm.submit.</li><li>Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.</li><li>Auth UI may call Auth Service only through contract.auth.login.</li><li>contract.auth.login is reviewed from contracts/auth-login.openapi.json.</li></ol>
+    <ol class="review-decisions"><li>Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z.</li><li>Auth UI owns apps/web/auth/** and exposes LoginForm.submit.</li><li>Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.</li><li>Auth UI may call Auth Service only through contract.auth.login.</li><li>contract.auth.login is reviewed from contracts/auth-login.openapi.json.</li></ol>
   </section>
       <section id="verification-evidence" class="architecture-section">
     <div class="section-heading">

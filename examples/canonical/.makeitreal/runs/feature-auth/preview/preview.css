@@ -1632,6 +1632,7 @@ h3 {
 
 .responsibility-map,
 .contract-surface-list,
+.surface-trace-list,
 .scenario-reference {
   display: grid;
   gap: 14px;
@@ -1639,6 +1640,7 @@ h3 {
 
 .responsibility-unit,
 .contract-surface,
+.surface-trace-card,
 .scenario-detail {
   border: 1px solid var(--soft-line);
   border-radius: 8px;
@@ -1647,6 +1649,7 @@ h3 {
 }
 
 .responsibility-unit header,
+.surface-trace-card header,
 .schema-display header,
 .scenario-detail header {
   display: flex;
@@ -1656,6 +1659,7 @@ h3 {
 }
 
 .responsibility-unit h3,
+.surface-trace-card h3,
 .schema-display h3,
 .scenario-detail h3 {
   margin: 0;

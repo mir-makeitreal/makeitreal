@@ -87,7 +87,8 @@ function modelBlueprint({ prd, designPack, responsibilityUnits, workItems, workI
       responsibilityUnits,
       workItems,
       workItemDag,
-      blueprintFingerprint: blueprintReview?.blueprintFingerprint ?? null
+      blueprintFingerprint: blueprintReview?.blueprintFingerprint ?? null,
+      blueprintReview
     })
   };
 }

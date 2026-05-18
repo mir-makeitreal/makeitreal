@@ -143,7 +143,7 @@ function modelDependencyEdges({ designPack, contracts }) {
 
   const seen = new Set();
   return [...importEdges, ...architectureEdges].filter((edge) => {
-    const key = `${edge.from}|${edge.to}|${edge.contractId}|${edge.allowedUse}`;
+    const key = `${edge.from}|${edge.to}|${edge.contractId}`;
     if (seen.has(key)) {
       return false;
     }
@@ -394,7 +394,17 @@ function modelScenarioDetails({ designPack, moduleInterfaces }) {
   }));
 }
 
-function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }) {
+function reviewDecisionSummary(blueprintReview) {
+  if (!blueprintReview?.status) {
+    return [];
+  }
+  const reviewedBy = blueprintReview.reviewedBy ? ` by ${blueprintReview.reviewedBy}` : "";
+  const reviewedAt = blueprintReview.reviewedAt ? ` at ${blueprintReview.reviewedAt}` : "";
+  const note = blueprintReview.decisionNote ? `: ${blueprintReview.decisionNote}` : ".";
+  return [`Blueprint review is ${blueprintReview.status}${reviewedBy}${reviewedAt}${note}`];
+}
+
+function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts, blueprintReview }) {
   const responsibilityDecisions = moduleInterfaces.map((moduleInterface) =>
     `${moduleInterface.moduleName} owns ${uniqueText(moduleInterface.owns).join(", ") || "no declared paths"} and exposes ${(moduleInterface.publicSurfaces ?? []).map((surface) => surface.name).join(", ") || "no public surfaces"}.`
   );
@@ -404,7 +414,7 @@ function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }) 
   const contractDecisions = contracts.map((contract) =>
     `${contract.contractId ?? contract.kind} is reviewed from ${contract.path ?? contract.reason ?? "the boundary declaration"}.`
   );
-  return uniqueText([...responsibilityDecisions, ...dependencyDecisions, ...contractDecisions]);
+  return uniqueText([...reviewDecisionSummary(blueprintReview), ...responsibilityDecisions, ...dependencyDecisions, ...contractDecisions]);
 }
 
 function modelSources({ designPack, workItems = [] }) {
@@ -445,18 +455,83 @@ function modelContractSurfaces({ moduleInterfaces }) {
   );
 }
 
+function textMentionsSurface(text, surface) {
+  const haystack = String(text ?? "").toLowerCase();
+  if (haystack.includes(String(surface.name ?? "").toLowerCase())) {
+    return true;
+  }
+  return (surface.contractIds ?? []).some((contractId) => haystack.includes(String(contractId).toLowerCase()));
+}
+
+function traceCallStacksForSurface({ surface, callStacks }) {
+  return (callStacks ?? [])
+    .filter((stack) => textMentionsSurface(stack.entrypoint, surface)
+      || (stack.calls ?? []).some((call) => textMentionsSurface(call, surface)))
+    .map((stack) => stack.entrypoint);
+}
+
+function traceScenariosForSurface({ surface, scenarioDetails }) {
+  return (scenarioDetails ?? [])
+    .filter((scenario) => (scenario.messages ?? []).some((message) =>
+      textMentionsSurface(message.label, surface)
+      || textMentionsSurface(message.from, surface)
+      || textMentionsSurface(message.to, surface)
+    ))
+    .map((scenario) => scenario.title);
+}
+
+function modelSurfaceTraceReference({ moduleInterfaces, dependencyEdges, workItems, callStacks, scenarioDetails }) {
+  const workItemsByResponsibilityUnit = new Map();
+  for (const workItem of workItems ?? []) {
+    const current = workItemsByResponsibilityUnit.get(workItem.responsibilityUnitId) ?? [];
+    current.push(workItem.id);
+    workItemsByResponsibilityUnit.set(workItem.responsibilityUnitId, current);
+  }
+
+  return moduleInterfaces.flatMap((moduleInterface) =>
+    (moduleInterface.publicSurfaces ?? []).map((surface) => {
+      const consumerEdges = (dependencyEdges ?? []).filter((edge) =>
+        edge.to === moduleInterface.responsibilityUnitId
+        && (edge.surface === surface.name || (surface.contractIds ?? []).includes(edge.contractId))
+      );
+      const declaredConsumers = (surface.consumers ?? []).map((consumer) => ({ consumer, allowedUse: "Declared surface consumer." }));
+      return {
+        moduleName: moduleInterface.moduleName,
+        responsibilityUnitId: moduleInterface.responsibilityUnitId,
+        owner: moduleInterface.owner,
+        surfaceName: surface.name,
+        surfaceKind: surface.kind,
+        contractIds: surface.contractIds ?? [],
+        providerWorkItems: workItemsByResponsibilityUnit.get(moduleInterface.responsibilityUnitId) ?? [],
+        consumers: uniqueText([
+          ...consumerEdges.map((edge) => edge.fromLabel ?? edge.from),
+          ...declaredConsumers.map((entry) => entry.consumer)
+        ]),
+        allowedUses: uniqueText([
+          ...consumerEdges.map((edge) => edge.allowedUse),
+          ...declaredConsumers.map((entry) => entry.allowedUse)
+        ]),
+        callStacks: traceCallStacksForSurface({ surface, callStacks }),
+        scenarios: traceScenariosForSurface({ surface, scenarioDetails })
+      };
+    })
+  );
+}
+
 export function buildSystemDossier({
   prd,
   designPack,
   responsibilityUnits,
   workItems = [],
   workItemDag = { nodes: [], edges: [] },
-  blueprintFingerprint = null
+  blueprintFingerprint = null,
+  blueprintReview = null
 }) {
   const contracts = modelContracts(designPack.apiSpecs ?? []);
   const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
   const dependencyEdges = modelDependencyEdges({ designPack, contracts });
   const taskDag = modelTaskDag({ workItemDag, workItems, moduleInterfaces });
+  const scenarioDetails = modelScenarioDetails({ designPack, moduleInterfaces });
   return {
     title: prd.title,
     summary: prd.userVisibleBehavior ?? [],
@@ -477,10 +552,17 @@ export function buildSystemDossier({
     dependencyEdges,
     contractMatrix: modelContractMatrix({ designPack, contracts, moduleInterfaces }),
     contractSurfaces: modelContractSurfaces({ moduleInterfaces }),
+    surfaceTraceReference: modelSurfaceTraceReference({
+      moduleInterfaces,
+      dependencyEdges,
+      workItems,
+      callStacks: designPack.callStacks ?? [],
+      scenarioDetails
+    }),
     systemPlacement: modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }),
     scenarioIndex: modelScenarioIndex({ designPack, moduleInterfaces }),
-    scenarioDetails: modelScenarioDetails({ designPack, moduleInterfaces }),
-    reviewDecisions: modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts }),
+    scenarioDetails,
+    reviewDecisions: modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts, blueprintReview }),
     sources: modelSources({ designPack, workItems }),
     signalFlows: designPack.sequences ?? [],
     callStacks: designPack.callStacks ?? [],

@@ -27,7 +27,6 @@ PRD `prd.auth` defines this responsibility boundary.
 | From | To | Contract | Allowed Use |
 | --- | --- | --- | --- |
 | Auth UI | Auth Service | `contract.auth.login` | Submit credential payload and consume declared session result only. |
-| Auth UI | Auth Service | `contract.auth.login` | openapi contract at contracts/auth-login.openapi.json |
 
 
 ## Contract Matrix

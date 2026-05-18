@@ -885,6 +885,7 @@ function renderDossierNav(dossier = {}) {
     <a href="#responsibility-map">Responsibility Map</a>
     <a href="#scenario-index">Scenario Index</a>
     <a href="#contract-surfaces">Contract Surfaces</a>
+    <a href="#surface-trace-reference">Surface Trace Reference</a>
     ${renderModuleNav(dossier)}
     <a href="#scenario-reference">Scenario Reference</a>
     <a href="#review-decisions">Review Decisions</a>
@@ -1257,6 +1258,65 @@ function renderContractSurfaces(dossier = {}) {
   </section>`;
 }
 
+function renderCodeList(values = [], emptyText = "None declared.") {
+  const uniqueValues = [...new Set((values ?? []).filter(Boolean))];
+  if (uniqueValues.length === 0) {
+    return `<span class="empty">${escapeHtml(emptyText)}</span>`;
+  }
+  return uniqueValues.map((value) => `<code>${escapeHtml(value)}</code>`).join("");
+}
+
+function renderTextChips(values = [], emptyText = "None declared.") {
+  const uniqueValues = [...new Set((values ?? []).filter(Boolean))];
+  if (uniqueValues.length === 0) {
+    return `<span class="empty">${escapeHtml(emptyText)}</span>`;
+  }
+  return uniqueValues.map((value) => `<span>${escapeHtml(value)}</span>`).join("");
+}
+
+function renderSurfaceTraceReference(traces = []) {
+  if (traces.length === 0) {
+    return `<section id="surface-trace-reference" class="architecture-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Trace</p>
+          <h2>Surface Trace Reference</h2>
+        </div>
+      </div>
+      <p class="empty">No public surfaces declared.</p>
+    </section>`;
+  }
+  return `<section id="surface-trace-reference" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Trace</p>
+        <h2>Surface Trace Reference</h2>
+      </div>
+    </div>
+    <p class="section-note">Use this as the reviewer map from public surface to provider, consumers, allowed use, and scenario evidence. It is the SDK-style trace for multi-module Blueprints.</p>
+    <div class="surface-trace-list">
+      ${traces.map((trace) => `<article class="surface-trace-card">
+        <header>
+          <div>
+            <p class="eyebrow">${escapeHtml(trace.surfaceKind ?? "surface")}</p>
+            <h3>${escapeHtml(trace.surfaceName)}</h3>
+          </div>
+          <code>${escapeHtml(trace.responsibilityUnitId)}</code>
+        </header>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Provider</div><div class="doc-value"><strong>${escapeHtml(trace.moduleName)}</strong>${trace.owner ? `<span>${escapeHtml(trace.owner)}</span>` : ""}</div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value">${renderCodeList(trace.contractIds)}</div></div>
+          <div class="doc-row"><div class="doc-key">Provider Work</div><div class="doc-value">${renderCodeList(trace.providerWorkItems)}</div></div>
+          <div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value">${renderTextChips(trace.consumers)}</div></div>
+          <div class="doc-row"><div class="doc-key">Allowed Use</div><div class="doc-value">${renderTextChips(trace.allowedUses)}</div></div>
+          <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value">${renderCodeList(trace.callStacks)}</div></div>
+          <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value">${renderTextChips(trace.scenarios)}</div></div>
+        </div>
+      </article>`).join("")}
+    </div>
+  </section>`;
+}
+
 function renderReviewDecisions(decisions = []) {
   if (decisions.length === 0) {
     return '<p class="empty">No review decisions derived.</p>';
@@ -1602,6 +1662,7 @@ export function renderDashboardHtml(model) {
       </section>
 
       ${renderContractSurfaces(dossier)}
+      ${renderSurfaceTraceReference(dossier.surfaceTraceReference)}
 
       <section id="scenario-reference" class="architecture-section">
         <div class="section-heading">
@@ -3286,6 +3347,7 @@ h3 {
 
 .responsibility-map,
 .contract-surface-list,
+.surface-trace-list,
 .scenario-reference {
   display: grid;
   gap: 14px;
@@ -3293,6 +3355,7 @@ h3 {
 
 .responsibility-unit,
 .contract-surface,
+.surface-trace-card,
 .scenario-detail {
   border: 1px solid var(--soft-line);
   border-radius: 8px;
@@ -3301,6 +3364,7 @@ h3 {
 }
 
 .responsibility-unit header,
+.surface-trace-card header,
 .schema-display header,
 .scenario-detail header {
   display: flex;
@@ -3310,6 +3374,7 @@ h3 {
 }
 
 .responsibility-unit h3,
+.surface-trace-card h3,
 .schema-display h3,
 .scenario-detail h3 {
   margin: 0;

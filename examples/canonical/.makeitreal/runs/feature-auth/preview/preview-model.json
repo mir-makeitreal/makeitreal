@@ -394,15 +394,6 @@
           "surface": "POST /auth/login",
           "to": "ru.auth-service",
           "toLabel": "Auth Service"
-        },
-        {
-          "allowedUse": "openapi contract at contracts/auth-login.openapi.json",
-          "contractId": "contract.auth.login",
-          "contractKind": "openapi",
-          "from": "ru.frontend",
-          "fromLabel": "Auth UI",
-          "to": "ru.auth-service",
-          "toLabel": "Auth Service"
         }
       ],
       "designPatterns": [
@@ -593,6 +584,7 @@
         }
       ],
       "reviewDecisions": [
+        "Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z.",
         "Auth UI owns apps/web/auth/** and exposes LoginForm.submit.",
         "Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.",
         "Auth UI may call Auth Service only through contract.auth.login.",
@@ -710,6 +702,57 @@
       "summary": [
         "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
       ],
+      "surfaceTraceReference": [
+        {
+          "allowedUses": [
+            "Declared surface consumer."
+          ],
+          "callStacks": [
+            "LoginForm.submit"
+          ],
+          "consumers": [
+            "Auth page composition",
+            "browser interaction tests"
+          ],
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "moduleName": "Auth UI",
+          "owner": "team.frontend",
+          "providerWorkItems": [
+            "work.feature-auth"
+          ],
+          "responsibilityUnitId": "ru.frontend",
+          "scenarios": [],
+          "surfaceKind": "component-event",
+          "surfaceName": "LoginForm.submit"
+        },
+        {
+          "allowedUses": [
+            "Submit credential payload and consume declared session result only.",
+            "Declared surface consumer."
+          ],
+          "callStacks": [
+            "LoginForm.submit"
+          ],
+          "consumers": [
+            "Auth UI",
+            "ru.frontend"
+          ],
+          "contractIds": [
+            "contract.auth.login"
+          ],
+          "moduleName": "Auth Service",
+          "owner": "team.auth",
+          "providerWorkItems": [],
+          "responsibilityUnitId": "ru.auth-service",
+          "scenarios": [
+            "Login request"
+          ],
+          "surfaceKind": "http",
+          "surfaceName": "POST /auth/login"
+        }
+      ],
       "systemPlacement": {
         "edges": [
           {
@@ -717,14 +760,6 @@
             "from": "ru.frontend",
             "fromLabel": "Auth UI",
             "surface": "POST /auth/login",
-            "to": "ru.auth-service",
-            "toLabel": "Auth Service"
-          },
-          {
-            "contractId": "contract.auth.login",
-            "from": "ru.frontend",
-            "fromLabel": "Auth UI",
-            "surface": null,
             "to": "ru.auth-service",
             "toLabel": "Auth Service"
           }

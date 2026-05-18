@@ -176,14 +176,16 @@ async function addMultiModuleSystemDossierFixture(runDir) {
       owner: "team.frontend",
       owns: ["web/src/auth/**"],
       publicSurfaces: ["LoginForm.submit"],
-      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"],
+      mustProvideContracts: ["contract.auth.session"]
     },
     {
       id: "ru.backend",
       owner: "team.backend",
       owns: ["api/src/auth/**"],
       publicSurfaces: ["POST /auth/login"],
-      mayUseContracts: ["contract.auth.login", "contract.auth.session"]
+      mayUseContracts: ["contract.auth.login", "contract.auth.session"],
+      mustProvideContracts: ["contract.auth.login"]
     }
   ];
 
@@ -234,7 +236,7 @@ async function addMultiModuleSystemDossierFixture(runDir) {
       { id: "work.auth-ui", kind: "implementation", responsibilityUnitId: "ru.frontend", requiredForDone: true }
     ],
     edges: [
-      { from: "work.auth-service", to: "work.auth-ui", contractId: "contract.auth.login" }
+      { from: "work.auth-service", to: "work.auth-ui", kind: "contract-dependency", contractId: "contract.auth.login" }
     ]
   };
 
@@ -468,8 +470,6 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.equal(dossier.modules[1].publicSurfaces[0].name, "POST /auth/login");
     assert.deepEqual(dossier.dependencyEdges.map((edge) => edge.contractId), [
       "contract.auth.login",
-      "contract.auth.session",
-      "contract.auth.login",
       "contract.auth.session"
     ]);
     const loginImportEdge = dossier.dependencyEdges.find((edge) => edge.from === "ru.frontend");
@@ -496,6 +496,13 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.equal(dossier.scenarioIndex[0].title, "Login session creation");
     assert.equal(dossier.scenarioIndex[0].visualizationKind, "mermaid");
     assert.equal(dossier.scenarioDetails[0].participants.includes("Auth UI"), true);
+    assert.equal(dossier.surfaceTraceReference.some((trace) =>
+      trace.surfaceName === "POST /auth/login"
+      && trace.consumers.includes("Auth UI")
+      && trace.callStacks.includes("POST /auth/login")
+      && trace.scenarios.includes("Login session creation")
+    ), true);
+    assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("Blueprint review is approved")), true);
     assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("Auth UI")), true);
     assert.equal(dossier.sources.some((source) => source.path === "design-pack.json"), true);
     assert.equal(dossier.modules[0].ownedFileTree.name, "web");
@@ -511,6 +518,7 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       "Responsibility Map",
       "Scenario Index",
       "Contract Surfaces",
+      "Surface Trace Reference",
       "Scenario Reference",
       "Review Decisions",
       "Verification Evidence",
