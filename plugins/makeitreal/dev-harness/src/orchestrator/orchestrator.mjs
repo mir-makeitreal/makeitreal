@@ -225,6 +225,23 @@ function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, 
   return { ok: errors.length === 0, errors };
 }
 
+function validateNativeFinishInput({ record, policy, nodeKind, workItem }) {
+  const report = reportCandidate(record, policy.reportKeys);
+  if (report && typeof report === "object") {
+    return { ok: true, errors: [] };
+  }
+  return {
+    ok: false,
+    errors: [createHarnessError({
+      code: "HARNESS_NATIVE_RESULT_REQUIRED",
+      reason: `orchestrator native finish requires a structured ${policy.reportRole} JSON report for ${nodeKind} work before it can change board state.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: ["--result-stdin", policy.reportKeys[0]],
+      recoverable: true
+    })]
+  };
+}
+
 async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
   const frozen = (board.workItems ?? []).filter((item) => item.lane === "Contract Frozen");
   if (frozen.length === 0) {
@@ -560,8 +577,8 @@ Rules:
 - Do not add fallback behavior outside declared contracts.
 - If the approved Blueprint is insufficient or the contract is wrong, stop and report NEEDS_CONTEXT or BLOCKED instead of guessing.
 - The parent session will run spec-reviewer, quality-reviewer, and verification-reviewer Task subagents after your implementation turn.
-- Prefer a normal concise final response. The parent session can record the result with orchestrator native finish --summary ... --changed-file ... --tested ... --review role=APPROVED.
-- If you emit JSON directly, use this shape:
+- Your final response must be only the JSON object below. Do not return prose-only output, markdown fences, or a summary without this report.
+- The parent session records this exact JSON with orchestrator native finish. Missing JSON is a protocol error and will not advance board state.
 \`\`\`json
 {
   "makeitrealReport": {
@@ -860,6 +877,16 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
   const record = parseNativeResultRecord(resultText);
   const nodeKind = await nodeKindForWorkItem({ runDir: boardDir, workItemId: workItem.id });
   const policy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
+  const finishInput = validateNativeFinishInput({ record, policy, nodeKind, workItem });
+  if (!finishInput.ok) {
+    return {
+      ok: false,
+      command: "orchestrator native finish",
+      workItemId,
+      attemptId,
+      errors: finishInput.errors
+    };
+  }
   const agent = extractAgentReport({ record, workItem, workerId, attemptId, now });
   const policyReport = extractPolicyReport({ record, policy, workItem, workerId, attemptId, now });
   const reviews = extractReviewReports({ record, workItem, workerId, attemptId, now });
