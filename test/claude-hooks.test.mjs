@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -440,6 +440,30 @@ test("pre-tool-use allows unrelated edits when only an inactive current-run poin
     const output = JSON.parse(allowed.stdout);
     assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /not executing/);
+  });
+});
+
+test("pre-tool-use allows parent-session edits outside the project when current-run artifacts are stale", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await writeCurrentRunState({
+      projectRoot: root,
+      runDir,
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    await rm(path.join(runDir, "work-item-dag.json"), { force: true });
+
+    const result = runHook("hooks/claude/pre-tool-use.mjs", {
+      tool_name: "Edit",
+      tool_input: { file_path: path.join(path.dirname(root), "settings.json") }
+    }, {
+      cwd: root,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "allow");
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /outside project root/);
   });
 });
 

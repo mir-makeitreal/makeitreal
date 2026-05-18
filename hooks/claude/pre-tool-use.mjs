@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import path from "node:path";
+import os from "node:os";
 import { validateRunChangedPaths } from "../../src/adapters/path-boundary.mjs";
 import { validateBlueprintApproval } from "../../src/blueprint/review.mjs";
 import { fileExists, readJsonFile } from "../../src/io/json.mjs";
@@ -45,6 +46,35 @@ function collectPaths(value, paths = []) {
   }
 
   return paths;
+}
+
+function expandHomePath(candidate) {
+  const value = String(candidate ?? "");
+  if (value === "~") {
+    return os.homedir();
+  }
+  if (value.startsWith(`~${path.sep}`) || value.startsWith("~/")) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+  return value;
+}
+
+function pathTargetsProject({ projectRoot, candidate }) {
+  const value = expandHomePath(candidate);
+  if (!value) {
+    return false;
+  }
+  if (!path.isAbsolute(value)) {
+    return true;
+  }
+
+  const root = path.resolve(projectRoot);
+  const resolved = path.resolve(value);
+  return resolved === root || resolved.startsWith(`${root}${path.sep}`);
+}
+
+function hasProjectTarget({ projectRoot, paths }) {
+  return paths.some((candidate) => pathTargetsProject({ projectRoot, candidate }));
 }
 
 function matchesPattern(pattern, candidate) {
@@ -214,6 +244,7 @@ async function main() {
   const command = bashCommand(input);
   const harnessControlBash = command ? bashLooksHarnessControl(command) : false;
   const bashRequiresBoundary = command ? !harnessControlBash && (bashLooksMutating(command) || !bashLooksReadOnly(command)) : false;
+  const bashMutatingPaths = command && bashRequiresBoundary ? collectBashPaths(command) : [];
   const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashRequiresBoundary;
   const readScopedTool = READ_TOOLS.has(input?.tool_name) || (command && !bashRequiresBoundary && bashLooksReadOnly(command));
 
@@ -244,6 +275,11 @@ async function main() {
   const runnerRunDir = process.env.MAKEITREAL_BOARD_DIR ?? null;
   let workItemId = explicitMakeItReal?.workItemId ?? process.env.MAKEITREAL_WORK_ITEM_ID ?? null;
   let resolved = null;
+
+  const scopedPaths = [...changedPaths, ...bashMutatingPaths];
+  if (!runnerContext.active && !explicitRunDir && scopedPaths.length > 0 && !hasProjectTarget({ projectRoot, paths: scopedPaths })) {
+    return allow("Mutation targets paths outside project root; Make It Real run enforcement skipped.");
+  }
 
   if (runnerContext.active && !runnerContext.complete) {
     return block([{
@@ -307,8 +343,7 @@ async function main() {
   }
 
   if (command && bashRequiresBoundary) {
-    const bashPaths = collectBashPaths(command);
-    if (bashPaths.length === 0) {
+    if (bashMutatingPaths.length === 0) {
       return block([{
         code: "HARNESS_BASH_WRITE_UNSUPPORTED",
         reason: "Mutating Bash commands must expose project-relative file paths for Make It Real boundary validation.",
@@ -318,7 +353,7 @@ async function main() {
         recoverable: true
       }]);
     }
-    changedPaths.push(...bashPaths);
+    changedPaths.push(...bashMutatingPaths);
   }
 
   if (changedPaths.length === 0) {
