@@ -6,9 +6,9 @@ const mapping = {
   schemaVersion: "1.0",
   mappings: [
     { evidenceRole: "implementation-worker", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
-    { evidenceRole: "spec-reviewer", nativeSubagentType: "oh-my-claudecode:critic", mappingSource: "project-config" },
-    { evidenceRole: "quality-reviewer", nativeSubagentType: "oh-my-claudecode:critic", mappingSource: "project-config" },
-    { evidenceRole: "verification-reviewer", nativeSubagentType: "oh-my-claudecode:verifier", mappingSource: "project-config" }
+    { evidenceRole: "spec-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
+    { evidenceRole: "quality-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
+    { evidenceRole: "verification-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" }
   ]
 };
 

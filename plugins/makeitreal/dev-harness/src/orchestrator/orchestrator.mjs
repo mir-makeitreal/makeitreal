@@ -1,3 +1,4 @@
+import path from "node:path";
 import { appendBoardEvent, loadBoard, saveBoard } from "../board/board-store.mjs";
 import { claimWorkItem, listClaims, releaseClaim } from "../board/claim-store.mjs";
 import { getReadyWorkItems, validateDependencyGraph } from "../board/dependency-graph.mjs";
@@ -6,6 +7,7 @@ import { resolveBlueprintRunDir } from "../blueprint/review.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { runGates } from "../gates/index.mjs";
+import { fileExists, readJsonFile } from "../io/json.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 import { createRunAttempt, readRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
 import { nextBackoffMs } from "./retry-policy.mjs";
@@ -22,6 +24,7 @@ import {
   updateRunningEvent
 } from "./runtime-state.mjs";
 import { extractAgentReport, validateAgentReports } from "./dynamic-role-handoff.mjs";
+import { defaultNativeRoleMapping, validateNativeRoleMapping } from "./native-role-mapping.mjs";
 import { extractReviewReports } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
@@ -51,6 +54,30 @@ const COMPLETION_POLICIES = Object.freeze({
 });
 
 const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
+
+function mappingForEvidenceRole(mapping, role) {
+  return (mapping?.mappings ?? []).find((entry) => entry.evidenceRole === role) ?? null;
+}
+
+async function resolveNativeRoleMapping({ boardDir, projectRoot }) {
+  const candidates = [
+    path.join(boardDir, "native-role-mapping.json"),
+    projectRoot ? path.join(projectRoot, ".makeitreal", "native-role-mapping.json") : null
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (!await fileExists(candidate)) {
+      continue;
+    }
+    const mapping = await readJsonFile(candidate);
+    const validation = validateNativeRoleMapping(mapping);
+    if (!validation.ok) {
+      return { ok: false, mapping: null, mappingPath: candidate, errors: validation.errors };
+    }
+    return { ok: true, mapping, mappingPath: candidate, errors: [] };
+  }
+  const mapping = defaultNativeRoleMapping();
+  return { ok: true, mapping, mappingPath: null, errors: [] };
+}
 
 function transitionLane(board, workItemId, lane, context = { gates: {} }, extra = {}) {
   const workItem = board.workItems.find((item) => item.id === workItemId);
@@ -554,7 +581,16 @@ Rules:
 `;
 }
 
-function renderNativeReviewerPrompt({ role, boardDir, workItem, attemptId, projectRoot, nodeKind = "implementation" }) {
+function renderNativeReviewerPrompt({
+  role,
+  boardDir,
+  workItem,
+  attemptId,
+  projectRoot,
+  nodeKind = "implementation",
+  nativeSubagentType = "general-purpose",
+  mappingSource = "builtin-default"
+}) {
   const focus = {
     "spec-reviewer": "Verify the implementation satisfies the PRD, Blueprint, declared contracts, and responsibility boundary.",
     "quality-reviewer": "Review code quality, maintainability, naming, unnecessary fallback behavior, and clean-code fit.",
@@ -586,6 +622,9 @@ ${nodeScope} Do not edit files. Return JSON:
 {
   "makeitrealReview": {
     "role": "${role}",
+    "evidenceRole": "${role}",
+    "nativeSubagentType": "${nativeSubagentType}",
+    "mappingSource": "${mappingSource}",
     "status": "APPROVED | APPROVED_WITH_NOTES | CHANGES_REQUESTED | REJECTED | NEEDS_CONTEXT | BLOCKED",
     "summary": "Review result.",
     "findings": [],
@@ -641,6 +680,12 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
     };
   }
 
+  const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
+  const roleMapping = await resolveNativeRoleMapping({ boardDir, projectRoot });
+  if (!roleMapping.ok) {
+    return { ok: false, command: "orchestrator native start", nativeTasks: [], errors: roleMapping.errors };
+  }
+  const implementationMapping = mappingForEvidenceRole(roleMapping.mapping, "implementation-worker");
   const nativeTasks = [];
   for (const workItem of readyWorkItems) {
     const claim = await claimWorkItem({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60 * 60 * 1000 });
@@ -658,7 +703,6 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
 
     const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
     const attempt = await createRunAttempt({ boardDir, workItem: activeWorkItem, workerId, now });
-    const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
     const nodeKind = await nodeKindForWorkItem({ runDir: boardDir, workItemId: activeWorkItem.id });
     const completionPolicy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
     const implementationPrompt = renderNativeTaskPrompt({
@@ -668,10 +712,26 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
       projectRoot,
       nodeKind
     });
-    const reviewerPrompts = completionPolicy.requiredReviewRoles.map((role) => ({
-      role,
-      prompt: renderNativeReviewerPrompt({ role, boardDir, workItem: activeWorkItem, attemptId: attempt.attemptId, projectRoot, nodeKind })
-    }));
+    const reviewerPrompts = completionPolicy.requiredReviewRoles.map((role) => {
+      const roleEntry = mappingForEvidenceRole(roleMapping.mapping, role);
+      return {
+        role,
+        evidenceRole: role,
+        nativeSubagentType: roleEntry?.nativeSubagentType ?? "general-purpose",
+        mappingSource: roleEntry?.mappingSource ?? "builtin-default",
+        mappingPath: roleMapping.mappingPath,
+        prompt: renderNativeReviewerPrompt({
+          role,
+          boardDir,
+          workItem: activeWorkItem,
+          attemptId: attempt.attemptId,
+          projectRoot,
+          nodeKind,
+          nativeSubagentType: roleEntry?.nativeSubagentType ?? "general-purpose",
+          mappingSource: roleEntry?.mappingSource ?? "builtin-default"
+        })
+      };
+    });
 
     const runtimeState = await loadRuntimeState(boardDir);
     recordClaimed(runtimeState, claim.claim);
@@ -695,6 +755,9 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
           channel: "parent-native-task",
           nodeKind,
           projectRoot,
+          implementationSubagentType: implementationMapping?.nativeSubagentType ?? "general-purpose",
+          implementationMappingSource: implementationMapping?.mappingSource ?? "builtin-default",
+          nativeRoleMappingPath: roleMapping.mappingPath,
           implementationPrompt,
           reviewerPrompts
         }
@@ -723,6 +786,9 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
       workerId,
       projectRoot,
       nodeKind,
+      nativeSubagentType: implementationMapping?.nativeSubagentType ?? "general-purpose",
+      mappingSource: implementationMapping?.mappingSource ?? "builtin-default",
+      mappingPath: roleMapping.mappingPath,
       implementationPrompt,
       reviewerPrompts
     });
@@ -747,6 +813,19 @@ function parseNativeResultRecord(resultText) {
   } catch {
     return { result: text };
   }
+}
+
+function enrichReviewReportsWithDispatch({ reports, attempt }) {
+  const byRole = new Map((attempt?.runner?.reviewerPrompts ?? []).map((prompt) => [prompt.role, prompt]));
+  return (reports ?? []).map((report) => {
+    const dispatch = byRole.get(report.role);
+    return {
+      ...report,
+      nativeSubagentType: report.nativeSubagentType ?? dispatch?.nativeSubagentType ?? null,
+      mappingSource: report.mappingSource ?? dispatch?.mappingSource ?? null,
+      mappingPath: report.mappingPath ?? dispatch?.mappingPath ?? null
+    };
+  });
 }
 
 export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, workerId = "claude-code.parent", resultText, now }) {
@@ -784,6 +863,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
   const agent = extractAgentReport({ record, workItem, workerId, attemptId, now });
   const policyReport = extractPolicyReport({ record, policy, workItem, workerId, attemptId, now });
   const reviews = extractReviewReports({ record, workItem, workerId, attemptId, now });
+  const reviewReports = enrichReviewReportsWithDispatch({ reports: reviews.reports ?? [], attempt });
   const agentReports = [agent.report, policyReport]
     .filter(Boolean)
     .filter((report, index, reports) => reports.findIndex((candidate) => candidate.role === report.role) === index);
@@ -794,7 +874,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
     nodeKind,
     policyReport,
     agentReports,
-    reviewReports: reviews.reports ?? [],
+    reviewReports,
     changedFiles,
     workItem,
     attemptId
@@ -860,7 +940,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
         channel: "parent-native-task",
         nodeKind,
         agentReports,
-        reviewReports: reviews.reports ?? [],
+        reviewReports,
         resultText: String(resultText ?? "")
       }
     }

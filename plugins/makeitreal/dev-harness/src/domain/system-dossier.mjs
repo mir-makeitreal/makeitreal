@@ -104,26 +104,31 @@ function softwareArchitectureEdges({ designPack, moduleInterfaces }) {
     .filter(Boolean);
 }
 
-function modulesForArchitectureEndpoint({ contractId, endpoint, designPack, moduleInterfaces }) {
-  return uniqueText(softwareArchitectureEdges({ designPack, moduleInterfaces })
-    .filter(({ edge }) => edge.contractId === contractId)
-    .map(({ fromModule, toModule }) => endpoint === "from" ? fromModule.moduleName : toModule.moduleName)
-    .filter(Boolean));
-}
-
 function modelDependencyEdges({ designPack, contracts }) {
   const contractsById = contractIndex(contracts);
   const moduleInterfaces = designPack.moduleInterfaces ?? [];
   const moduleByResponsibilityUnit = new Map(moduleInterfaces.map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
-  const architectureEdges = softwareArchitectureEdges({ designPack, moduleInterfaces }).map(({ edge, fromModule, toModule }) => ({
-    from: fromModule.responsibilityUnitId,
-    fromLabel: fromModule.moduleName,
-    to: toModule.responsibilityUnitId,
-    toLabel: toModule.moduleName,
-    contractId: edge.contractId ?? null,
-    contractKind: contractsById.get(edge.contractId)?.kind ?? "contract",
-    allowedUse: contractSummary(contractsById.get(edge.contractId), "Architecture dependency.")
-  }));
+  const architectureEdges = softwareArchitectureEdges({ designPack, moduleInterfaces }).map(({ edge, fromModule, toModule }) => {
+    const contractId = edge.contractId ?? null;
+    const fromImportsTo = (fromModule.imports ?? []).some((dependency) =>
+      dependency.providerResponsibilityUnitId === toModule.responsibilityUnitId
+      && (!contractId || dependency.contractId === contractId)
+    );
+    const toImportsFrom = (toModule.imports ?? []).some((dependency) =>
+      dependency.providerResponsibilityUnitId === fromModule.responsibilityUnitId
+      && (!contractId || dependency.contractId === contractId)
+    );
+    return {
+      from: fromModule.responsibilityUnitId,
+      fromLabel: fromModule.moduleName,
+      to: toModule.responsibilityUnitId,
+      toLabel: toModule.moduleName,
+      contractId,
+      contractKind: contractsById.get(edge.contractId)?.kind ?? "contract",
+      allowedUse: contractSummary(contractsById.get(edge.contractId), "Architecture dependency."),
+      relation: fromImportsTo ? "consumer-to-provider" : toImportsFrom ? "provider-to-consumer" : "architecture-placement"
+    };
+  });
 
   const importEdges = moduleInterfaces.flatMap((moduleInterface) =>
     (moduleInterface.imports ?? []).map((dependency) => {
@@ -136,7 +141,8 @@ function modelDependencyEdges({ designPack, contracts }) {
       surface: dependency.surface ?? null,
       contractId: dependency.contractId ?? null,
       contractKind: contractsById.get(dependency.contractId)?.kind ?? "import",
-      allowedUse: dependency.allowedUse ?? contractSummary(contractsById.get(dependency.contractId), "Declared module import.")
+      allowedUse: dependency.allowedUse ?? contractSummary(contractsById.get(dependency.contractId), "Declared module import."),
+      relation: "consumer-to-provider"
     };
   })
   );
@@ -166,14 +172,12 @@ function consumersForContract({ contractId, designPack, moduleInterfaces }) {
   const importConsumers = moduleInterfaces
     .filter((moduleInterface) => (moduleInterface.imports ?? []).some((dependency) => dependency.contractId === contractId))
     .map((moduleInterface) => moduleInterface.moduleName);
-  const edgeConsumers = modulesForArchitectureEndpoint({ contractId, endpoint: "from", designPack, moduleInterfaces });
-  return uniqueText([...importConsumers, ...edgeConsumers]);
+  return uniqueText(importConsumers);
 }
 
 function providersForContract({ contractId, designPack, moduleInterfaces }) {
-  const edgeProviders = modulesForArchitectureEndpoint({ contractId, endpoint: "to", designPack, moduleInterfaces });
   const surfaceProviders = surfaceProvidersForContract({ contractId, moduleInterfaces });
-  return uniqueText([...edgeProviders, ...surfaceProviders]);
+  return uniqueText(surfaceProviders);
 }
 
 function modelContractMatrix({ designPack, contracts, moduleInterfaces }) {
@@ -346,20 +350,36 @@ function harnessSequence(sequence = {}) {
     || text.includes("plan to implementation handoff");
 }
 
-function derivedScenarioFromFirstSurface(moduleInterfaces = []) {
-  const moduleInterface = moduleInterfaces.find((candidate) => (candidate.publicSurfaces ?? []).length > 0);
+function derivedScenarioFromModuleGraph(moduleInterfaces = []) {
+  const moduleByResponsibilityUnit = new Map(moduleInterfaces.map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
+  const moduleInterface = moduleInterfaces.find((candidate) => (candidate.imports ?? []).length > 0 && (candidate.publicSurfaces ?? []).length > 0)
+    ?? moduleInterfaces.find((candidate) => (candidate.publicSurfaces ?? []).length > 0);
   const surface = moduleInterface?.publicSurfaces?.[0];
   if (!moduleInterface || !surface) {
     return null;
   }
   const outputNames = (surface.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
   const errorNames = (surface.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
+  const dependencyMessages = (moduleInterface.imports ?? []).flatMap((dependency) => {
+    const provider = moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId);
+    if (!provider) {
+      return [];
+    }
+    const providerSurface = dependency.surface ?? provider.publicSurfaces?.[0]?.name ?? dependency.contractId;
+    const providerOutput = (provider.publicSurfaces?.[0]?.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
+    const providerErrors = (provider.publicSurfaces?.[0]?.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
+    return [
+      { from: moduleInterface.moduleName, to: provider.moduleName, label: `${providerSurface} via ${dependency.contractId}` },
+      { from: provider.moduleName, to: moduleInterface.moduleName, label: `${providerOutput} or ${providerErrors}` }
+    ];
+  });
   return {
     id: "scenario-declared-surface-call",
     title: `${surface.name} contract call`,
-    participants: ["Caller", moduleInterface.moduleName],
+    participants: uniqueText(["Caller", moduleInterface.moduleName, ...(moduleInterface.imports ?? []).map((dependency) => moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId)?.moduleName).filter(Boolean)]),
     messages: [
       { from: "Caller", to: moduleInterface.moduleName, label: surface.name },
+      ...dependencyMessages,
       { from: moduleInterface.moduleName, to: "Caller", label: `${outputNames} or ${errorNames}` }
     ]
   };
@@ -370,7 +390,7 @@ function softwareScenarios({ designPack, moduleInterfaces }) {
   if (declared.length > 0) {
     return declared;
   }
-  const derived = derivedScenarioFromFirstSurface(moduleInterfaces);
+  const derived = derivedScenarioFromModuleGraph(moduleInterfaces);
   return derived ? [derived] : [];
 }
 
@@ -409,7 +429,11 @@ function modelReviewDecisions({ moduleInterfaces, dependencyEdges, contracts, bl
     `${moduleInterface.moduleName} owns ${uniqueText(moduleInterface.owns).join(", ") || "no declared paths"} and exposes ${(moduleInterface.publicSurfaces ?? []).map((surface) => surface.name).join(", ") || "no public surfaces"}.`
   );
   const dependencyDecisions = dependencyEdges.map((edge) =>
-    `${edge.fromLabel} may call ${edge.toLabel} only through ${edge.contractId ?? edge.surface ?? "a declared contract"}.`
+    edge.relation === "consumer-to-provider"
+      ? `${edge.fromLabel} may call ${edge.toLabel} only through ${edge.contractId ?? edge.surface ?? "a declared contract"}.`
+      : edge.relation === "provider-to-consumer"
+        ? `${edge.fromLabel} provides ${edge.contractId ?? edge.surface ?? "a declared contract"} to ${edge.toLabel}; consumers must not inspect provider implementation internals.`
+        : `${edge.fromLabel} is connected to ${edge.toLabel} through ${edge.contractId ?? edge.surface ?? "a declared contract"}.`
   );
   const contractDecisions = contracts.map((contract) =>
     `${contract.contractId ?? contract.kind} is reviewed from ${contract.path ?? contract.reason ?? "the boundary declaration"}.`

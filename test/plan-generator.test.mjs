@@ -819,8 +819,29 @@ test("plan generator preserves explicit Unit 1 and Unit 2 module responsibility 
     assert.equal(dag.edges.some((edge) => edge.from === "work.normalize-book" && edge.to === "work.render-book-card" && edge.kind === "contract-dependency"), true);
 
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
-    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.normalize-book" && item.publicSurfaces[0].name === "normalizeBook"), true);
-    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.render-book-card" && item.publicSurfaces[0].name === "renderBookCard"), true);
+    const normalizeInterface = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.normalize-book");
+    const renderInterface = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.render-book-card");
+    assert.equal(normalizeInterface.publicSurfaces[0].name, "normalizeBook");
+    assert.equal(renderInterface.publicSurfaces[0].name, "renderBookCard");
+    assert.equal(normalizeInterface.publicSurfaces[0].signature.inputs[0].type, "object { title: string, author: string }");
+    assert.deepEqual(normalizeInterface.publicSurfaces[0].signature.inputs[0].fields.map((field) => [field.name, field.type, field.required]), [
+      ["title", "string", true],
+      ["author", "string", true]
+    ]);
+    assert.equal(normalizeInterface.publicSurfaces[0].signature.outputs[0].name, "normalizedBook");
+    assert.equal(normalizeInterface.publicSurfaces[0].signature.errors[0].code, "CATALOG_BOOK_INVALID");
+    assert.equal(renderInterface.publicSurfaces[0].signature.outputs[0].type, "object { heading: string, byline: string }");
+    const previewModel = await readJsonFile(path.join(result.runDir, "preview", "preview-model.json"));
+    assert.equal(previewModel.blueprint.systemDossier.reviewDecisions.some((decision) => decision.includes("normalizeBook may call renderBookCard")), false);
+    assert.equal(previewModel.blueprint.systemDossier.reviewDecisions.some((decision) => decision.includes("renderBookCard may call normalizeBook only through contract.normalize-book.boundary")), true);
+    assert.equal(previewModel.blueprint.systemDossier.reviewDecisions.some((decision) => decision.includes("normalizeBook provides contract.normalize-book.boundary to renderBookCard")), true);
+    const scenarioMessages = previewModel.blueprint.systemDossier.scenarioDetails[0].messages;
+    assert.deepEqual(scenarioMessages.map((message) => [message.from, message.to]), [
+      ["Caller", "renderBookCard"],
+      ["renderBookCard", "normalizeBook"],
+      ["normalizeBook", "renderBookCard"],
+      ["renderBookCard", "Caller"]
+    ]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

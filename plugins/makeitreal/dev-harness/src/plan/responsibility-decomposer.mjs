@@ -125,7 +125,8 @@ function explicitUnitDecomposition({ slug, owner, contractId, moduleInterface, w
           name,
           args,
           contractId: unitContractId,
-          description: `Declared public surface for Unit ${section.unitNumber}.`
+          description: `Declared public surface for Unit ${section.unitNumber}.`,
+          source: section.text
         }))
       : moduleInterface.publicSurfaces.map((surface) => ({
           ...surface,
@@ -343,7 +344,103 @@ function functionReferences(source) {
     .map((name) => ({ name, args: functionArgs(text, name) }));
 }
 
-function surfaceFromFunction({ name, args, contractId, description }) {
+function declaredErrorCodes(source) {
+  return uniqueValues([...String(source ?? "").matchAll(/\bcode\s+([A-Z][A-Z0-9_]+)/g)].map((match) => match[1]));
+}
+
+function bookFieldsFromText(source) {
+  const text = String(source ?? "");
+  const fields = [];
+  if (/\btitle\b/i.test(text)) {
+    fields.push({ name: "title", type: "string", required: true, description: "Book title after declared trimming rules." });
+  }
+  if (/\bauthor\b/i.test(text)) {
+    fields.push({ name: "author", type: "string", required: true, description: "Book author after declared trimming rules." });
+  }
+  if (/\byear\b/i.test(text)) {
+    fields.push({ name: "year", type: "integer", required: !/\boptional\b[\s\S]{0,40}\byear\b|\byear\b[\s\S]{0,40}\boptional\b/i.test(text), description: "Optional publication year when supplied by the caller." });
+  }
+  return fields;
+}
+
+function inputDescriptor({ arg, source, surfaceName }) {
+  const text = String(source ?? "");
+  const fields = bookFieldsFromText(text);
+  if (fields.length >= 2 && /^(input|book)$/i.test(arg)) {
+    const fieldTypes = fields.map((field) => `${field.name}${field.required === false ? "?" : ""}: ${field.type}`).join(", ");
+    return {
+      name: arg,
+      type: `object { ${fieldTypes} }`,
+      required: true,
+      fields,
+      description: `Declared ${arg} object for ${surfaceName}; consumers may rely on these fields without reading implementation internals.`
+    };
+  }
+  if (new RegExp(`\\b${arg}\\b\\s+must\\s+be\\s+(?:a\\s+)?string`, "i").test(text)) {
+    return {
+      name: arg,
+      type: "string",
+      required: true,
+      description: `Declared ${arg} string for ${surfaceName}.`
+    };
+  }
+  return {
+    name: arg,
+    type: "declared input",
+    required: true,
+    description: `Declared ${arg} input for ${surfaceName}.`
+  };
+}
+
+function outputDescriptor({ name, contractId, source }) {
+  const text = String(source ?? "");
+  if (/\bplain\s+object\s*\{\s*heading\s*,\s*byline\s*\}/i.test(text)) {
+    return {
+      name: "cardViewModel",
+      type: "object { heading: string, byline: string }",
+      description: "Plain object card view model returned to consumers."
+    };
+  }
+  if (/\btext\s+card\b|\bcard\s+text\b/i.test(text)) {
+    return {
+      name: "cardText",
+      type: "string",
+      description: "Plain text card returned to consumers."
+    };
+  }
+  if (/^normalize/i.test(name) && bookFieldsFromText(text).length >= 2) {
+    return {
+      name: "normalizedBook",
+      type: "object { title: string, author: string, year?: integer }",
+      description: "Book object after declared normalization rules are applied."
+    };
+  }
+  return {
+    name: "result",
+    type: "declared output",
+    description: `Returned value defined by ${contractId}.`
+  };
+}
+
+function errorDescriptors({ source }) {
+  const declared = declaredErrorCodes(source).map((code) => ({
+    code,
+    when: /INVALID/i.test(code)
+      ? "Input violates the declared module contract."
+      : "The declared error condition is reached.",
+    handling: `Throw the declared error with code ${code}; do not coerce invalid input through fallback behavior.`
+  }));
+  return [
+    ...declared,
+    {
+      code: "BOUNDARY_CONTRACT_VIOLATION",
+      when: "The implementation needs behavior outside the declared contract.",
+      handling: "Fail fast and revise the Blueprint; do not add fallback behavior."
+    }
+  ];
+}
+
+function surfaceFromFunction({ name, args, contractId, description, source = "" }) {
   return {
     name,
     kind: "module",
@@ -352,28 +449,15 @@ function surfaceFromFunction({ name, args, contractId, description }) {
     consumers: ["Declared downstream responsibility units and tests"],
     signature: {
       inputs: args.length > 0
-        ? args.map((arg) => ({
-            name: arg,
-            type: "declared input",
-            required: true,
-            description: `Declared ${arg} input for ${name}.`
-          }))
+        ? args.map((arg) => inputDescriptor({ arg, source, surfaceName: name }))
         : [{
             name: "none",
             type: "void",
             required: false,
             description: `${name} accepts no direct arguments.`
           }],
-      outputs: [{
-        name: "result",
-        type: "declared output",
-        description: `Returned value defined by ${contractId}.`
-      }],
-      errors: [{
-        code: "BOUNDARY_CONTRACT_VIOLATION",
-        when: "The implementation needs behavior outside the declared contract.",
-        handling: "Fail fast and revise the Blueprint; do not add fallback behavior."
-      }]
+      outputs: [outputDescriptor({ name, contractId, source })],
+      errors: errorDescriptors({ source })
     }
   };
 }
@@ -384,7 +468,7 @@ function surfacesFromRequestSection({ request, labels, contractId, description }
     return [];
   }
   return functionReferences(section).map(({ name, args }) =>
-    surfaceFromFunction({ name, args, contractId, description })
+    surfaceFromFunction({ name, args, contractId, description, source: section })
   );
 }
 

@@ -391,6 +391,7 @@
           "contractKind": "openapi",
           "from": "ru.frontend",
           "fromLabel": "Auth UI",
+          "relation": "consumer-to-provider",
           "surface": "POST /auth/login",
           "to": "ru.auth-service",
           "toLabel": "Auth Service"

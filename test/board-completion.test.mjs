@@ -491,6 +491,12 @@ test("parent-session native Claude task reaches completion without spawning chil
       "quality-reviewer",
       "verification-reviewer"
     ]);
+    assert.equal(nativeTask.nativeSubagentType, "general-purpose");
+    assert.deepEqual(nativeTask.reviewerPrompts.map((prompt) => prompt.nativeSubagentType), [
+      "general-purpose",
+      "general-purpose",
+      "general-purpose"
+    ]);
 
     await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
     await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "native parent task output\n");
@@ -529,6 +535,17 @@ test("parent-session native Claude task reaches completion without spawning chil
     assert.equal(verifying.workItems.find((item) => item.id === "work.login-ui").lane, "Verifying");
     const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
     assert.equal(attempt.runner.channel, "parent-native-task");
+    assert.equal(attempt.runner.implementationSubagentType, "general-purpose");
+    assert.deepEqual(attempt.runner.reviewReports.map((report) => report.nativeSubagentType), [
+      "general-purpose",
+      "general-purpose",
+      "general-purpose"
+    ]);
+    assert.deepEqual(attempt.runner.reviewReports.map((report) => report.mappingSource), [
+      "builtin-default",
+      "builtin-default",
+      "builtin-default"
+    ]);
     assert.equal(attempt.runner.executable, undefined);
 
     const completed = await completeVerifiedWork({
@@ -639,6 +656,43 @@ test("native finish CLI can build reports from shorthand flags", async () => {
       "spec-reviewer",
       "quality-reviewer",
       "verification-reviewer"
+    ]);
+  });
+});
+
+test("native start exposes configured subagent mapping as dispatch evidence", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    await writeJsonFile(path.join(projectRoot, ".makeitreal", "native-role-mapping.json"), {
+      schemaVersion: "1.0",
+      mappings: [
+        { evidenceRole: "implementation-worker", nativeSubagentType: "general-purpose", mappingSource: "project-config" },
+        { evidenceRole: "spec-reviewer", nativeSubagentType: "general-purpose", mappingSource: "project-config" },
+        { evidenceRole: "quality-reviewer", nativeSubagentType: "general-purpose", mappingSource: "project-config" },
+        { evidenceRole: "verification-reviewer", nativeSubagentType: "general-purpose", mappingSource: "project-config" }
+      ]
+    });
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-mapping-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true, JSON.stringify(started.errors));
+    const nativeTask = onlyNativeTask(started);
+    assert.equal(nativeTask.mappingSource, "project-config");
+    assert.match(nativeTask.mappingPath, /\.makeitreal\/native-role-mapping\.json$/);
+    assert.deepEqual(nativeTask.reviewerPrompts.map((prompt) => prompt.mappingSource), [
+      "project-config",
+      "project-config",
+      "project-config"
     ]);
   });
 });

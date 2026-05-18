@@ -205,6 +205,7 @@ function extractSingleReviewReport({ candidate, workItem, workerId, attemptId, n
       evidenceRole: String(candidate.evidenceRole ?? role),
       nativeSubagentType: candidate.nativeSubagentType ? String(candidate.nativeSubagentType) : null,
       mappingSource: candidate.mappingSource ? String(candidate.mappingSource) : null,
+      mappingPath: candidate.mappingPath ? String(candidate.mappingPath) : null,
       status,
       summary: String(candidate.summary ?? ""),
       findings: reportArray(candidate.findings),

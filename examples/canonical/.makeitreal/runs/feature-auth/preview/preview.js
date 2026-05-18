@@ -207,6 +207,10 @@
   window.makeitrealAutoReload = { checkForDashboardUpdate };
   bindCommandCopy();
   bindNavFilter();
+  if (window.location.protocol === "file:") {
+    markAutoRefreshUnavailable();
+    return;
+  }
   checkForDashboardUpdate();
   pollTimer = window.setInterval(checkForDashboardUpdate, pollMs);
   console.info("makeitreal:auto-reload");

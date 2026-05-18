@@ -44,18 +44,19 @@ regenerate work-item verification evidence:
 ```
 
 Then iterate over the returned `nativeTasks[]` array. For each entry, use
-`nativeTasks[].implementationPrompt` with the Claude Code `Task` tool. After
-that implementation task returns, run three read-only native `Task` reviewers
-using the returned `nativeTasks[].reviewerPrompts`. The labels
+`nativeTasks[].nativeSubagentType` as the Claude Code `Task` type and
+`nativeTasks[].implementationPrompt` as the prompt. After that implementation
+task returns, run three read-only native `Task` reviewers using each
+`nativeTasks[].reviewerPrompts[]` entry's `nativeSubagentType` and `prompt`. The labels
 below are Make It Real evidence roles, not guaranteed installed Claude Code
 `subagent_type` names. Do not pass these labels as `subagent_type` unless
-Claude Code lists them as available agents. Choose an installed native Task type
-that exists in this session, preserving the Make It Real role inside the prompt
-and recorded JSON. Good choices when available are `feature-dev:code-reviewer`
-or `oh-my-claudecode:critic` for `spec-reviewer`, `oh-my-claudecode:critic` for
-`quality-reviewer`, and `oh-my-claudecode:verifier` for
-`verification-reviewer`. If a chosen type is unavailable, stop launch and report
-`HARNESS_NATIVE_ROLE_MAPPING_MISSING`; update `native-role-mapping.json` before dispatch:
+Claude Code lists them as available agents. Use the builtin `general-purpose`
+Task type unless this project has an explicit `native-role-mapping.json` that
+maps a Make It Real evidence role to an available installed Claude Code
+subagent type. The Make It Real role lives in the prompt and recorded JSON, not
+in an external plugin label. If a configured type is unavailable, stop launch
+and report `HARNESS_NATIVE_ROLE_MAPPING_MISSING`; update
+`native-role-mapping.json` before dispatch:
 
 - `spec-reviewer`
 - `quality-reviewer`
