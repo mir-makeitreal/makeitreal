@@ -35,9 +35,9 @@ function humanizeIdentifier(value) {
     .join(" ");
 }
 
-function conciseTitleFromText(value) {
+function conciseTitleFromText(value, { preferFunction = true } = {}) {
   const text = String(value ?? "");
-  const functionLike = text.match(/\b([a-z][A-Za-z0-9]+)\s*\(/);
+  const functionLike = preferFunction ? text.match(/\b([a-z][A-Za-z0-9]+)\s*\(/) : null;
   if (functionLike) {
     return humanizeIdentifier(functionLike[1]);
   }
@@ -49,12 +49,49 @@ function conciseTitleFromText(value) {
     .filter((word) => ![
       "a", "an", "and", "or", "the", "with", "for", "to", "of", "in",
       "implement", "create", "build", "add", "update", "pure", "javascript",
-      "typescript", "responsibility", "unit", "module", "component", "contract",
+      "typescript", "responsibility", "unit", "units", "module", "component", "contract",
       "verification", "command", "input", "output", "test", "tests"
     ].includes(word))
     .slice(0, 5)
     .join(" ");
   return humanizeIdentifier(filtered || text);
+}
+
+function nonExternalModules(modules = []) {
+  return modules.filter((moduleInterface) => moduleInterface.owner !== "external.provider");
+}
+
+function titleIntroBeforeUnitSections(value) {
+  return String(value ?? "")
+    .split(/\bUnit\s+\d+\b/i)[0]
+    .trim();
+}
+
+function countLabel(count) {
+  return new Map([
+    [1, "One"],
+    [2, "Two"],
+    [3, "Three"],
+    [4, "Four"],
+    [5, "Five"]
+  ]).get(count) ?? String(count);
+}
+
+function architecturePacketTitle({ rawTitle, modules, dependencyEdges = [] }) {
+  const implementationModules = nonExternalModules(modules);
+  if (implementationModules.length === 1 && modules.length > 1) {
+    return implementationModules[0].moduleName;
+  }
+
+  if (dependencyEdges.length === 0) {
+    return `${countLabel(modules.length)} Independent Responsibility Units`;
+  }
+
+  const introTitle = conciseTitleFromText(titleIntroBeforeUnitSections(rawTitle), { preferFunction: false });
+  if (introTitle) {
+    return introTitle;
+  }
+  return `${modules.length} Responsibility Units`;
 }
 
 function surfaceSignature(surface) {
@@ -74,12 +111,24 @@ function surfaceSignature(surface) {
 
 function referenceTitle(model) {
   const blueprint = model.blueprint ?? {};
-  const rawTitle = blueprint.systemDossier?.title ?? blueprint.title ?? model.run.workItemId;
-  const primaryModuleName = blueprint.systemDossier?.modules?.[0]?.moduleName;
-  if (String(rawTitle).length > 90 && primaryModuleName) {
-    return primaryModuleName;
+  const dossier = blueprint.systemDossier ?? {};
+  const rawTitle = dossier.title ?? blueprint.title ?? model.run.workItemId;
+  const modules = dossier.modules ?? [];
+  if (modules.length > 1) {
+    return architecturePacketTitle({ rawTitle, modules, dependencyEdges: dossier.dependencyEdges ?? [] });
   }
   return conciseTitleFromText(rawTitle) || "Blueprint";
+}
+
+function referenceSummary({ blueprint, dossier }) {
+  const modules = dossier.modules ?? [];
+  if (modules.length > 1) {
+    const moduleNames = modules.map((moduleInterface) => moduleInterface.moduleName).filter(Boolean).join(", ");
+    const contractCount = new Set((dossier.contractSurfaces ?? []).flatMap((surface) => surface.contractIds ?? [])).size;
+    const contractLabel = contractCount === 1 ? "1 contract" : `${contractCount} contracts`;
+    return `${modules.length} responsibility units: ${moduleNames}. Review module placement, public signatures, ${contractLabel}, and Done evidence as one architecture packet.`;
+  }
+  return (blueprint.summary ?? [])[0] ?? "No user-visible behavior recorded.";
 }
 
 function verificationLabel(status = {}) {
@@ -599,10 +648,6 @@ function signatureErrors(surface) {
   return surface.signature?.errors ?? [];
 }
 
-function firstPublicSurface(dossier = {}) {
-  return moduleSurfaces(dossier)[0] ?? null;
-}
-
 function findSurfaceByImport({ dossier, dependency }) {
   const provider = (dossier.modules ?? []).find((moduleInterface) =>
     moduleInterface.responsibilityUnitId === dependency.providerResponsibilityUnitId
@@ -740,21 +785,24 @@ function derivedSoftwareSequenceMermaid(dossier = {}) {
     ].join("\n");
   }
 
-  const primary = surfaces[0];
-  const inputLabel = signatureInputs(primary.surface).map((input) => input.name).join(", ") || "input";
-  const outputLabel = signatureOutputs(primary.surface).map((output) => output.name).join(", ") || "output";
-  const errorLabel = signatureErrors(primary.surface).map((error) => error.code).join(" | ") || "declared error";
   return [
     "sequenceDiagram",
     "  participant caller as Caller",
-    `  participant surface as ${mermaidLabel(surfaceDisplayName(primary))}`,
-    `  caller->>surface: ${mermaidLabel(inputLabel)}`,
-    "  surface->>surface: validate declared input contract",
-    "  alt valid contract",
-    `    surface-->>caller: ${mermaidLabel(outputLabel)}`,
-    "  else declared failure",
-    `    surface--x caller: ${mermaidLabel(errorLabel)}`,
-    "  end"
+    ...surfaces.map((entry) => `  participant ${entry.id} as ${mermaidLabel(surfaceDisplayName(entry))}`),
+    ...surfaces.flatMap((entry) => {
+      const inputLabel = signatureInputs(entry.surface).map((input) => input.name).join(", ") || "input";
+      const outputLabel = signatureOutputs(entry.surface).map((output) => output.name).join(", ") || "output";
+      const errorLabel = signatureErrors(entry.surface).map((error) => error.code).join(" | ") || "declared error";
+      return [
+        `  caller->>${entry.id}: ${mermaidLabel(inputLabel)}`,
+        `  ${entry.id}->>${entry.id}: validate ${mermaidLabel(entry.surface.name)} contract`,
+        "  alt valid contract",
+        `    ${entry.id}-->>caller: ${mermaidLabel(outputLabel)}`,
+        "  else declared failure",
+        `    ${entry.id}--x caller: ${mermaidLabel(errorLabel)}`,
+        "  end"
+      ];
+    })
   ].join("\n");
 }
 
@@ -763,19 +811,18 @@ function softwareSequenceMermaid(dossier = {}) {
   return sequenceMermaid(realSequences) ?? derivedSoftwareSequenceMermaid(dossier);
 }
 
-function stateMermaid(dossier = {}) {
-  const primary = firstPublicSurface(dossier);
-  if (!primary) {
+function stateMermaidForSurface(entry = {}) {
+  if (!entry.surface) {
     return null;
   }
-  const inputLabel = signatureInputs(primary.surface).map((input) => input.name).join(", ") || "input";
-  const outputLabel = signatureOutputs(primary.surface).map((output) => output.name).join(", ") || "output";
-  const errorLabel = signatureErrors(primary.surface).map((error) => error.code).join(" | ");
+  const inputLabel = signatureInputs(entry.surface).map((input) => input.name).join(", ") || "input";
+  const outputLabel = signatureOutputs(entry.surface).map((output) => output.name).join(", ") || "output";
+  const errorLabel = signatureErrors(entry.surface).map((error) => error.code).join(" | ");
   const lines = [
     "stateDiagram-v2",
     "  [*] --> InputReceived",
     `  InputReceived --> ContractValid: validate ${mermaidLabel(inputLabel)}`,
-    `  ContractValid --> SurfaceExecuted: ${mermaidLabel(primary.surface.name)}`,
+    `  ContractValid --> SurfaceExecuted: ${mermaidLabel(entry.surface.name)}`,
     `  SurfaceExecuted --> OutputReturned: ${mermaidLabel(outputLabel)}`,
     "  OutputReturned --> [*]"
   ];
@@ -784,6 +831,18 @@ function stateMermaid(dossier = {}) {
     lines.push("  DeclaredError --> [*]");
   }
   return lines.join("\n");
+}
+
+function stateDiagramCards(dossier = {}) {
+  const surfaces = moduleSurfaces(dossier);
+  if (surfaces.length === 0) {
+    return [];
+  }
+  return surfaces.map((entry) => mermaidDiagramCard({
+    title: `${entry.surface.name} State Flow`,
+    description: `Declared execution states for ${surfaceDisplayName(entry)}.`,
+    diagram: stateMermaidForSurface(entry)
+  })).filter(Boolean);
 }
 
 function callStackMermaid(callStacks = []) {
@@ -815,11 +874,7 @@ function renderVisualBlueprint(dossier = {}) {
       description: "How the software surface is called and what it returns or throws.",
       diagram: softwareSequenceMermaid(dossier)
     }),
-    mermaidDiagramCard({
-      title: "Surface State Flow",
-      description: "The domain execution states for the primary public surface.",
-      diagram: stateMermaid(dossier)
-    }),
+    ...stateDiagramCards(dossier),
     mermaidDiagramCard({
       title: "Call Stack",
       description: "The declared execution path for the public surface.",
@@ -1060,11 +1115,9 @@ function renderFlowTimeline(dossier = {}) {
     </section>
     <section>
       <h3>Surface State Flow</h3>
-      ${mermaidDiagramCard({
-        title: "Surface State Flow",
-        description: "Mermaid state diagram generated from the primary public surface.",
-        diagram: stateMermaid(dossier)
-      })}
+      <div class="diagram-grid">
+        ${stateDiagramCards(dossier).join("") || '<p class="empty">No surface state flows declared.</p>'}
+      </div>
     </section>
   </div>`;
 }
@@ -1610,7 +1663,7 @@ function requireSystemDossier(model) {
 export function renderDashboardHtml(model) {
   const dossier = requireSystemDossier(model);
   const blueprint = model.blueprint;
-  const primarySummary = (blueprint.summary ?? [])[0] ?? "No user-visible behavior recorded.";
+  const primarySummary = referenceSummary({ blueprint, dossier });
   const title = referenceTitle(model);
   return `<!doctype html>
 <html lang="en">

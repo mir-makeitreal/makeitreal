@@ -45,7 +45,7 @@
         </div>
         <p class="reference-label">Architecture Dossier</p>
         <h1>Authentication Vertical Slice</h1>
-        <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
+        <p class="summary-line">2 responsibility units: Auth UI, Auth Service. Review module placement, public signatures, 1 contract, and Done evidence as one architecture packet.</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
           <p>Authentication vertical slice</p>
@@ -79,7 +79,7 @@
         <h2>System Placement</h2>
       </div>
     </div>
-    <p class="section-note">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
+    <p class="section-note">2 responsibility units (Auth UI, Auth Service) communicate only through 1 declared contract edge.</p>
     <article class="diagram-card">
     <header>
       <strong>Module Topology</strong>
@@ -507,10 +507,11 @@ const session = await httpResponse.json();</code></pre>
     </section>
     <section>
       <h3>Surface State Flow</h3>
-      <article class="diagram-card">
+      <div class="diagram-grid">
+        <article class="diagram-card">
     <header>
-      <strong>Surface State Flow</strong>
-      <span>Mermaid state diagram generated from the primary public surface.</span>
+      <strong>LoginForm.submit State Flow</strong>
+      <span>Declared execution states for Auth UI: LoginForm.submit.</span>
     </header>
     <pre class="mermaid">stateDiagram-v2
   [*] --&gt; InputReceived
@@ -531,7 +532,32 @@ const session = await httpResponse.json();</code></pre>
   ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
   DeclaredError --&gt; [*]</code></pre>
     </details>
+  </article><article class="diagram-card">
+    <header>
+      <strong>POST /auth/login State Flow</strong>
+      <span>Declared execution states for Auth Service: POST /auth/login.</span>
+    </header>
+    <pre class="mermaid">stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate request.body.email, request.body.password
+  ContractValid --&gt; SurfaceExecuted: POST /auth/login
+  SurfaceExecuted --&gt; OutputReturned: 200.session
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: 401.INVALID_CREDENTIALS
+  DeclaredError --&gt; [*]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate request.body.email, request.body.password
+  ContractValid --&gt; SurfaceExecuted: POST /auth/login
+  SurfaceExecuted --&gt; OutputReturned: 200.session
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: 401.INVALID_CREDENTIALS
+  DeclaredError --&gt; [*]</code></pre>
+    </details>
   </article>
+      </div>
     </section>
   </div>
         <div class="scenario-reference">

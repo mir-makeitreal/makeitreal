@@ -779,7 +779,7 @@
             "responsibilityUnitId": "ru.auth-service"
           }
         ],
-        "summary": "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.",
+        "summary": "2 responsibility units (Auth UI, Auth Service) communicate only through 1 declared contract edge.",
         "title": "Authentication vertical slice"
       },
       "taskDag": {

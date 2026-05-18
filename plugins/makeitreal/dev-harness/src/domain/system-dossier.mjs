@@ -307,9 +307,19 @@ function modelWorkerTopology({ taskDag, moduleInterfaces }) {
 }
 
 function modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }) {
+  const moduleNames = uniqueText(moduleInterfaces.map((moduleInterface) => moduleInterface.moduleName));
+  let summary = (prd.userVisibleBehavior ?? [])[0] ?? "";
+  if (moduleInterfaces.length > 1 && dependencyEdges.length === 0) {
+    summary = `${moduleInterfaces.length} responsibility units (${moduleNames.join(", ")}) are declared as separate modules with no cross-module imports.`;
+  }
+  if (moduleInterfaces.length > 1 && dependencyEdges.length > 0) {
+    const edgeLabel = dependencyEdges.length === 1 ? "declared contract edge" : "declared contract edges";
+    summary = `${moduleInterfaces.length} responsibility units (${moduleNames.join(", ")}) communicate only through ${dependencyEdges.length} ${edgeLabel}.`;
+  }
+
   return {
     title: prd.title,
-    summary: (prd.userVisibleBehavior ?? [])[0] ?? "",
+    summary,
     modules: moduleInterfaces.map((moduleInterface) => ({
       responsibilityUnitId: moduleInterface.responsibilityUnitId,
       moduleName: moduleInterface.moduleName,
@@ -350,39 +360,48 @@ function harnessSequence(sequence = {}) {
     || text.includes("plan to implementation handoff");
 }
 
-function derivedScenarioFromModuleGraph(moduleInterfaces = []) {
+function surfaceScenarioId(surface, index) {
+  return `scenario-${String(surface?.name ?? `surface-${index + 1}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || `surface-${index + 1}`}`;
+}
+
+function derivedScenariosFromModuleGraph(moduleInterfaces = []) {
   const moduleByResponsibilityUnit = new Map(moduleInterfaces.map((moduleInterface) => [moduleInterface.responsibilityUnitId, moduleInterface]));
-  const moduleInterface = moduleInterfaces.find((candidate) => (candidate.imports ?? []).length > 0 && (candidate.publicSurfaces ?? []).length > 0)
-    ?? moduleInterfaces.find((candidate) => (candidate.publicSurfaces ?? []).length > 0);
-  const surface = moduleInterface?.publicSurfaces?.[0];
-  if (!moduleInterface || !surface) {
-    return null;
-  }
-  const outputNames = (surface.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
-  const errorNames = (surface.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
-  const dependencyMessages = (moduleInterface.imports ?? []).flatMap((dependency) => {
-    const provider = moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId);
-    if (!provider) {
-      return [];
-    }
-    const providerSurface = dependency.surface ?? provider.publicSurfaces?.[0]?.name ?? dependency.contractId;
-    const providerOutput = (provider.publicSurfaces?.[0]?.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
-    const providerErrors = (provider.publicSurfaces?.[0]?.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
-    return [
-      { from: moduleInterface.moduleName, to: provider.moduleName, label: `${providerSurface} via ${dependency.contractId}` },
-      { from: provider.moduleName, to: moduleInterface.moduleName, label: `${providerOutput} or ${providerErrors}` }
-    ];
-  });
-  return {
-    id: "scenario-declared-surface-call",
-    title: `${surface.name} contract call`,
-    participants: uniqueText(["Caller", moduleInterface.moduleName, ...(moduleInterface.imports ?? []).map((dependency) => moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId)?.moduleName).filter(Boolean)]),
-    messages: [
-      { from: "Caller", to: moduleInterface.moduleName, label: surface.name },
-      ...dependencyMessages,
-      { from: moduleInterface.moduleName, to: "Caller", label: `${outputNames} or ${errorNames}` }
-    ]
-  };
+  const moduleOrder = [...moduleInterfaces]
+    .filter((candidate) => (candidate.publicSurfaces ?? []).length > 0)
+    .sort((left, right) => Number((right.imports ?? []).length > 0) - Number((left.imports ?? []).length > 0));
+
+  return moduleOrder.flatMap((moduleInterface, moduleIndex) =>
+    (moduleInterface.publicSurfaces ?? []).map((surface, surfaceIndex) => {
+      const outputNames = (surface.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
+      const errorNames = (surface.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
+      const dependencyMessages = (moduleInterface.imports ?? []).flatMap((dependency) => {
+        const provider = moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId);
+        if (!provider) {
+          return [];
+        }
+        const providerSurface = dependency.surface ?? provider.publicSurfaces?.[0]?.name ?? dependency.contractId;
+        const providerOutput = (provider.publicSurfaces?.[0]?.signature?.outputs ?? []).map((output) => output.name).join(", ") || "declared output";
+        const providerErrors = (provider.publicSurfaces?.[0]?.signature?.errors ?? []).map((error) => error.code).join(" | ") || "declared error";
+        return [
+          { from: moduleInterface.moduleName, to: provider.moduleName, label: `${providerSurface} via ${dependency.contractId}` },
+          { from: provider.moduleName, to: moduleInterface.moduleName, label: `${providerOutput} or ${providerErrors}` }
+        ];
+      });
+      return {
+        id: surfaceScenarioId(surface, moduleIndex + surfaceIndex),
+        title: `${surface.name} contract call`,
+        participants: uniqueText(["Caller", moduleInterface.moduleName, ...(moduleInterface.imports ?? []).map((dependency) => moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId)?.moduleName).filter(Boolean)]),
+        messages: [
+          { from: "Caller", to: moduleInterface.moduleName, label: surface.name },
+          ...dependencyMessages,
+          { from: moduleInterface.moduleName, to: "Caller", label: `${outputNames} or ${errorNames}` }
+        ]
+      };
+    })
+  );
 }
 
 function softwareScenarios({ designPack, moduleInterfaces }) {
@@ -390,8 +409,7 @@ function softwareScenarios({ designPack, moduleInterfaces }) {
   if (declared.length > 0) {
     return declared;
   }
-  const derived = derivedScenarioFromModuleGraph(moduleInterfaces);
-  return derived ? [derived] : [];
+  return derivedScenariosFromModuleGraph(moduleInterfaces);
 }
 
 function modelScenarioIndex({ designPack, moduleInterfaces }) {

@@ -492,6 +492,7 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.equal(dossier.deliveryScope.ownedPaths.includes("web/src/auth/**"), true);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("api/src/auth/**"), true);
     assert.equal(dossier.systemPlacement.title, "Authentication vertical slice");
+    assert.equal(dossier.systemPlacement.summary, "2 responsibility units (Auth UI, Auth Service) communicate only through 2 declared contract edges.");
     assert.deepEqual(dossier.systemPlacement.modules.map((module) => module.moduleName), ["Auth UI", "Auth Service"]);
     assert.equal(dossier.scenarioIndex[0].title, "Login session creation");
     assert.equal(dossier.scenarioIndex[0].visualizationKind, "mermaid");
@@ -802,6 +803,43 @@ test("preview renders request-specific SDK examples and function signatures", as
     assert.match(html, /INTEGER_INVALID/);
     assert.doesNotMatch(html, /Ada\s+Lovelace/);
     assert.doesNotMatch(html, /parseBoundedInt\(input, min, max\): string/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("preview keeps multi-unit Blueprints centered on the architecture packet instead of the first surface", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
+  try {
+    const plan = await generatePlanRun({
+      projectRoot: root,
+      request: "Implement three independent pure JavaScript responsibility units. Unit 1 owns src/math/safe-add.mjs and test/math/safe-add.test.mjs and exports safeAdd(a, b) for finite numbers only, throwing TypeError with code SAFE_ADD_INVALID for invalid input. Unit 2 owns src/text/slugify-title.mjs and test/text/slugify-title.test.mjs and exports slugifyTitle(input), trimming and lowercasing a non-empty string and collapsing non-alphanumeric runs to one hyphen, throwing TypeError with code SLUGIFY_TITLE_INVALID. Unit 3 owns src/date/format-iso-date.mjs and test/date/format-iso-date.test.mjs and exports formatIsoDate(input), accepting a valid Date and returning UTC YYYY-MM-DD, throwing TypeError with code FORMAT_ISO_DATE_INVALID. These units must not import one another. Verification command is npm test.",
+      runId: "three-independent-units",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-18T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true, JSON.stringify(plan.errors));
+
+    const result = await renderDesignPreview({ runDir: plan.runDir });
+    assert.equal(result.ok, true);
+
+    const previewModel = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
+    const dossier = previewModel.blueprint.systemDossier;
+    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["safeAdd", "slugifyTitle", "formatIsoDate"]);
+    assert.equal(dossier.systemPlacement.summary, "3 responsibility units (safeAdd, slugifyTitle, formatIsoDate) are declared as separate modules with no cross-module imports.");
+    assert.deepEqual(dossier.scenarioIndex.map((scenario) => scenario.title), [
+      "safeAdd contract call",
+      "slugifyTitle contract call",
+      "formatIsoDate contract call"
+    ]);
+
+    const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
+    assert.match(html, /<h1>Three Independent Responsibility Units<\/h1>/);
+    assert.match(html, /3 responsibility units: safeAdd, slugifyTitle, formatIsoDate/);
+    assert.match(html, /safeAdd State Flow/);
+    assert.match(html, /slugifyTitle State Flow/);
+    assert.match(html, /formatIsoDate State Flow/);
+    assert.doesNotMatch(html, /<h1>Safe Add<\/h1>/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
