@@ -10,6 +10,35 @@ function selectPaths(paths, pathPattern, testPattern) {
   return paths.filter((candidate) => pathMatches(candidate, pathPattern) || pathMatches(candidate, testPattern));
 }
 
+function isGeneralTestPattern(candidate) {
+  return /^tests?\/\*\*$/i.test(String(candidate ?? "").replaceAll("\\", "/"));
+}
+
+function testPathForSourcePath(candidate) {
+  const normalized = String(candidate ?? "").replaceAll("\\", "/");
+  if (!normalized.startsWith("src/")) {
+    return null;
+  }
+  if (normalized.endsWith("/**")) {
+    return `test/${normalized.slice("src/".length)}`;
+  }
+  const extension = normalized.match(/\.[A-Za-z0-9._-]+$/)?.[0];
+  if (!extension) {
+    return null;
+  }
+  const sourcePathWithoutExtension = normalized.slice(0, -extension.length);
+  return `test/${sourcePathWithoutExtension.slice("src/".length)}.test${extension}`;
+}
+
+function expandGeneralTestOwnership(paths) {
+  if (!paths.some(isGeneralTestPattern)) {
+    return paths;
+  }
+  const ownedPaths = paths.filter((candidate) => !isGeneralTestPattern(candidate));
+  const derivedTestPaths = ownedPaths.map(testPathForSourcePath).filter(Boolean);
+  return uniqueValues([...ownedPaths, ...derivedTestPaths]);
+}
+
 function resourceFromPaths(paths, domainPattern) {
   for (const candidate of paths) {
     const normalized = candidate.replaceAll("\\", "/");
@@ -38,7 +67,10 @@ function requestSection(request, labels) {
   const text = String(request ?? "");
   const labelPattern = labels.join("|");
   const boundaryPattern = SECTION_LABELS.filter((label) => !labels.includes(label)).join("|");
-  const match = text.match(new RegExp(`\\b(?:${labelPattern})\\s*:\\s*([\\s\\S]*?)(?=\\b(?:${boundaryPattern})\\s*:|$)`, "i"));
+  const labelSuffix = "(?:\\s+(?:unit|responsibility\\s+unit|module|layer))?";
+  const sectionSeparator = "(?:\\s*:\\s*|\\s+)";
+  const nextSectionSeparator = "(?:\\s*:|\\s+)";
+  const match = text.match(new RegExp(`\\b(?:${labelPattern})${labelSuffix}${sectionSeparator}([\\s\\S]*?)(?=\\b(?:${boundaryPattern})${labelSuffix}${nextSectionSeparator}|$)`, "i"));
   return match?.[1]?.trim() || null;
 }
 
@@ -207,7 +239,7 @@ export function decomposeResponsibilities({
   allowedPaths,
   request
 }) {
-  const paths = uniqueValues(allowedPaths ?? owns);
+  const paths = expandGeneralTestOwnership(uniqueValues(allowedPaths ?? owns));
   const apiPaths = selectPaths(paths, /(^|\/)(api|routes?)\/[^*]+/i, /^test\/(api|routes?)\//i);
   const dataPaths = selectPaths(paths, /(^|\/)(data|db|repositories?|persistence)\/[^*]+/i, /^test\/(data|db|repositories?|persistence)\//i);
   if (apiPaths.length === 0 || dataPaths.length === 0) {

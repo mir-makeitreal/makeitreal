@@ -22,7 +22,15 @@ function reportArray(value) {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.map((item) => String(item)).filter(Boolean);
+  return value.map((item) => {
+    if (typeof item === "string") {
+      return item.trim();
+    }
+    if (item && typeof item === "object") {
+      return JSON.stringify(item);
+    }
+    return String(item ?? "").trim();
+  }).filter(Boolean);
 }
 
 function candidateReview(record) {

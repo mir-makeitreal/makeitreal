@@ -129,6 +129,10 @@ function explicitAllowedPathsFromRequest(request) {
     }
     candidates.push(candidate.includes(".") || candidate.endsWith("/**") ? candidate : `${candidate}/**`);
   }
+  const generalTestPattern = /(?:^|[\s("'`])((?:test|tests)\/\*\*)(?=$|[\s)"'`,.;:!?])/g;
+  for (const match of text.matchAll(generalTestPattern)) {
+    candidates.push(match[1]);
+  }
   return uniqueValues(candidates).filter((candidate) => !invalidAllowedPathPattern(candidate));
 }
 

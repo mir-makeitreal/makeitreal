@@ -663,7 +663,9 @@ test("native finish accepts Claude Task reviewer arrays under reviews", async ()
           role,
           status: "APPROVED",
           summary: `${role} approved native parent task output.`,
-          findings: [],
+          findings: role === "quality-reviewer"
+            ? [{ severity: "MINOR", location: "apps/web/auth/native-output.txt:1", description: "cosmetic note" }]
+            : [],
           evidence: ["native parent task fixture"]
         }
       }))
@@ -684,6 +686,10 @@ test("native finish accepts Claude Task reviewer arrays under reviews", async ()
       "spec-reviewer",
       "quality-reviewer",
       "verification-reviewer"
+    ]);
+    const qualityReview = attempt.runner.reviewReports.find((review) => review.role === "quality-reviewer");
+    assert.deepEqual(qualityReview.findings, [
+      "{\"severity\":\"MINOR\",\"location\":\"apps/web/auth/native-output.txt:1\",\"description\":\"cosmetic note\"}"
     ]);
   });
 });
