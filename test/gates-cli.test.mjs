@@ -97,6 +97,93 @@ test("Ready gate validates every required DAG node", async () => {
   });
 });
 
+test("Ready gate rejects API work items without an OpenAPI contract binding", async () => {
+  await withFixture(async ({ runDir }) => {
+    const workItem = {
+      schemaVersion: "1.0",
+      id: "work.audit-api",
+      lane: "Contract Frozen",
+      prdId: "prd.auth",
+      responsibilityUnitId: "ru.audit-api",
+      contractIds: ["contract.audit.boundary"],
+      dependsOn: [],
+      allowedPaths: ["src/api/audit/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('audit api ok')"] }],
+      doneEvidence: [
+        { kind: "verification", path: "evidence/work.audit-api.verification.json" },
+        { kind: "wiki-sync", path: "evidence/work.audit-api.wiki-sync.json" }
+      ],
+      prdTrace: { acceptanceCriteriaIds: ["AC-001"] }
+    };
+    await writeJsonFile(path.join(runDir, "work-items", `${workItem.id}.json`), workItem);
+
+    const dagPath = path.join(runDir, "work-item-dag.json");
+    const dag = await readJsonFile(dagPath);
+    dag.nodes.push({
+      id: workItem.id,
+      kind: "implementation",
+      responsibilityUnitId: workItem.responsibilityUnitId,
+      requiredForDone: true
+    });
+    await writeJsonFile(dagPath, dag);
+
+    const responsibilityPath = path.join(runDir, "responsibility-units.json");
+    const responsibilityUnits = await readJsonFile(responsibilityPath);
+    responsibilityUnits.units.push({
+      id: "ru.audit-api",
+      owner: "team.audit",
+      owns: ["src/api/audit/**"],
+      publicSurfaces: ["POST /audit"],
+      mayUseContracts: ["contract.audit.boundary"]
+    });
+    await writeJsonFile(responsibilityPath, responsibilityUnits);
+
+    const designPackPath = path.join(runDir, "design-pack.json");
+    const designPack = await readJsonFile(designPackPath);
+    designPack.apiSpecs.push({
+      kind: "none",
+      contractId: "contract.audit.boundary",
+      reason: "Broken fixture: API work item is missing an OpenAPI contract."
+    });
+    designPack.responsibilityBoundaries.push({
+      responsibilityUnitId: "ru.audit-api",
+      owns: ["src/api/audit/**"],
+      mayUseContracts: ["contract.audit.boundary"]
+    });
+    designPack.moduleInterfaces.push({
+      responsibilityUnitId: "ru.audit-api",
+      owner: "team.audit",
+      moduleName: "Audit API",
+      purpose: "Own the audit HTTP API surface.",
+      owns: ["src/api/audit/**"],
+      publicSurfaces: [{
+        name: "POST /audit",
+        kind: "http",
+        contractIds: ["contract.audit.boundary"],
+        signature: {
+          inputs: [{ name: "requestBody", type: "object", required: true, fields: ["eventId"] }],
+          outputs: [{ name: "201 response", type: "object" }],
+          errors: [{ code: "AUDIT_API_REJECTED", when: "Invalid request.", handling: "Fail fast." }]
+        }
+      }],
+      imports: []
+    });
+    await writeJsonFile(designPackPath, designPack);
+
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(result.status, 1);
+    assert.equal(codes.includes("HARNESS_API_CONTRACT_MISSING"), true);
+    assert.equal(codes.includes("HARNESS_API_CONFORMANCE_EVIDENCE_MISSING"), true);
+  });
+});
+
 test("Done gate requires verification and wiki evidence", async () => {
   await withFixture(async ({ runDir }) => {
     await renderDesignPreview({ runDir });

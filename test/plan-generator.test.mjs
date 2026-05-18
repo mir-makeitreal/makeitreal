@@ -160,7 +160,11 @@ test("plan generator creates API plus persistence responsibility DAG from explic
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
     assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.orders-api"), true);
     assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.orders-repository"), true);
+    assert.equal(designPack.apiSpecs.some((spec) => spec.kind === "openapi" && spec.contractId === result.contractId), true);
     assert.equal(designPack.apiSpecs.some((spec) => spec.contractId === "contract.orders.persistence"), true);
+    const apiWorkItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-api.json"));
+    assert.equal(apiWorkItem.contractIds.includes(result.contractId), true);
+    assert.equal(apiWorkItem.doneEvidence.some((evidence) => evidence.kind === "openapi-conformance"), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -189,6 +193,7 @@ test("plan generator preserves explicit API handler surface when splitting API a
     assert.equal(result.ok, true, JSON.stringify(result.errors));
 
     const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.apiSpecs.some((spec) => spec.kind === "openapi" && spec.contractId === result.contractId), true);
     const apiModule = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.orders-api");
     const repositoryModule = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.orders-repository");
     assert.equal(apiModule.publicSurfaces[0].name, "handlePostOrders");
@@ -248,6 +253,8 @@ test("plan generator expands broad test ownership for unit-labeled split respons
       "src/api/orders/handler.mjs",
       "test/api/orders/handler.test.mjs"
     ]);
+    assert.equal(apiWorkItem.contractIds.includes(result.contractId), true);
+    assert.equal(apiWorkItem.doneEvidence.some((evidence) => evidence.kind === "openapi-conformance"), true);
     assert.equal(repositoryWorkItem.allowedPaths.includes("test/**"), false);
     assert.equal(apiWorkItem.allowedPaths.includes("test/**"), false);
 
@@ -845,6 +852,8 @@ test("plan generator accepts multi-domain vertical slices with explicit ownershi
     const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
     assert.equal(responsibilityUnits.units[0].owner, "team.signup");
     assert.deepEqual(responsibilityUnits.units[0].owns, ["features/signup/**", "db/migrations/signup/**"]);
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.apiSpecs.some((spec) => spec.kind === "openapi" && spec.contractId === result.contractId), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

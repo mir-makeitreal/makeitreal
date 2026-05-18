@@ -36,9 +36,35 @@ function nodeKindForWorkItem(artifacts, workItem) {
   return artifacts.workItemDag.nodes?.find((node) => node.id === workItem.id)?.kind ?? "implementation";
 }
 
+function moduleInterfaceForWorkItem(artifacts, workItem) {
+  return artifacts.designPack.moduleInterfaces.find((moduleInterface) => moduleInterface.responsibilityUnitId === workItem.responsibilityUnitId) ?? null;
+}
+
+function ownsApiPath(workItem) {
+  return (workItem.allowedPaths ?? []).some((candidate) => /(^|\/)(api|routes?)(\/|$)/i.test(String(candidate ?? "").replaceAll("\\", "/")));
+}
+
+function isApiResponsibilityUnit({ artifacts, workItem }) {
+  const moduleInterface = moduleInterfaceForWorkItem(artifacts, workItem);
+  return workItem.responsibilityUnitId.endsWith("-api")
+    || ownsApiPath(workItem)
+    || /\b(API|endpoint|route|HTTP)\b/.test(`${moduleInterface?.moduleName ?? ""} ${moduleInterface?.purpose ?? ""}`);
+}
+
+function openApiContractIds(artifacts) {
+  return new Set(artifacts.designPack.apiSpecs
+    .filter((spec) => spec.kind === "openapi")
+    .map((spec) => spec.contractId)
+    .filter(Boolean));
+}
+
 function hasDoneEvidencePlan(workItem) {
   const kinds = new Set((workItem.doneEvidence ?? []).map((evidence) => evidence.kind));
   return kinds.has("verification") && kinds.has("wiki-sync");
+}
+
+function hasDoneEvidenceKind(workItem, kind) {
+  return (workItem.doneEvidence ?? []).some((evidence) => evidence.kind === kind);
 }
 
 function workItemsForRequiredNodes({ dag, workItems }) {
@@ -50,6 +76,7 @@ function workItemsForRequiredNodes({ dag, workItems }) {
 
 function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
   const nodeKind = nodeKindForWorkItem(artifacts, workItem);
+  const apiContractIds = openApiContractIds(artifacts);
   const traceResult = validateWorkItemPrdTrace({ prd: artifacts.prd, workItem });
   errors.push(...traceResult.errors);
 
@@ -93,6 +120,27 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
 
   if (!hasDoneEvidencePlan(workItem)) {
     errors.push(createHarnessError({ code: "HARNESS_DONE_EVIDENCE_PLAN_MISSING", reason: `Ready requires planned verification and wiki-sync Done evidence: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
+  }
+
+  const requiresOpenApiContract = nodeKind === "implementation" && isApiResponsibilityUnit({ artifacts, workItem });
+  const workItemOpenApiContracts = (workItem.contractIds ?? []).filter((contractId) => apiContractIds.has(contractId));
+  if (requiresOpenApiContract && workItemOpenApiContracts.length === 0) {
+    errors.push(createHarnessError({
+      code: "HARNESS_API_CONTRACT_MISSING",
+      reason: `API work item must bind an OpenAPI contract before launch: ${workItem.id}.`,
+      ownerModule: workItem.responsibilityUnitId,
+      evidence: ["design-pack.json", "work-items"],
+      recoverable: true
+    }));
+  }
+  if (requiresOpenApiContract && !hasDoneEvidenceKind(workItem, "openapi-conformance")) {
+    errors.push(createHarnessError({
+      code: "HARNESS_API_CONFORMANCE_EVIDENCE_MISSING",
+      reason: `API work item must plan OpenAPI conformance evidence before launch: ${workItem.id}.`,
+      ownerModule: workItem.responsibilityUnitId,
+      evidence: ["work-items"],
+      recoverable: true
+    }));
   }
 
   const requiresAllowedPaths = nodeKind === "implementation";

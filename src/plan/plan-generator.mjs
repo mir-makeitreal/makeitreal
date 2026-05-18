@@ -67,6 +67,7 @@ function hasPublicApiContractIntent(request) {
   const text = String(request ?? "");
   return /\b(openapi|swagger)\b/i.test(text)
     || /\b(?:public|external|client[-\s]?facing)?\s*(?:rest|http)?\s*api\s+(?:endpoint|contract|surface)\b/i.test(text)
+    || /\b(?:backend|back-end|server|service)\s+API\b/i.test(text)
     || /\b(?:build|create|implement|add|expose)\s+(?:a\s+|an\s+)?(?:rest\s+|http\s+)?(?:api\s+)?endpoint\b/i.test(text)
     || /\b(?:build|create|implement|add|expose)\s+(?:a\s+|an\s+)?REST\s+API\b/i.test(text);
 }
@@ -82,6 +83,10 @@ function isModuleIoLike(request) {
 
 function isOpsLike(request) {
   return /\b(ops|operational|platform|deployment|readiness|health[-\s]?check|healthz|smoke|ci|runbook|recovery)\b/i.test(request);
+}
+
+function hasApiOwnedPath(owns) {
+  return owns.some((candidate) => /(^|\/)(api|routes?)(\/|$)/i.test(String(candidate ?? "").replaceAll("\\", "/")));
 }
 
 function defaultAllowedPaths(slug) {
@@ -1521,7 +1526,8 @@ export async function generatePlanRun({
       })]
     };
   }
-  const usesOpenApi = isApiLike(request, apiKind);
+  const apiKindMode = normalizedApiKind(apiKind);
+  const usesOpenApi = apiKindMode === "none" ? false : isApiLike(request, apiKind) || hasApiOwnedPath(owns);
   const apiProfile = usesOpenApi ? apiProfileFromRequest({ request, slug }) : null;
   const componentProfile = usesOpenApi ? null : componentProfileFromRequest({ request, slug });
   const moduleProfile = usesOpenApi || componentProfile ? null : moduleProfileFromRequest({ request, slug });
