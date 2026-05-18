@@ -72,9 +72,40 @@ function explicitPathsFromText(text) {
   return uniqueValues(candidates);
 }
 
+function isTestPath(candidate) {
+  return /(^|\/)tests?\//i.test(String(candidate ?? "").replaceAll("\\", "/"));
+}
+
+function fileStem(candidate) {
+  const normalized = String(candidate ?? "").replaceAll("\\", "/");
+  if (normalized.endsWith("/**") || !/\.[A-Za-z0-9._-]+$/.test(normalized)) {
+    return null;
+  }
+  const basename = normalized.split("/").at(-1).replace(/\.[A-Za-z0-9._-]+$/, "");
+  return basename.replace(/\.test$/i, "");
+}
+
+function explicitPathsForUnitSection({ sectionText, request }) {
+  const sectionPaths = explicitPathsFromText(sectionText);
+  const sourcePaths = sectionPaths.filter((candidate) => !isTestPath(candidate));
+  const sourceStems = new Set(sourcePaths.map(fileStem).filter(Boolean));
+  if (sourceStems.size === 0) {
+    return sectionPaths;
+  }
+  const allPaths = explicitPathsFromText(request);
+  const matchingTests = allPaths
+    .filter(isTestPath)
+    .filter((candidate) => sourceStems.has(fileStem(candidate)));
+  const scopedSectionTests = sectionPaths
+    .filter(isTestPath)
+    .filter((candidate) => sourceStems.has(fileStem(candidate)));
+  return uniqueValues([...sourcePaths, ...scopedSectionTests, ...matchingTests]);
+}
+
 function explicitUnitSections(request) {
   const text = String(request ?? "");
-  const matches = [...text.matchAll(/\bUnit\s+(\d+)\s+owns\s+([\s\S]*?)(?=\bUnit\s+\d+\s+owns\b|$)/gi)];
+  const marker = String.raw`\bUnit\s+(\d+)(?:\s+owns\b|\s*[:\-]\s*)`;
+  const matches = [...text.matchAll(new RegExp(`${marker}([\\s\\S]*?)(?=${marker}|$)`, "gi"))];
   if (matches.length < 2) {
     return [];
   }
@@ -114,7 +145,7 @@ function explicitUnitDecomposition({ slug, owner, contractId, moduleInterface, w
   const implementationUnits = [];
 
   for (const section of sections) {
-    const paths = explicitPathsFromText(section.text);
+    const paths = explicitPathsForUnitSection({ sectionText: section.text, request });
     const surfaces = functionReferences(section.text);
     const unitSlug = slugFrom(surfaces[0]?.name ?? `unit-${section.unitNumber}`);
     const unitContractId = `contract.${unitSlug}.boundary`;
@@ -358,7 +389,8 @@ function bookFieldsFromText(source) {
     fields.push({ name: "author", type: "string", required: true, description: "Book author after declared trimming rules." });
   }
   if (/\byear\b/i.test(text)) {
-    fields.push({ name: "year", type: "integer", required: !/\boptional\b[\s\S]{0,40}\byear\b|\byear\b[\s\S]{0,40}\boptional\b/i.test(text), description: "Optional publication year when supplied by the caller." });
+    const optionalYear = /\boptional\b[\s\S]{0,40}\byear\b|\byear\b[\s\S]{0,40}\boptional\b|\b(?:when|if)\s+year\s+exists\b/i.test(text);
+    fields.push({ name: "year", type: "integer", required: !optionalYear, description: "Optional publication year when supplied by the caller." });
   }
   return fields;
 }
@@ -401,7 +433,7 @@ function outputDescriptor({ name, contractId, source }) {
       description: "Plain object card view model returned to consumers."
     };
   }
-  if (/\btext\s+card\b|\bcard\s+text\b/i.test(text)) {
+  if (/\btext\s+card\b|\bcard\s+text\b|^render.*Card\b[\s\S]*\breturns?\s+(?:a\s+)?(?:single\s+)?string\b/i.test(`${name} ${text}`)) {
     return {
       name: "cardText",
       type: "string",

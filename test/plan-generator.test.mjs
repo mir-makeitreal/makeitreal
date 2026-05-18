@@ -847,6 +847,61 @@ test("plan generator preserves explicit Unit 1 and Unit 2 module responsibility 
   }
 });
 
+test("plan generator treats Unit colon sections as explicit responsibility boundaries", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Unit 1: create src/catalog/normalize-book.mjs exporting normalizeBook(input). Contract: input object has title string, author string, optional year integer. It trims title and author. Throw TypeError with code BOOK_INPUT_INVALID for non-object, missing title, missing author, invalid year, or empty normalized title/author. Unit 2: create src/catalog/render-book-card.mjs exporting renderBookCard(input). It may use only normalizeBook contract from Unit 1 and returns a single string \"Title — Author\" with \" (Year)\" only when year exists. Tests: test/catalog/normalize-book.test.mjs and test/catalog/render-book-card.test.mjs. Verification command is npm test.",
+      runId: "catalog-colon-slice",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-18T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const board = await readJsonFile(path.join(result.runDir, "board.json"));
+    assert.equal(board.workItems.some((item) => item.id === "work.normalize-book"), true);
+    assert.equal(board.workItems.some((item) => item.id === "work.render-book-card"), true);
+    const render = board.workItems.find((item) => item.id === "work.render-book-card");
+    assert.deepEqual(render.dependsOn, ["work.catalog-colon-slice-pm", "work.normalize-book"]);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    const normalizeInterface = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.normalize-book");
+    const renderInterface = designPack.moduleInterfaces.find((item) => item.responsibilityUnitId === "ru.render-book-card");
+    assert.deepEqual(normalizeInterface.owns, [
+      "src/catalog/normalize-book.mjs",
+      "test/catalog/normalize-book.test.mjs"
+    ]);
+    assert.deepEqual(renderInterface.owns, [
+      "src/catalog/render-book-card.mjs",
+      "test/catalog/render-book-card.test.mjs"
+    ]);
+    assert.deepEqual(normalizeInterface.publicSurfaces[0].signature.inputs[0].fields.map((field) => [field.name, field.type, field.required]), [
+      ["title", "string", true],
+      ["author", "string", true],
+      ["year", "integer", false]
+    ]);
+    assert.equal(normalizeInterface.publicSurfaces[0].signature.errors[0].code, "BOOK_INPUT_INVALID");
+    assert.deepEqual(renderInterface.publicSurfaces[0].signature.inputs[0].fields.map((field) => [field.name, field.type, field.required]), [
+      ["title", "string", true],
+      ["author", "string", true],
+      ["year", "integer", false]
+    ]);
+    assert.equal(renderInterface.publicSurfaces[0].signature.outputs[0].name, "cardText");
+
+    const previewModel = await readJsonFile(path.join(result.runDir, "preview", "preview-model.json"));
+    assert.equal(previewModel.blueprint.systemDossier.reviewDecisions.some((decision) => decision.includes("renderBookCard may call normalizeBook only through contract.normalize-book.boundary")), true);
+    assert.deepEqual(previewModel.blueprint.systemDossier.scenarioDetails[0].messages.map((message) => [message.from, message.to]), [
+      ["Caller", "renderBookCard"],
+      ["renderBookCard", "normalizeBook"],
+      ["normalizeBook", "renderBookCard"],
+      ["renderBookCard", "Caller"]
+    ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("plan generator blocks npm test plans that cannot discover declared nested Node test files", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
   try {
