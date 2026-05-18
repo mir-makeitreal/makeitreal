@@ -39,6 +39,258 @@ function expandGeneralTestOwnership(paths) {
   return uniqueValues([...ownedPaths, ...derivedTestPaths]);
 }
 
+function slugFrom(value) {
+  return String(value ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "unit";
+}
+
+function explicitPathsFromText(text) {
+  const candidates = [];
+  const tokenPattern = /(?:^|[\s("'`])([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+(?:\/|\.[A-Za-z0-9._-]+)?)(?=$|[\s)"'`,.;:!?])/g;
+  for (const match of String(text ?? "").matchAll(tokenPattern)) {
+    const candidate = match[1].replace(/\/+$/, "").replace(/[.,;:!?]+$/, "");
+    if (!candidate || candidate.startsWith("http/") || candidate.startsWith("https/")) {
+      continue;
+    }
+    const root = candidate.split("/")[0];
+    const hasFileExtension = /\.[A-Za-z0-9._-]+$/.test(candidate);
+    const looksLikeGlob = candidate.endsWith("/**");
+    const knownProjectRoot = [
+      ".github", "app", "apps", "bin", "client", "components", "contracts",
+      "db", "docs", "hooks", "lib", "migrations", "modules", "packages",
+      "plugins", "scripts", "server", "services", "src", "test", "tests",
+      "tools", "web"
+    ].includes(root);
+    if (!hasFileExtension && !looksLikeGlob && !knownProjectRoot) {
+      continue;
+    }
+    candidates.push(candidate.includes(".") || candidate.endsWith("/**") ? candidate : `${candidate}/**`);
+  }
+  return uniqueValues(candidates);
+}
+
+function explicitUnitSections(request) {
+  const text = String(request ?? "");
+  const matches = [...text.matchAll(/\bUnit\s+(\d+)\s+owns\s+([\s\S]*?)(?=\bUnit\s+\d+\s+owns\b|$)/gi)];
+  if (matches.length < 2) {
+    return [];
+  }
+  return matches.map((match) => ({
+    unitNumber: Number(match[1]),
+    text: match[2].trim()
+  })).filter((section) => section.text && Number.isFinite(section.unitNumber));
+}
+
+function importedContractsForSection({ section, previousUnits }) {
+  const text = String(section.text ?? "");
+  return previousUnits
+    .filter((unit) => {
+      const unitReference = new RegExp(`\\bUnit\\s+${unit.unitNumber}\\b`, "i").test(text);
+      const surfaceReference = unit.publicSurfaces.some((surface) => new RegExp(`\\b${surface.name}\\b`).test(text));
+      return /\bmay\s+use\b/i.test(text) && (unitReference || surfaceReference);
+    })
+    .map((unit) => ({
+      contractId: unit.contractId,
+      providerResponsibilityUnitId: unit.responsibilityUnitId,
+      providerWorkItemId: unit.workItemId,
+      surface: unit.publicSurfaces[0]?.name ?? unit.contractId,
+      allowedUse: "Use only the provider contract declared in the approved Blueprint; do not inspect provider implementation internals."
+    }));
+}
+
+function explicitUnitDecomposition({ slug, owner, contractId, moduleInterface, workItem, request }) {
+  const sections = explicitUnitSections(request);
+  if (sections.length < 2) {
+    return null;
+  }
+
+  const pmUnitId = `ru.${slug}-pm`;
+  const pmWorkItemId = `work.${slug}-pm`;
+  const integrationUnitId = `ru.${slug}-integration-evidence`;
+  const integrationWorkItemId = `work.${slug}-integration-evidence`;
+  const implementationUnits = [];
+
+  for (const section of sections) {
+    const paths = explicitPathsFromText(section.text);
+    const surfaces = functionReferences(section.text);
+    const unitSlug = slugFrom(surfaces[0]?.name ?? `unit-${section.unitNumber}`);
+    const unitContractId = `contract.${unitSlug}.boundary`;
+    const responsibilityUnitId = `ru.${unitSlug}`;
+    const workItemId = `work.${unitSlug}`;
+    const publicSurfaces = surfaces.length > 0
+      ? surfaces.map(({ name, args }) => surfaceFromFunction({
+          name,
+          args,
+          contractId: unitContractId,
+          description: `Declared public surface for Unit ${section.unitNumber}.`
+        }))
+      : moduleInterface.publicSurfaces.map((surface) => ({
+          ...surface,
+          contractIds: [unitContractId],
+          description: `Declared public surface for Unit ${section.unitNumber}.`
+        }));
+    const dependencyContracts = importedContractsForSection({ section, previousUnits: implementationUnits });
+    const dependsOn = uniqueValues([pmWorkItemId, ...dependencyContracts.map((dependency) => dependency.providerWorkItemId)]);
+    const title = `Implement Unit ${section.unitNumber}: ${publicSurfaces.map((surface) => surface.name).join(", ")}`;
+    const unitModule = {
+      responsibilityUnitId,
+      owner,
+      moduleName: publicSurfaces.map((surface) => surface.name).join(", "),
+      purpose: `Own Unit ${section.unitNumber} through its declared contract, owned files, and tests only.`,
+      owns: paths,
+      publicSurfaces,
+      imports: dependencyContracts.map(({ providerWorkItemId, ...dependency }) => dependency)
+    };
+    const unitWorkItem = {
+      ...workItem,
+      id: workItemId,
+      title,
+      responsibilityUnitId,
+      allowedPaths: paths,
+      contractIds: uniqueValues([unitContractId, ...dependencyContracts.map((dependency) => dependency.contractId)]),
+      dependencyContracts: dependencyContracts.map(({ providerWorkItemId, ...dependency }) => dependency),
+      dependsOn,
+      doneEvidence: evidenceFor(workItemId, workItem.doneEvidence)
+    };
+    implementationUnits.push({
+      unitNumber: section.unitNumber,
+      responsibilityUnitId,
+      workItemId,
+      contractId: unitContractId,
+      moduleInterface: unitModule,
+      workItem: unitWorkItem,
+      publicSurfaces
+    });
+  }
+
+  const pmWorkItem = {
+    ...workItem,
+    id: pmWorkItemId,
+    title: `Coordinate ${slug} responsibility split`,
+    responsibilityUnitId: pmUnitId,
+    allowedPaths: [],
+    contractIds: uniqueValues([contractId, ...implementationUnits.map((unit) => unit.contractId)]),
+    dependencyContracts: [],
+    dependsOn: [],
+    verificationCommands: [],
+    verificationExempt: {
+      reason: "Domain PM coordination is proven by makeitrealPmReport plus spec-reviewer approval; implementation nodes own project verification."
+    },
+    doneEvidence: evidenceFor(pmWorkItemId, workItem.doneEvidence)
+      .filter((item) => item.kind !== "openapi-conformance")
+  };
+  const integrationWorkItem = {
+    ...workItem,
+    id: integrationWorkItemId,
+    title: `Verify ${slug} cross-boundary integration evidence`,
+    responsibilityUnitId: integrationUnitId,
+    allowedPaths: [],
+    contractIds: uniqueValues([contractId, ...implementationUnits.map((unit) => unit.contractId)]),
+    dependencyContracts: implementationUnits.map((unit) => ({
+      contractId: unit.contractId,
+      providerResponsibilityUnitId: unit.responsibilityUnitId,
+      surface: unit.publicSurfaces[0]?.name ?? unit.contractId,
+      allowedUse: "Exercise the provider contract as integration evidence; do not inspect implementation internals."
+    })),
+    dependsOn: implementationUnits.map((unit) => unit.workItemId),
+    doneEvidence: evidenceFor(integrationWorkItemId, workItem.doneEvidence)
+      .filter((item) => item.kind !== "openapi-conformance")
+  };
+
+  return {
+    responsibilityUnits: [
+      unitFrom({
+        id: pmUnitId,
+        owner: "team.domain-pm",
+        owns: [],
+        publicSurfaces: [`${slug}.responsibility-plan`],
+        mayUseContracts: uniqueValues([contractId, ...implementationUnits.map((unit) => unit.contractId)]),
+        mustProvideContracts: []
+      }),
+      ...implementationUnits.map((unit) => unitFrom({
+        id: unit.responsibilityUnitId,
+        owner,
+        owns: unit.moduleInterface.owns,
+        publicSurfaces: unit.publicSurfaces.map((surface) => surface.name),
+        mayUseContracts: unit.workItem.contractIds,
+        mustProvideContracts: [unit.contractId]
+      })),
+      unitFrom({
+        id: integrationUnitId,
+        owner: "team.integration",
+        owns: [],
+        publicSurfaces: [`${slug}.integration-evidence`],
+        mayUseContracts: uniqueValues([contractId, ...implementationUnits.map((unit) => unit.contractId)]),
+        mustProvideContracts: []
+      })
+    ],
+    moduleInterfaces: implementationUnits.map((unit) => unit.moduleInterface),
+    workItems: [pmWorkItem, ...implementationUnits.map((unit) => unit.workItem), integrationWorkItem],
+    primaryWorkItemId: implementationUnits.at(-1)?.workItemId ?? workItem.id,
+    workItemDag: {
+      schemaVersion: "1.0",
+      runId: `feature-${slug}`,
+      nodes: [
+        {
+          id: pmWorkItemId,
+          kind: "domain-pm",
+          responsibilityUnitId: pmUnitId,
+          requiredForDone: true
+        },
+        ...implementationUnits.map((unit) => ({
+          id: unit.workItemId,
+          kind: "implementation",
+          responsibilityUnitId: unit.responsibilityUnitId,
+          requiredForDone: true
+        })),
+        {
+          id: integrationWorkItemId,
+          kind: "integration-evidence",
+          responsibilityUnitId: integrationUnitId,
+          requiredForDone: true
+        }
+      ],
+      edges: [
+        ...implementationUnits.map((unit) => ({
+          from: pmWorkItemId,
+          to: unit.workItemId,
+          kind: "coordination"
+        })),
+        ...implementationUnits.flatMap((unit) => (unit.workItem.dependencyContracts ?? []).map((dependency) => ({
+          from: implementationUnits.find((candidate) => candidate.responsibilityUnitId === dependency.providerResponsibilityUnitId)?.workItemId,
+          to: unit.workItemId,
+          kind: "contract-dependency",
+          contractId: dependency.contractId
+        }))).filter((edge) => edge.from),
+        ...implementationUnits.map((unit) => ({
+          from: unit.workItemId,
+          to: integrationWorkItemId,
+          kind: "integration-proof",
+          contractId: unit.contractId
+        }))
+      ]
+    },
+    additionalApiSpecs: implementationUnits.map((unit) => ({
+      kind: "none",
+      contractId: unit.contractId,
+      reason: `Internal module contract declared for Unit ${unit.unitNumber}.`
+    })),
+    architectureNodes: implementationUnits.map((unit) => ({
+      id: unit.responsibilityUnitId.replace(/^ru\./, ""),
+      label: unit.moduleInterface.moduleName,
+      responsibilityUnitId: unit.responsibilityUnitId
+    })),
+    architectureEdges: implementationUnits.flatMap((unit) => (unit.workItem.dependencyContracts ?? []).map((dependency) => ({
+      from: dependency.providerResponsibilityUnitId.replace(/^ru\./, ""),
+      to: unit.responsibilityUnitId.replace(/^ru\./, ""),
+      contractId: dependency.contractId
+    })))
+  };
+}
+
 function resourceFromPaths(paths, domainPattern) {
   for (const candidate of paths) {
     const normalized = candidate.replaceAll("\\", "/");
@@ -240,6 +492,10 @@ export function decomposeResponsibilities({
   request
 }) {
   const paths = expandGeneralTestOwnership(uniqueValues(allowedPaths ?? owns));
+  const explicit = explicitUnitDecomposition({ slug, owner, contractId, moduleInterface, workItem, request });
+  if (explicit) {
+    return explicit;
+  }
   const apiPaths = selectPaths(paths, /(^|\/)(api|routes?)\/[^*]+/i, /^test\/(api|routes?)\//i);
   const dataPaths = selectPaths(paths, /(^|\/)(data|db|repositories?|persistence)\/[^*]+/i, /^test\/(data|db|repositories?|persistence)\//i);
   if (apiPaths.length === 0 || dataPaths.length === 0) {

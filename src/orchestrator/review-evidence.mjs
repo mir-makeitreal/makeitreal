@@ -9,6 +9,7 @@ export const REVIEW_ROLES = Object.freeze([
 export const REVIEW_STATUSES = Object.freeze([
   "APPROVED",
   "APPROVED_WITH_NOTES",
+  "CHANGES_REQUESTED",
   "REJECTED",
   "NEEDS_CONTEXT",
   "BLOCKED"

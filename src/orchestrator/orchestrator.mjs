@@ -586,7 +586,7 @@ ${nodeScope} Do not edit files. Return JSON:
 {
   "makeitrealReview": {
     "role": "${role}",
-    "status": "APPROVED",
+    "status": "APPROVED | APPROVED_WITH_NOTES | CHANGES_REQUESTED | REJECTED | NEEDS_CONTEXT | BLOCKED",
     "summary": "Review result.",
     "findings": [],
     "evidence": [],

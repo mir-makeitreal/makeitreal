@@ -915,6 +915,25 @@ test("orchestrator completion rejects failed dynamic reviewer evidence for claud
   });
 });
 
+test("native finish treats changes-requested reviewer status as review rejection", async () => {
+  await withBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const dispatched = await dispatchNativeWork({
+      boardDir,
+      now: new Date("2026-04-30T00:00:00.000Z"),
+      reviewStatus: "CHANGES_REQUESTED"
+    });
+
+    assert.equal(dispatched.ok, false);
+    assert.equal(dispatched.errors[0].code, "HARNESS_REVIEW_REJECTED");
+    assert.match(dispatched.errors[0].reason, /CHANGES_REQUESTED/);
+    const attempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" }).catch(() => null);
+    assert.equal(attempt, null);
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === "work.login-ui").lane, "Failed Fast");
+  });
+});
+
 test("orchestrator completion verifies native Claude task output in the real project root", async () => {
   await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);

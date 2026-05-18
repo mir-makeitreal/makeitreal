@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -777,6 +777,79 @@ test("plan generator derives bounded integer parser signatures and declared erro
     assert.deepEqual(prd.userVisibleBehavior, [
       "parseBoundedInt accepts input, min, max, returns parsedResult, and fails through INTEGER_OUT_OF_RANGE, INTEGER_INVALID, BOUNDARY_CONTRACT_VIOLATION."
     ]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator preserves explicit Unit 1 and Unit 2 module responsibility boundaries", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement a small pure JavaScript catalog slice with two explicit responsibility units. Unit 1 owns src/catalog/normalize-book.mjs and test/catalog/normalize-book.test.mjs and must export normalizeBook(input). Contract: input object must contain string title and string author; trim both; throw TypeError with code CATALOG_BOOK_INVALID for non-object, non-string, or empty normalized title/author. Unit 2 owns src/catalog/render-book-card.mjs and test/catalog/render-book-card.test.mjs and must export renderBookCard(book). It may use only the normalizeBook contract from Unit 1, must return a plain object { heading, byline } where heading is normalized title and byline is \"by <author>\". Verification command is npm test.",
+      runId: "catalog-slice",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-18T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    const board = await readJsonFile(path.join(result.runDir, "board.json"));
+    const normalize = board.workItems.find((item) => item.id === "work.normalize-book");
+    const render = board.workItems.find((item) => item.id === "work.render-book-card");
+    assert.deepEqual(normalize.allowedPaths, [
+      "src/catalog/normalize-book.mjs",
+      "test/catalog/normalize-book.test.mjs"
+    ]);
+    assert.deepEqual(render.allowedPaths, [
+      "src/catalog/render-book-card.mjs",
+      "test/catalog/render-book-card.test.mjs"
+    ]);
+    assert.deepEqual(render.dependsOn, ["work.catalog-slice-pm", "work.normalize-book"]);
+    assert.deepEqual(render.dependencyContracts, [{
+      contractId: "contract.normalize-book.boundary",
+      providerResponsibilityUnitId: "ru.normalize-book",
+      surface: "normalizeBook",
+      allowedUse: "Use only the provider contract declared in the approved Blueprint; do not inspect provider implementation internals."
+    }]);
+
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.equal(dag.nodes.some((node) => node.id === "work.catalog-slice-pm" && node.kind === "domain-pm"), true);
+    assert.equal(dag.nodes.some((node) => node.id === "work.catalog-slice-integration-evidence" && node.kind === "integration-evidence"), true);
+    assert.equal(dag.edges.some((edge) => edge.from === "work.normalize-book" && edge.to === "work.render-book-card" && edge.kind === "contract-dependency"), true);
+
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.normalize-book" && item.publicSurfaces[0].name === "normalizeBook"), true);
+    assert.equal(designPack.moduleInterfaces.some((item) => item.responsibilityUnitId === "ru.render-book-card" && item.publicSurfaces[0].name === "renderBookCard"), true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("plan generator blocks npm test plans that cannot discover declared nested Node test files", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-plan-"));
+  try {
+    await writeFile(path.join(projectRoot, "package.json"), JSON.stringify({
+      type: "module",
+      scripts: {
+        test: "node --test test/*.test.mjs"
+      }
+    }, null, 2));
+
+    const result = await generatePlanRun({
+      projectRoot,
+      request: "Implement Unit 1 owns src/catalog/normalize-book.mjs and test/catalog/normalize-book.test.mjs exporting normalizeBook(input). Unit 2 owns src/catalog/render-book-card.mjs and test/catalog/render-book-card.test.mjs exporting renderBookCard(book). Verification command is npm test.",
+      runId: "catalog-verification-gap",
+      verificationCommands: [{ file: "npm", args: ["test"] }],
+      now: new Date("2026-05-18T00:00:00.000Z")
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.planOk, false);
+    assert.equal(result.runDir, null);
+    assert.equal(result.errors[0].code, "HARNESS_VERIFICATION_PLAN_UNPROVABLE");
+    assert.match(result.errors[0].reason, /test\/catalog\/normalize-book\.test\.mjs/);
+    assert.match(result.errors[0].nextAction, /package\.json/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

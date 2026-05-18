@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { createHarnessError } from "../domain/errors.mjs";
 import { invalidAllowedPathPattern } from "../domain/path-policy.mjs";
 import { normalizeVerificationCommand } from "../domain/verification-command.mjs";
@@ -143,6 +144,78 @@ function explicitAllowedPathsFromRequest(request) {
 
 function defaultVerificationCommands() {
   return [];
+}
+
+async function packageTestScript(projectRoot) {
+  try {
+    const text = await readFile(path.join(projectRoot, "package.json"), "utf8");
+    const parsed = JSON.parse(text);
+    return typeof parsed.scripts?.test === "string" ? parsed.scripts.test : null;
+  } catch {
+    return null;
+  }
+}
+
+function commandIsNpmTest(command) {
+  const normalized = normalizeVerificationCommand(command);
+  if (!normalized.ok) {
+    return false;
+  }
+  const executable = normalized.command.file.split(/[\\/]/).at(-1);
+  return executable === "npm" && normalized.command.args[0] === "test";
+}
+
+function explicitNestedTestFiles(paths) {
+  return paths
+    .map((candidate) => String(candidate ?? "").replaceAll("\\", "/"))
+    .filter((candidate) => /^tests?\//.test(candidate))
+    .filter((candidate) => /\.[A-Za-z0-9._-]+$/.test(candidate))
+    .filter((candidate) => candidate.split("/").length > 2);
+}
+
+function nodeTestScriptCoversPath(script, testPath) {
+  const value = String(script ?? "");
+  if (!/\bnode\s+--test\b/.test(value)) {
+    return true;
+  }
+  if (value.includes(testPath)) {
+    return true;
+  }
+  if (/\btests?\/\*\*/.test(value)) {
+    return true;
+  }
+  if (/\btests?\/\*\.[^\s]+/.test(value) && testPath.split("/").length > 2) {
+    return false;
+  }
+  return true;
+}
+
+async function validateVerificationPlanAgainstProject({ projectRoot, commands, owns }) {
+  if (!commands.some(commandIsNpmTest) || owns.includes("package.json")) {
+    return { ok: true, errors: [] };
+  }
+  const nestedTests = explicitNestedTestFiles(owns);
+  if (nestedTests.length === 0) {
+    return { ok: true, errors: [] };
+  }
+  const script = await packageTestScript(projectRoot);
+  if (!script) {
+    return { ok: true, errors: [] };
+  }
+  const uncovered = nestedTests.filter((testPath) => !nodeTestScriptCoversPath(script, testPath));
+  if (uncovered.length === 0) {
+    return { ok: true, errors: [] };
+  }
+  return {
+    ok: false,
+    errors: [createHarnessError({
+      code: "HARNESS_VERIFICATION_PLAN_UNPROVABLE",
+      reason: `Declared npm test script does not discover nested test files: ${uncovered.join(", ")}.`,
+      evidence: ["package.json:scripts.test", ...uncovered],
+      recoverable: true,
+      nextAction: "Revise the Blueprint to use a verification command that covers the declared test files, or explicitly include package.json in the ownership boundary."
+    })]
+  };
 }
 
 function detectedResponsibilityDomains(request) {
@@ -1524,6 +1597,29 @@ export async function generatePlanRun({
         evidence: ["--verify"],
         recoverable: true
       })]
+    };
+  }
+  const verificationPlan = await validateVerificationPlanAgainstProject({
+    projectRoot: resolvedProjectRoot,
+    commands,
+    owns
+  });
+  if (!verificationPlan.ok) {
+    return {
+      ok: false,
+      command: "plan",
+      projectRoot: resolvedProjectRoot,
+      runDir: null,
+      runId: null,
+      workItemId: null,
+      contractId: null,
+      planOk: false,
+      implementationReady: false,
+      currentRunUpdated: false,
+      preview: null,
+      currentRun: null,
+      readyGate: null,
+      errors: verificationPlan.errors
     };
   }
   const apiKindMode = normalizedApiKind(apiKind);
