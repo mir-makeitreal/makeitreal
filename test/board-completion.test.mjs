@@ -688,7 +688,7 @@ test("native finish rejects missing structured reports without mutating running 
       now: new Date("2026-04-30T00:00:01.000Z")
     });
     assert.equal(finished.ok, false);
-    assert.equal(finished.errors[0].code, "HARNESS_NATIVE_RESULT_REQUIRED");
+    assert.equal(finished.errors[0].code, "HARNESS_NATIVE_REPORT_INVALID");
 
     const board = await loadBoard(boardDir);
     assert.equal(board.workItems.find((item) => item.id === nativeTask.workItemId).lane, "Running");
@@ -700,6 +700,139 @@ test("native finish rejects missing structured reports without mutating running 
     const attempt = await readRunAttempt({ boardDir, attemptId: nativeTask.attemptId });
     assert.equal(attempt.status, "running");
     assert.deepEqual(attempt.events, ["session_started"]);
+  });
+});
+
+test("native finish rejects malformed report objects without mutating running work", async () => {
+  await withProjectBoard(async ({ boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-finish-malformed-contract-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+    const nativeTask = onlyNativeTask(started);
+
+    const result = spawnSync(process.execPath, [
+      "bin/harness.mjs",
+      "orchestrator",
+      "native",
+      "finish",
+      boardDir,
+      "--work",
+      nativeTask.workItemId,
+      "--attempt",
+      nativeTask.attemptId,
+      "--result-stdin"
+    ], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8",
+      input: JSON.stringify({ makeitrealReport: {} })
+    });
+    assert.equal(result.status, 1, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.errors[0].code, "HARNESS_NATIVE_REPORT_INVALID");
+
+    const board = await loadBoard(boardDir);
+    assert.equal(board.workItems.find((item) => item.id === nativeTask.workItemId).lane, "Running");
+
+    const runtime = await loadRuntimeState(boardDir);
+    assert.equal(runtime.running[nativeTask.workItemId].attemptId, nativeTask.attemptId);
+    assert.equal(runtime.retryAttempts[nativeTask.workItemId], undefined);
+
+    const attempt = await readRunAttempt({ boardDir, attemptId: nativeTask.attemptId });
+    assert.equal(attempt.status, "running");
+    assert.deepEqual(attempt.events, ["session_started"]);
+  });
+});
+
+test("native finish can record valid siblings while malformed sibling remains running", async () => {
+  await withProjectBoard(async ({ projectRoot, boardDir }) => {
+    await enableClaudeRunner(boardDir);
+    const board = await loadBoard(boardDir);
+    const auditWork = board.workItems.find((item) => item.id === "work.audit-log");
+    auditWork.dependsOn = [];
+    await saveBoard(boardDir, board);
+    const approval = await decideBlueprintReview({
+      runDir: boardDir,
+      status: "approved",
+      reviewedBy: "operator:native-sibling-contract-test",
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    const started = await startNativeClaudeTask({
+      boardDir,
+      workerId: "claude-code.parent",
+      concurrency: 2,
+      now: new Date("2026-04-30T00:00:00.000Z")
+    });
+    assert.equal(started.ok, true);
+    assert.equal(started.nativeTasks.length, 2);
+
+    const loginTask = started.nativeTasks.find((task) => task.workItemId === "work.login-ui");
+    const auditTask = started.nativeTasks.find((task) => task.workItemId === "work.audit-log");
+    await mkdir(path.join(projectRoot, "apps/web/auth"), { recursive: true });
+    await writeFile(path.join(projectRoot, "apps/web/auth/native-output.txt"), "valid sibling output\n");
+
+    const validResult = JSON.stringify({
+      makeitrealReport: {
+        role: "implementation-worker",
+        status: "DONE",
+        summary: "Implemented valid sibling output.",
+        changedFiles: ["apps/web/auth/native-output.txt"],
+        tested: ["node -e accessSync native-output"],
+        concerns: [],
+        needsContext: [],
+        blockers: []
+      },
+      makeitrealReviews: ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+        role,
+        status: "APPROVED",
+        summary: `${role} approved valid sibling output.`,
+        findings: [],
+        evidence: ["valid sibling fixture"]
+      }))
+    });
+
+    const validFinished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: loginTask.workItemId,
+      attemptId: loginTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText: validResult,
+      now: new Date("2026-04-30T00:00:01.000Z")
+    });
+    assert.equal(validFinished.ok, true, JSON.stringify(validFinished.errors));
+
+    const malformedFinished = await finishNativeClaudeTask({
+      boardDir,
+      workItemId: auditTask.workItemId,
+      attemptId: auditTask.attemptId,
+      workerId: "claude-code.parent",
+      resultText: JSON.stringify({ makeitrealReport: {} }),
+      now: new Date("2026-04-30T00:00:02.000Z")
+    });
+    assert.equal(malformedFinished.ok, false);
+    assert.equal(malformedFinished.errors[0].code, "HARNESS_NATIVE_REPORT_INVALID");
+
+    const after = await loadBoard(boardDir);
+    assert.equal(after.workItems.find((item) => item.id === "work.login-ui").lane, "Verifying");
+    assert.equal(after.workItems.find((item) => item.id === "work.audit-log").lane, "Running");
+
+    const runtime = await loadRuntimeState(boardDir);
+    assert.equal(runtime.running["work.login-ui"], undefined);
+    assert.equal(runtime.running["work.audit-log"].attemptId, auditTask.attemptId);
+    assert.equal(runtime.retryAttempts["work.audit-log"], undefined);
   });
 });
 

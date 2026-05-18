@@ -62,13 +62,19 @@ and report `HARNESS_NATIVE_ROLE_MAPPING_MISSING`; update
 - `quality-reviewer`
 - `verification-reviewer`
 
-Aggregate the implementation report and reviewer reports into one JSON object,
-then record the parent-session result:
+Aggregate the native Task's node report and reviewer reports into one JSON
+object, then record the parent-session result. The node report key must match
+the work-item kind: `makeitrealReport` for implementation,
+`makeitrealPmReport` for domain PM, or `makeitrealEvidenceReport` for
+integration evidence. Do not call `native finish` with empty stdin, prose-only
+output, or a placeholder report. When a concurrent batch has mixed results,
+record the valid sibling envelopes first and rerun only the invalid scoped
+Task; do not strand valid siblings behind one malformed report:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine" orchestrator native finish "$RUN_DIR" --work "$WORK_ITEM_ID" --attempt "$ATTEMPT_ID" --result-stdin <<'MAKEITREAL_RESULT'
 {
-  "makeitrealReport": { "role": "implementation-worker", "status": "DONE", "summary": "", "changedFiles": [], "tested": [], "concerns": [], "needsContext": [], "blockers": [] },
+  "makeitrealReport": { "role": "implementation-worker", "status": "DONE", "summary": "Task result summary.", "changedFiles": ["path/from/project-root"], "tested": ["declared verification command"], "concerns": [], "needsContext": [], "blockers": [] },
   "makeitrealReviews": []
 }
 MAKEITREAL_RESULT

@@ -227,16 +227,22 @@ function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, 
 
 function validateNativeFinishInput({ record, policy, nodeKind, workItem }) {
   const report = reportCandidate(record, policy.reportKeys);
-  if (report && typeof report === "object") {
+  if (
+    report
+    && typeof report === "object"
+    && !Array.isArray(report)
+    && typeof report.status === "string"
+    && report.status.trim()
+  ) {
     return { ok: true, errors: [] };
   }
   return {
     ok: false,
     errors: [createHarnessError({
-      code: "HARNESS_NATIVE_RESULT_REQUIRED",
-      reason: `orchestrator native finish requires a structured ${policy.reportRole} JSON report for ${nodeKind} work before it can change board state.`,
+      code: "HARNESS_NATIVE_REPORT_INVALID",
+      reason: `orchestrator native finish requires a structured ${policy.reportRole} JSON report with a non-empty status for ${nodeKind} work before it can change board state.`,
       ownerModule: workItem.responsibilityUnitId ?? null,
-      evidence: ["--result-stdin", policy.reportKeys[0]],
+      evidence: ["--result-stdin", policy.reportKeys[0], `${policy.reportKeys[0]}.status`],
       recoverable: true
     })]
   };
