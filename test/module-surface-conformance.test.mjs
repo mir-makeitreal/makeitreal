@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -53,12 +53,16 @@ async function writeMinimalArtifacts({ runDir, workItem }) {
       moduleName: "Orders Repository",
       owner: "team.data",
       owns: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"],
-      publicSurfaces: ["createOrder", "getOrder", "listOrders"].map((name) => ({
+      publicSurfaces: [
+        { name: "createOrder", inputs: [{ name: "input", type: "declared", required: false }] },
+        { name: "getOrder", inputs: [{ name: "id", type: "declared", required: true }] },
+        { name: "listOrders", inputs: [] }
+      ].map(({ name, inputs }) => ({
         name,
         kind: "module",
         contractIds: ["contract.orders.persistence"],
         signature: {
-          inputs: [{ name: "input", type: "declared", required: false }],
+          inputs,
           outputs: [{ name: "result", type: "declared" }],
           errors: [{ code: "BOUNDARY_CONTRACT_VIOLATION", when: "Invalid input.", handling: "Fail fast." }]
         }
@@ -127,5 +131,149 @@ export { createOrder, getOrder, listOrders };
     const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
 
     assert.equal(result.ok, true);
+  });
+});
+
+test("module surface conformance rejects function parameter signature drift", async () => {
+  await withRun(async ({ projectRoot, runDir }) => {
+    const workItem = {
+      id: "work.orders-repository",
+      responsibilityUnitId: "ru.orders-repository",
+      contractIds: ["contract.orders.persistence"],
+      allowedPaths: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"]
+    };
+    await writeMinimalArtifacts({ runDir, workItem });
+    await writeFile(path.join(projectRoot, "src", "data", "orders", "repository.mjs"), `
+export function createOrder(order) { return order; }
+export function getOrder(id) { return null; }
+export function listOrders() { return []; }
+`);
+
+    const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_MODULE_SIGNATURE_MISMATCH");
+    assert.match(result.errors[0].reason, /createOrder/);
+    assert.match(result.errors[0].reason, /expected input/);
+    assert.match(result.errors[0].reason, /actual order/);
+  });
+});
+
+test("module surface conformance rejects unverifiable declared signatures", async () => {
+  await withRun(async ({ projectRoot, runDir }) => {
+    const workItem = {
+      id: "work.orders-repository",
+      responsibilityUnitId: "ru.orders-repository",
+      contractIds: ["contract.orders.persistence"],
+      allowedPaths: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"]
+    };
+    await writeMinimalArtifacts({ runDir, workItem });
+    await writeFile(path.join(projectRoot, "src", "data", "orders", "repository.mjs"), `
+function makeCreateOrder() { return () => null; }
+export const createOrder = makeCreateOrder();
+export function getOrder(id) { return null; }
+export function listOrders() { return []; }
+`);
+
+    const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_MODULE_SIGNATURE_UNVERIFIABLE");
+    assert.match(result.errors[0].reason, /createOrder/);
+  });
+});
+
+test("module surface conformance rejects private functions that match public names", async () => {
+  await withRun(async ({ projectRoot, runDir }) => {
+    const workItem = {
+      id: "work.orders-repository",
+      responsibilityUnitId: "ru.orders-repository",
+      contractIds: ["contract.orders.persistence"],
+      allowedPaths: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"]
+    };
+    await writeMinimalArtifacts({ runDir, workItem });
+    await writeFile(path.join(projectRoot, "src", "data", "orders", "repository.mjs"), `
+function createOrder(input) { return input; }
+export function getOrder(id) { return null; }
+export function listOrders() { return []; }
+`);
+
+    const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_MODULE_SURFACE_MISSING");
+    assert.match(result.errors[0].reason, /createOrder/);
+  });
+});
+
+test("module surface conformance rejects missing class method surfaces", async () => {
+  await withRun(async ({ projectRoot, runDir }) => {
+    const workItem = {
+      id: "work.orders-repository",
+      responsibilityUnitId: "ru.orders-repository",
+      contractIds: ["contract.orders.persistence"],
+      allowedPaths: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"]
+    };
+    await writeMinimalArtifacts({ runDir, workItem });
+    const designPackPath = path.join(runDir, "design-pack.json");
+    const designPack = JSON.parse(await readFile(designPackPath, "utf8"));
+    designPack.moduleInterfaces[0].publicSurfaces = [{
+      name: "OrderRepository.createOrder",
+      kind: "module",
+      contractIds: ["contract.orders.persistence"],
+      signature: {
+        inputs: [{ name: "input", type: "declared", required: true }],
+        outputs: [{ name: "result", type: "declared" }],
+        errors: [{ code: "BOUNDARY_CONTRACT_VIOLATION", when: "Invalid input.", handling: "Fail fast." }]
+      }
+    }];
+    await writeJsonFile(designPackPath, designPack);
+    await writeFile(path.join(projectRoot, "src", "data", "orders", "repository.mjs"), `
+export class OrderRepository {
+  listOrders() { return []; }
+}
+`);
+
+    const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_MODULE_SURFACE_MISSING");
+    assert.match(result.errors[0].reason, /OrderRepository.createOrder/);
+  });
+});
+
+test("module surface conformance rejects private classes that match public method surfaces", async () => {
+  await withRun(async ({ projectRoot, runDir }) => {
+    const workItem = {
+      id: "work.orders-repository",
+      responsibilityUnitId: "ru.orders-repository",
+      contractIds: ["contract.orders.persistence"],
+      allowedPaths: ["src/data/orders/repository.mjs", "test/data/orders/repository.test.mjs"]
+    };
+    await writeMinimalArtifacts({ runDir, workItem });
+    const designPackPath = path.join(runDir, "design-pack.json");
+    const designPack = JSON.parse(await readFile(designPackPath, "utf8"));
+    designPack.moduleInterfaces[0].publicSurfaces = [{
+      name: "OrderRepository.createOrder",
+      kind: "module",
+      contractIds: ["contract.orders.persistence"],
+      signature: {
+        inputs: [{ name: "input", type: "declared", required: true }],
+        outputs: [{ name: "result", type: "declared" }],
+        errors: [{ code: "BOUNDARY_CONTRACT_VIOLATION", when: "Invalid input.", handling: "Fail fast." }]
+      }
+    }];
+    await writeJsonFile(designPackPath, designPack);
+    await writeFile(path.join(projectRoot, "src", "data", "orders", "repository.mjs"), `
+class OrderRepository {
+  createOrder(input) { return input; }
+}
+`);
+
+    const result = await validateModuleSurfaceConformance({ runDir, projectRoot, workItem });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "HARNESS_MODULE_SURFACE_MISSING");
+    assert.match(result.errors[0].reason, /OrderRepository.createOrder/);
   });
 });
