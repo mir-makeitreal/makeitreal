@@ -18,16 +18,19 @@ const COMPLETION_POLICIES = Object.freeze({
   "implementation": {
     reportRole: "implementation-worker",
     requiresChangedFiles: true,
+    requiresVerificationCommands: true,
     requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
   },
   "domain-pm": {
     reportRole: "domain-pm",
     requiresChangedFiles: false,
+    requiresVerificationCommands: false,
     requiredReviewRoles: ["spec-reviewer"]
   },
   "integration-evidence": {
     reportRole: "integration-evidence",
     requiresChangedFiles: false,
+    requiresVerificationCommands: true,
     requiredReviewRoles: ["verification-reviewer"]
   }
 });
@@ -149,6 +152,11 @@ Final Lane:
 `;
 }
 
+function verificationExemptionReason(workItem) {
+  const reason = workItem?.verificationExempt?.reason;
+  return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : null;
+}
+
 export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMode = null, refreshBeforeDone = null }) {
   const board = await loadBoard(boardDir);
   const workItem = board.workItems.find((candidate) => candidate.id === workItemId);
@@ -208,6 +216,9 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
     };
   }
 
+  const nodeKind = attempt.runner?.nodeKind ?? await nodeKindForWorkItem({ runDir: boardDir, workItemId });
+  const completionPolicy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
+
   if (attemptRunnerMode === "claude-code") {
     const parentNativeTask = attempt.runner?.channel === "parent-native-task";
     if (!parentNativeTask) {
@@ -224,7 +235,6 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       };
     }
 
-    const nodeKind = attempt.runner?.nodeKind ?? await nodeKindForWorkItem({ runDir: boardDir, workItemId });
     const reviews = validateCompletionReviewsForNode({ attempt, workItem, nodeKind });
     if (!reviews.ok) {
       const rework = transitionWorkItem(workItem, "Rework", { gates: {} });
@@ -284,6 +294,19 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
 
   const commands = [];
   const errors = [];
+  const exemptionReason = verificationExemptionReason(workItem);
+  const verificationExempt = (workItem.verificationCommands ?? []).length === 0
+    && completionPolicy.requiresVerificationCommands === false
+    && Boolean(exemptionReason);
+  if ((workItem.verificationCommands ?? []).length === 0 && !verificationExempt) {
+    errors.push(createHarnessError({
+      code: "HARNESS_VERIFICATION_PLAN_MISSING",
+      reason: `Verification command is required for ${workItemId}.`,
+      ownerModule: workItem.responsibilityUnitId ?? null,
+      evidence: [`evidence/${workItemId}.verification.json`],
+      recoverable: true
+    }));
+  }
   for (const command of workItem.verificationCommands ?? []) {
     const normalized = normalizeVerificationCommand(command);
     if (!normalized.ok) {
@@ -344,10 +367,11 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   const verificationEvidence = {
     producer: BOARD_VERIFICATION_PRODUCER,
     kind: "board-verification",
-    ok: errors.length === 0 && commands.length > 0,
+    ok: errors.length === 0 && (commands.length > 0 || verificationExempt),
     workItemId,
     commandHashes: commands.map((command) => command.commandHash),
-    commands
+    commands,
+    ...(verificationExempt ? { verificationExempt: true, exemptionReason } : {})
   };
   const verificationPath = path.join(boardDir, "evidence", `${workItemId}.verification.json`);
   await writeJsonFile(verificationPath, verificationEvidence);

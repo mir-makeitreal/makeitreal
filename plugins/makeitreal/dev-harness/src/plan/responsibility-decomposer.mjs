@@ -249,8 +249,12 @@ export function decomposeResponsibilities({
   const resource = resourceFromPaths(apiPaths, /(?:^|\/)(?:api|routes?)\/([^/*]+)/i);
   const apiUnitId = `ru.${resource}-api`;
   const repositoryUnitId = `ru.${resource}-repository`;
+  const pmUnitId = `ru.${resource}-pm`;
+  const integrationUnitId = `ru.${resource}-integration-evidence`;
   const apiWorkItemId = `work.${resource}-api`;
   const repositoryWorkItemId = `work.${resource}-repository`;
+  const pmWorkItemId = `work.${resource}-pm`;
+  const integrationWorkItemId = `work.${resource}-integration-evidence`;
   const persistenceContractId = `contract.${resource}.persistence`;
   const repositorySurfaces = surfacesFromRequestSection({
     request,
@@ -313,13 +317,49 @@ export function decomposeResponsibilities({
     allowedPaths: dataPaths,
     contractIds: [persistenceContractId],
     dependencyContracts: [],
-    dependsOn: [],
+    dependsOn: [pmWorkItemId],
     doneEvidence: evidenceFor(repositoryWorkItemId, workItem.doneEvidence)
+      .filter((item) => item.kind !== "openapi-conformance")
+  };
+  const pmWorkItem = {
+    ...workItem,
+    id: pmWorkItemId,
+    title: `Coordinate ${resource} responsibility split`,
+    responsibilityUnitId: pmUnitId,
+    allowedPaths: [],
+    contractIds: uniqueValues([contractId, persistenceContractId]),
+    dependencyContracts: [],
+    dependsOn: [],
+    verificationCommands: [],
+    verificationExempt: {
+      reason: "Domain PM coordination is proven by makeitrealPmReport plus spec-reviewer approval; project tests run after child implementation nodes."
+    },
+    doneEvidence: evidenceFor(pmWorkItemId, workItem.doneEvidence)
+      .filter((item) => item.kind !== "openapi-conformance")
+  };
+  const integrationWorkItem = {
+    ...workItem,
+    id: integrationWorkItemId,
+    title: `Verify ${resource} cross-boundary integration evidence`,
+    responsibilityUnitId: integrationUnitId,
+    allowedPaths: [],
+    contractIds: uniqueValues([contractId, persistenceContractId]),
+    dependencyContracts: [],
+    dependsOn: [apiWorkItemId],
+    doneEvidence: evidenceFor(integrationWorkItemId, workItem.doneEvidence)
       .filter((item) => item.kind !== "openapi-conformance")
   };
 
   return {
     responsibilityUnits: [
+      unitFrom({
+        id: pmUnitId,
+        owner: "team.domain-pm",
+        owns: [],
+        publicSurfaces: [`${resource}.responsibility-plan`],
+        mayUseContracts: uniqueValues([contractId, persistenceContractId]),
+        mustProvideContracts: []
+      }),
       unitFrom({
         id: repositoryUnitId,
         owner,
@@ -335,15 +375,29 @@ export function decomposeResponsibilities({
         publicSurfaces: apiModule.publicSurfaces.map((surface) => surface.name),
         mayUseContracts: uniqueValues([contractId, persistenceContractId]),
         mustProvideContracts: [contractId]
+      }),
+      unitFrom({
+        id: integrationUnitId,
+        owner: "team.integration",
+        owns: [],
+        publicSurfaces: [`${resource}.integration-evidence`],
+        mayUseContracts: uniqueValues([contractId, persistenceContractId]),
+        mustProvideContracts: []
       })
     ],
     moduleInterfaces: [repositoryModule, apiModule],
-    workItems: [repositoryWorkItem, apiWorkItem],
+    workItems: [pmWorkItem, repositoryWorkItem, apiWorkItem, integrationWorkItem],
     primaryWorkItemId: apiWorkItemId,
     workItemDag: {
       schemaVersion: "1.0",
       runId: `feature-${slug}`,
       nodes: [
+        {
+          id: pmWorkItemId,
+          kind: "domain-pm",
+          responsibilityUnitId: pmUnitId,
+          requiredForDone: true
+        },
         {
           id: repositoryWorkItemId,
           kind: "implementation",
@@ -355,13 +409,31 @@ export function decomposeResponsibilities({
           kind: "implementation",
           responsibilityUnitId: apiUnitId,
           requiredForDone: true
+        },
+        {
+          id: integrationWorkItemId,
+          kind: "integration-evidence",
+          responsibilityUnitId: integrationUnitId,
+          requiredForDone: true
         }
       ],
-      edges: [{
-        from: repositoryWorkItemId,
-        to: apiWorkItemId,
-        contractId: persistenceContractId
-      }]
+      edges: [
+        {
+          from: pmWorkItemId,
+          to: repositoryWorkItemId,
+          contractId
+        },
+        {
+          from: repositoryWorkItemId,
+          to: apiWorkItemId,
+          contractId: persistenceContractId
+        },
+        {
+          from: apiWorkItemId,
+          to: integrationWorkItemId,
+          contractId
+        }
+      ]
     },
     additionalApiSpecs: [{
       kind: "none",

@@ -28,21 +28,25 @@ Code process.
 1. `orchestrator native start` validates Ready gates, claims every unblocked
    ready work item up to the requested concurrency, marks each one `Running`,
    and returns a canonical `nativeTasks[]` batch.
-2. Each `nativeTasks[]` entry carries `workItemId`, `agentPacketPath`,
-   `hookContext`, allowed paths, contract IDs, and reviewer assignments from
-   `native-role-mapping.json`.
-3. Claude Code native `Task` implements each returned work item in the visible
-   parent session UI.
-4. Claude Code native reviewer `Task`s run for each returned work item as
-   `spec-reviewer`, `quality-reviewer`, and `verification-reviewer`.
-5. `orchestrator native finish` records the implementation and review JSON
-   evidence and moves successful work to `Verifying`.
+2. Each `nativeTasks[]` entry carries `workItemId`, `nodeKind`, allowed paths,
+   contract IDs, the node-specific prompt, and the reviewer prompts required
+   for that node kind.
+3. Claude Code native `Task` runs each returned work item in the visible parent
+   session UI. Implementation nodes may edit only declared paths; domain PM
+   nodes review the child split without code edits; integration evidence nodes
+   verify cross-boundary behavior after implementation nodes are Done.
+4. Claude Code native reviewer `Task`s run exactly the reviewer prompts returned
+   by the engine: implementation nodes need `spec-reviewer`, `quality-reviewer`,
+   and `verification-reviewer`; domain PM nodes need `spec-reviewer`; integration
+   evidence nodes need `verification-reviewer`.
+5. `orchestrator native finish` records the node report and review JSON evidence
+   and moves successful work to `Verifying`.
 6. `orchestrator complete` runs verification from the project root and moves the
    work item through `Human Review` to `Done` only when evidence is complete.
 
 Completion accepts `claude-code` attempts only when the latest successful
 attempt has `runner.channel: "parent-native-task"` and approved reviewer
-evidence for all three reviewer roles.
+evidence for the node kind's required reviewer roles.
 
 If hook-visible run scope cannot be carried into native Task tool calls, launch
 fails before mutation. The required scope is the run directory, work item ID,

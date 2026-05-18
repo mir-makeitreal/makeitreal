@@ -67,6 +67,22 @@ export async function readVerificationEvidence(runDir, { workItem = null } = {})
   const workItemInvalid = workItem && evidence.workItemId && evidence.workItemId !== workItem.id;
   const expectedHashes = workItem ? (workItem.verificationCommands ?? []).map(hashCommand) : null;
   const actualHashes = Array.isArray(evidence.commandHashes) ? evidence.commandHashes : [];
+  const exemptionReason = workItem?.verificationExempt?.reason;
+  const verificationExempt = Boolean(
+    workItem
+    && evidence.verificationExempt === true
+    && typeof exemptionReason === "string"
+    && exemptionReason.trim().length > 0
+    && evidence.ok === true
+    && commands.length === 0
+    && actualHashes.length === 0
+    && !producerInvalid
+    && !kindInvalid
+    && !workItemInvalid
+  );
+  if (verificationExempt) {
+    return { ok: true, evidence, errors: [] };
+  }
   const hashesInvalid = expectedHashes
     ? actualHashes.length !== expectedHashes.length || actualHashes.some((hash, index) => hash !== expectedHashes[index])
     : false;

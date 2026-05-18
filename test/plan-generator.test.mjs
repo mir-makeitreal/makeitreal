@@ -232,6 +232,14 @@ test("plan generator expands broad test ownership for unit-labeled split respons
 
     const repositoryWorkItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-repository.json"));
     const apiWorkItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-api.json"));
+    const pmWorkItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-pm.json"));
+    const integrationWorkItem = await readJsonFile(path.join(result.runDir, "work-items", "work.orders-integration-evidence.json"));
+    assert.deepEqual(pmWorkItem.allowedPaths, []);
+    assert.deepEqual(pmWorkItem.verificationCommands, []);
+    assert.match(pmWorkItem.verificationExempt.reason, /Domain PM coordination/);
+    assert.deepEqual(integrationWorkItem.allowedPaths, []);
+    assert.deepEqual(integrationWorkItem.dependsOn, ["work.orders-api"]);
+    assert.deepEqual(repositoryWorkItem.dependsOn, ["work.orders-pm"]);
     assert.deepEqual(repositoryWorkItem.allowedPaths, [
       "src/data/orders/repository.mjs",
       "test/data/orders/repository.test.mjs"
@@ -255,10 +263,25 @@ test("plan generator expands broad test ownership for unit-labeled split respons
     ]);
 
     const responsibilityUnits = await readJsonFile(path.join(result.runDir, "responsibility-units.json"));
+    assert.equal(responsibilityUnits.units.some((unit) => unit.id === "ru.orders-pm" && unit.owner === "team.domain-pm"), true);
+    assert.equal(responsibilityUnits.units.some((unit) => unit.id === "ru.orders-integration-evidence" && unit.owner === "team.integration"), true);
     const apiUnit = responsibilityUnits.units.find((unit) => unit.id === "ru.orders-api");
     const repositoryUnit = responsibilityUnits.units.find((unit) => unit.id === "ru.orders-repository");
     assert.deepEqual(apiUnit.publicSurfaces, ["handlePostOrders"]);
     assert.deepEqual(repositoryUnit.publicSurfaces, ["createOrderRepository", "createOrder", "listOrders"]);
+
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.deepEqual(dag.nodes.map((node) => [node.id, node.kind]), [
+      ["work.orders-pm", "domain-pm"],
+      ["work.orders-repository", "implementation"],
+      ["work.orders-api", "implementation"],
+      ["work.orders-integration-evidence", "integration-evidence"]
+    ]);
+    assert.deepEqual(dag.edges.map((edge) => [edge.from, edge.to]), [
+      ["work.orders-pm", "work.orders-repository"],
+      ["work.orders-repository", "work.orders-api"],
+      ["work.orders-api", "work.orders-integration-evidence"]
+    ]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

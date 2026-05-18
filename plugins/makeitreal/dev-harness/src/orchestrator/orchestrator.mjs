@@ -31,18 +31,21 @@ const COMPLETION_POLICIES = Object.freeze({
     reportRole: "implementation-worker",
     reportKeys: ["makeitrealReport", "agentReport"],
     requiresChangedFiles: true,
+    requiresVerificationCommands: true,
     requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
   },
   "domain-pm": {
     reportRole: "domain-pm",
     reportKeys: ["makeitrealPmReport", "pmReport"],
     requiresChangedFiles: false,
+    requiresVerificationCommands: false,
     requiredReviewRoles: ["spec-reviewer"]
   },
   "integration-evidence": {
     reportRole: "integration-evidence",
     reportKeys: ["makeitrealEvidenceReport", "evidenceReport"],
     requiresChangedFiles: false,
+    requiresVerificationCommands: true,
     requiredReviewRoles: ["verification-reviewer"]
   }
 });
@@ -68,7 +71,15 @@ function reportArray(value) {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.map((item) => String(item)).filter(Boolean);
+  return value.map((item) => {
+    if (typeof item === "string") {
+      return item.trim();
+    }
+    if (item && typeof item === "object") {
+      return JSON.stringify(item);
+    }
+    return String(item ?? "").trim();
+  }).filter(Boolean);
 }
 
 function reportCandidate(record, keys) {
@@ -390,7 +401,102 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
   return { ok: true, errors: [], dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
 }
 
-function renderNativeTaskPrompt({ boardDir, workItem, attemptId, projectRoot }) {
+function renderNativeTaskPrompt({ boardDir, workItem, attemptId, projectRoot, nodeKind = "implementation" }) {
+  if (nodeKind === "domain-pm") {
+    return `You are a Make It Real domain PM running inside the parent Claude Code session.
+
+Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
+
+Run directory:
+- ${boardDir}
+
+Project root:
+- ${projectRoot ?? "(unknown)"}
+
+Work item:
+- ${workItem.id}
+
+Responsibility unit:
+- ${workItem.responsibilityUnitId ?? "(missing)"}
+
+Contracts under PM coordination:
+${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
+
+Rules:
+- Read PRD, design-pack, board, work-item-dag, responsibility-units, blueprint-review, and contract files from the run directory.
+- Do not edit production code. This node coordinates the approved split and confirms child work packets are zero-context executable.
+- Verify child implementation nodes have one owner, declared contracts, allowed paths, dependency order, and sufficient verification commands.
+- Do not add fallback behavior outside declared contracts.
+- If the approved Blueprint is insufficient or the split is unsafe, report NEEDS_CONTEXT or BLOCKED instead of guessing.
+- The parent session will run a spec-reviewer Task subagent after your PM turn.
+- Emit JSON directly using this shape:
+\`\`\`json
+{
+  "makeitrealPmReport": {
+    "role": "domain-pm",
+    "status": "DONE",
+    "summary": "PM review of the responsibility split.",
+    "childWorkProposal": null,
+    "concerns": [],
+    "needsContext": [],
+    "blockers": [],
+    "workItemId": "${workItem.id}",
+    "attemptId": "${attemptId}"
+  }
+}
+\`\`\`
+`;
+  }
+
+  if (nodeKind === "integration-evidence") {
+    return `You are a Make It Real integration evidence worker running inside the parent Claude Code session.
+
+Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
+
+Run directory:
+- ${boardDir}
+
+Project root:
+- ${projectRoot ?? "(unknown)"}
+
+Work item:
+- ${workItem.id}
+
+Responsibility unit:
+- ${workItem.responsibilityUnitId ?? "(missing)"}
+
+Contracts under integration review:
+${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
+
+Verification commands:
+${(workItem.verificationCommands ?? []).map((item) => `- ${JSON.stringify(item)}`).join("\n")}
+
+Rules:
+- Read PRD, design-pack, board, work-item-dag, responsibility-units, blueprint-review, and contract files from the run directory.
+- Do not edit production code. This node verifies that completed responsibility units integrate through declared contracts.
+- You may inspect implementation and tests only to confirm the declared scenario is covered.
+- Do not add fallback behavior outside declared contracts.
+- If integration cannot be proven from declared verification, report NEEDS_CONTEXT or BLOCKED instead of guessing.
+- The parent session will run a verification-reviewer Task subagent after your evidence turn.
+- Emit JSON directly using this shape:
+\`\`\`json
+{
+  "makeitrealEvidenceReport": {
+    "role": "integration-evidence",
+    "status": "DONE",
+    "summary": "Integration evidence is ready for engine-owned verification.",
+    "tested": [],
+    "concerns": [],
+    "needsContext": [],
+    "blockers": [],
+    "workItemId": "${workItem.id}",
+    "attemptId": "${attemptId}"
+  }
+}
+\`\`\`
+`;
+  }
+
   return `You are a Make It Real scoped implementation worker running inside the parent Claude Code session.
 
 Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
@@ -448,12 +554,17 @@ Rules:
 `;
 }
 
-function renderNativeReviewerPrompt({ role, boardDir, workItem, attemptId, projectRoot }) {
+function renderNativeReviewerPrompt({ role, boardDir, workItem, attemptId, projectRoot, nodeKind = "implementation" }) {
   const focus = {
     "spec-reviewer": "Verify the implementation satisfies the PRD, Blueprint, declared contracts, and responsibility boundary.",
     "quality-reviewer": "Review code quality, maintainability, naming, unnecessary fallback behavior, and clean-code fit.",
     "verification-reviewer": "Review verification evidence and whether the declared verification commands prove the work item."
   }[role];
+  const nodeScope = {
+    "domain-pm": "Review only the PM coordination evidence and the approved child work split. Do not require changed files.",
+    "integration-evidence": "Review only the integration evidence and declared verification coverage. Do not require production code changes.",
+    "implementation": "Review only this implementation work item."
+  }[nodeKind] ?? "Review only this work item.";
   return `You are the Make It Real ${role} for a parent-session native Claude Code launch.
 
 ${focus}
@@ -470,7 +581,7 @@ Work item:
 Allowed edit paths:
 ${(workItem.allowedPaths ?? []).map((item) => `- ${item}`).join("\n")}
 
-Review only this work item. Do not edit files. Return JSON:
+${nodeScope} Do not edit files. Return JSON:
 \`\`\`json
 {
   "makeitrealReview": {
@@ -548,15 +659,18 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
     const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
     const attempt = await createRunAttempt({ boardDir, workItem: activeWorkItem, workerId, now });
     const projectRoot = resolveProjectRootForRun({ runDir: boardDir });
+    const nodeKind = await nodeKindForWorkItem({ runDir: boardDir, workItemId: activeWorkItem.id });
+    const completionPolicy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
     const implementationPrompt = renderNativeTaskPrompt({
       boardDir,
       workItem: activeWorkItem,
       attemptId: attempt.attemptId,
-      projectRoot
+      projectRoot,
+      nodeKind
     });
-    const reviewerPrompts = ["spec-reviewer", "quality-reviewer", "verification-reviewer"].map((role) => ({
+    const reviewerPrompts = completionPolicy.requiredReviewRoles.map((role) => ({
       role,
-      prompt: renderNativeReviewerPrompt({ role, boardDir, workItem: activeWorkItem, attemptId: attempt.attemptId, projectRoot })
+      prompt: renderNativeReviewerPrompt({ role, boardDir, workItem: activeWorkItem, attemptId: attempt.attemptId, projectRoot, nodeKind })
     }));
 
     const runtimeState = await loadRuntimeState(boardDir);
@@ -579,6 +693,7 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
         runner: {
           mode: "claude-code",
           channel: "parent-native-task",
+          nodeKind,
           projectRoot,
           implementationPrompt,
           reviewerPrompts
@@ -607,6 +722,7 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
       attemptId: attempt.attemptId,
       workerId,
       projectRoot,
+      nodeKind,
       implementationPrompt,
       reviewerPrompts
     });

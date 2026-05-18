@@ -113,8 +113,11 @@ test("domain PM node completes from pm report without changed files", async () =
         responsibilityUnitId: "ru.auth-pm",
         contractIds: ["contract.auth.login"],
         dependsOn: [],
-        allowedPaths: ["docs/auth/**"],
-        verificationCommands: [{ file: "node", args: ["-e", "console.log('pm ok')"] }],
+        allowedPaths: [],
+        verificationCommands: [],
+        verificationExempt: {
+          reason: "Domain PM coordination is proven by PM report and spec review."
+        },
         doneEvidence: [
           { kind: "verification", path: "evidence/work.auth-pm.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.auth-pm.wiki-sync.json" }
@@ -137,6 +140,9 @@ test("domain PM node completes from pm report without changed files", async () =
     assert.equal(started.ok, true, JSON.stringify(started.errors));
     const task = onlyNativeTask(started);
     assert.equal(task.workItemId, "work.auth-pm");
+    assert.equal(task.nodeKind, "domain-pm");
+    assert.match(task.implementationPrompt, /makeitrealPmReport/);
+    assert.deepEqual(task.reviewerPrompts.map((prompt) => prompt.role), ["spec-reviewer"]);
 
     const finished = await finishNativeClaudeTask({
       boardDir,
@@ -164,8 +170,17 @@ test("domain PM node completes from pm report without changed files", async () =
       now: new Date("2026-05-15T00:00:01.000Z")
     });
     assert.equal(finished.ok, true, JSON.stringify(finished.errors));
+    const completed = await completeVerifiedWork({
+      boardDir,
+      workItemId: "work.auth-pm",
+      runnerMode: "claude-code",
+      now: new Date("2026-05-15T00:00:02.000Z")
+    });
+    assert.equal(completed.ok, true, JSON.stringify(completed.errors));
     const board = await loadBoard(boardDir);
-    assert.equal(board.workItems.find((item) => item.id === "work.auth-pm").lane, "Verifying");
+    assert.equal(board.workItems.find((item) => item.id === "work.auth-pm").lane, "Done");
+    const evidence = await readJsonFile(path.join(boardDir, "evidence", "work.auth-pm.verification.json"));
+    assert.equal(evidence.verificationExempt, true);
   });
 });
 
@@ -206,6 +221,9 @@ test("integration evidence node completes with verification reviewer and no chan
     assert.equal(started.ok, true, JSON.stringify(started.errors));
     const task = onlyNativeTask(started);
     assert.equal(task.workItemId, "work.auth-integration-evidence");
+    assert.equal(task.nodeKind, "integration-evidence");
+    assert.match(task.implementationPrompt, /makeitrealEvidenceReport/);
+    assert.deepEqual(task.reviewerPrompts.map((prompt) => prompt.role), ["verification-reviewer"]);
 
     const finished = await finishNativeClaudeTask({
       boardDir,

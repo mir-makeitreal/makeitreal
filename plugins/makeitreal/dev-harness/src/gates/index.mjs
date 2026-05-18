@@ -25,6 +25,15 @@ function hasVerificationPlan(workItem) {
   return Array.isArray(workItem.verificationCommands) && workItem.verificationCommands.length > 0;
 }
 
+function verificationExemptionReason(workItem) {
+  const reason = workItem?.verificationExempt?.reason;
+  return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : null;
+}
+
+function nodeKindForWorkItem(artifacts, workItem) {
+  return artifacts.workItemDag.nodes?.find((node) => node.id === workItem.id)?.kind ?? "implementation";
+}
+
 function hasDoneEvidencePlan(workItem) {
   const kinds = new Set((workItem.doneEvidence ?? []).map((evidence) => evidence.kind));
   return kinds.has("verification") && kinds.has("wiki-sync");
@@ -38,6 +47,7 @@ function workItemsForRequiredNodes({ dag, workItems }) {
 }
 
 function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
+  const nodeKind = nodeKindForWorkItem(artifacts, workItem);
   const traceResult = validateWorkItemPrdTrace({ prd: artifacts.prd, workItem });
   errors.push(...traceResult.errors);
 
@@ -53,7 +63,8 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
     errors.push(createHarnessError({ code: "HARNESS_WORK_ITEM_DEPENDENCIES_INVALID", reason: `Work item must declare dependsOn array: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
   }
 
-  if (!hasVerificationPlan(workItem)) {
+  const verificationExempt = nodeKind === "domain-pm" && Boolean(verificationExemptionReason(workItem));
+  if (!hasVerificationPlan(workItem) && !verificationExempt) {
     errors.push(createHarnessError({
       code: "HARNESS_VERIFICATION_PLAN_MISSING",
       reason: `Ready requires at least one declared verification command: ${workItem.id}. Add a command such as {"file":"npm","args":["test"]} with plan --verify or revise the work item before launch.`,
@@ -82,7 +93,8 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
     errors.push(createHarnessError({ code: "HARNESS_DONE_EVIDENCE_PLAN_MISSING", reason: `Ready requires planned verification and wiki-sync Done evidence: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
   }
 
-  if (!Array.isArray(workItem.allowedPaths) || workItem.allowedPaths.length === 0) {
+  const requiresAllowedPaths = nodeKind === "implementation";
+  if (requiresAllowedPaths && (!Array.isArray(workItem.allowedPaths) || workItem.allowedPaths.length === 0)) {
     errors.push(createHarnessError({
       code: "HARNESS_ALLOWED_PATH_INVALID",
       reason: `Work item must declare at least one safe allowed path: ${workItem.id}`,
