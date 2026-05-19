@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import Dagre from '@dagrejs/dagre';
 import {
   ReactFlow,
   Background,
@@ -6,7 +7,7 @@ import {
   MiniMap,
   Handle,
   Position,
-  type Node,
+  type Node as ReactFlowNode,
   type Edge,
   type NodeProps,
   type NodeMouseHandler,
@@ -17,7 +18,7 @@ import { useDashboardStore } from '../store/dashboard-store';
 
 // ── Custom Module Node ──
 
-type ModuleFlowNode = Node<ModuleFlowNodeData, 'module'>;
+type ModuleFlowNode = ReactFlowNode<ModuleFlowNodeData, 'module'>;
 
 function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
   const sel = useDashboardStore(s => s.selection);
@@ -25,35 +26,53 @@ function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
 
   return (
     <div className={`module-node ${selected || isHighlighted ? 'selected' : ''}`}>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <div className="node-label">{data.label}</div>
       {data.responsibilityUnitId && (
         <div className="node-sub">{data.responsibilityUnitId}</div>
       )}
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
 
 const nodeTypes = { module: ModuleNode };
 
-const GRAPH_BASE_X = 100;
-const GRAPH_BASE_Y = 100;
-const GRAPH_X_SPACING = 400;
-const GRAPH_Y_SPACING = 250;
-const GRAPH_COLUMNS = 2;
-const GRAPH_ROW_OFFSET = GRAPH_X_SPACING / 2;
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
+const MODULE_NODE_WIDTH = 350;
+const MODULE_NODE_HEIGHT = 100;
 
-// ── Auto-layout: staggered grid ──
+// ── Auto-layout: dagre hierarchy ──
 
-function autoLayout(archNodes: ArchNode[]): ModuleFlowNode[] {
+function autoLayout(archNodes: ArchNode[], archEdges: ArchEdge[]): ModuleFlowNode[] {
+  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: 'TB', nodesep: 150, ranksep: 200, marginx: 40, marginy: 40 });
+
+  archNodes.forEach(n => {
+    g.setNode(n.id, {
+      width: MODULE_NODE_WIDTH,
+      height: MODULE_NODE_HEIGHT,
+    });
+  });
+
+  archEdges.forEach(e => {
+    g.setEdge(e.from, e.to);
+  });
+
+  Dagre.layout(g);
+  const graph = g.graph();
+  const centerOffset = {
+    x: (graph.width ?? 0) / 2,
+    y: (graph.height ?? 0) / 2,
+  };
+
   return archNodes.map((n, i) => ({
     id: n.id,
     type: 'module',
-    position: {
-      x: GRAPH_BASE_X + (i % GRAPH_COLUMNS) * GRAPH_X_SPACING + (Math.floor(i / GRAPH_COLUMNS) % 2) * GRAPH_ROW_OFFSET,
-      y: GRAPH_BASE_Y + Math.floor(i / GRAPH_COLUMNS) * GRAPH_Y_SPACING,
+    position: getNodePosition(g.node(n.id), centerOffset, i),
+    style: {
+      minWidth: MODULE_NODE_WIDTH,
+      width: MODULE_NODE_WIDTH,
     },
     data: {
       label: n.label,
@@ -61,6 +80,24 @@ function autoLayout(archNodes: ArchNode[]): ModuleFlowNode[] {
       responsibilityUnitId: n.responsibilityUnitId ?? null,
     },
   }));
+}
+
+function getNodePosition(
+  node: { x: number; y: number } | undefined,
+  centerOffset: { x: number; y: number },
+  index: number
+) {
+  if (!node || typeof node.x !== 'number' || typeof node.y !== 'number') {
+    return {
+      x: index * (MODULE_NODE_WIDTH + 150) - centerOffset.x,
+      y: -centerOffset.y,
+    };
+  }
+
+  return {
+    x: node.x - centerOffset.x - MODULE_NODE_WIDTH / 2,
+    y: node.y - centerOffset.y - MODULE_NODE_HEIGHT / 2,
+  };
 }
 
 function buildEdges(archEdges: ArchEdge[]): Edge[] {
@@ -84,7 +121,7 @@ interface Props {
 export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
   const selectNode = useDashboardStore(s => s.selectNode);
 
-  const nodes = useMemo(() => autoLayout(archNodes), [archNodes]);
+  const nodes = useMemo(() => autoLayout(archNodes, archEdges), [archNodes, archEdges]);
   const edges = useMemo(() => buildEdges(archEdges), [archEdges]);
 
   const onNodeClick = useCallback<NodeMouseHandler<ModuleFlowNode>>((_: React.MouseEvent, node) => {
@@ -108,7 +145,7 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
         onNodeClick={onNodeClick}
         defaultViewport={DEFAULT_VIEWPORT}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.0 }}
+        fitViewOptions={{ padding: 0.3 }}
         minZoom={0.5}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
+import Dagre from '@dagrejs/dagre';
 import {
   ReactFlow,
   Background,
   Controls,
   Handle,
   Position,
-  type Node,
+  type Node as ReactFlowNode,
   type Edge,
   type NodeProps,
   type NodeMouseHandler,
@@ -16,14 +17,11 @@ import { useDashboardStore } from '../store/dashboard-store';
 
 // ── Custom Work Item Node ──
 
-type WorkItemFlowNode = Node<WorkItemFlowNodeData, 'workItem'>;
+type WorkItemFlowNode = ReactFlowNode<WorkItemFlowNodeData, 'workItem'>;
 
-const DAG_BASE_X = 100;
-const DAG_BASE_Y = 100;
-const DAG_X_SPACING = 400;
-const DAG_Y_SPACING = 250;
-const DAG_ROW_OFFSET = DAG_X_SPACING / 2;
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
+const WORK_ITEM_NODE_WIDTH = 350;
+const WORK_ITEM_NODE_HEIGHT = 120;
 
 function laneStatusClass(lane: string, isBlocked: boolean): string {
   if (isBlocked || lane === 'Blocked') return 'status-blocked';
@@ -63,60 +61,66 @@ function WorkItemNode({ data, selected }: NodeProps<WorkItemFlowNode>) {
 
 const nodeTypes = { workItem: WorkItemNode };
 
-// ── Layout: topological layers ──
+// ── Layout: dagre hierarchy ──
 
 function buildDagNodes(workItems: WorkItem[]): WorkItemFlowNode[] {
-  // Build dependency layers for Y positioning
-  const byId = new Map(workItems.map(wi => [wi.id, wi]));
-  const layers = new Map<string, number>();
+  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: 'TB', nodesep: 150, ranksep: 200, marginx: 40, marginy: 40 });
+  const idSet = new Set(workItems.map(wi => wi.id));
 
-  function getLayer(id: string, visited = new Set<string>()): number {
-    if (layers.has(id)) return layers.get(id)!;
-    if (visited.has(id)) return 0; // cycle guard
-    visited.add(id);
-    const wi = byId.get(id);
-    if (!wi || wi.dependsOn.length === 0) {
-      layers.set(id, 0);
-      return 0;
-    }
-    const maxDep = Math.max(...wi.dependsOn.map(dep => getLayer(dep, visited)));
-    const layer = maxDep + 1;
-    layers.set(id, layer);
-    return layer;
-  }
-
-  workItems.forEach(wi => getLayer(wi.id));
-
-  // Group by layer
-  const layerGroups = new Map<number, WorkItem[]>();
   workItems.forEach(wi => {
-    const layer = layers.get(wi.id) ?? 0;
-    if (!layerGroups.has(layer)) layerGroups.set(layer, []);
-    layerGroups.get(layer)!.push(wi);
+    g.setNode(wi.id, {
+      width: WORK_ITEM_NODE_WIDTH,
+      height: WORK_ITEM_NODE_HEIGHT,
+    });
+
+    wi.dependsOn.forEach(dep => {
+      if (idSet.has(dep)) {
+        g.setEdge(dep, wi.id);
+      }
+    });
   });
 
-  const nodes: WorkItemFlowNode[] = [];
+  Dagre.layout(g);
+  const graph = g.graph();
+  const centerOffset = {
+    x: (graph.width ?? 0) / 2,
+    y: (graph.height ?? 0) / 2,
+  };
 
-  for (const [layer, items] of Array.from(layerGroups.entries()).sort(([a], [b]) => a - b)) {
-    items.forEach((wi, colIdx) => {
-      nodes.push({
-        id: wi.id,
-        type: 'workItem',
-        position: {
-          x: DAG_BASE_X + colIdx * DAG_X_SPACING + (layer % 2) * DAG_ROW_OFFSET,
-          y: DAG_BASE_Y + layer * DAG_Y_SPACING,
-        },
-        data: {
-          workItemId: wi.id,
-          title: wi.title,
-          lane: wi.lane,
-          isBlocked: wi.isBlocked,
-        },
-      });
-    });
+  return workItems.map((wi, i) => ({
+    id: wi.id,
+    type: 'workItem',
+    position: getNodePosition(g.node(wi.id), centerOffset, i),
+    style: {
+      minWidth: WORK_ITEM_NODE_WIDTH,
+      width: WORK_ITEM_NODE_WIDTH,
+    },
+    data: {
+      workItemId: wi.id,
+      title: wi.title,
+      lane: wi.lane,
+      isBlocked: wi.isBlocked,
+    },
+  }));
+}
+
+function getNodePosition(
+  node: { x: number; y: number } | undefined,
+  centerOffset: { x: number; y: number },
+  index: number
+) {
+  if (!node || typeof node.x !== 'number' || typeof node.y !== 'number') {
+    return {
+      x: index * (WORK_ITEM_NODE_WIDTH + 150) - centerOffset.x,
+      y: -centerOffset.y,
+    };
   }
 
-  return nodes;
+  return {
+    x: node.x - centerOffset.x - WORK_ITEM_NODE_WIDTH / 2,
+    y: node.y - centerOffset.y - WORK_ITEM_NODE_HEIGHT / 2,
+  };
 }
 
 function buildDagEdges(workItems: WorkItem[]): Edge[] {
@@ -172,7 +176,7 @@ export function TaskDAG({ workItems }: Props) {
         onNodeClick={onNodeClick}
         defaultViewport={DEFAULT_VIEWPORT}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.0 }}
+        fitViewOptions={{ padding: 0.3 }}
         minZoom={0.5}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
