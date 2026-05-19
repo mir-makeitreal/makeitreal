@@ -1,0 +1,630 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Make It Real Design Pack Artifact",
+  "description": "Schema for the Make It Real design-pack.json artifact describing architecture, state flow, contracts, responsibility boundaries, module interfaces, call stacks, and sequences.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "workItemId",
+    "prdId",
+    "architecture",
+    "stateFlow",
+    "apiSpecs",
+    "responsibilityBoundaries",
+    "moduleInterfaces",
+    "callStacks",
+    "sequences"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Artifact schema version emitted by the Make It Real planner.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "runId": {
+      "description": "Identifier for the run packet that owns this design pack.",
+      "type": "string",
+      "minLength": 1
+    },
+    "workItemId": {
+      "description": "Primary work item this design pack prepares for launch.",
+      "type": "string",
+      "minLength": 1
+    },
+    "prdId": {
+      "description": "PRD identifier this design pack implements.",
+      "type": "string",
+      "minLength": 1
+    },
+    "architecture": {
+      "description": "Architecture graph connecting responsibility nodes through declared contracts.",
+      "type": "object",
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "nodes": {
+          "description": "Architecture nodes representing product, UI, service, or implementation units.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/architectureNode"
+          }
+        },
+        "edges": {
+          "description": "Directed architecture edges between nodes, usually tied to a declared contract.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/architectureEdge"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "stateFlow": {
+      "description": "Kanban lane flow and named gate transitions for this run.",
+      "type": "object",
+      "required": [
+        "lanes",
+        "transitions"
+      ],
+      "properties": {
+        "lanes": {
+          "description": "Ordered workflow lane names visible to operators and gates.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "transitions": {
+          "description": "Named state transitions and the gate that authorizes each transition.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/stateTransition"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "apiSpecs": {
+      "description": "Contract surfaces declared for this design pack.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/apiSpec"
+      }
+    },
+    "componentContracts": {
+      "description": "Optional component-level contract artifacts generated for UI component work.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/componentContract"
+      }
+    },
+    "responsibilityBoundaries": {
+      "description": "Ownership boundaries mapping responsibility units to file paths and contracts they may use.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/responsibilityBoundary"
+      }
+    },
+    "moduleInterfaces": {
+      "description": "Public module contracts and dependency imports for each responsibility unit.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/moduleInterface"
+      }
+    },
+    "callStacks": {
+      "description": "Expected call paths from public entrypoints through declared surfaces.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/callStack"
+      }
+    },
+    "sequences": {
+      "description": "Scenario sequence diagrams rendered from participants and messages.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/sequence"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "architectureNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable architecture node identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "description": "Human-readable node label shown in architecture views.",
+          "type": "string",
+          "minLength": 1
+        },
+        "responsibilityUnitId": {
+          "description": "Responsibility unit that owns this architecture node when applicable.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "architectureEdge": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "contractId"
+      ],
+      "properties": {
+        "from": {
+          "description": "Source architecture node id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Target architecture node id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "contractId": {
+          "description": "Contract that authorizes the edge between the two nodes.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "stateTransition": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "gate"
+      ],
+      "properties": {
+        "from": {
+          "description": "Source workflow lane.",
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Destination workflow lane.",
+          "type": "string",
+          "minLength": 1
+        },
+        "gate": {
+          "description": "Gate or evidence source that permits this transition.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "apiSpec": {
+      "type": "object",
+      "required": [
+        "kind",
+        "contractId"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Contract artifact kind.",
+          "type": "string",
+          "enum": [
+            "openapi",
+            "none"
+          ]
+        },
+        "contractId": {
+          "description": "Stable contract identifier referenced by architecture and module surfaces.",
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Run-relative path to the contract artifact when one exists.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "description": "Reason no standalone contract artifact is present for this contract.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "componentContract": {
+      "type": "object",
+      "required": [
+        "kind",
+        "contractId",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Component contract artifact kind.",
+          "type": "string",
+          "const": "component"
+        },
+        "contractId": {
+          "description": "Stable component contract identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Run-relative path to the component contract artifact.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "responsibilityBoundary": {
+      "type": "object",
+      "required": [
+        "responsibilityUnitId",
+        "owns",
+        "mayUseContracts"
+      ],
+      "properties": {
+        "responsibilityUnitId": {
+          "description": "Responsibility unit governed by this boundary.",
+          "type": "string",
+          "minLength": 1
+        },
+        "owns": {
+          "description": "File patterns owned by the responsibility unit.",
+          "$ref": "#/definitions/stringList"
+        },
+        "mayUseContracts": {
+          "description": "Contract identifiers this responsibility unit is allowed to consume.",
+          "$ref": "#/definitions/stringList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "moduleInterface": {
+      "type": "object",
+      "required": [
+        "responsibilityUnitId",
+        "owner",
+        "moduleName",
+        "purpose",
+        "owns",
+        "publicSurfaces",
+        "imports"
+      ],
+      "properties": {
+        "responsibilityUnitId": {
+          "description": "Responsibility unit whose public interface is described.",
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "description": "Team or role responsible for the module interface.",
+          "type": "string",
+          "minLength": 1
+        },
+        "moduleName": {
+          "description": "Human-readable module name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "description": "Contract-level purpose and boundary for the module.",
+          "type": "string",
+          "minLength": 1
+        },
+        "owns": {
+          "description": "File patterns owned by this module.",
+          "$ref": "#/definitions/stringList"
+        },
+        "publicSurfaces": {
+          "description": "Public callable or renderable surfaces exposed by this module.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/publicSurface"
+          }
+        },
+        "imports": {
+          "description": "Declared cross-boundary dependencies consumed by this module.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/moduleImport"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "publicSurface": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind",
+        "description",
+        "contractIds",
+        "consumers",
+        "signature"
+      ],
+      "properties": {
+        "name": {
+          "description": "Public surface name or route.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "description": "Surface kind, such as http, component-event, or function.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "Behavioral description of the public surface.",
+          "type": "string",
+          "minLength": 1
+        },
+        "contractIds": {
+          "description": "Contracts implemented or exposed by this surface.",
+          "$ref": "#/definitions/stringList"
+        },
+        "consumers": {
+          "description": "Known consumers of this public surface.",
+          "$ref": "#/definitions/stringList"
+        },
+        "signature": {
+          "description": "Inputs, outputs, and errors that define this public surface.",
+          "$ref": "#/definitions/signature"
+        }
+      },
+      "additionalProperties": false
+    },
+    "signature": {
+      "type": "object",
+      "required": [
+        "inputs",
+        "outputs",
+        "errors"
+      ],
+      "properties": {
+        "inputs": {
+          "description": "Input fields accepted by the public surface.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/signatureInput"
+          }
+        },
+        "outputs": {
+          "description": "Output fields returned by the public surface.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/signatureValue"
+          }
+        },
+        "errors": {
+          "description": "Declared failure modes and required handling behavior.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/signatureError"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "signatureInput": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "description": "Input field name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "Logical input type.",
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "description": "Whether the input is required by the contract.",
+          "type": "boolean"
+        },
+        "description": {
+          "description": "Input field purpose.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "signatureValue": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "description": "Output field name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "Logical output type.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "Output field purpose.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "signatureError": {
+      "type": "object",
+      "required": [
+        "code",
+        "when",
+        "handling"
+      ],
+      "properties": {
+        "code": {
+          "description": "Stable error code emitted by the surface.",
+          "type": "string",
+          "minLength": 1
+        },
+        "when": {
+          "description": "Condition that causes this error.",
+          "type": "string",
+          "minLength": 1
+        },
+        "handling": {
+          "description": "Required handling behavior for this error.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "moduleImport": {
+      "type": "object",
+      "required": [
+        "contractId",
+        "providerResponsibilityUnitId",
+        "surface",
+        "allowedUse"
+      ],
+      "properties": {
+        "contractId": {
+          "description": "Contract consumed by this module import.",
+          "type": "string",
+          "minLength": 1
+        },
+        "providerResponsibilityUnitId": {
+          "description": "Responsibility unit that provides the imported contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "description": "Provider surface used through the contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedUse": {
+          "description": "Allowed use of the imported contract.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "callStack": {
+      "type": "object",
+      "required": [
+        "entrypoint",
+        "calls"
+      ],
+      "properties": {
+        "entrypoint": {
+          "description": "Public entrypoint that starts the call path.",
+          "type": "string",
+          "minLength": 1
+        },
+        "calls": {
+          "description": "Ordered calls made from the entrypoint.",
+          "$ref": "#/definitions/stringList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sequence": {
+      "type": "object",
+      "required": [
+        "title",
+        "participants",
+        "messages"
+      ],
+      "properties": {
+        "title": {
+          "description": "Scenario title for this sequence.",
+          "type": "string",
+          "minLength": 1
+        },
+        "participants": {
+          "description": "Named participants in the sequence.",
+          "$ref": "#/definitions/stringList"
+        },
+        "messages": {
+          "description": "Directed messages exchanged in the sequence.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/sequenceMessage"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sequenceMessage": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "label"
+      ],
+      "properties": {
+        "from": {
+          "description": "Message sender participant.",
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Message receiver participant.",
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "description": "Message label rendered in the sequence diagram.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

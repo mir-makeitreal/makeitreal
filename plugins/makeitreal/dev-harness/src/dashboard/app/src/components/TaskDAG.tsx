@@ -18,12 +18,38 @@ import { useDashboardStore } from '../store/dashboard-store';
 
 type WorkItemFlowNode = Node<WorkItemFlowNodeData, 'workItem'>;
 
+const DAG_BASE_X = 100;
+const DAG_BASE_Y = 100;
+const DAG_X_SPACING = 400;
+const DAG_Y_SPACING = 250;
+const DAG_ROW_OFFSET = DAG_X_SPACING / 2;
+const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
+
+function laneStatusClass(lane: string, isBlocked: boolean): string {
+  if (isBlocked || lane === 'Blocked') return 'status-blocked';
+
+  switch (lane) {
+    case 'Done':
+      return 'status-done';
+    case 'Ready':
+      return 'status-ready';
+    case 'Running':
+    case 'In-Progress':
+      return 'status-running';
+    case 'Contract Frozen':
+      return 'status-contract-frozen';
+    default:
+      return 'status-unknown';
+  }
+}
+
 function WorkItemNode({ data, selected }: NodeProps<WorkItemFlowNode>) {
   const sel = useDashboardStore(s => s.selection);
   const isHighlighted = sel.nodeId === data.workItemId || sel.relatedWorkItemIds.includes(data.workItemId);
+  const statusClass = laneStatusClass(data.lane, data.isBlocked);
 
   return (
-    <div className={`work-item-node ${selected || isHighlighted ? 'selected' : ''}`}>
+    <div className={`work-item-node ${statusClass} ${selected || isHighlighted ? 'selected' : ''}`}>
       <Handle type="target" position={Position.Top} />
       <div className={`lane-badge ${data.lane?.replace(/\s+/g, '')}`}>{data.lane}</div>
       <div className="node-title">{data.title}</div>
@@ -69,18 +95,16 @@ function buildDagNodes(workItems: WorkItem[]): WorkItemFlowNode[] {
     layerGroups.get(layer)!.push(wi);
   });
 
-  const xSpacing = 280;
-  const ySpacing = 160;
   const nodes: WorkItemFlowNode[] = [];
 
-  for (const [layer, items] of layerGroups) {
+  for (const [layer, items] of Array.from(layerGroups.entries()).sort(([a], [b]) => a - b)) {
     items.forEach((wi, colIdx) => {
       nodes.push({
         id: wi.id,
         type: 'workItem',
         position: {
-          x: colIdx * xSpacing + 50,
-          y: layer * ySpacing + 50,
+          x: DAG_BASE_X + colIdx * DAG_X_SPACING + (layer % 2) * DAG_ROW_OFFSET,
+          y: DAG_BASE_Y + layer * DAG_Y_SPACING,
         },
         data: {
           workItemId: wi.id,
@@ -109,7 +133,8 @@ function buildDagEdges(workItems: WorkItem[]): Edge[] {
           stroke: wi.isBlocked ? 'var(--accent-red)' : 'var(--rf-edge)',
           strokeWidth: wi.isBlocked ? 2 : 1.5,
         },
-        animated: wi.isBlocked,
+        animated: true,
+        type: 'smoothstep',
       });
     });
   });
@@ -145,8 +170,9 @@ export function TaskDAG({ workItems }: Props) {
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
+        defaultViewport={DEFAULT_VIEWPORT}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1.5 }}
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.0 }}
         minZoom={0.5}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

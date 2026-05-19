@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useDashboardStore } from '../store/dashboard-store';
 import type { Board, WorkItem } from '../types/model';
 
 export interface KanbanBoardProps {
@@ -27,6 +28,22 @@ function laneColor(laneName: string): string {
   return LANE_COLORS[laneName] ?? 'var(--border-primary)';
 }
 
+function laneClass(laneName: string): string {
+  return laneName.replace(/[^a-zA-Z0-9]/g, '');
+}
+
+function shortWorkItemId(id: string) {
+  return id.split('/').pop() ?? id;
+}
+
+function workItemStatusLabel(item: WorkItem) {
+  if (item.isBlocked) return 'Blocked';
+  if (item.isRetryReady) return 'Retry Ready';
+  if (item.isRework) return 'Rework';
+  if (item.claim) return 'Claimed';
+  return item.lane;
+}
+
 function WorkItemCard({
   item,
   isSelected,
@@ -36,112 +53,65 @@ function WorkItemCard({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const contractCount = item.contractIds?.length ?? 0;
+  const statusLabel = workItemStatusLabel(item);
+  const laneClassName = laneClass(item.lane);
+
   return (
-    <div
+    <button
+      type="button"
       className={`kanban-card ${isSelected ? 'selected' : ''}`}
       onClick={onClick}
-      style={{
-        padding: '10px 12px',
-        marginBottom: 8,
-        background: isSelected ? 'var(--bg-elevated)' : 'var(--bg-primary)',
-        border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-secondary)'}`,
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: 12,
-        transition: 'all 0.15s ease',
-        boxShadow: isSelected ? '0 0 0 1px var(--accent-blue)' : 'var(--shadow-sm)',
-      }}
-      onMouseOver={e => {
-        if (!isSelected) {
-          e.currentTarget.style.borderColor = 'var(--border-primary)';
-          e.currentTarget.style.background = 'var(--bg-elevated)';
-        }
-      }}
-      onMouseOut={e => {
-        if (!isSelected) {
-          e.currentTarget.style.borderColor = 'var(--border-secondary)';
-          e.currentTarget.style.background = 'var(--bg-primary)';
-        }
-      }}
+      aria-pressed={isSelected}
+      aria-label={`Open details for ${item.title}`}
     >
-      <div style={{
-        fontWeight: 600,
-        marginBottom: 4,
-        color: 'var(--text-primary)',
-        lineHeight: 1.3,
-      }}>{item.title}</div>
-      <div style={{
-        color: 'var(--text-tertiary)',
-        fontSize: 10,
-        fontFamily: 'var(--font-mono)',
-        marginBottom: 4,
-      }}>
-        {item.id}
+      <div className="kanban-card__topline">
+        <span className={`kanban-card__status lane-${laneClassName}`}>
+          {statusLabel}
+        </span>
+        <span className="kanban-card__contracts">
+          {contractCount} contract{contractCount === 1 ? '' : 's'}
+        </span>
       </div>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div className="kanban-card__title" title={item.title}>{item.title}</div>
+      <div className="kanban-card__id">{shortWorkItemId(item.id)}</div>
+      <div className="kanban-card__tags">
         {item.isBlocked && (
-          <span style={{
-            color: 'var(--accent-red)',
-            fontSize: 10,
-            background: 'rgba(248, 81, 73, 0.1)',
-            padding: '1px 6px',
-            borderRadius: 4,
-            fontWeight: 500,
-          }}>● blocked</span>
+          <span className="kanban-card__tag kanban-card__tag--blocked">blocked</span>
         )}
         {item.isRetryReady && (
-          <span style={{
-            color: 'var(--accent-yellow)',
-            fontSize: 10,
-            background: 'rgba(210, 153, 34, 0.1)',
-            padding: '1px 6px',
-            borderRadius: 4,
-            fontWeight: 500,
-          }}>↻ retry</span>
+          <span className="kanban-card__tag kanban-card__tag--retry">retry</span>
         )}
         {item.isRework && (
-          <span style={{
-            color: 'var(--accent-purple)',
-            fontSize: 10,
-            background: 'rgba(188, 140, 255, 0.1)',
-            padding: '1px 6px',
-            borderRadius: 4,
-            fontWeight: 500,
-          }}>✎ rework</span>
+          <span className="kanban-card__tag kanban-card__tag--rework">rework</span>
         )}
         {item.attemptNumber != null && item.attemptNumber > 1 && (
-          <span style={{
-            color: 'var(--text-tertiary)',
-            fontSize: 10,
-            background: 'var(--bg-tertiary)',
-            padding: '1px 6px',
-            borderRadius: 4,
-          }}>attempt #{item.attemptNumber}</span>
+          <span className="kanban-card__tag">attempt #{item.attemptNumber}</span>
         )}
       </div>
       {item.dependsOn.length > 0 && (
-        <div style={{
-          color: 'var(--text-tertiary)',
-          fontSize: 10,
-          marginTop: 6,
-          paddingTop: 6,
-          borderTop: '1px solid var(--border-secondary)',
-        }}>
-          <span style={{ fontWeight: 500 }}>deps:</span>{' '}
+        <div className="kanban-card__deps">
+          <span>deps:</span>{' '}
           {item.dependsOn.map((dep, i) => (
             <span key={dep}>
               {i > 0 && ', '}
-              <span style={{ fontFamily: 'var(--font-mono)' }}>{dep.split('/').pop()}</span>
+              <span>{shortWorkItemId(dep)}</span>
             </span>
           ))}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
 export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: KanbanBoardProps) {
   const [showEmpty, setShowEmpty] = useState(false);
+  const selectNode = useDashboardStore(s => s.selectNode);
+  const selection = useDashboardStore(s => s.selection);
+  const allWorkItems = useMemo(() => board?.lanes?.flatMap(lane => lane.workItems) ?? [], [board]);
+  const totalItems = allWorkItems.length;
+  const doneItems = allWorkItems.filter(item => item.lane === 'Done').length;
+  const donePercent = totalItems === 0 ? 0 : Math.round((doneItems / totalItems) * 100);
 
   if (!board || !board.lanes || board.lanes.length === 0) {
     return (
@@ -153,30 +123,41 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
 
   const visibleLanes = showEmpty ? board.lanes : board.lanes.filter(l => l.workItems.length > 0);
   const hiddenCount = board.lanes.length - visibleLanes.length;
+  const selectedId = selectedWorkItemId ?? (selection.nodeType === 'workItem' ? selection.nodeId : null);
 
   return (
     <div>
-      {hiddenCount > 0 && (
-        <div style={{
-          padding: '6px 12px',
-          display: 'flex',
-          justifyContent: 'flex-end',
-        }}>
+      <div className="kanban-summary">
+        <div>
+          <div className="kanban-summary__title">Board Progress</div>
+          <div className="kanban-summary__meta">
+            {doneItems} done / {totalItems} total
+          </div>
+        </div>
+        <div className="kanban-summary__meter">
+          <div
+            className="kanban-summary__progress"
+            role="progressbar"
+            aria-valuenow={donePercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Done work item progress"
+          >
+            <div className="kanban-summary__progress-bar" style={{ width: `${donePercent}%` }} />
+          </div>
+          <span>{donePercent}%</span>
+        </div>
+        {hiddenCount > 0 && (
           <button
+            type="button"
+            className="kanban-summary__toggle"
             onClick={() => setShowEmpty(!showEmpty)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              padding: '2px 8px',
-            }}
           >
             {showEmpty ? 'Hide' : 'Show'} {hiddenCount} empty lane{hiddenCount !== 1 ? 's' : ''}
           </button>
-        </div>
-      )}
+        )}
+      </div>
+
       <div
         className="kanban-board"
         style={{
@@ -237,8 +218,14 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
                 <WorkItemCard
                   key={item.id}
                   item={item}
-                  isSelected={selectedWorkItemId === item.id}
-                  onClick={() => onSelectWorkItem?.(item.id)}
+                  isSelected={selectedId === item.id}
+                  onClick={() => {
+                    if (onSelectWorkItem) {
+                      onSelectWorkItem(item.id);
+                    } else {
+                      selectNode(item.id, 'workItem');
+                    }
+                  }}
                 />
               ))}
               {lane.workItems.length === 0 && (

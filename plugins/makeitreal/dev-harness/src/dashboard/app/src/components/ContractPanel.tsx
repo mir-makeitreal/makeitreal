@@ -1,61 +1,201 @@
 import React, { useState } from 'react';
-import type { ModuleInterface } from '../types/model';
+import type {
+  ModuleInterface,
+  PublicSurface,
+  PublicSurfaceError,
+  PublicSurfaceInput,
+  PublicSurfaceOutput,
+} from '../types/model';
 
 interface Props {
   moduleInterfaces: ModuleInterface[];
 }
 
-function CollapsibleSection({ title, badge, children, defaultOpen = false }: {
-  title: string;
-  badge?: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
+function outputTypeLabel(outputs: PublicSurfaceOutput[]) {
+  if (outputs.length === 0) return 'void';
+  if (outputs.length === 1) return outputs[0].type;
+  return outputs.map(output => output.type).join(' | ');
+}
+
+function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(value);
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  return Promise.resolve();
+}
+
+function CopyContractButton({
+  contractId,
+  copiedContractId,
+  onCopy,
+}: {
+  contractId: string;
+  copiedContractId: string | null;
+  onCopy: (contractId: string) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const copied = copiedContractId === contractId;
+
   return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          width: '100%',
-          padding: '4px 0',
-          color: 'var(--text-secondary)',
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        }}
-      >
-        <span style={{
-          display: 'inline-block',
-          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-          transition: 'transform 0.15s',
-          fontSize: 10,
-        }}>▶</span>
-        {title}
-        {badge && (
-          <span style={{
-            fontSize: 10,
-            color: 'var(--text-tertiary)',
-            background: 'var(--bg-tertiary)',
-            padding: '1px 6px',
-            borderRadius: 8,
-            fontWeight: 400,
-          }}>{badge}</span>
-        )}
-      </button>
-      {open && <div style={{ paddingLeft: 16, paddingTop: 4 }}>{children}</div>}
+    <button
+      type="button"
+      className="copy-contract-button"
+      aria-label={`Copy contract ID ${contractId}`}
+      onClick={() => onCopy(contractId)}
+    >
+      {copied ? 'Copied' : 'Copy contract ID'}
+    </button>
+  );
+}
+
+function ContractIdChip({
+  contractId,
+  copiedContractId,
+  onCopy,
+}: {
+  contractId: string;
+  copiedContractId: string | null;
+  onCopy: (contractId: string) => void;
+}) {
+  return (
+    <span className="contract-id-chip">
+      <code>{contractId}</code>
+      <CopyContractButton
+        contractId={contractId}
+        copiedContractId={copiedContractId}
+        onCopy={onCopy}
+      />
+    </span>
+  );
+}
+
+function SurfaceSignature({ surface }: { surface: PublicSurface }) {
+  return (
+    <code className="contract-signature" aria-label={`${surface.name} contract signature`}>
+      <span className="sig-function">{surface.name}</span>
+      <span className="sig-punctuation">(</span>
+      {surface.signature.inputs.map((input, index) => (
+        <React.Fragment key={input.name}>
+          {index > 0 && <span className="sig-punctuation">, </span>}
+          <span className="sig-param">{input.name}</span>
+          {!input.required && <span className="sig-punctuation">?</span>}
+          <span className="sig-punctuation">: </span>
+          <span className="sig-type">{input.type}</span>
+        </React.Fragment>
+      ))}
+      <span className="sig-punctuation">): </span>
+      <span className="sig-type">{outputTypeLabel(surface.signature.outputs)}</span>
+    </code>
+  );
+}
+
+function InputsTable({ inputs }: { inputs: PublicSurfaceInput[] }) {
+  if (inputs.length === 0) return null;
+
+  return (
+    <div className="signature-table-block">
+      <div className="sig-header">Inputs</div>
+      <table className="signature-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {inputs.map(input => (
+            <tr key={input.name}>
+              <td><span className="sig-param">{input.name}</span></td>
+              <td><span className="sig-type">{input.type}</span></td>
+              <td>{input.required ? 'Yes' : 'No'}</td>
+              <td>{input.description || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OutputsTable({ outputs }: { outputs: PublicSurfaceOutput[] }) {
+  if (outputs.length === 0) return null;
+
+  return (
+    <div className="signature-table-block">
+      <div className="sig-header">Outputs</div>
+      <table className="signature-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {outputs.map(output => (
+            <tr key={output.name}>
+              <td><span className="sig-param">{output.name}</span></td>
+              <td><span className="sig-type">{output.type}</span></td>
+              <td>{output.description || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ErrorsTable({ errors }: { errors: PublicSurfaceError[] }) {
+  if (errors.length === 0) return null;
+
+  return (
+    <div className="signature-table-block">
+      <div className="sig-header">Errors</div>
+      <table className="signature-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>When</th>
+            <th>Handling</th>
+          </tr>
+        </thead>
+        <tbody>
+          {errors.map(error => (
+            <tr key={error.code}>
+              <td><span className="sig-error">{error.code}</span></td>
+              <td>{error.when}</td>
+              <td>{error.handling || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 export function ContractPanel({ moduleInterfaces }: Props) {
+  const [copiedContractId, setCopiedContractId] = useState<string | null>(null);
+
+  const handleCopyContractId = (contractId: string) => {
+    void copyText(contractId).then(() => {
+      setCopiedContractId(contractId);
+      window.setTimeout(() => {
+        setCopiedContractId(current => (current === contractId ? null : current));
+      }, 1200);
+    });
+  };
+
   if (moduleInterfaces.length === 0) {
     return (
       <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>
@@ -67,163 +207,105 @@ export function ContractPanel({ moduleInterfaces }: Props) {
   return (
     <div className="contract-panel">
       {moduleInterfaces.map((mod) => (
-        <div key={mod.responsibilityUnitId} className="contract-item" style={{
-          borderLeft: '3px solid var(--accent-blue)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="contract-id" style={{ fontSize: 13, fontWeight: 700 }}>{mod.moduleName}</span>
-            <span style={{
-              fontSize: 10,
-              color: 'var(--text-tertiary)',
-              background: 'var(--bg-tertiary)',
-              padding: '2px 8px',
-              borderRadius: 10,
-            }}>{mod.owner}</span>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-            {mod.purpose}
-          </div>
-          <div style={{
-            fontSize: 11,
-            color: 'var(--text-tertiary)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 4,
-          }}>
-            {mod.owns.map(path => (
-              <span key={path} style={{
-                background: 'var(--bg-tertiary)',
-                padding: '1px 6px',
-                borderRadius: 4,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-              }}>{path}</span>
-            ))}
-          </div>
+        <details key={mod.responsibilityUnitId} className="contract-item module-interface-details">
+          <summary className="module-interface-summary">
+            <span className="module-summary-main">
+              <span className="contract-id">{mod.moduleName}</span>
+              {mod.owner && <span className="module-owner">{mod.owner}</span>}
+            </span>
+            <span className="module-summary-meta">
+              {mod.publicSurfaces.length} surfaces / {mod.imports.length} imports
+            </span>
+          </summary>
 
-          {mod.publicSurfaces.length > 0 && (
-            <CollapsibleSection
-              title="Public Surfaces"
-              badge={String(mod.publicSurfaces.length)}
-              defaultOpen={mod.publicSurfaces.length <= 3}
-            >
-              {mod.publicSurfaces.map((surface) => (
-                <div key={surface.name} style={{
-                  marginBottom: 10,
-                  padding: '8px 10px',
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: 6,
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    marginBottom: 4,
-                  }}>
-                    <span style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      color: 'var(--accent-purple)',
-                      background: 'rgba(188, 140, 255, 0.1)',
-                      padding: '1px 6px',
-                      borderRadius: 4,
-                    }}>{surface.kind}</span>
-                    <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent-blue)' }}>
-                      {surface.name}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    {surface.description}
-                  </div>
+          <div className="module-interface-body">
+            {mod.purpose && <p className="module-purpose">{mod.purpose}</p>}
 
-                  {surface.signature.inputs.length > 0 && (
-                    <div style={{ marginBottom: 4 }}>
-                      <div className="sig-header">Inputs</div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'auto 1fr',
-                        gap: '2px 10px',
-                        fontSize: 11,
-                        fontFamily: 'var(--font-mono)',
-                      }}>
-                        {surface.signature.inputs.map((input) => (
-                          <React.Fragment key={input.name}>
-                            <span style={{ color: 'var(--text-primary)' }}>
-                              {input.name}{input.required && <span style={{ color: 'var(--accent-red)' }}>*</span>}
-                            </span>
-                            <span style={{ color: 'var(--accent-purple)' }}>{input.type}</span>
-                          </React.Fragment>
+            {mod.owns.length > 0 && (
+              <div className="module-path-list" aria-label={`${mod.moduleName} owned paths`}>
+                {mod.owns.map(path => (
+                  <code key={path}>{path}</code>
+                ))}
+              </div>
+            )}
+
+            {mod.publicSurfaces.length > 0 && (
+              <section className="contract-section">
+                <h4>
+                  Public Surfaces
+                  <span>{mod.publicSurfaces.length}</span>
+                </h4>
+                {mod.publicSurfaces.map((surface) => (
+                  <article key={surface.name} className="public-surface">
+                    <div className="surface-heading">
+                      <span className="surface-kind">{surface.kind}</span>
+                      <span className="surface-name">{surface.name}</span>
+                    </div>
+
+                    {surface.description && (
+                      <p className="surface-description">{surface.description}</p>
+                    )}
+
+                    {surface.contractIds.length > 0 && (
+                      <div className="contract-id-list" aria-label={`${surface.name} contract IDs`}>
+                        {surface.contractIds.map(contractId => (
+                          <ContractIdChip
+                            key={contractId}
+                            contractId={contractId}
+                            copiedContractId={copiedContractId}
+                            onCopy={handleCopyContractId}
+                          />
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {surface.signature.outputs.length > 0 && (
-                    <div style={{ marginBottom: 4 }}>
-                      <div className="sig-header">Outputs</div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'auto 1fr',
-                        gap: '2px 10px',
-                        fontSize: 11,
-                        fontFamily: 'var(--font-mono)',
-                      }}>
-                        {surface.signature.outputs.map((output) => (
-                          <React.Fragment key={output.name}>
-                            <span style={{ color: 'var(--text-primary)' }}>{output.name}</span>
-                            <span style={{ color: 'var(--accent-purple)' }}>{output.type}</span>
-                          </React.Fragment>
-                        ))}
-                      </div>
+                    <div className="interface-signature">
+                      <SurfaceSignature surface={surface} />
+                      <InputsTable inputs={surface.signature.inputs} />
+                      <OutputsTable outputs={surface.signature.outputs} />
+                      <ErrorsTable errors={surface.signature.errors} />
                     </div>
-                  )}
+                  </article>
+                ))}
+              </section>
+            )}
 
-                  {surface.signature.errors.length > 0 && (
-                    <div>
-                      <div className="sig-header">Errors</div>
-                      {surface.signature.errors.map((err) => (
-                        <div key={err.code} style={{
-                          fontSize: 11,
-                          fontFamily: 'var(--font-mono)',
-                          color: 'var(--accent-red)',
-                          padding: '1px 0',
-                        }}>
-                          {err.code}: <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>{err.when}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CollapsibleSection>
-          )}
-
-          {mod.imports.length > 0 && (
-            <CollapsibleSection
-              title="Imports"
-              badge={String(mod.imports.length)}
-            >
-              {mod.imports.map((imp) => (
-                <div key={imp.contractId} style={{
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
-                  padding: '3px 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{imp.surface}</span>
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>via</span>
-                  <span style={{ color: 'var(--accent-blue)' }}>{imp.contractId}</span>
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
-                    ← {imp.providerResponsibilityUnitId}
-                  </span>
-                </div>
-              ))}
-            </CollapsibleSection>
-          )}
-        </div>
+            {mod.imports.length > 0 && (
+              <section className="contract-section">
+                <h4>
+                  Imports
+                  <span>{mod.imports.length}</span>
+                </h4>
+                <table className="signature-table import-table">
+                  <thead>
+                    <tr>
+                      <th>Surface</th>
+                      <th>Contract ID</th>
+                      <th>Provider</th>
+                      <th>Allowed Use</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mod.imports.map((imp) => (
+                      <tr key={`${imp.contractId}-${imp.surface}`}>
+                        <td><span className="sig-function">{imp.surface}</span></td>
+                        <td>
+                          <ContractIdChip
+                            contractId={imp.contractId}
+                            copiedContractId={copiedContractId}
+                            onCopy={handleCopyContractId}
+                          />
+                        </td>
+                        <td>{imp.providerResponsibilityUnitId}</td>
+                        <td>{imp.allowedUse || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+          </div>
+        </details>
       ))}
     </div>
   );

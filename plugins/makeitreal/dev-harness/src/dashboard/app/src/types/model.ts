@@ -186,13 +186,21 @@ export interface EvidenceLink {
   summary: string;
   path: string;
   href: string | null;
+  timestamp?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ChecklistItem {
   id: string;
   label: string;
   command: string;
-  status: 'complete' | 'current' | 'pending' | 'blocked';
+  status: 'complete' | 'current' | 'pending' | 'blocked' | 'failed';
+  timestamp?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface Board {

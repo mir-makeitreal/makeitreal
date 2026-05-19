@@ -1,145 +1,180 @@
 import React from 'react';
-import type { ChecklistItem, OperatorCockpit } from '../types/model';
+import type { ChecklistItem, EvidenceLink, OperatorCockpit } from '../types/model';
 
 export interface EvidencePanelProps {
   cockpit: OperatorCockpit;
 }
 
-const STATUS_ICONS: Record<string, string> = {
+type VisualStepStatus = 'complete' | 'current' | 'pending' | 'failed';
+
+const STATUS_ICONS: Record<VisualStepStatus, string> = {
   complete: '✅',
   current: '🔵',
   pending: '⬜',
-  blocked: '🔴',
+  failed: '❌',
 };
 
-function ChecklistRow({ item }: { item: ChecklistItem }) {
+const STATUS_LABELS: Record<VisualStepStatus, string> = {
+  complete: 'complete',
+  current: 'current',
+  pending: 'pending',
+  failed: 'failed',
+};
+
+function visualStatus(status: ChecklistItem['status']): VisualStepStatus {
+  if (status === 'blocked' || status === 'failed') return 'failed';
+  return status;
+}
+
+function formatTimestamp(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function itemTimestamp(item: ChecklistItem | EvidenceLink) {
+  return formatTimestamp(item.completedAt ?? item.startedAt ?? item.updatedAt ?? item.timestamp);
+}
+
+function PipelineStep({ item, index }: { item: ChecklistItem; index: number }) {
+  const status = visualStatus(item.status);
+
   return (
-    <div
-      className="checklist-row"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 0',
-        borderBottom: '1px solid var(--border-primary)',
-        fontSize: 13,
-      }}
-    >
-      <span style={{ fontSize: 14, flexShrink: 0 }}>
-        {STATUS_ICONS[item.status] ?? '⬜'}
+    <div className={`pipeline-step pipeline-step--${status}`}>
+      <div className="pipeline-step__icon" aria-hidden="true">
+        {STATUS_ICONS[status]}
+      </div>
+      <div className="pipeline-step__body">
+        <div className="pipeline-step__index">Step {index + 1}</div>
+        <div className="pipeline-step__label">{item.label}</div>
+      </div>
+    </div>
+  );
+}
+
+function ChecklistRow({ item }: { item: ChecklistItem }) {
+  const status = visualStatus(item.status);
+  const timestamp = itemTimestamp(item);
+
+  return (
+    <div className={`pipeline-row pipeline-row--${status}`}>
+      <span className="pipeline-row__icon" aria-hidden="true">
+        {STATUS_ICONS[status]}
       </span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: item.status === 'current' ? 600 : 400 }}>
-          {item.label}
+      <div className="pipeline-row__main">
+        <div className="pipeline-row__titleline">
+          <div className="pipeline-row__label">{item.label}</div>
+          {timestamp && (
+            <time className="pipeline-row__time" dateTime={item.completedAt ?? item.startedAt ?? item.updatedAt ?? item.timestamp ?? undefined}>
+              {timestamp}
+            </time>
+          )}
         </div>
         {item.command && (
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--text-tertiary)',
-              fontFamily: 'monospace',
-              marginTop: 1,
-            }}
-          >
+          <code className="pipeline-row__command">
             {item.command}
-          </div>
+          </code>
         )}
       </div>
-      <span
-        style={{
-          fontSize: 10,
-          padding: '1px 6px',
-          borderRadius: 4,
-          background: item.status === 'complete' ? 'var(--accent-green, #22c55e)' :
-                      item.status === 'current' ? 'var(--accent-blue, #3b82f6)' :
-                      item.status === 'blocked' ? 'var(--accent-red, #ef4444)' :
-                      'var(--bg-secondary)',
-          color: item.status === 'pending' ? 'var(--text-tertiary)' : '#fff',
-        }}
-      >
-        {item.status}
+      <span className={`pipeline-row__badge pipeline-row__badge--${status}`}>
+        {STATUS_LABELS[status]}
       </span>
+    </div>
+  );
+}
+
+function EvidenceLinkRow({ evidence }: { evidence: EvidenceLink }) {
+  const timestamp = itemTimestamp(evidence);
+
+  return (
+    <div className="evidence-link-row">
+      <span className="evidence-link-row__kind">{evidence.kind}</span>
+      <div className="evidence-link-row__main">
+        {evidence.href ? (
+          <a href={evidence.href} target="_blank" rel="noopener noreferrer">
+            {evidence.summary}
+          </a>
+        ) : (
+          <span>{evidence.summary}</span>
+        )}
+        {evidence.path && <code>{evidence.path}</code>}
+      </div>
+      {timestamp && (
+        <time className="evidence-link-row__time" dateTime={evidence.completedAt ?? evidence.startedAt ?? evidence.updatedAt ?? evidence.timestamp ?? undefined}>
+          {timestamp}
+        </time>
+      )}
     </div>
   );
 }
 
 export function EvidencePanel({ cockpit }: EvidencePanelProps) {
   const { firstRunChecklist, evidenceLinks } = cockpit;
+  const totalSteps = firstRunChecklist.length;
+  const completeSteps = firstRunChecklist.filter(item => item.status === 'complete').length;
+  const failedSteps = firstRunChecklist.filter(item => visualStatus(item.status) === 'failed').length;
+  const progressPercent = totalSteps === 0 ? 0 : Math.round((completeSteps / totalSteps) * 100);
 
   return (
-    <div className="evidence-panel" style={{ padding: 12 }}>
-      {/* Checklist */}
+    <div className="evidence-panel">
       {firstRunChecklist.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-            Verification Checklist
+        <section className="pipeline-panel" aria-label="Verification pipeline">
+          <div className="pipeline-panel__header">
+            <div>
+              <div className="pipeline-panel__eyebrow">CI/CD Pipeline</div>
+              <div className="pipeline-panel__title">Verification Checklist</div>
+            </div>
+            <div className="pipeline-panel__percent">{progressPercent}%</div>
           </div>
-          <div>
+
+          <div
+            className={`pipeline-progress${failedSteps > 0 ? ' pipeline-progress--failed' : ''}`}
+            role="progressbar"
+            aria-valuenow={progressPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Verification checklist completion"
+          >
+            <div className="pipeline-progress__bar" style={{ width: `${progressPercent}%` }} />
+          </div>
+
+          <div className="pipeline-panel__meta">
+            <span>{completeSteps} of {totalSteps} complete</span>
+            {failedSteps > 0 && <span>{failedSteps} failed</span>}
+          </div>
+
+          <div className="pipeline-steps" aria-hidden="true">
+            {firstRunChecklist.map((item, index) => (
+              <PipelineStep key={item.id} item={item} index={index} />
+            ))}
+          </div>
+
+          <div className="pipeline-rows">
             {firstRunChecklist.map(item => (
               <ChecklistRow key={item.id} item={item} />
             ))}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
-            {firstRunChecklist.filter(i => i.status === 'complete').length} of{' '}
-            {firstRunChecklist.length} complete
-          </div>
-        </div>
+        </section>
       )}
 
-      {/* Evidence Links */}
       {evidenceLinks.length > 0 && (
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-            Evidence Links
-          </div>
-          {evidenceLinks.map((ev, i) => (
-            <div
-              key={i}
-              style={{
-                padding: '6px 0',
-                borderBottom: '1px solid var(--border-primary)',
-                fontSize: 12,
-              }}
-            >
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '1px 6px',
-                  borderRadius: 3,
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 10,
-                  marginRight: 6,
-                }}
-              >
-                {ev.kind}
-              </span>
-              {ev.href ? (
-                <a
-                  href={ev.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'var(--accent-blue)' }}
-                >
-                  {ev.summary}
-                </a>
-              ) : (
-                <span>{ev.summary}</span>
-              )}
-              {ev.path && (
-                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                  {ev.path}
-                </div>
-              )}
-            </div>
+        <section className="evidence-links-panel" aria-label="Evidence links">
+          <div className="evidence-links-panel__title">Evidence Links</div>
+          {evidenceLinks.map((evidence, index) => (
+            <EvidenceLinkRow key={`${evidence.kind}-${evidence.path}-${index}`} evidence={evidence} />
           ))}
-        </div>
+        </section>
       )}
 
       {firstRunChecklist.length === 0 && evidenceLinks.length === 0 && (
-        <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-          No evidence data available.
-        </div>
+        <div className="evidence-panel__empty">No evidence data available.</div>
       )}
     </div>
   );

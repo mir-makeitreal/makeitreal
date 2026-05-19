@@ -8,6 +8,14 @@ const embeddedRoot = path.join(repoRoot, "plugins", "makeitreal", "dev-harness")
 
 const copiedDirectories = ["bin", "hooks", "src"];
 const copiedFiles = ["package.json"];
+const ignoredDirectoryNames = new Set([".omc", "dist", "node_modules"]);
+
+function shouldIgnoreRelativePath(relativePath) {
+  return relativePath
+    .split(path.sep)
+    .filter(Boolean)
+    .some((part) => ignoredDirectoryNames.has(part));
+}
 
 function usage() {
   return [
@@ -24,6 +32,9 @@ async function listFiles(root, relative = "") {
   const files = [];
   for (const entry of entries) {
     const child = path.join(relative, entry.name);
+    if (shouldIgnoreRelativePath(child)) {
+      continue;
+    }
     if (entry.isDirectory()) {
       files.push(...await listFiles(root, child));
     } else if (entry.isFile()) {
@@ -115,8 +126,15 @@ async function syncEmbeddedEngine() {
   await mkdir(embeddedRoot, { recursive: true });
   for (const directoryName of copiedDirectories) {
     const target = path.join(embeddedRoot, directoryName);
-    await rm(target, { recursive: true, force: true });
-    await cp(path.join(repoRoot, directoryName), target, { recursive: true });
+    const source = path.join(repoRoot, directoryName);
+    await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await cp(source, target, {
+      recursive: true,
+      filter: (sourcePath) => {
+        const relativePath = path.relative(source, sourcePath);
+        return relativePath === "" || !shouldIgnoreRelativePath(relativePath);
+      }
+    });
   }
   for (const fileName of copiedFiles) {
     await writeFile(

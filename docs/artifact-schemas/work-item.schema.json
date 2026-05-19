@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Make It Real Work Item Artifact",
+  "description": "Schema for a Make It Real work item artifact stored under work-items/.",
+  "type": "object",
+  "required": [
+    "allowedPaths",
+    "contractIds",
+    "dependsOn",
+    "doneEvidence",
+    "id",
+    "lane",
+    "prdTrace",
+    "prdId",
+    "responsibilityUnitId",
+    "schemaVersion",
+    "verificationCommands"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Artifact schema version emitted by the Make It Real planner.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "id": {
+      "description": "Stable work item identifier used by boards, DAG nodes, and evidence.",
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "description": "Human-readable work item title when generated from a board-capable plan.",
+      "type": "string",
+      "minLength": 1
+    },
+    "prdId": {
+      "description": "PRD identifier this work item traces to.",
+      "type": "string",
+      "minLength": 1
+    },
+    "lane": {
+      "description": "Current workflow lane for the work item.",
+      "$ref": "#/definitions/lane"
+    },
+    "responsibilityUnitId": {
+      "description": "Responsibility unit that owns this work item.",
+      "type": "string",
+      "minLength": 1
+    },
+    "contractIds": {
+      "description": "Contracts implemented or consumed by this work item.",
+      "$ref": "#/definitions/stringList"
+    },
+    "dependencyContracts": {
+      "description": "Declared provider contracts this work item depends on across responsibility boundaries.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dependencyContract"
+      }
+    },
+    "dependsOn": {
+      "description": "Work item ids that must complete before this item can run.",
+      "$ref": "#/definitions/stringList"
+    },
+    "allowedPaths": {
+      "description": "File patterns this work item is allowed to modify.",
+      "$ref": "#/definitions/stringList"
+    },
+    "prdTrace": {
+      "description": "Traceability links from this work item back to PRD acceptance criteria.",
+      "type": "object",
+      "required": [
+        "acceptanceCriteriaIds"
+      ],
+      "properties": {
+        "acceptanceCriteriaIds": {
+          "description": "Acceptance criterion ids covered by this work item.",
+          "$ref": "#/definitions/stringList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "doneEvidence": {
+      "description": "Evidence files required before this work item can be considered Done.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/evidence"
+      }
+    },
+    "verificationCommands": {
+      "description": "Structured commands that verify the work item.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/command"
+      }
+    },
+    "verificationExempt": {
+      "description": "Reason a coordination-only work item has no direct verification command.",
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "description": "Explanation for the verification exemption.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "parentWorkItemId": {
+      "description": "Parent work item id when this item was materialized from recursive decomposition.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "lane": {
+      "type": "string",
+      "enum": [
+        "Intake",
+        "Discovery",
+        "Scoped",
+        "Blueprint Bound",
+        "Contract Frozen",
+        "Ready",
+        "Claimed",
+        "Running",
+        "Decomposing",
+        "Verifying",
+        "Human Review",
+        "Done",
+        "Failed Fast",
+        "Rework",
+        "Blocked",
+        "Cancelled"
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dependencyContract": {
+      "type": "object",
+      "required": [
+        "contractId",
+        "providerResponsibilityUnitId",
+        "surface",
+        "allowedUse"
+      ],
+      "properties": {
+        "contractId": {
+          "description": "Contract identifier consumed by the work item.",
+          "type": "string",
+          "minLength": 1
+        },
+        "providerResponsibilityUnitId": {
+          "description": "Responsibility unit that provides the dependency contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "description": "Provider surface exposed through the dependency contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedUse": {
+          "description": "Allowed use of the dependency contract.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Evidence kind required for Done.",
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Run-relative path to the evidence file.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": [
+        "file",
+        "args"
+      ],
+      "properties": {
+        "file": {
+          "description": "Executable command name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "description": "Command arguments passed without shell interpolation.",
+          "$ref": "#/definitions/stringList"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

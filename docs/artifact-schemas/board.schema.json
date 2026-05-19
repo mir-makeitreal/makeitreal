@@ -1,0 +1,355 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Make It Real Board Artifact",
+  "description": "Schema for board.json, the launch board that embeds work items and a projected work item DAG.",
+  "type": "object",
+  "required": [
+    "boardId",
+    "lanes",
+    "schemaVersion",
+    "workItemDAG",
+    "workItems"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Artifact schema version emitted by the Make It Real planner.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "boardId": {
+      "description": "Stable board identifier for orchestration and status reporting.",
+      "type": "string",
+      "minLength": 1
+    },
+    "blueprintRunDir": {
+      "description": "Run-relative or project-relative path to the Blueprint run packet this board schedules.",
+      "type": "string",
+      "minLength": 1
+    },
+    "lanes": {
+      "description": "Ordered workflow lanes supported by this board.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/lane"
+      }
+    },
+    "workItemDAG": {
+      "description": "Board-local projection of the run-level work item DAG.",
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "description": "Schema version for the board-local DAG projection.",
+          "type": "string",
+          "const": "1.0"
+        },
+        "nodes": {
+          "description": "Projected work item nodes used by board scheduling.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/boardDagNode"
+          }
+        },
+        "edges": {
+          "description": "Projected scheduling dependencies between work items.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/boardDagEdge"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "workItems": {
+      "description": "Work items currently scheduled on the board.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/boardWorkItem"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "lane": {
+      "type": "string",
+      "enum": [
+        "Intake",
+        "Discovery",
+        "Scoped",
+        "Blueprint Bound",
+        "Contract Frozen",
+        "Ready",
+        "Claimed",
+        "Running",
+        "Decomposing",
+        "Verifying",
+        "Human Review",
+        "Done",
+        "Failed Fast",
+        "Rework",
+        "Blocked",
+        "Cancelled"
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "boardDagNode": {
+      "type": "object",
+      "required": [
+        "workItemId",
+        "kind"
+      ],
+      "properties": {
+        "workItemId": {
+          "description": "Work item id represented by this board DAG node.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "description": "Role of the work item node in the board DAG.",
+          "type": "string",
+          "enum": [
+            "implementation",
+            "domain-pm",
+            "integration-evidence"
+          ]
+        },
+        "requiredForDone": {
+          "description": "Whether this work item must complete before the board can be Done.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "boardDagEdge": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "kind"
+      ],
+      "properties": {
+        "from": {
+          "description": "Source work item id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Target work item id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "description": "Scheduling dependency kind.",
+          "type": "string",
+          "enum": [
+            "contract-dependency",
+            "coordination",
+            "integration-proof"
+          ]
+        },
+        "contractId": {
+          "description": "Contract identifier associated with contract and integration-proof dependencies.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "boardWorkItem": {
+      "type": "object",
+      "required": [
+        "allowedPaths",
+        "contractIds",
+        "dependsOn",
+        "id",
+        "lane",
+        "responsibilityUnitId",
+        "title",
+        "verificationCommands"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "description": "Work item schema version when embedded from generated work item artifacts.",
+          "type": "string",
+          "const": "1.0"
+        },
+        "id": {
+          "description": "Stable work item identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "description": "Human-readable work item title.",
+          "type": "string",
+          "minLength": 1
+        },
+        "lane": {
+          "description": "Current board lane for this work item.",
+          "$ref": "#/definitions/lane"
+        },
+        "responsibilityUnitId": {
+          "description": "Responsibility unit that owns this work item.",
+          "type": "string",
+          "minLength": 1
+        },
+        "contractIds": {
+          "description": "Contracts implemented or consumed by this work item.",
+          "$ref": "#/definitions/stringList"
+        },
+        "dependencyContracts": {
+          "description": "Declared cross-responsibility contracts this work item consumes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dependencyContract"
+          }
+        },
+        "dependsOn": {
+          "description": "Work item ids that must complete before this item can run.",
+          "$ref": "#/definitions/stringList"
+        },
+        "allowedPaths": {
+          "description": "File patterns this work item may modify.",
+          "$ref": "#/definitions/stringList"
+        },
+        "prdId": {
+          "description": "PRD identifier this work item traces to.",
+          "type": "string",
+          "minLength": 1
+        },
+        "prdTrace": {
+          "description": "Acceptance criteria covered by this board work item.",
+          "type": "object",
+          "required": [
+            "acceptanceCriteriaIds"
+          ],
+          "properties": {
+            "acceptanceCriteriaIds": {
+              "description": "Acceptance criterion ids covered by this work item.",
+              "$ref": "#/definitions/stringList"
+            }
+          },
+          "additionalProperties": false
+        },
+        "doneEvidence": {
+          "description": "Evidence files required before this work item reaches Done.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/evidence"
+          }
+        },
+        "verificationCommands": {
+          "description": "Structured commands used to verify this work item.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/command"
+          }
+        },
+        "verificationExempt": {
+          "description": "Reason this work item is exempt from direct verification commands.",
+          "type": "object",
+          "required": [
+            "reason"
+          ],
+          "properties": {
+            "reason": {
+              "description": "Explanation for the verification exemption.",
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "parentWorkItemId": {
+          "description": "Parent work item id for decomposed child work.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencyContract": {
+      "type": "object",
+      "required": [
+        "contractId",
+        "providerResponsibilityUnitId",
+        "surface",
+        "allowedUse"
+      ],
+      "properties": {
+        "contractId": {
+          "description": "Dependency contract id consumed by the work item.",
+          "type": "string",
+          "minLength": 1
+        },
+        "providerResponsibilityUnitId": {
+          "description": "Responsibility unit that provides the dependency contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "description": "Provider surface used through the contract.",
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedUse": {
+          "description": "Allowed use of the dependency contract.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Evidence kind required for Done.",
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Run-relative evidence file path.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": [
+        "file",
+        "args"
+      ],
+      "properties": {
+        "file": {
+          "description": "Executable command name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "description": "Command arguments passed without shell interpolation.",
+          "$ref": "#/definitions/stringList"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

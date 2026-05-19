@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Make It Real Trust Policy Artifact",
+  "description": "Schema for trust-policy.json, the execution policy that constrains Make It Real board runners.",
+  "type": "object",
+  "required": [
+    "approvalPolicy",
+    "commandExecution",
+    "realAgentLaunch",
+    "runnerMode",
+    "sandbox",
+    "schemaVersion",
+    "unsupportedToolCall",
+    "userInputRequired"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Artifact schema version emitted by the Make It Real planner.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "runnerMode": {
+      "description": "Runner implementation authorized by this policy.",
+      "type": "string",
+      "enum": [
+        "scripted-simulator",
+        "claude-code"
+      ]
+    },
+    "realAgentLaunch": {
+      "description": "Whether the runner may launch real coding agents.",
+      "type": "string",
+      "enum": [
+        "disabled",
+        "enabled"
+      ]
+    },
+    "approvalPolicy": {
+      "description": "Approval policy used for runner-side command execution.",
+      "type": "string",
+      "enum": [
+        "never"
+      ]
+    },
+    "sandbox": {
+      "description": "Filesystem or workspace boundary enforced by the runner.",
+      "type": "string",
+      "enum": [
+        "workspace-only"
+      ]
+    },
+    "commandExecution": {
+      "description": "Command execution mode allowed by this policy.",
+      "type": "string",
+      "enum": [
+        "trusted-fixture-only",
+        "structured-command-only"
+      ]
+    },
+    "userInputRequired": {
+      "description": "Behavior when runner execution would require interactive user input.",
+      "type": "string",
+      "enum": [
+        "fail-fast"
+      ]
+    },
+    "unsupportedToolCall": {
+      "description": "Behavior when a runner attempts an unsupported tool call.",
+      "type": "string",
+      "enum": [
+        "fail-fast"
+      ]
+    },
+    "source": {
+      "description": "Planner or command source that wrote the trust policy.",
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "description": "Run packet identifier this trust policy applies to.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
