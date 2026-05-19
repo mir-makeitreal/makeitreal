@@ -165,6 +165,50 @@ body {
   border-top: 1px solid var(--border-primary);
 }
 
+.sidebar-status {
+  color: var(--text-tertiary);
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 6px 12px 8px;
+}
+
+.sidebar-status__title {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.sidebar-status__row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.sidebar-status__row span:last-child {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-status__progress {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  height: 4px;
+  overflow: hidden;
+}
+
+.sidebar-status__progress-bar {
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
 .main-content {
   flex: 1;
   overflow: auto;

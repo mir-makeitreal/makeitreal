@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ViewId } from '../types/model';
+import { useDashboardStore } from '../store/dashboard-store';
 
 export interface SidebarProps {
   activeView: ViewId;
@@ -27,6 +28,14 @@ export function Sidebar({
   theme,
   onToggleTheme,
 }: SidebarProps) {
+  const model = useDashboardStore(s => s.model);
+  const allWorkItems = model?.board?.lanes?.flatMap(lane => lane.workItems) ?? [];
+  const totalWorkItems = allWorkItems.length;
+  const doneWorkItems = allWorkItems.filter(item => item.lane === 'Done').length;
+  const donePercent = totalWorkItems === 0 ? 0 : Math.round((doneWorkItems / totalWorkItems) * 100);
+  const phase = model?.status.phase ?? 'Unknown';
+  const moduleCount = model?.blueprint.architecture.nodes.length ?? 0;
+
   return (
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
@@ -62,6 +71,33 @@ export function Sidebar({
       </nav>
 
       <div className="sidebar-footer">
+        {!collapsed && model && (
+          <section className="sidebar-status" aria-label="Status summary">
+            <div className="sidebar-status__title">Status</div>
+            <div className="sidebar-status__row">
+              <span>Work items</span>
+              <span>{doneWorkItems}/{totalWorkItems} done</span>
+            </div>
+            <div
+              className="sidebar-status__progress"
+              role="progressbar"
+              aria-valuenow={donePercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Done work item progress"
+            >
+              <div className="sidebar-status__progress-bar" style={{ width: `${donePercent}%` }} />
+            </div>
+            <div className="sidebar-status__row">
+              <span>Phase</span>
+              <span>{phase}</span>
+            </div>
+            <div className="sidebar-status__row">
+              <span>Modules</span>
+              <span>{moduleCount}</span>
+            </div>
+          </section>
+        )}
         <button className="nav-item" onClick={onToggleTheme}>
           <span className="icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
           {!collapsed && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
