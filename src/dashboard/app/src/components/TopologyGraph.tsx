@@ -37,19 +37,23 @@ function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
 
 const nodeTypes = { module: ModuleNode };
 
-// ── Auto-layout: simple horizontal ──
+const GRAPH_BASE_X = 100;
+const GRAPH_BASE_Y = 100;
+const GRAPH_X_SPACING = 400;
+const GRAPH_Y_SPACING = 250;
+const GRAPH_COLUMNS = 2;
+const GRAPH_ROW_OFFSET = GRAPH_X_SPACING / 2;
+const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
+
+// ── Auto-layout: staggered grid ──
 
 function autoLayout(archNodes: ArchNode[]): ModuleFlowNode[] {
-  const xSpacing = 320;
-  const ySpacing = 160;
-  const cols = Math.max(2, Math.ceil(Math.sqrt(archNodes.length)));
-
   return archNodes.map((n, i) => ({
     id: n.id,
     type: 'module',
     position: {
-      x: (i % cols) * xSpacing + 40,
-      y: Math.floor(i / cols) * ySpacing + 40,
+      x: GRAPH_BASE_X + (i % GRAPH_COLUMNS) * GRAPH_X_SPACING + (Math.floor(i / GRAPH_COLUMNS) % 2) * GRAPH_ROW_OFFSET,
+      y: GRAPH_BASE_Y + Math.floor(i / GRAPH_COLUMNS) * GRAPH_Y_SPACING,
     },
     data: {
       label: n.label,
@@ -68,6 +72,7 @@ function buildEdges(archEdges: ArchEdge[]): Edge[] {
     style: { stroke: 'var(--rf-edge)' },
     labelStyle: { fontSize: 10, fill: 'var(--text-secondary)' },
     animated: true,
+    type: 'smoothstep',
   }));
 }
 
@@ -101,8 +106,9 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
+        defaultViewport={DEFAULT_VIEWPORT}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1.5 }}
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.0 }}
         minZoom={0.5}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
