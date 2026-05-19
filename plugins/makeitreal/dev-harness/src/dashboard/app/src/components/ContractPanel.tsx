@@ -188,12 +188,16 @@ export function ContractPanel({ moduleInterfaces }: Props) {
   const [copiedContractId, setCopiedContractId] = useState<string | null>(null);
 
   const handleCopyContractId = (contractId: string) => {
-    void copyText(contractId).then(() => {
-      setCopiedContractId(contractId);
-      window.setTimeout(() => {
-        setCopiedContractId(current => (current === contractId ? null : current));
-      }, 1200);
-    });
+    void copyText(contractId)
+      .then(() => {
+        setCopiedContractId(contractId);
+        window.setTimeout(() => {
+          setCopiedContractId(current => (current === contractId ? null : current));
+        }, 1200);
+      })
+      .catch(() => {
+        setCopiedContractId(null);
+      });
   };
 
   if (moduleInterfaces.length === 0) {
