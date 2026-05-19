@@ -51,8 +51,8 @@ export function HeroSection({ status, cockpit }: Props) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setReviewState(action === 'approve' ? 'approved' : 'rejected');
-    } catch (err: any) {
-      setReviewError(err.message);
+    } catch (err: unknown) {
+      setReviewError(err instanceof Error ? err.message : String(err));
       setReviewState('error');
     }
   };

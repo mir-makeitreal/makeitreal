@@ -80,8 +80,9 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       const data = await res.json();
       const model = data.model ?? data;
       set({ model, loading: false, error: null, lastUpdated: new Date().toISOString() });
-    } catch (err: any) {
-      set({ error: err.message, loading: false });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message, loading: false });
     }
   },
 }));
@@ -107,7 +108,7 @@ function computeRelatedItems(model: PreviewModel, nodeId: string, nodeType: Node
       result.relatedContractIds = edges
         .filter(e => e.from === nodeId || e.to === nodeId)
         .map(e => e.contractId)
-        .filter(Boolean);
+        .filter((contractId): contractId is string => Boolean(contractId));
       result.relatedWorkItemIds = allWorkItems
         .filter(wi => wi.responsibilityUnitId === nodeId)
         .map(wi => wi.id);

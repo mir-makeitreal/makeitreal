@@ -8,14 +8,18 @@ import {
   Position,
   type Node,
   type Edge,
+  type NodeProps,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ArchNode, ArchEdge } from '../types/model';
+import type { ArchNode, ArchEdge, ModuleFlowNodeData } from '../types/model';
 import { useDashboardStore } from '../store/dashboard-store';
 
 // ── Custom Module Node ──
 
-function ModuleNode({ data, selected }: { data: any; selected?: boolean }) {
+type ModuleFlowNode = Node<ModuleFlowNodeData, 'module'>;
+
+function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
   const sel = useDashboardStore(s => s.selection);
   const isHighlighted = sel.nodeId === data.nodeId || sel.relatedModuleIds.includes(data.nodeId);
 
@@ -35,7 +39,7 @@ const nodeTypes = { module: ModuleNode };
 
 // ── Auto-layout: simple horizontal ──
 
-function autoLayout(archNodes: ArchNode[]): Node[] {
+function autoLayout(archNodes: ArchNode[]): ModuleFlowNode[] {
   const xSpacing = 320;
   const ySpacing = 160;
   const cols = Math.max(2, Math.ceil(Math.sqrt(archNodes.length)));
@@ -50,7 +54,7 @@ function autoLayout(archNodes: ArchNode[]): Node[] {
     data: {
       label: n.label,
       nodeId: n.id,
-      responsibilityUnitId: n.responsibilityUnitId,
+      responsibilityUnitId: n.responsibilityUnitId ?? null,
     },
   }));
 }
@@ -60,7 +64,7 @@ function buildEdges(archEdges: ArchEdge[]): Edge[] {
     id: `edge-${i}`,
     source: e.from,
     target: e.to,
-    label: e.contractId,
+    label: e.contractId ?? undefined,
     style: { stroke: 'var(--rf-edge)' },
     labelStyle: { fontSize: 10, fill: 'var(--text-secondary)' },
     animated: true,
@@ -78,7 +82,7 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
   const nodes = useMemo(() => autoLayout(archNodes), [archNodes]);
   const edges = useMemo(() => buildEdges(archEdges), [archEdges]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback<NodeMouseHandler<ModuleFlowNode>>((_: React.MouseEvent, node) => {
     selectNode(node.id, 'module');
   }, [selectNode]);
 

@@ -506,8 +506,11 @@ export async function generatePlanRun({
   const preview = await renderDesignPreview({ runDir, now });
   const readyGate = await runGates({ runDir, target: "Ready" });
   const readyErrorsAreApprovalOnly = approvalErrorsOnly(readyGate.errors);
-  const planOk = blueprintReview.ok && preview.ok && (readyGate.ok || readyErrorsAreApprovalOnly);
-  const currentRun = planOk
+  const generatedArtifactsOk = blueprintReview.ok && preview.ok;
+  const readyGateHasRealErrors = !readyGate.ok && !readyErrorsAreApprovalOnly;
+  const currentRunWriteOk = generatedArtifactsOk && !readyGateHasRealErrors;
+  const planOk = currentRunWriteOk;
+  const currentRun = currentRunWriteOk
     ? await writeCurrentRunState({
         projectRoot: resolvedProjectRoot,
         runDir,

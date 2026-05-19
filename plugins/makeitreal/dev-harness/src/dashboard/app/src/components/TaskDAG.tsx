@@ -7,14 +7,18 @@ import {
   Position,
   type Node,
   type Edge,
+  type NodeProps,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { WorkItem } from '../types/model';
+import type { WorkItem, WorkItemFlowNodeData } from '../types/model';
 import { useDashboardStore } from '../store/dashboard-store';
 
 // ── Custom Work Item Node ──
 
-function WorkItemNode({ data, selected }: { data: any; selected?: boolean }) {
+type WorkItemFlowNode = Node<WorkItemFlowNodeData, 'workItem'>;
+
+function WorkItemNode({ data, selected }: NodeProps<WorkItemFlowNode>) {
   const sel = useDashboardStore(s => s.selection);
   const isHighlighted = sel.nodeId === data.workItemId || sel.relatedWorkItemIds.includes(data.workItemId);
 
@@ -35,7 +39,7 @@ const nodeTypes = { workItem: WorkItemNode };
 
 // ── Layout: topological layers ──
 
-function buildDagNodes(workItems: WorkItem[]): Node[] {
+function buildDagNodes(workItems: WorkItem[]): WorkItemFlowNode[] {
   // Build dependency layers for Y positioning
   const byId = new Map(workItems.map(wi => [wi.id, wi]));
   const layers = new Map<string, number>();
@@ -67,7 +71,7 @@ function buildDagNodes(workItems: WorkItem[]): Node[] {
 
   const xSpacing = 280;
   const ySpacing = 160;
-  const nodes: Node[] = [];
+  const nodes: WorkItemFlowNode[] = [];
 
   for (const [layer, items] of layerGroups) {
     items.forEach((wi, colIdx) => {
@@ -122,7 +126,7 @@ export function TaskDAG({ workItems }: Props) {
   const nodes = useMemo(() => buildDagNodes(workItems), [workItems]);
   const edges = useMemo(() => buildDagEdges(workItems), [workItems]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback<NodeMouseHandler<WorkItemFlowNode>>((_: React.MouseEvent, node) => {
     selectNode(node.id, 'workItem');
   }, [selectNode]);
 

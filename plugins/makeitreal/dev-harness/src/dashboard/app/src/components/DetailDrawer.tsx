@@ -132,8 +132,8 @@ function getDetail(selection: SelectionState, model: PreviewModel): DetailInfo {
       return {
         title: mod.moduleName,
         sections: [
-          { heading: 'Purpose', items: [mod.purpose] },
-          { heading: 'Owner', items: [mod.owner] },
+          { heading: 'Purpose', items: mod.purpose ? [mod.purpose] : [] },
+          { heading: 'Owner', items: mod.owner ? [mod.owner] : [] },
           { heading: 'Owned Paths', items: mod.owns },
           {
             heading: 'Public Surfaces',
@@ -185,10 +185,10 @@ function getDetail(selection: SelectionState, model: PreviewModel): DetailInfo {
     const c = model.blueprint.contracts.find(c => c.contractId === nodeId);
     if (c) {
       return {
-        title: c.contractId,
+        title: c.contractId ?? 'Unspecified contract',
         sections: [
           { heading: 'Kind', items: [c.kind] },
-          { heading: 'Path', items: [c.path] },
+          { heading: 'Path', items: c.path ? [c.path] : [] },
           { heading: 'Reason', items: c.reason ? [c.reason] : [] },
         ],
       };

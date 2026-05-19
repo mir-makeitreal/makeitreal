@@ -124,7 +124,7 @@ export function ResponsibilityMap({
         );
       })}
 
-      {/* Show orphan boundaries not linked to any module interface */}
+      {/* Show orphan boundaries not linked to a module interface */}
       {boundaries
         .filter(b => !moduleInterfaces.some(m => m.responsibilityUnitId === b.responsibilityUnitId))
         .map(b => (

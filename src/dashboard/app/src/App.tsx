@@ -154,7 +154,7 @@ function TasksView() {
                 borderRadius: 6,
                 fontSize: 13,
               }}>
-                <strong>{lane}:</strong> {count as number}
+                <strong>{lane}:</strong> {count}
               </div>
             ))}
           </div>
