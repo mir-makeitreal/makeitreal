@@ -6,7 +6,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.1.46-blue" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
-  <img src="https://img.shields.io/badge/tests-47%20suites-brightgreen" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-48%20suites-brightgreen" alt="tests" />
   <img src="https://img.shields.io/badge/node-%E2%89%A520-success" alt="node" />
   <img src="https://img.shields.io/badge/deps-0-lightgrey" alt="zero deps" />
 </p>

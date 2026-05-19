@@ -5,10 +5,17 @@ Install to first Blueprint in 90 seconds.
 ## Install
 
 ```bash
-claude install makeitreal@52g
+/plugin marketplace add 52g-tools/dev-harness
+/plugin install makeitreal@52g
 ```
 
-This installs two plugins:
+For short aliases, install the companion alias plugin:
+
+```bash
+/plugin install mir@52g
+```
+
+This gives you two plugin surfaces:
 - `makeitreal` — the full command suite (`/makeitreal:plan`, `/makeitreal:launch`, etc.)
 - `mir` — short aliases (`/mir:plan`, `/mir:launch`, etc.)
 
