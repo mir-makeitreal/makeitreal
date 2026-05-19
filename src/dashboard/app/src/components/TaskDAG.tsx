@@ -149,9 +149,10 @@ function buildDagEdges(workItems: WorkItem[]): Edge[] {
 
 interface Props {
   workItems: WorkItem[];
+  fullHeight?: boolean;
 }
 
-export function TaskDAG({ workItems }: Props) {
+export function TaskDAG({ workItems, fullHeight = false }: Props) {
   const selectNode = useDashboardStore(s => s.selectNode);
 
   const nodes = useMemo(() => buildDagNodes(workItems), [workItems]);
@@ -170,7 +171,7 @@ export function TaskDAG({ workItems }: Props) {
   }
 
   return (
-    <div className="flow-container">
+    <div className={`flow-container${fullHeight ? ' flow-container-full' : ''}`}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

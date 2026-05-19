@@ -137,9 +137,10 @@ function buildEdges(archEdges: ArchEdge[]): Edge[] {
 interface Props {
   nodes: ArchNode[];
   edges: ArchEdge[];
+  fullHeight?: boolean;
 }
 
-export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
+export function TopologyGraph({ nodes: archNodes, edges: archEdges, fullHeight = false }: Props) {
   const selectNode = useDashboardStore(s => s.selectNode);
 
   const nodes = useMemo(() => autoLayout(archNodes, archEdges), [archNodes, archEdges]);
@@ -158,7 +159,7 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges }: Props) {
   }
 
   return (
-    <div className="flow-container">
+    <div className={`flow-container${fullHeight ? ' flow-container-full' : ''}`}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

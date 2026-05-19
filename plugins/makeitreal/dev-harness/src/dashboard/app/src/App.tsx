@@ -122,11 +122,11 @@ function ArchitectureView() {
   if (!model) return null;
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2 style={{ fontSize: 18, marginBottom: 16 }}>Service Topology</h2>
+    <div className="dedicated-flow-view">
       <TopologyGraph
         nodes={model.blueprint.architecture.nodes}
         edges={model.blueprint.architecture.edges}
+        fullHeight
       />
     </div>
   );
@@ -138,28 +138,8 @@ function TasksView() {
   const allWorkItems = model.board?.lanes?.flatMap(l => l.workItems) ?? [];
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2 style={{ fontSize: 18, marginBottom: 16 }}>Task Dependency Graph</h2>
-      <TaskDAG workItems={allWorkItems} />
-
-      {model.board && (
-        <div style={{ marginTop: 24 }}>
-          <h3 style={{ fontSize: 15, marginBottom: 8 }}>Lane Summary</h3>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {Object.entries(model.board.laneCounts).map(([lane, count]) => (
-              <div key={lane} style={{
-                padding: '8px 16px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 6,
-                fontSize: 13,
-              }}>
-                <strong>{lane}:</strong> {count}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="dedicated-flow-view">
+      <TaskDAG workItems={allWorkItems} fullHeight />
     </div>
   );
 }
@@ -169,8 +149,7 @@ function ContractsView() {
   if (!model) return null;
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2 style={{ fontSize: 18, marginBottom: 16 }}>Module Interfaces & Contracts</h2>
+    <div className="dedicated-contracts-view">
       <ContractPanel moduleInterfaces={model.blueprint.moduleInterfaces} />
     </div>
   );
