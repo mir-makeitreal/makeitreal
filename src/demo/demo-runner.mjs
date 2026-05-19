@@ -27,7 +27,7 @@ const TEMPLATES = {
     complexity: "medium"
   },
   "auth-system": {
-    request: "Build an authentication system with user registration, login, password reset, email verification, role-based access control, and session management. Include rate limiting and audit logging.",
+    request: "Build an authentication system as four explicit responsibility units. Unit 1 owns src/auth-system/user-store.mjs and test/auth-system/user-store.test.mjs and must export createUserStore(), registerUser(input). Contract: registerUser validates email/password and throws TypeError with code AUTH_USER_INVALID. Unit 2 owns src/auth-system/session-service.mjs and test/auth-system/session-service.test.mjs and must export loginUser(credentials), refreshSession(token), revokeSession(sessionId). It may use only Unit 1 createUserStore contract. Unit 3 owns src/auth-system/rbac.mjs and test/auth-system/rbac.test.mjs and must export authorizeSession(session, permission). It may use only Unit 2 loginUser contract. Unit 4 owns src/auth-system/audit-log.mjs and test/auth-system/audit-log.test.mjs and must export recordAuthAudit(event). It may use only Unit 3 authorizeSession contract. Include registration, login, password reset, email verification, role-based access control, session management, rate limiting, and audit logging.",
     packageJson: {
       name: "demo-auth-system",
       version: "1.0.0",

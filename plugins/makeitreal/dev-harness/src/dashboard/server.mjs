@@ -28,7 +28,7 @@ function mimeType(filePath) {
 
 // ── RFC 6455 WebSocket helpers ──
 
-const WS_GUID = "258EAFA5-E914-47DA-95CA-5AB5-441BF4863D64";
+const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 function wsAcceptKey(key) {
   return createHash("sha1").update(key + WS_GUID).digest("base64");
 }

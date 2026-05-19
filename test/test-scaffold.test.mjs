@@ -175,6 +175,10 @@ test("OpenAPI contract generates valid test files", () => {
   assert.ok(file.content.includes("returns 200"));
   assert.ok(file.content.includes("returns 401"));
   assert.ok(file.content.includes("token must be present"));
+  assert.ok(file.content.includes("assert.strictEqual(response.status, 200);"));
+  assert.ok(file.content.includes('assert.ok(response.body.token !== undefined, "token must be present");'));
+  assert.ok(file.content.includes("assert.strictEqual(response.status, 401);"));
+  assert.equal(file.content.includes("// assert.strictEqual(response.status"), false);
   assert.ok(file.content.includes("test@example.com"));
 });
 
@@ -242,6 +246,11 @@ test("module-io contract generates valid test file", () => {
   assert.ok(file.content.includes("password: string (required)"));
   assert.ok(file.content.includes("returns expected type"));
   assert.ok(file.content.includes("throws PASSWORD_TOO_SHORT"));
+  assert.ok(file.content.includes('assert.strictEqual(typeof mod.hashPassword, "function");'));
+  assert.ok(file.content.includes("assert.strictEqual(mod.hashPassword.length >= 1, true);"));
+  assert.ok(file.content.includes('assert.strictEqual(typeof result, "string");'));
+  assert.ok(file.content.includes("await assert.rejects("));
+  assert.equal(file.content.includes("// assert.strictEqual(typeof mod.hashPassword"), false);
 });
 
 // ── Test Scaffold: Component ────────────────────────────────────────
@@ -277,6 +286,7 @@ test("component contract generates valid test file", () => {
   assert.ok(file.content.includes("meets accessibility requirements"));
   assert.ok(file.content.includes('aria-label "Email"'));
   assert.ok(file.content.includes('role="form"'));
+  assert.equal(file.content.includes("// assert:"), false);
 });
 
 // ── Test Scaffold: Event ────────────────────────────────────────────

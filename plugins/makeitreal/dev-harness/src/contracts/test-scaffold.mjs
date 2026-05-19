@@ -99,18 +99,18 @@ function scaffoldOpenApi(contract, outputDir) {
       content += `    // TODO: Replace with actual HTTP request to the endpoint\n`;
       if (exampleBody) {
         content += `    const body = ${JSON.stringify(exampleBody, null, 4).split("\n").join("\n    ")};\n`;
-        content += `    // const response = await request.${method}("${routePath}").send(body);\n`;
+        content += `    const response = await request.${method}("${routePath}").send(body);\n`;
       } else {
-        content += `    // const response = await request.${method}("${routePath}");\n`;
+        content += `    const response = await request.${method}("${routePath}");\n`;
       }
-      content += `    // assert.strictEqual(response.status, ${Number(successCode)});\n`;
+      content += `    assert.strictEqual(response.status, ${Number(successCode)});\n`;
       if (successSchema?.required) {
         for (const field of successSchema.required) {
-          content += `    // assert.ok(response.body.${field} !== undefined, "${field} must be present");\n`;
+          content += `    assert.ok(response.body.${field} !== undefined, "${field} must be present");\n`;
         }
       }
       if (successSchema?.type) {
-        content += `    // assert.strictEqual(typeof response.body, "${successSchema.type === "array" ? "object" : successSchema.type}");\n`;
+        content += `    assert.strictEqual(typeof response.body, "${successSchema.type === "array" ? "object" : successSchema.type}");\n`;
       }
       content += `  });\n\n`;
 
@@ -119,12 +119,12 @@ function scaffoldOpenApi(contract, outputDir) {
         content += `  test("returns ${errorCode} on invalid input", async () => {\n`;
         content += `    // TODO: Send invalid/missing payload to trigger ${errorCode}\n`;
         if (requestSchema) {
-          content += `    // const body = {};  // intentionally invalid\n`;
-          content += `    // const response = await request.${method}("${routePath}").send(body);\n`;
+          content += `    const body = {};  // intentionally invalid\n`;
+          content += `    const response = await request.${method}("${routePath}").send(body);\n`;
         } else {
-          content += `    // const response = await request.${method}("${routePath}");\n`;
+          content += `    const response = await request.${method}("${routePath}");\n`;
         }
-        content += `    // assert.strictEqual(response.status, ${Number(errorCode)});\n`;
+        content += `    assert.strictEqual(response.status, ${Number(errorCode)});\n`;
         content += `  });\n\n`;
       }
 
@@ -166,13 +166,13 @@ function scaffoldModuleIo(contract, outputDir) {
   for (const exp of exports) {
     // Export existence + type test
     content += `  test("exports ${exp.name} as a ${exp.kind}", () => {\n`;
-    content += `    // TODO: Uncomment when import is configured\n`;
+    content += `    // TODO: Configure the module import before running this assertion\n`;
     if (exp.kind === "function") {
-      content += `    // assert.strictEqual(typeof mod.${exp.name}, "function");\n`;
+      content += `    assert.strictEqual(typeof mod.${exp.name}, "function");\n`;
     } else if (exp.kind === "class") {
-      content += `    // assert.strictEqual(typeof mod.${exp.name}, "function"); // classes are functions\n`;
+      content += `    assert.strictEqual(typeof mod.${exp.name}, "function"); // classes are functions\n`;
     } else {
-      content += `    // assert.ok(mod.${exp.name} !== undefined, "${exp.name} must be exported");\n`;
+      content += `    assert.ok(mod.${exp.name} !== undefined, "${exp.name} must be exported");\n`;
     }
     content += `  });\n\n`;
 
@@ -183,8 +183,8 @@ function scaffoldModuleIo(contract, outputDir) {
       for (const input of exp.inputs) {
         content += `    //   ${input.name}: ${input.type}${input.required ? " (required)" : " (optional)"}\n`;
       }
-      content += `    // TODO: Uncomment when import is configured\n`;
-      content += `    // assert.strictEqual(mod.${exp.name}.length >= ${exp.inputs.filter((i) => i.required).length}, true);\n`;
+      content += `    // TODO: Configure the module import before running this assertion\n`;
+      content += `    assert.strictEqual(mod.${exp.name}.length >= ${exp.inputs.filter((i) => i.required).length}, true);\n`;
       content += `  });\n\n`;
     }
 
@@ -195,9 +195,9 @@ function scaffoldModuleIo(contract, outputDir) {
       const exampleInputArgs = (exp.examples?.[0]?.input)
         ? Object.values(exp.examples[0].input).map((v) => JSON.stringify(v)).join(", ")
         : "/* TODO: provide valid args */";
-      content += `    // TODO: Uncomment when import is configured\n`;
-      content += `    // const result = ${exp.async ? "await " : ""}mod.${exp.name}(${exampleInputArgs});\n`;
-      content += `    // assert.strictEqual(typeof result, "${exp.output.type}");\n`;
+      content += `    // TODO: Configure the module import and valid args before running this assertion\n`;
+      content += `    const result = ${exp.async ? "await " : ""}mod.${exp.name}(${exampleInputArgs});\n`;
+      content += `    assert.strictEqual(typeof result, "${exp.output.type}");\n`;
       content += `  });\n\n`;
     }
 
@@ -205,10 +205,10 @@ function scaffoldModuleIo(contract, outputDir) {
     for (const err of exp.errors ?? []) {
       content += `  test("${exp.name} throws ${err.code} when ${err.when}", async () => {\n`;
       content += `    // TODO: Provide invalid input that triggers: ${err.when}\n`;
-      content += `    // await assert.rejects(\n`;
-      content += `    //   () => mod.${exp.name}(/* invalid input */),\n`;
-      content += `    //   (error) => { assert.ok(error); return true; }\n`;
-      content += `    // );\n`;
+      content += `    await assert.rejects(\n`;
+      content += `      () => mod.${exp.name}(/* invalid input */),\n`;
+      content += `      (error) => { assert.ok(error); return true; }\n`;
+      content += `    );\n`;
       content += `  });\n\n`;
     }
   }
@@ -257,7 +257,7 @@ function scaffoldComponent(contract, outputDir) {
     content += `  test("renders ${state.name} state correctly", () => {\n`;
     content += `    // Props: ${JSON.stringify(state.props)}\n`;
     for (const assertion of state.assertions ?? []) {
-      content += `    // assert: ${assertion}\n`;
+      content += `    // TODO: Verify render assertion: ${assertion}\n`;
     }
     content += `    // TODO: Sub-agent implements render + assertions\n`;
     content += `  });\n\n`;
@@ -267,10 +267,10 @@ function scaffoldComponent(contract, outputDir) {
   if (contract.accessibility) {
     content += `  test("meets accessibility requirements", () => {\n`;
     for (const label of contract.accessibility.requiredAriaLabels ?? []) {
-      content += `    // assert: aria-label "${label}" exists\n`;
+      content += `    // TODO: Verify aria-label "${label}" exists\n`;
     }
     for (const role of contract.accessibility.requiredRoles ?? []) {
-      content += `    // assert: role="${role}" exists\n`;
+      content += `    // TODO: Verify role="${role}" exists\n`;
     }
     content += `    // TODO: Sub-agent implements accessibility checks\n`;
     content += `  });\n\n`;

@@ -83,6 +83,14 @@ test("demo generates valid artifacts with auth-system template", async () => {
 
     const prd = await readJsonFile(path.join(result.runDir, "prd.json"));
     assert.ok(prd.request.includes("authentication"));
+    const board = await readJsonFile(path.join(result.runDir, "board.json"));
+    assert.ok(board.workItems.length > 1, "auth-system demo should generate multiple work items");
+    const designPack = await readJsonFile(path.join(result.runDir, "design-pack.json"));
+    assert.ok(designPack.apiSpecs.length > 1, "auth-system demo should declare multiple contracts");
+    const dag = await readJsonFile(path.join(result.runDir, "work-item-dag.json"));
+    assert.ok(dag.nodes.length > 1, "auth-system demo should generate a multi-node DAG");
+    assert.ok(dag.edges.length > 0, "auth-system demo should generate dependency edges");
+    assert.ok(dag.edges.some((edge) => edge.kind === "contract-dependency"));
   } finally {
     if (result.projectRoot) {
       await rm(result.projectRoot, { recursive: true, force: true });
