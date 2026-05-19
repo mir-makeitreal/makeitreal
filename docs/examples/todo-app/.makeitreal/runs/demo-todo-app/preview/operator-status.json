@@ -1,0 +1,259 @@
+{
+  "boardStatus": {
+    "activeClaims": [],
+    "audit": {
+      "blueprintBlockedWorkItemIds": [
+        "work.demo-todo-app"
+      ],
+      "gateFailures": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "reason": "Blueprint review is pending user approval.",
+          "workItemId": "work.demo-todo-app"
+        }
+      ],
+      "ok": false,
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app",
+      "skipped": false,
+      "staleBlueprintWorkItemIds": []
+    },
+    "blockedWork": [],
+    "blockers": [
+      {
+        "authority": "blueprint-review",
+        "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+        "message": "Blueprint review is pending user approval.",
+        "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+      }
+    ],
+    "boardId": "board.demo-todo-app",
+    "command": "board status",
+    "errors": [],
+    "evidenceSummary": [],
+    "failedFast": [],
+    "generatedAt": "2026-05-19T04:58:28.662Z",
+    "headline": "Board has work blocked by Blueprint approval.",
+    "laneCounts": {
+      "Contract Frozen": 1
+    },
+    "launchableWorkItemIds": [],
+    "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+    "ok": true,
+    "operatorSummary": {
+      "blockers": [
+        {
+          "authority": "blueprint-review",
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "message": "Blueprint review is pending user approval.",
+          "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+        }
+      ],
+      "evidenceSummary": [],
+      "headline": "Board has work blocked by Blueprint approval.",
+      "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+      "phase": "approval-required"
+    },
+    "phase": "approval-required",
+    "readyGate": null,
+    "recommendedNativeTaskConcurrency": 0,
+    "retryReady": [],
+    "rework": [],
+    "runtimeState": {
+      "boardId": "board.demo-todo-app",
+      "claimed": {},
+      "completedBookkeeping": {},
+      "rateLimitSnapshots": {},
+      "retryAttempts": {},
+      "running": {},
+      "schemaVersion": "1.0",
+      "sessionMetrics": {
+        "failedTurns": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "startedSessions": 0,
+        "totalTokens": 0,
+        "turnCount": 0
+      }
+    }
+  },
+  "dashboardRefresh": {
+    "attempted": true,
+    "configPath": null,
+    "dashboardUrl": "file:///var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app/preview/index.html",
+    "errors": [],
+    "generatedAt": "2026-05-19T04:58:28.662Z",
+    "indexPath": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app/preview/index.html",
+    "previewDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app/preview",
+    "reason": null,
+    "skipped": false
+  },
+  "runStatus": {
+    "blockers": [
+      {
+        "authority": "blueprint-review",
+        "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+        "message": "Blueprint review is pending user approval.",
+        "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+      }
+    ],
+    "blueprint": {
+      "errors": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "contractId": null,
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "ownerModule": null,
+          "reason": "Blueprint review is pending user approval.",
+          "recoverable": true
+        }
+      ],
+      "fingerprint": null,
+      "ok": false,
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "stale": false,
+      "status": "pending"
+    },
+    "blueprintStatus": "pending",
+    "boardStatus": {
+      "activeClaims": [],
+      "audit": {
+        "blueprintBlockedWorkItemIds": [
+          "work.demo-todo-app"
+        ],
+        "gateFailures": [
+          {
+            "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+            "evidence": [
+              "blueprint-review.json"
+            ],
+            "reason": "Blueprint review is pending user approval.",
+            "workItemId": "work.demo-todo-app"
+          }
+        ],
+        "ok": false,
+        "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app",
+        "skipped": false,
+        "staleBlueprintWorkItemIds": []
+      },
+      "blockedWork": [],
+      "blockers": [
+        {
+          "authority": "blueprint-review",
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "message": "Blueprint review is pending user approval.",
+          "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+        }
+      ],
+      "boardId": "board.demo-todo-app",
+      "command": "board status",
+      "errors": [],
+      "evidenceSummary": [],
+      "failedFast": [],
+      "generatedAt": "2026-05-19T04:58:28.662Z",
+      "headline": "Board has work blocked by Blueprint approval.",
+      "laneCounts": {
+        "Contract Frozen": 1
+      },
+      "launchableWorkItemIds": [],
+      "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+      "ok": true,
+      "operatorSummary": {
+        "blockers": [
+          {
+            "authority": "blueprint-review",
+            "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+            "message": "Blueprint review is pending user approval.",
+            "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+          }
+        ],
+        "evidenceSummary": [],
+        "headline": "Board has work blocked by Blueprint approval.",
+        "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+        "phase": "approval-required"
+      },
+      "phase": "approval-required",
+      "readyGate": null,
+      "recommendedNativeTaskConcurrency": 0,
+      "retryReady": [],
+      "rework": [],
+      "runtimeState": {
+        "boardId": "board.demo-todo-app",
+        "claimed": {},
+        "completedBookkeeping": {},
+        "rateLimitSnapshots": {},
+        "retryAttempts": {},
+        "running": {},
+        "schemaVersion": "1.0",
+        "sessionMetrics": {
+          "failedTurns": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "startedSessions": 0,
+          "totalTokens": 0,
+          "turnCount": 0
+        }
+      }
+    },
+    "command": "status",
+    "currentRun": {
+      "errors": [],
+      "ok": true,
+      "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs",
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app",
+      "source": "explicit"
+    },
+    "errors": [],
+    "evidenceSummary": [],
+    "gateAudit": {
+      "checks": [
+        {
+          "errors": [
+            {
+              "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+              "contractId": null,
+              "evidence": [
+                "blueprint-review.json"
+              ],
+              "ownerModule": null,
+              "reason": "Blueprint review is pending user approval.",
+              "recoverable": true
+            }
+          ],
+          "gate": "ready",
+          "ok": false
+        }
+      ],
+      "ok": false,
+      "target": "Ready"
+    },
+    "generatedAt": "2026-05-19T04:58:28.662Z",
+    "headline": "Blueprint review is waiting for approval.",
+    "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+    "nextCommand": "/makeitreal:plan approve",
+    "ok": true,
+    "operatorSummary": {
+      "blockers": [
+        {
+          "authority": "blueprint-review",
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "message": "Blueprint review is pending user approval.",
+          "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+        }
+      ],
+      "blueprintStatus": "pending",
+      "evidenceSummary": [],
+      "headline": "Blueprint review is waiting for approval.",
+      "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+      "phase": "approval-required"
+    },
+    "phase": "approval-required",
+    "projectRoot": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs",
+    "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-todo-app-1779166708662/.makeitreal/runs/demo-todo-app"
+  }
+}

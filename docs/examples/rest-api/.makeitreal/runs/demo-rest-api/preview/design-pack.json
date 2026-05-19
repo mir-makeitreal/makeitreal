@@ -1,0 +1,166 @@
+{
+  "apiSpecs": [
+    {
+      "contractId": "contract.demo-rest-api.boundary",
+      "kind": "openapi",
+      "path": "contracts/demo-rest-api.openapi.json"
+    }
+  ],
+  "architecture": {
+    "edges": [
+      {
+        "contractId": "contract.demo-rest-api.boundary",
+        "from": "prd",
+        "to": "implementation-unit"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "prd",
+        "label": "PRD Source",
+        "responsibilityUnitId": "ru.demo-rest-api"
+      },
+      {
+        "id": "implementation-unit",
+        "label": "Implementation Responsibility Unit",
+        "responsibilityUnitId": "ru.demo-rest-api"
+      }
+    ]
+  },
+  "callStacks": [
+    {
+      "calls": [
+        "validate declared inputs",
+        "execute owned responsibility unit",
+        "return 200 or declared errors 400, 500"
+      ],
+      "entrypoint": "POST /books"
+    }
+  ],
+  "componentContracts": [],
+  "moduleInterfaces": [
+    {
+      "imports": [],
+      "moduleName": "Books API",
+      "owner": "team.demo",
+      "owns": [
+        "src/rest-api/**"
+      ],
+      "publicSurfaces": [
+        {
+          "consumers": [
+            "Declared downstream responsibility units and tests"
+          ],
+          "contractIds": [
+            "contract.demo-rest-api.boundary"
+          ],
+          "description": "HTTP contract surface for POST /books.",
+          "kind": "http",
+          "name": "POST /books",
+          "signature": {
+            "errors": [
+              {
+                "code": "400.DECLARED_ERROR",
+                "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                "when": "The implementation returns the declared 400 response."
+              },
+              {
+                "code": "500.DECLARED_ERROR",
+                "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                "when": "The implementation returns the declared 500 response."
+              },
+              {
+                "code": "CONTRACT_MISMATCH",
+                "handling": "Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior.",
+                "when": "The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract."
+              }
+            ],
+            "inputs": [
+              {
+                "description": "Payload accepted by POST /books.",
+                "fields": [
+                  "query"
+                ],
+                "name": "requestBody",
+                "required": true,
+                "type": "object"
+              }
+            ],
+            "outputs": [
+              {
+                "description": "Successful response body defined by the OpenAPI contract.",
+                "name": "200 response",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ],
+      "purpose": "Own POST /books through declared paths, response statuses, and dependency contracts only.",
+      "responsibilityUnitId": "ru.demo-rest-api"
+    }
+  ],
+  "prdId": "prd.demo-rest-api",
+  "responsibilityBoundaries": [
+    {
+      "mayUseContracts": [
+        "contract.demo-rest-api.boundary"
+      ],
+      "owns": [
+        "src/rest-api/**"
+      ],
+      "responsibilityUnitId": "ru.demo-rest-api"
+    }
+  ],
+  "runId": "demo-rest-api",
+  "schemaVersion": "1.0",
+  "sequences": [
+    {
+      "messages": [
+        {
+          "from": "Client",
+          "label": "POST /books",
+          "to": "Owned Service"
+        },
+        {
+          "from": "Owned Service",
+          "label": "200 or 400/500",
+          "to": "Client"
+        }
+      ],
+      "participants": [
+        "Client",
+        "Owned Service"
+      ],
+      "title": "POST /books contract sequence"
+    }
+  ],
+  "stateFlow": {
+    "lanes": [
+      "Intake",
+      "Discovery",
+      "Scoped",
+      "Blueprint Bound",
+      "Contract Frozen",
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done"
+    ],
+    "transitions": [
+      {
+        "from": "Contract Frozen",
+        "gate": "design-pack",
+        "to": "Ready"
+      },
+      {
+        "from": "Human Review",
+        "gate": "wiki",
+        "to": "Done"
+      }
+    ]
+  },
+  "workItemId": "work.demo-rest-api"
+}

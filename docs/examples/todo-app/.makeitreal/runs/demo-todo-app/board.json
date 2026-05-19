@@ -1,0 +1,80 @@
+{
+  "blueprintRunDir": ".",
+  "boardId": "board.demo-todo-app",
+  "lanes": [
+    "Intake",
+    "Discovery",
+    "Scoped",
+    "Blueprint Bound",
+    "Contract Frozen",
+    "Ready",
+    "Claimed",
+    "Running",
+    "Decomposing",
+    "Verifying",
+    "Human Review",
+    "Done",
+    "Failed Fast",
+    "Rework",
+    "Blocked",
+    "Cancelled"
+  ],
+  "schemaVersion": "1.0",
+  "workItemDAG": {
+    "edges": [],
+    "nodes": [
+      {
+        "kind": "implementation",
+        "requiredForDone": true,
+        "workItemId": "work.demo-todo-app"
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "workItems": [
+    {
+      "allowedPaths": [
+        "src/todo-app/**"
+      ],
+      "contractIds": [
+        "contract.demo-todo-app.boundary"
+      ],
+      "dependencyContracts": [],
+      "dependsOn": [],
+      "doneEvidence": [
+        {
+          "kind": "verification",
+          "path": "evidence/work.demo-todo-app.verification.json"
+        },
+        {
+          "kind": "wiki-sync",
+          "path": "evidence/work.demo-todo-app.wiki-sync.json"
+        }
+      ],
+      "id": "work.demo-todo-app",
+      "lane": "Contract Frozen",
+      "prdId": "prd.demo-todo-app",
+      "prdTrace": {
+        "acceptanceCriteriaIds": [
+          "AC-001",
+          "AC-002",
+          "AC-003",
+          "AC-004",
+          "AC-005"
+        ]
+      },
+      "responsibilityUnitId": "ru.demo-todo-app",
+      "schemaVersion": "1.0",
+      "title": "Build a simple todo list module with add, remove, toggle, and list operations. Each todo has an id, title, and completed status.",
+      "verificationCommands": [
+        {
+          "args": [
+            "-e",
+            "console.log('todo tests pass')"
+          ],
+          "file": "node"
+        }
+      ]
+    }
+  ]
+}

@@ -18,7 +18,9 @@ export const RUNTIME_EVENTS = new Set([
   "unsupported_tool_call",
   "notification",
   "other_message",
-  "malformed"
+  "malformed",
+  "work_decomposed",
+  "children_complete"
 ]);
 
 export const FAILURE_EVENTS = new Set([

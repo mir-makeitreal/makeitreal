@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:53bcf93143d8d4a824ae3ccc234aaaa90357b299213b3339b96063b8e72b006e",
+  "decisionNote": null,
+  "prdId": "prd.demo-todo-app",
+  "reviewedAt": null,
+  "reviewedBy": null,
+  "reviewSource": "makeitreal:plan",
+  "runId": "demo-todo-app",
+  "schemaVersion": "1.0",
+  "status": "pending",
+  "workItemId": "work.demo-todo-app"
+}

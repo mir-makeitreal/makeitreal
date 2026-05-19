@@ -896,6 +896,90 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
   const agent = extractAgentReport({ record, workItem, workerId, attemptId, now });
   const policyReport = extractPolicyReport({ record, policy, workItem, workerId, attemptId, now });
   const reviews = extractReviewReports({ record, workItem, workerId, attemptId, now });
+
+  // Handle NEEDS_DECOMPOSE status
+  if (policyReport?.status === "NEEDS_DECOMPOSE") {
+    const proposal = policyReport.childWorkProposal;
+    if (!proposal) {
+      return {
+        ok: false,
+        command: "orchestrator native finish",
+        workItemId,
+        attemptId,
+        errors: [createHarnessError({
+          code: "HARNESS_DECOMPOSE_PROPOSAL_MISSING",
+          reason: "NEEDS_DECOMPOSE status requires a childWorkProposal object.",
+          evidence: ["--result-stdin"],
+          recoverable: true
+        })]
+      };
+    }
+
+    const { materializeChildWorkItems } = await import("../board/board-mutator.mjs");
+    const result = await materializeChildWorkItems({
+      boardDir,
+      parentWorkItemId: workItemId,
+      proposal,
+      now
+    });
+
+    if (!result.ok) {
+      // Proposal validation failed — move to Failed Fast
+      const attemptNumber = (workItem.attemptNumber ?? 0) + 1;
+      const dueAt = new Date(now.getTime() + nextBackoffMs(attemptNumber)).toISOString();
+      transitionLane(board, workItem.id, "Failed Fast", { gates: {} }, {
+        attemptNumber,
+        nextRetryAt: dueAt,
+        errorCode: result.errors[0]?.code ?? "HARNESS_DECOMPOSE_FAILED",
+        errorReason: result.errors[0]?.reason ?? "Decomposition proposal validation failed."
+      });
+      await saveBoard(boardDir, board);
+      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      return {
+        ok: false,
+        command: "orchestrator native finish",
+        workItemId,
+        attemptId,
+        errors: result.errors
+      };
+    }
+
+    // Update attempt record
+    await updateRunAttempt({
+      boardDir,
+      attemptId,
+      patch: {
+        status: "decomposed",
+        completedAt: now.toISOString(),
+        events: [...new Set([...(attempt?.events ?? []), "work_decomposed"])],
+        runner: {
+          ...(attempt?.runner ?? {}),
+          decomposition: {
+            childWorkItemIds: result.childWorkItemIds,
+            reason: proposal.reason
+          }
+        }
+      }
+    });
+
+    const runtimeState = await loadRuntimeState(boardDir);
+    clearRunning(runtimeState, workItem.id);
+    clearClaimed(runtimeState, workItem.id);
+    await saveRuntimeState(boardDir, runtimeState);
+    await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+
+    return {
+      ok: true,
+      command: "orchestrator native finish",
+      workItemId,
+      attemptId,
+      decomposed: true,
+      childWorkItemIds: result.childWorkItemIds,
+      events: ["work_decomposed"],
+      errors: []
+    };
+  }
+
   const reviewReports = enrichReviewReportsWithDispatch({ reports: reviews.reports ?? [], attempt });
   const agentReports = [agent.report, policyReport]
     .filter(Boolean)
@@ -1041,5 +1125,18 @@ export async function reconcileBoard({ boardDir, now }) {
 
   await saveBoard(boardDir, board);
   await saveRuntimeState(boardDir, runtimeState);
-  return { ok: true, errors: [], releasedClaimWorkItemIds, retryReadyWorkItemIds };
+
+  // Check if any decomposing parents can be promoted
+  const decomposingParentIds = [];
+  for (const workItem of board.workItems) {
+    if (workItem.lane === "Decomposing" && (workItem.childWorkItemIds ?? []).length > 0) {
+      const { completeParentWhenChildrenDone } = await import("../board/board-mutator.mjs");
+      const parentResult = await completeParentWhenChildrenDone({ boardDir, parentWorkItemId: workItem.id, now });
+      if (parentResult.transitioned) {
+        decomposingParentIds.push(workItem.id);
+      }
+    }
+  }
+
+  return { ok: true, errors: [], releasedClaimWorkItemIds, retryReadyWorkItemIds, decomposingParentIds };
 }

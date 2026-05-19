@@ -1,0 +1,40 @@
+{
+  "acceptanceCriteria": [
+    {
+      "id": "AC-001",
+      "statement": "demo-auth-system.execute is the only public surface for the Demo Auth System responsibility unit."
+    },
+    {
+      "id": "AC-002",
+      "statement": "Inputs are explicitly validated: request."
+    },
+    {
+      "id": "AC-003",
+      "statement": "Successful execution returns declared output: result."
+    },
+    {
+      "id": "AC-004",
+      "statement": "Invalid or out-of-contract calls fail fast through declared errors: BOUNDARY_CONTRACT_VIOLATION."
+    },
+    {
+      "id": "AC-005",
+      "statement": "Ready gate passes before implementation starts and Done requires verification plus wiki evidence."
+    }
+  ],
+  "goals": [
+    "Implement the Demo Auth System responsibility unit inside src/auth-system/**.",
+    "Expose demo-auth-system.execute with the declared input, output, and error contract.",
+    "Verify the responsibility unit with node -e console.log('auth tests pass')."
+  ],
+  "id": "prd.demo-auth-system",
+  "nonGoals": [
+    "Generate production implementation code during planning.",
+    "Infer undeclared fallback behavior for external SDKs or APIs."
+  ],
+  "request": "Build an authentication system with user registration, login, password reset, email verification, role-based access control, and session management. Include rate limiting and audit logging.",
+  "schemaVersion": "1.0",
+  "title": "Build an authentication system with user registration, login, password reset, email verification, role-based access control, and session management. Include rate limiting and audit logging.",
+  "userVisibleBehavior": [
+    "demo-auth-system.execute accepts request, returns result, and fails through BOUNDARY_CONTRACT_VIOLATION."
+  ]
+}

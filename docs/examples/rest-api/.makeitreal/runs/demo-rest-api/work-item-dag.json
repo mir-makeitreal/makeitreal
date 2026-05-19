@@ -1,0 +1,13 @@
+{
+  "edges": [],
+  "nodes": [
+    {
+      "id": "work.demo-rest-api",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru.demo-rest-api"
+    }
+  ],
+  "runId": "feature-demo-rest-api",
+  "schemaVersion": "1.0"
+}

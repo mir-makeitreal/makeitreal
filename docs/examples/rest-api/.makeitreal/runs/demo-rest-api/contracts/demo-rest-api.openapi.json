@@ -1,0 +1,184 @@
+{
+  "components": {
+    "schemas": {
+      "BooksError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "BooksRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "description": "Declared query input for Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware..",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "BooksResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "Stable identifier returned by POST /books.",
+                "type": "string"
+              },
+              "query": {
+                "description": "Echoed or persisted query value in the successful response when applicable.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Declared business status for the successful response.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "query"
+            ],
+            "type": "object"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "data"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware. Contract",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/books": {
+      "post": {
+        "operationId": "postBooks",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "sample": {
+                  "value": {
+                    "query": "example"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BooksRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "value": {
+                      "data": {
+                        "id": "example",
+                        "query": "example",
+                        "status": "example"
+                      },
+                      "ok": true
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BooksResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "value": {
+                      "error": {
+                        "code": "HTTP_400",
+                        "message": "Declared 400 error."
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BooksError"
+                }
+              }
+            },
+            "description": "Declared 400 error response."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "value": {
+                      "error": {
+                        "code": "HTTP_500",
+                        "message": "Declared 500 error."
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BooksError"
+                }
+              }
+            },
+            "description": "Declared 500 error response."
+          }
+        },
+        "summary": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.",
+        "tags": [
+          "DemoRestApi"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Contract-first API surface for Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware..",
+      "name": "DemoRestApi"
+    }
+  ]
+}

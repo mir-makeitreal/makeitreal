@@ -1,0 +1,155 @@
+{
+  "apiSpecs": [
+    {
+      "contractId": "contract.demo-auth-system.boundary",
+      "kind": "none",
+      "reason": "Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks."
+    }
+  ],
+  "architecture": {
+    "edges": [
+      {
+        "contractId": "contract.demo-auth-system.boundary",
+        "from": "prd",
+        "to": "implementation-unit"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "prd",
+        "label": "PRD Source",
+        "responsibilityUnitId": "ru.demo-auth-system"
+      },
+      {
+        "id": "implementation-unit",
+        "label": "Implementation Responsibility Unit",
+        "responsibilityUnitId": "ru.demo-auth-system"
+      }
+    ]
+  },
+  "callStacks": [
+    {
+      "calls": [
+        "validate declared inputs",
+        "execute owned module behavior",
+        "return declared output or throw declared error"
+      ],
+      "entrypoint": "demo-auth-system.execute"
+    }
+  ],
+  "componentContracts": [],
+  "moduleInterfaces": [
+    {
+      "imports": [],
+      "moduleName": "Demo Auth System",
+      "owner": "team.demo",
+      "owns": [
+        "src/auth-system/**"
+      ],
+      "publicSurfaces": [
+        {
+          "consumers": [
+            "Declared downstream responsibility units and tests"
+          ],
+          "contractIds": [
+            "contract.demo-auth-system.boundary"
+          ],
+          "description": "Module boundary surface for Demo Auth System.",
+          "kind": "module",
+          "name": "demo-auth-system.execute",
+          "signature": {
+            "errors": [
+              {
+                "code": "BOUNDARY_CONTRACT_VIOLATION",
+                "handling": "Throw the declared error with code BOUNDARY_CONTRACT_VIOLATION; do not coerce invalid input through fallback behavior.",
+                "when": "The call violates the declared module contract."
+              }
+            ],
+            "inputs": [
+              {
+                "description": "Input accepted by demo-auth-system.execute; refine the Blueprint if additional fields are required.",
+                "name": "request",
+                "required": true,
+                "type": "declared input"
+              }
+            ],
+            "outputs": [
+              {
+                "cases": [],
+                "description": "Returned value defined by the module contract.",
+                "name": "result",
+                "type": "module result"
+              }
+            ]
+          }
+        }
+      ],
+      "purpose": "Own the Demo Auth System contract and its tests through declared paths only.",
+      "responsibilityUnitId": "ru.demo-auth-system"
+    }
+  ],
+  "prdId": "prd.demo-auth-system",
+  "responsibilityBoundaries": [
+    {
+      "mayUseContracts": [
+        "contract.demo-auth-system.boundary"
+      ],
+      "owns": [
+        "src/auth-system/**"
+      ],
+      "responsibilityUnitId": "ru.demo-auth-system"
+    }
+  ],
+  "runId": "demo-auth-system",
+  "schemaVersion": "1.0",
+  "sequences": [
+    {
+      "messages": [
+        {
+          "from": "User",
+          "label": "request planned work",
+          "to": "Make It Real"
+        },
+        {
+          "from": "Make It Real",
+          "label": "assign work.demo-auth-system via contract.demo-auth-system.boundary",
+          "to": "Implementation Responsibility Unit"
+        }
+      ],
+      "participants": [
+        "User",
+        "Make It Real",
+        "Implementation Responsibility Unit"
+      ],
+      "title": "Plan to implementation handoff"
+    }
+  ],
+  "stateFlow": {
+    "lanes": [
+      "Intake",
+      "Discovery",
+      "Scoped",
+      "Blueprint Bound",
+      "Contract Frozen",
+      "Ready",
+      "Claimed",
+      "Running",
+      "Verifying",
+      "Human Review",
+      "Done"
+    ],
+    "transitions": [
+      {
+        "from": "Contract Frozen",
+        "gate": "design-pack",
+        "to": "Ready"
+      },
+      {
+        "from": "Human Review",
+        "gate": "wiki",
+        "to": "Done"
+      }
+    ]
+  },
+  "workItemId": "work.demo-auth-system"
+}

@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Make It Real Architecture Dossier - Authentication System User Registration Login</title>
+  <link rel="stylesheet" href="./preview.css">
+</head>
+<body>
+  <main class="architecture-shell">
+    <nav class="architecture-nav" aria-label="Architecture Dossier sections">
+    <p class="eyebrow">Make It Real</p>
+    <strong>Architecture Dossier</strong>
+    <label class="nav-filter">
+      <span>Filter reference</span>
+      <input type="search" data-nav-filter placeholder="Module, surface, contract">
+    </label>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#approval-scope">Approval Scope</a>
+    <a href="#system-placement">System Placement</a>
+    <a href="#task-dag">Task DAG</a>
+    <a href="#worker-topology">Worker Topology</a>
+    <a href="#responsibility-map">Responsibility Map</a>
+    <a href="#scenario-index">Scenario Index</a>
+    <a href="#contract-surfaces">Contract Surfaces</a>
+    <a href="#surface-trace-reference">Surface Trace Reference</a>
+    <div class="nav-group">
+    <span>Modules</span>
+    <a class="nav-module" href="#module-0-demo-auth-system">Demo Auth System</a>
+      <a class="nav-surface" href="#module-0-demo-auth-system-surface-0-demo-auth-system-execute">demo-auth-system.execute</a>
+  </div>
+    <a href="#scenario-reference">Scenario Reference</a>
+    <a href="#review-decisions">Review Decisions</a>
+    <a href="#verification-evidence">Verification Evidence</a>
+    <a href="#sources">Sources</a>
+    <a href="#diagnostics">Diagnostics</a>
+  </nav>
+
+    <article class="architecture-main">
+      <header id="overview" class="architecture-hero">
+        <div class="hero-topline">
+          <p class="eyebrow">Blueprint Reference</p>
+          <span class="status-pill" data-live-blueprint-status>pending</span>
+        </div>
+        <p class="reference-label">Architecture Dossier</p>
+        <h1>Authentication System User Registration Login</h1>
+        <p class="summary-line">demo-auth-system.execute accepts request, returns result, and fails through BOUNDARY_CONTRACT_VIOLATION.</p>
+        <details class="request-disclosure">
+          <summary>Original request</summary>
+          <p>Build an authentication system with user registration, login, password reset, email verification, role-based access control, and session management. Include rate limiting and audit logging.</p>
+        </details>
+        <div class="overview-brief">
+          <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>
+          <p><strong>Current phase:</strong> <span data-live-phase>approval-required</span>. <span data-live-headline>Blueprint review is waiting for approval.</span></p>
+          <p><strong>Next Claude Code action:</strong> <code data-live-next-command>/makeitreal:plan approve</code></p>
+        </div>
+      </header>
+
+      <section id="approval-scope" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Approval Packet</p>
+        <h2>Approval Scope</h2>
+      </div>
+    </div>
+    <p class="section-note">Approve this Blueprint only if these paths, contracts, and required work items match the intended software change.</p>
+    <div class="doc-table approval-scope-table">
+      <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value"><code>work.demo-auth-system</code></div></div>
+      <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value"><code>src/auth-system/**</code></div></div>
+      <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value"><code>contract.demo-auth-system.boundary</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:4934e9477a82f24ae7c86b7e7bd55b85369a5ce98bb7b68ee4ee7cd578516235</code></div></div>
+    </div>
+  </section>
+      <section id="system-placement" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Architecture</p>
+        <h2>System Placement</h2>
+      </div>
+    </div>
+    <p class="section-note">demo-auth-system.execute accepts request, returns result, and fails through BOUNDARY_CONTRACT_VIOLATION.</p>
+    <article class="diagram-card">
+    <header>
+      <strong>Module Topology</strong>
+      <span>Responsibility units and declared contract edges for the software under change.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  surface_0_0[&quot;Demo Auth System: demo-auth-system.execute&quot;]
+  input_0_0_0([&quot;request: declared input&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;result: module result&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;BOUNDARY_CONTRACT_VIOLATION&quot;])</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  surface_0_0[&quot;Demo Auth System: demo-auth-system.execute&quot;]
+  input_0_0_0([&quot;request: declared input&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;result: module result&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;BOUNDARY_CONTRACT_VIOLATION&quot;])</code></pre>
+    </details>
+  </article>
+    <div class="doc-table architecture-table">
+      <div class="doc-row">
+        <div class="doc-key">Demo Auth System</div>
+        <div class="doc-value">
+          <strong>ru.demo-auth-system</strong>
+          <span>team.demo</span>
+          <p>Own the Demo Auth System contract and its tests through declared paths only.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+      <section id="task-dag" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Execution Graph</p>
+        <h2>Task DAG</h2>
+      </div>
+    </div>
+    <p class="section-note">Work is split by responsibility boundary. A child Task can execute a node without reading sibling implementation context.</p>
+    <article class="diagram-card">
+    <header>
+      <strong>Responsibility Task Graph</strong>
+      <span>Required work items and dependency contracts for native Claude Code Task fan-out.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  task_0[&quot;Demo Auth System\nimplementation\nwork.demo-auth-system&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  task_0[&quot;Demo Auth System\nimplementation\nwork.demo-auth-system&quot;]</code></pre>
+    </details>
+  </article>
+    <div class="task-dag-table" role="table" aria-label="Task DAG">
+      <div class="task-dag-row header" role="row">
+        <div role="columnheader">Work Item</div>
+        <div role="columnheader">Responsibility</div>
+        <div role="columnheader">Contracts</div>
+        <div role="columnheader">Authorized Paths</div>
+      </div>
+      <div class="task-dag-row" role="row">
+        <div role="cell" data-label="Work Item"><strong>Authentication System User Registration Login</strong><code>work.demo-auth-system</code><span>implementation</span></div>
+        <div role="cell" data-label="Responsibility"><strong>Demo Auth System</strong><code>ru.demo-auth-system</code></div>
+        <div role="cell" data-label="Contracts"><code>contract.demo-auth-system.boundary</code></div>
+        <div role="cell" data-label="Authorized Paths"><code>src/auth-system/**</code></div>
+      </div>
+    </div>
+  </section>
+      <section id="worker-topology" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Native Agents</p>
+        <h2>Worker Topology</h2>
+      </div>
+    </div>
+    <p class="section-note">Each assignment is the planned native Task packet: one responsibility unit, declared contracts, and authorized paths.</p>
+    <div class="worker-topology-list">
+      <article class="worker-assignment">
+        <header>
+          <div>
+            <p class="module-id">work.demo-auth-system</p>
+            <h3>Demo Auth System</h3>
+          </div>
+          <code>implementation-worker</code>
+        </header>
+        <p>Native Claude Code Task receives this work item packet and may edit only the authorized paths.</p>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Responsibility Unit</div><div class="doc-value"><code>ru.demo-auth-system</code></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.demo-auth-system.boundary</code></div></div>
+          <div class="doc-row"><div class="doc-key">Paths</div><div class="doc-value"><code>src/auth-system/**</code></div></div>
+        </div>
+      </article>
+    </div>
+    <p class="section-note">Review roles: <code>spec-reviewer</code> <code>quality-reviewer</code> <code>verification-reviewer</code></p>
+  </section>
+      <section id="responsibility-map" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Boundaries</p>
+        <h2>Responsibility Map</h2>
+      </div>
+    </div>
+    <div class="responsibility-map">
+      <article id="module-0-demo-auth-system" class="responsibility-unit">
+        <header>
+          <h3>Demo Auth System</h3>
+          <code>ru.demo-auth-system</code>
+        </header>
+        <p>Own the Demo Auth System contract and its tests through declared paths only.</p>
+        <p class="section-note">Owner: team.demo</p>
+        <div class="file-tree" role="tree">
+    <ul><li>
+    <span class="file-tree-node dir">src</span>
+    <ul><li>
+    <span class="file-tree-node dir">auth-system</span>
+    <ul><li><span class="file-tree-node dir">**</span></li></ul>
+  </li></ul>
+  </li></ul>
+  </div>
+        <h4>Public Interfaces</h4>
+        <ul class="surface-list"><li><a href="#module-0-demo-auth-system-surface-0-demo-auth-system-execute">demo-auth-system.execute</a></li></ul>
+      </article>
+    </div>
+  </section>
+
+      <section id="scenario-index" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Flows</p>
+            <h2>Scenario Index</h2>
+          </div>
+        </div>
+        <p class="section-note">High-level scenario list for review. Detailed walk-throughs stay in Scenario Reference so large blueprints do not overload the overview.</p>
+        <div class="scenario-index">
+    <a href="#scenario-demo-auth-system-execute">
+      <strong>demo-auth-system.execute contract call</strong>
+      <span>2 participants · 2 steps · mermaid</span>
+    </a>
+  </div>
+      </section>
+
+      <section id="contract-surfaces" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Contracts</p>
+        <h2>Contract Surfaces</h2>
+      </div>
+    </div>
+    <p class="section-note">Each public surface is shown as an SDK-style schema. Consumers should rely on this contract, not provider implementation details.</p>
+    <div class="contract-surface-list">
+      <article id="module-0-demo-auth-system-surface-0-demo-auth-system-execute" class="contract-surface">
+          <p class="module-id">Demo Auth System · ru.demo-auth-system</p>
+          <article class="schema-display">
+    <header>
+      <div>
+        <p class="eyebrow">module</p>
+        <h3>demo-auth-system.execute</h3>
+      </div>
+      <code>contract.demo-auth-system.boundary</code>
+    </header>
+    <p class="surface-signature"><code>demo-auth-system.execute(request): module result</code></p>
+    <p class="section-note">Module boundary surface for Demo Auth System.</p>
+    <div class="schema-sections">
+      <section>
+    <h4>Inputs</h4>
+    <ul><li>
+    <code>request</code>
+    <span>declared input · required</span><p>Input accepted by demo-auth-system.execute; refine the Blueprint if additional fields are required.</p>
+  </li></ul>
+  </section>
+      <section>
+    <h4>Outputs</h4>
+    <ul><li>
+    <code>result</code>
+    <span>module result</span><p>Returned value defined by the module contract.</p>
+  </li></ul>
+  </section>
+      <section>
+    <h4>Errors</h4>
+    <ul><li>
+    <code>BOUNDARY_CONTRACT_VIOLATION</code>
+    <span>The call violates the declared module contract. · Throw the declared error with code BOUNDARY_CONTRACT_VIOLATION; do not coerce invalid input through fallback behavior.</span>
+  </li></ul>
+  </section>
+    </div>
+  </article>
+          <section class="sdk-example" aria-label="Usage example">
+            <div class="sdk-panel-title">
+              <span>Usage Example</span>
+              <strong>Declared surface only</strong>
+            </div>
+            <pre class="code-block" data-language="js"><code>// demo-auth-system.execute is the declared public surface owned by Demo Auth System.
+// Call it only through the Blueprint contract; do not read implementation internals.
+const result = demo-auth-system.execute(input);</code></pre>
+          </section>
+        </article>
+    </div>
+  </section>
+      <section id="surface-trace-reference" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Trace</p>
+        <h2>Surface Trace Reference</h2>
+      </div>
+    </div>
+    <p class="section-note">Use this as the reviewer map from public surface to provider, consumers, allowed use, and scenario evidence. It is the SDK-style trace for multi-module Blueprints.</p>
+    <div class="surface-trace-list">
+      <article class="surface-trace-card">
+        <header>
+          <div>
+            <p class="eyebrow">module</p>
+            <h3>demo-auth-system.execute</h3>
+          </div>
+          <code>ru.demo-auth-system</code>
+        </header>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Provider</div><div class="doc-value"><strong>Demo Auth System</strong><span>team.demo</span></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.demo-auth-system.boundary</code></div></div>
+          <div class="doc-row"><div class="doc-key">Provider Work</div><div class="doc-value"><code>work.demo-auth-system</code></div></div>
+          <div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value"><span>Declared downstream responsibility units and tests</span></div></div>
+          <div class="doc-row"><div class="doc-key">Allowed Use</div><div class="doc-value"><span>Declared surface consumer.</span></div></div>
+          <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value"><code>demo-auth-system.execute</code></div></div>
+          <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value"><span>demo-auth-system.execute contract call</span></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+      <section id="scenario-reference" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Flows</p>
+            <h2>Scenario Reference</h2>
+          </div>
+        </div>
+        <div class="flow-timeline">
+    <section>
+      <h3>Signal Flow</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Runtime Sequence</strong>
+      <span>Mermaid sequence diagram generated from software module interfaces.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant caller as Caller
+  participant surface_0_0 as Demo Auth System: demo-auth-system.execute
+  caller-&gt;&gt;surface_0_0: request
+  surface_0_0-&gt;&gt;surface_0_0: validate demo-auth-system.execute contract
+  alt valid contract
+    surface_0_0--&gt;&gt;caller: result
+  else declared failure
+    surface_0_0--x caller: BOUNDARY_CONTRACT_VIOLATION
+  end</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant caller as Caller
+  participant surface_0_0 as Demo Auth System: demo-auth-system.execute
+  caller-&gt;&gt;surface_0_0: request
+  surface_0_0-&gt;&gt;surface_0_0: validate demo-auth-system.execute contract
+  alt valid contract
+    surface_0_0--&gt;&gt;caller: result
+  else declared failure
+    surface_0_0--x caller: BOUNDARY_CONTRACT_VIOLATION
+  end</code></pre>
+    </details>
+  </article>
+      <p class="empty">No sequence diagrams declared.</p>
+    </section>
+    <section>
+      <h3>Call Stack</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Call Stack</strong>
+      <span>Mermaid call graph generated from declared call stack.</span>
+    </header>
+    <pre class="mermaid">flowchart TD
+  entry[&quot;demo-auth-system.execute&quot;]
+  entry --&gt; c0[&quot;validate declared inputs&quot;]
+  c0 --&gt; c1[&quot;execute owned module behavior&quot;]
+  c1 --&gt; c2[&quot;return declared output or throw declared error&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TD
+  entry[&quot;demo-auth-system.execute&quot;]
+  entry --&gt; c0[&quot;validate declared inputs&quot;]
+  c0 --&gt; c1[&quot;execute owned module behavior&quot;]
+  c1 --&gt; c2[&quot;return declared output or throw declared error&quot;]</code></pre>
+    </details>
+  </article>
+      <div class="callstack-list"><article class="callstack-card">
+    <header><code>demo-auth-system.execute</code></header>
+    <ol><li>validate declared inputs</li><li>execute owned module behavior</li><li>return declared output or throw declared error</li></ol>
+  </article></div>
+    </section>
+    <section>
+      <h3>Surface State Flow</h3>
+      <div class="diagram-grid">
+        <article class="diagram-card">
+    <header>
+      <strong>demo-auth-system.execute State Flow</strong>
+      <span>Declared execution states for Demo Auth System: demo-auth-system.execute.</span>
+    </header>
+    <pre class="mermaid">stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate request
+  ContractValid --&gt; SurfaceExecuted: demo-auth-system.execute
+  SurfaceExecuted --&gt; OutputReturned: result
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: BOUNDARY_CONTRACT_VIOLATION
+  DeclaredError --&gt; [*]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate request
+  ContractValid --&gt; SurfaceExecuted: demo-auth-system.execute
+  SurfaceExecuted --&gt; OutputReturned: result
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: BOUNDARY_CONTRACT_VIOLATION
+  DeclaredError --&gt; [*]</code></pre>
+    </details>
+  </article>
+      </div>
+    </section>
+  </div>
+        <div class="scenario-reference">
+    <article id="scenario-demo-auth-system-execute" class="scenario-detail">
+      <header>
+        <h3>demo-auth-system.execute contract call</h3>
+        <p>Caller → Demo Auth System</p>
+      </header>
+      <article class="diagram-card">
+    <header>
+      <strong>demo-auth-system.execute contract call</strong>
+      <span>Declared software scenario flow.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant p0 as Caller
+  participant p1 as Demo Auth System
+  p0-&gt;&gt;p1: demo-auth-system.execute
+  p1-&gt;&gt;p0: result or BOUNDARY_CONTRACT_VIOLATION</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant p0 as Caller
+  participant p1 as Demo Auth System
+  p0-&gt;&gt;p1: demo-auth-system.execute
+  p1-&gt;&gt;p0: result or BOUNDARY_CONTRACT_VIOLATION</code></pre>
+    </details>
+  </article>
+    <details class="workflow-fallback">
+      <summary>Step-by-step flow</summary>
+      <div class="workflow-graph">
+    <div class="workflow-step">
+      <span>01</span>
+      <strong>Caller → Demo Auth System</strong>
+      <p>demo-auth-system.execute</p>
+    </div><div class="workflow-step">
+      <span>02</span>
+      <strong>Demo Auth System → Caller</strong>
+      <p>result or BOUNDARY_CONTRACT_VIOLATION</p>
+    </div>
+  </div>
+    </details>
+    </article>
+  </div>
+      </section>
+
+      <section id="acceptance" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Acceptance</p>
+            <h2>Acceptance Criteria</h2>
+          </div>
+        </div>
+        <div class="criteria-list"><div class="criterion">
+    <strong>AC-001</strong>
+    <span>demo-auth-system.execute is the only public surface for the Demo Auth System responsibility unit.</span>
+  </div><div class="criterion">
+    <strong>AC-002</strong>
+    <span>Inputs are explicitly validated: request.</span>
+  </div><div class="criterion">
+    <strong>AC-003</strong>
+    <span>Successful execution returns declared output: result.</span>
+  </div><div class="criterion">
+    <strong>AC-004</strong>
+    <span>Invalid or out-of-contract calls fail fast through declared errors: BOUNDARY_CONTRACT_VIOLATION.</span>
+  </div><div class="criterion">
+    <strong>AC-005</strong>
+    <span>Ready gate passes before implementation starts and Done requires verification plus wiki evidence.</span>
+  </div></div>
+      </section>
+
+      <section id="review-decisions" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Human Review</p>
+        <h2>Review Decisions</h2>
+      </div>
+    </div>
+    <ol class="review-decisions"><li>Blueprint review is pending.</li><li>Demo Auth System owns src/auth-system/** and exposes demo-auth-system.execute.</li><li>contract.demo-auth-system.boundary is reviewed from Non-API work: the boundary contract is enforced through declared ownership, allowed paths, and planned static/AST checks..</li></ol>
+  </section>
+      <section id="verification-evidence" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Proof</p>
+        <h2>Verification Evidence</h2>
+      </div>
+    </div>
+    <div class="test-results"><p class="empty">No evidence recorded yet.</p></div>
+  </section>
+      <section id="sources" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Traceability</p>
+        <h2>Sources</h2>
+      </div>
+    </div>
+    <ol class="sources-list">
+    <li>
+      <span>PRD</span>
+      <code>prd.json</code>
+      <em>prd</em>
+    </li><li>
+      <span>Design Pack</span>
+      <code>design-pack.json</code>
+      <em>design-pack</em>
+    </li><li>
+      <span>Responsibility Units</span>
+      <code>responsibility-units.json</code>
+      <em>responsibility-units</em>
+    </li><li>
+      <span>Work Item DAG</span>
+      <code>work-item-dag.json</code>
+      <em>work-item-dag</em>
+    </li><li>
+      <span>work.demo-auth-system</span>
+      <code>work-items/work.demo-auth-system.json</code>
+      <em>work-item</em>
+    </li>
+  </ol>
+  </section>
+      <section id="diagnostics" class="architecture-section">
+    <details class="diagnostics-panel">
+      <summary>Diagnostics</summary>
+      <p class="section-note">Runtime state and board details are kept here for audit only. The Architecture Dossier above is the primary review surface.</p>
+      <details class="diagnostics-panel">
+    <summary>Developer Diagnostics</summary>
+    <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
+    <div class="doc-table">
+      <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>approval-required</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>pending</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-auth-system-1779166708761/.makeitreal/runs/demo-auth-system</code></div></div>
+    </div>
+    <div class="artifact-grid"><div>
+    <strong>PRD</strong>
+    <code>prd.json</code>
+  </div><div>
+    <strong>Design Pack</strong>
+    <code>design-pack.json</code>
+  </div><div>
+    <strong>Responsibility Units</strong>
+    <code>responsibility-units.json</code>
+  </div><div>
+    <strong>Preview Model</strong>
+    <code>preview/preview-model.json</code>
+  </div>
+    <div>
+      <strong>Run Directory</strong>
+      <code>/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-auth-system-1779166708761/.makeitreal/runs/demo-auth-system</code>
+    </div>
+  </div>
+  </details>
+      <section>
+        <h3>Board State</h3>
+        <div data-live-kanban><div class="compact-kanban" data-operator-kanban="true"><section class="kanban-lane" data-lane="Planned">
+    <header><span>Planned</span><strong>1</strong></header>
+    <article class="work-card" data-work-item-id="work.demo-auth-system">
+    <strong>Authentication System User Registration Login</strong>
+    <code>work.demo-auth-system</code>
+    <span>ru.demo-auth-system</span>
+    
+  </article>
+    
+  </section><section class="kanban-lane" data-lane="Ready">
+    <header><span>Ready</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="In Progress">
+    <header><span>In Progress</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Review">
+    <header><span>Review</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Done">
+    <header><span>Done</span><strong>0</strong></header>
+    
+    
+  </section></div></div>
+      </section>
+    </details>
+  </section>
+    </article>
+  </main>
+  <script src="./preview.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#eef4ff",
+        primaryTextColor: "#17202a",
+        primaryBorderColor: "#b8c7f5",
+        lineColor: "#667085",
+        fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

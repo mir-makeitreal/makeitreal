@@ -1,0 +1,13 @@
+{
+  "edges": [],
+  "nodes": [
+    {
+      "id": "work.demo-todo-app",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru.demo-todo-app"
+    }
+  ],
+  "runId": "feature-demo-todo-app",
+  "schemaVersion": "1.0"
+}

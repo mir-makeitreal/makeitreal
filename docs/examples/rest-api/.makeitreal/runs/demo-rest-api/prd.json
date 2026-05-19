@@ -1,0 +1,40 @@
+{
+  "acceptanceCriteria": [
+    {
+      "id": "AC-001",
+      "statement": "POST /books is the only public HTTP surface for this work item."
+    },
+    {
+      "id": "AC-002",
+      "statement": "Request body declares: query."
+    },
+    {
+      "id": "AC-003",
+      "statement": "Responses declare success 200 and error statuses 400, 500."
+    },
+    {
+      "id": "AC-004",
+      "statement": "Declared dependency contracts are the only allowed cross-module calls; undeclared Inventory, persistence, or event behavior requires Blueprint revision."
+    },
+    {
+      "id": "AC-005",
+      "statement": "Ready gate passes before implementation starts and Done requires verification, OpenAPI conformance, and wiki evidence."
+    }
+  ],
+  "goals": [
+    "Expose POST /books as the declared public API contract.",
+    "Validate request, response, status, and dependency behavior through contract evidence.",
+    "Verify the slice with node -e console.log('api tests pass')."
+  ],
+  "id": "prd.demo-rest-api",
+  "nonGoals": [
+    "Generate production implementation code during planning.",
+    "Infer undeclared fallback behavior for external SDKs or APIs."
+  ],
+  "request": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.",
+  "schemaVersion": "1.0",
+  "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.",
+  "userVisibleBehavior": [
+    "POST /books accepts only the declared request contract and returns only declared responses."
+  ]
+}

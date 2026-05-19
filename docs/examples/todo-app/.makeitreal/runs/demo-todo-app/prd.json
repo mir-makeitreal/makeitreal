@@ -1,0 +1,40 @@
+{
+  "acceptanceCriteria": [
+    {
+      "id": "AC-001",
+      "statement": "demo-todo-app.execute is the only public surface for the Demo Todo App responsibility unit."
+    },
+    {
+      "id": "AC-002",
+      "statement": "Inputs are explicitly validated: request."
+    },
+    {
+      "id": "AC-003",
+      "statement": "Successful execution returns declared output: result."
+    },
+    {
+      "id": "AC-004",
+      "statement": "Invalid or out-of-contract calls fail fast through declared errors: BOUNDARY_CONTRACT_VIOLATION."
+    },
+    {
+      "id": "AC-005",
+      "statement": "Ready gate passes before implementation starts and Done requires verification plus wiki evidence."
+    }
+  ],
+  "goals": [
+    "Implement the Demo Todo App responsibility unit inside src/todo-app/**.",
+    "Expose demo-todo-app.execute with the declared input, output, and error contract.",
+    "Verify the responsibility unit with node -e console.log('todo tests pass')."
+  ],
+  "id": "prd.demo-todo-app",
+  "nonGoals": [
+    "Generate production implementation code during planning.",
+    "Infer undeclared fallback behavior for external SDKs or APIs."
+  ],
+  "request": "Build a simple todo list module with add, remove, toggle, and list operations. Each todo has an id, title, and completed status.",
+  "schemaVersion": "1.0",
+  "title": "Build a simple todo list module with add, remove, toggle, and list operations. Each todo has an id, title, and completed status.",
+  "userVisibleBehavior": [
+    "demo-todo-app.execute accepts request, returns result, and fails through BOUNDARY_CONTRACT_VIOLATION."
+  ]
+}

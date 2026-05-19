@@ -1,0 +1,84 @@
+{
+  "blueprintRunDir": ".",
+  "boardId": "board.demo-rest-api",
+  "lanes": [
+    "Intake",
+    "Discovery",
+    "Scoped",
+    "Blueprint Bound",
+    "Contract Frozen",
+    "Ready",
+    "Claimed",
+    "Running",
+    "Decomposing",
+    "Verifying",
+    "Human Review",
+    "Done",
+    "Failed Fast",
+    "Rework",
+    "Blocked",
+    "Cancelled"
+  ],
+  "schemaVersion": "1.0",
+  "workItemDAG": {
+    "edges": [],
+    "nodes": [
+      {
+        "kind": "implementation",
+        "requiredForDone": true,
+        "workItemId": "work.demo-rest-api"
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "workItems": [
+    {
+      "allowedPaths": [
+        "src/rest-api/**"
+      ],
+      "contractIds": [
+        "contract.demo-rest-api.boundary"
+      ],
+      "dependencyContracts": [],
+      "dependsOn": [],
+      "doneEvidence": [
+        {
+          "kind": "verification",
+          "path": "evidence/work.demo-rest-api.verification.json"
+        },
+        {
+          "kind": "openapi-conformance",
+          "path": "evidence/work.demo-rest-api.openapi-conformance.json"
+        },
+        {
+          "kind": "wiki-sync",
+          "path": "evidence/work.demo-rest-api.wiki-sync.json"
+        }
+      ],
+      "id": "work.demo-rest-api",
+      "lane": "Contract Frozen",
+      "prdId": "prd.demo-rest-api",
+      "prdTrace": {
+        "acceptanceCriteriaIds": [
+          "AC-001",
+          "AC-002",
+          "AC-003",
+          "AC-004",
+          "AC-005"
+        ]
+      },
+      "responsibilityUnitId": "ru.demo-rest-api",
+      "schemaVersion": "1.0",
+      "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.",
+      "verificationCommands": [
+        {
+          "args": [
+            "-e",
+            "console.log('api tests pass')"
+          ],
+          "file": "node"
+        }
+      ]
+    }
+  ]
+}

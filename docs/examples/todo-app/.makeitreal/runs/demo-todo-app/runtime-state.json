@@ -1,0 +1,17 @@
+{
+  "boardId": "board.demo-todo-app",
+  "claimed": {},
+  "completedBookkeeping": {},
+  "rateLimitSnapshots": {},
+  "retryAttempts": {},
+  "running": {},
+  "schemaVersion": "1.0",
+  "sessionMetrics": {
+    "failedTurns": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "startedSessions": 0,
+    "totalTokens": 0,
+    "turnCount": 0
+  }
+}

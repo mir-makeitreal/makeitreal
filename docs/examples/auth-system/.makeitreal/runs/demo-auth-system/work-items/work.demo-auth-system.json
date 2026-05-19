@@ -1,0 +1,44 @@
+{
+  "allowedPaths": [
+    "src/auth-system/**"
+  ],
+  "contractIds": [
+    "contract.demo-auth-system.boundary"
+  ],
+  "dependencyContracts": [],
+  "dependsOn": [],
+  "doneEvidence": [
+    {
+      "kind": "verification",
+      "path": "evidence/work.demo-auth-system.verification.json"
+    },
+    {
+      "kind": "wiki-sync",
+      "path": "evidence/work.demo-auth-system.wiki-sync.json"
+    }
+  ],
+  "id": "work.demo-auth-system",
+  "lane": "Contract Frozen",
+  "prdId": "prd.demo-auth-system",
+  "prdTrace": {
+    "acceptanceCriteriaIds": [
+      "AC-001",
+      "AC-002",
+      "AC-003",
+      "AC-004",
+      "AC-005"
+    ]
+  },
+  "responsibilityUnitId": "ru.demo-auth-system",
+  "schemaVersion": "1.0",
+  "title": "Build an authentication system with user registration, login, password reset, email verification, role-based access control, and session management. Include rate limiting and audit logging.",
+  "verificationCommands": [
+    {
+      "args": [
+        "-e",
+        "console.log('auth tests pass')"
+      ],
+      "file": "node"
+    }
+  ]
+}

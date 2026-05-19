@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:91dd9ca4522defb8bdf7ca130b9a018cfcc901ff137f15be4438645c70d6d413",
+  "decisionNote": null,
+  "prdId": "prd.demo-rest-api",
+  "reviewedAt": null,
+  "reviewedBy": null,
+  "reviewSource": "makeitreal:plan",
+  "runId": "demo-rest-api",
+  "schemaVersion": "1.0",
+  "status": "pending",
+  "workItemId": "work.demo-rest-api"
+}

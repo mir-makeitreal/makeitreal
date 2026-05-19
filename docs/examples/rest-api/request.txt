@@ -1,0 +1,1 @@
+Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.

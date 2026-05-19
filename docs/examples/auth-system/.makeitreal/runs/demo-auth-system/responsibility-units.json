@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "units": [
+    {
+      "id": "ru.demo-auth-system",
+      "mayUseContracts": [
+        "contract.demo-auth-system.boundary"
+      ],
+      "mustProvideContracts": [
+        "contract.demo-auth-system.boundary"
+      ],
+      "owner": "team.demo",
+      "owns": [
+        "src/auth-system/**"
+      ],
+      "publicSurfaces": [
+        "demo-auth-system.execute"
+      ]
+    }
+  ]
+}

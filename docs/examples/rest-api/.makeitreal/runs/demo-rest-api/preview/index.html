@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Make It Real Architecture Dossier - Rest Api Managing Books Crud</title>
+  <link rel="stylesheet" href="./preview.css">
+</head>
+<body>
+  <main class="architecture-shell">
+    <nav class="architecture-nav" aria-label="Architecture Dossier sections">
+    <p class="eyebrow">Make It Real</p>
+    <strong>Architecture Dossier</strong>
+    <label class="nav-filter">
+      <span>Filter reference</span>
+      <input type="search" data-nav-filter placeholder="Module, surface, contract">
+    </label>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#approval-scope">Approval Scope</a>
+    <a href="#system-placement">System Placement</a>
+    <a href="#task-dag">Task DAG</a>
+    <a href="#worker-topology">Worker Topology</a>
+    <a href="#responsibility-map">Responsibility Map</a>
+    <a href="#scenario-index">Scenario Index</a>
+    <a href="#contract-surfaces">Contract Surfaces</a>
+    <a href="#surface-trace-reference">Surface Trace Reference</a>
+    <div class="nav-group">
+    <span>Modules</span>
+    <a class="nav-module" href="#module-0-books-api">Books API</a>
+      <a class="nav-surface" href="#module-0-books-api-surface-0-post-books">POST /books</a>
+  </div>
+    <a href="#scenario-reference">Scenario Reference</a>
+    <a href="#review-decisions">Review Decisions</a>
+    <a href="#verification-evidence">Verification Evidence</a>
+    <a href="#sources">Sources</a>
+    <a href="#diagnostics">Diagnostics</a>
+  </nav>
+
+    <article class="architecture-main">
+      <header id="overview" class="architecture-hero">
+        <div class="hero-topline">
+          <p class="eyebrow">Blueprint Reference</p>
+          <span class="status-pill" data-live-blueprint-status>pending</span>
+        </div>
+        <p class="reference-label">Architecture Dossier</p>
+        <h1>Rest Api Managing Books Crud</h1>
+        <p class="summary-line">POST /books accepts only the declared request contract and returns only declared responses.</p>
+        <details class="request-disclosure">
+          <summary>Original request</summary>
+          <p>Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.</p>
+        </details>
+        <div class="overview-brief">
+          <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>
+          <p><strong>Current phase:</strong> <span data-live-phase>approval-required</span>. <span data-live-headline>Blueprint review is waiting for approval.</span></p>
+          <p><strong>Next Claude Code action:</strong> <code data-live-next-command>/makeitreal:plan approve</code></p>
+        </div>
+      </header>
+
+      <section id="approval-scope" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Approval Packet</p>
+        <h2>Approval Scope</h2>
+      </div>
+    </div>
+    <p class="section-note">Approve this Blueprint only if these paths, contracts, and required work items match the intended software change.</p>
+    <div class="doc-table approval-scope-table">
+      <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value"><code>work.demo-rest-api</code></div></div>
+      <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value"><code>src/rest-api/**</code></div></div>
+      <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value"><code>contract.demo-rest-api.boundary</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:91dd9ca4522defb8bdf7ca130b9a018cfcc901ff137f15be4438645c70d6d413</code></div></div>
+    </div>
+  </section>
+      <section id="system-placement" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Architecture</p>
+        <h2>System Placement</h2>
+      </div>
+    </div>
+    <p class="section-note">POST /books accepts only the declared request contract and returns only declared responses.</p>
+    <article class="diagram-card">
+    <header>
+      <strong>Module Topology</strong>
+      <span>Responsibility units and declared contract edges for the software under change.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  surface_0_0[&quot;Books API: POST /books&quot;]
+  input_0_0_0([&quot;requestBody: object&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;200 response: object&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;400.DECLARED_ERROR&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_1([&quot;500.DECLARED_ERROR&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_2([&quot;CONTRACT_MISMATCH&quot;])</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  surface_0_0[&quot;Books API: POST /books&quot;]
+  input_0_0_0([&quot;requestBody: object&quot;])
+  input_0_0_0 --&gt; surface_0_0
+  surface_0_0 --&gt; output_0_0_0([&quot;200 response: object&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_0([&quot;400.DECLARED_ERROR&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_1([&quot;500.DECLARED_ERROR&quot;])
+  surface_0_0 -.-&gt;|&quot;throws&quot;| error_0_0_2([&quot;CONTRACT_MISMATCH&quot;])</code></pre>
+    </details>
+  </article>
+    <div class="doc-table architecture-table">
+      <div class="doc-row">
+        <div class="doc-key">Books API</div>
+        <div class="doc-value">
+          <strong>ru.demo-rest-api</strong>
+          <span>team.demo</span>
+          <p>Own POST /books through declared paths, response statuses, and dependency contracts only.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+      <section id="task-dag" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Execution Graph</p>
+        <h2>Task DAG</h2>
+      </div>
+    </div>
+    <p class="section-note">Work is split by responsibility boundary. A child Task can execute a node without reading sibling implementation context.</p>
+    <article class="diagram-card">
+    <header>
+      <strong>Responsibility Task Graph</strong>
+      <span>Required work items and dependency contracts for native Claude Code Task fan-out.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  task_0[&quot;Books API\nimplementation\nwork.demo-rest-api&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  task_0[&quot;Books API\nimplementation\nwork.demo-rest-api&quot;]</code></pre>
+    </details>
+  </article>
+    <div class="task-dag-table" role="table" aria-label="Task DAG">
+      <div class="task-dag-row header" role="row">
+        <div role="columnheader">Work Item</div>
+        <div role="columnheader">Responsibility</div>
+        <div role="columnheader">Contracts</div>
+        <div role="columnheader">Authorized Paths</div>
+      </div>
+      <div class="task-dag-row" role="row">
+        <div role="cell" data-label="Work Item"><strong>Rest Api Managing Books Crud</strong><code>work.demo-rest-api</code><span>implementation</span></div>
+        <div role="cell" data-label="Responsibility"><strong>Books API</strong><code>ru.demo-rest-api</code></div>
+        <div role="cell" data-label="Contracts"><code>contract.demo-rest-api.boundary</code></div>
+        <div role="cell" data-label="Authorized Paths"><code>src/rest-api/**</code></div>
+      </div>
+    </div>
+  </section>
+      <section id="worker-topology" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Native Agents</p>
+        <h2>Worker Topology</h2>
+      </div>
+    </div>
+    <p class="section-note">Each assignment is the planned native Task packet: one responsibility unit, declared contracts, and authorized paths.</p>
+    <div class="worker-topology-list">
+      <article class="worker-assignment">
+        <header>
+          <div>
+            <p class="module-id">work.demo-rest-api</p>
+            <h3>Books API</h3>
+          </div>
+          <code>implementation-worker</code>
+        </header>
+        <p>Native Claude Code Task receives this work item packet and may edit only the authorized paths.</p>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Responsibility Unit</div><div class="doc-value"><code>ru.demo-rest-api</code></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.demo-rest-api.boundary</code></div></div>
+          <div class="doc-row"><div class="doc-key">Paths</div><div class="doc-value"><code>src/rest-api/**</code></div></div>
+        </div>
+      </article>
+    </div>
+    <p class="section-note">Review roles: <code>spec-reviewer</code> <code>quality-reviewer</code> <code>verification-reviewer</code></p>
+  </section>
+      <section id="responsibility-map" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Boundaries</p>
+        <h2>Responsibility Map</h2>
+      </div>
+    </div>
+    <div class="responsibility-map">
+      <article id="module-0-books-api" class="responsibility-unit">
+        <header>
+          <h3>Books API</h3>
+          <code>ru.demo-rest-api</code>
+        </header>
+        <p>Own POST /books through declared paths, response statuses, and dependency contracts only.</p>
+        <p class="section-note">Owner: team.demo</p>
+        <div class="file-tree" role="tree">
+    <ul><li>
+    <span class="file-tree-node dir">src</span>
+    <ul><li>
+    <span class="file-tree-node dir">rest-api</span>
+    <ul><li><span class="file-tree-node dir">**</span></li></ul>
+  </li></ul>
+  </li></ul>
+  </div>
+        <h4>Public Interfaces</h4>
+        <ul class="surface-list"><li><a href="#module-0-books-api-surface-0-post-books">POST /books</a></li></ul>
+      </article>
+    </div>
+  </section>
+
+      <section id="scenario-index" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Flows</p>
+            <h2>Scenario Index</h2>
+          </div>
+        </div>
+        <p class="section-note">High-level scenario list for review. Detailed walk-throughs stay in Scenario Reference so large blueprints do not overload the overview.</p>
+        <div class="scenario-index">
+    <a href="#scenario-1">
+      <strong>POST /books contract sequence</strong>
+      <span>2 participants · 2 steps · mermaid</span>
+    </a>
+  </div>
+      </section>
+
+      <section id="contract-surfaces" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Contracts</p>
+        <h2>Contract Surfaces</h2>
+      </div>
+    </div>
+    <p class="section-note">Each public surface is shown as an SDK-style schema. Consumers should rely on this contract, not provider implementation details.</p>
+    <div class="contract-surface-list">
+      <article id="module-0-books-api-surface-0-post-books" class="contract-surface">
+          <p class="module-id">Books API · ru.demo-rest-api</p>
+          <article class="schema-display">
+    <header>
+      <div>
+        <p class="eyebrow">http</p>
+        <h3>POST /books</h3>
+      </div>
+      <code>contract.demo-rest-api.boundary</code>
+    </header>
+    <p class="surface-signature"><code>POST /books -&gt; object</code></p>
+    <p class="section-note">HTTP contract surface for POST /books.</p>
+    <div class="schema-sections">
+      <section>
+    <h4>Inputs</h4>
+    <ul><li>
+    <code>requestBody</code>
+    <span>object · required</span><p>Payload accepted by POST /books.</p>
+  </li></ul>
+  </section>
+      <section>
+    <h4>Outputs</h4>
+    <ul><li>
+    <code>200 response</code>
+    <span>object</span><p>Successful response body defined by the OpenAPI contract.</p>
+  </li></ul>
+  </section>
+      <section>
+    <h4>Errors</h4>
+    <ul><li>
+    <code>400.DECLARED_ERROR</code>
+    <span>The implementation returns the declared 400 response. · Return only the declared OpenAPI error shape; do not invent fallback response bodies.</span>
+  </li><li>
+    <code>500.DECLARED_ERROR</code>
+    <span>The implementation returns the declared 500 response. · Return only the declared OpenAPI error shape; do not invent fallback response bodies.</span>
+  </li><li>
+    <code>CONTRACT_MISMATCH</code>
+    <span>The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract. · Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior.</span>
+  </li></ul>
+  </section>
+    </div>
+  </article>
+          <section class="sdk-example" aria-label="Usage example">
+            <div class="sdk-panel-title">
+              <span>Usage Example</span>
+              <strong>Declared surface only</strong>
+            </div>
+            <pre class="code-block" data-language="js"><code>const requestBody = {
+  query: &quot;value&quot;
+};
+
+const httpResponse = await fetch(&quot;/books&quot;, {
+  method: &quot;POST&quot;,
+  headers: { &quot;content-type&quot;: &quot;application/json&quot; },
+  body: JSON.stringify(requestBody)
+});
+
+if (!httpResponse.ok) {
+  throw new Error(`HTTP ${httpResponse.status}`);
+}
+
+const response = await httpResponse.json();</code></pre>
+          </section>
+        </article>
+    </div>
+  </section>
+      <section id="surface-trace-reference" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Trace</p>
+        <h2>Surface Trace Reference</h2>
+      </div>
+    </div>
+    <p class="section-note">Use this as the reviewer map from public surface to provider, consumers, allowed use, and scenario evidence. It is the SDK-style trace for multi-module Blueprints.</p>
+    <div class="surface-trace-list">
+      <article class="surface-trace-card">
+        <header>
+          <div>
+            <p class="eyebrow">http</p>
+            <h3>POST /books</h3>
+          </div>
+          <code>ru.demo-rest-api</code>
+        </header>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Provider</div><div class="doc-value"><strong>Books API</strong><span>team.demo</span></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value"><code>contract.demo-rest-api.boundary</code></div></div>
+          <div class="doc-row"><div class="doc-key">Provider Work</div><div class="doc-value"><code>work.demo-rest-api</code></div></div>
+          <div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value"><span>Declared downstream responsibility units and tests</span></div></div>
+          <div class="doc-row"><div class="doc-key">Allowed Use</div><div class="doc-value"><span>Declared surface consumer.</span></div></div>
+          <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value"><code>POST /books</code></div></div>
+          <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value"><span>POST /books contract sequence</span></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+      <section id="scenario-reference" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Flows</p>
+            <h2>Scenario Reference</h2>
+          </div>
+        </div>
+        <div class="flow-timeline">
+    <section>
+      <h3>Signal Flow</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Runtime Sequence</strong>
+      <span>Mermaid sequence diagram generated from software module interfaces.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant p0 as Client
+  participant p1 as Owned Service
+  p0-&gt;&gt;p1: POST /books
+  p1-&gt;&gt;p0: 200 or 400/500</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant p0 as Client
+  participant p1 as Owned Service
+  p0-&gt;&gt;p1: POST /books
+  p1-&gt;&gt;p0: 200 or 400/500</code></pre>
+    </details>
+  </article>
+      <article class="sequence-card">
+    <strong>POST /books contract sequence</strong>
+    <ol><li><span>Client</span> → <span>Owned Service</span>: POST /books</li><li><span>Owned Service</span> → <span>Client</span>: 200 or 400/500</li></ol>
+  </article>
+    </section>
+    <section>
+      <h3>Call Stack</h3>
+      <article class="diagram-card">
+    <header>
+      <strong>Call Stack</strong>
+      <span>Mermaid call graph generated from declared call stack.</span>
+    </header>
+    <pre class="mermaid">flowchart TD
+  entry[&quot;POST /books&quot;]
+  entry --&gt; c0[&quot;validate declared inputs&quot;]
+  c0 --&gt; c1[&quot;execute owned responsibility unit&quot;]
+  c1 --&gt; c2[&quot;return 200 or declared errors 400, 500&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TD
+  entry[&quot;POST /books&quot;]
+  entry --&gt; c0[&quot;validate declared inputs&quot;]
+  c0 --&gt; c1[&quot;execute owned responsibility unit&quot;]
+  c1 --&gt; c2[&quot;return 200 or declared errors 400, 500&quot;]</code></pre>
+    </details>
+  </article>
+      <div class="callstack-list"><article class="callstack-card">
+    <header><code>POST /books</code></header>
+    <ol><li>validate declared inputs</li><li>execute owned responsibility unit</li><li>return 200 or declared errors 400, 500</li></ol>
+  </article></div>
+    </section>
+    <section>
+      <h3>Surface State Flow</h3>
+      <div class="diagram-grid">
+        <article class="diagram-card">
+    <header>
+      <strong>POST /books State Flow</strong>
+      <span>Declared execution states for Books API: POST /books.</span>
+    </header>
+    <pre class="mermaid">stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate requestBody
+  ContractValid --&gt; SurfaceExecuted: POST /books
+  SurfaceExecuted --&gt; OutputReturned: 200 response
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: 400.DECLARED_ERROR | 500.DECLARED_ERROR | CONTRACT_MISMATCH
+  DeclaredError --&gt; [*]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
+  [*] --&gt; InputReceived
+  InputReceived --&gt; ContractValid: validate requestBody
+  ContractValid --&gt; SurfaceExecuted: POST /books
+  SurfaceExecuted --&gt; OutputReturned: 200 response
+  OutputReturned --&gt; [*]
+  ContractValid --&gt; DeclaredError: 400.DECLARED_ERROR | 500.DECLARED_ERROR | CONTRACT_MISMATCH
+  DeclaredError --&gt; [*]</code></pre>
+    </details>
+  </article>
+      </div>
+    </section>
+  </div>
+        <div class="scenario-reference">
+    <article id="scenario-1" class="scenario-detail">
+      <header>
+        <h3>POST /books contract sequence</h3>
+        <p>Client → Owned Service</p>
+      </header>
+      <article class="diagram-card">
+    <header>
+      <strong>POST /books contract sequence</strong>
+      <span>Declared software scenario flow.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant p0 as Client
+  participant p1 as Owned Service
+  p0-&gt;&gt;p1: POST /books
+  p1-&gt;&gt;p0: 200 or 400/500</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant p0 as Client
+  participant p1 as Owned Service
+  p0-&gt;&gt;p1: POST /books
+  p1-&gt;&gt;p0: 200 or 400/500</code></pre>
+    </details>
+  </article>
+    <details class="workflow-fallback">
+      <summary>Step-by-step flow</summary>
+      <div class="workflow-graph">
+    <div class="workflow-step">
+      <span>01</span>
+      <strong>Client → Owned Service</strong>
+      <p>POST /books</p>
+    </div><div class="workflow-step">
+      <span>02</span>
+      <strong>Owned Service → Client</strong>
+      <p>200 or 400/500</p>
+    </div>
+  </div>
+    </details>
+    </article>
+  </div>
+      </section>
+
+      <section id="acceptance" class="architecture-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Acceptance</p>
+            <h2>Acceptance Criteria</h2>
+          </div>
+        </div>
+        <div class="criteria-list"><div class="criterion">
+    <strong>AC-001</strong>
+    <span>POST /books is the only public HTTP surface for this work item.</span>
+  </div><div class="criterion">
+    <strong>AC-002</strong>
+    <span>Request body declares: query.</span>
+  </div><div class="criterion">
+    <strong>AC-003</strong>
+    <span>Responses declare success 200 and error statuses 400, 500.</span>
+  </div><div class="criterion">
+    <strong>AC-004</strong>
+    <span>Declared dependency contracts are the only allowed cross-module calls; undeclared Inventory, persistence, or event behavior requires Blueprint revision.</span>
+  </div><div class="criterion">
+    <strong>AC-005</strong>
+    <span>Ready gate passes before implementation starts and Done requires verification, OpenAPI conformance, and wiki evidence.</span>
+  </div></div>
+      </section>
+
+      <section id="review-decisions" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Human Review</p>
+        <h2>Review Decisions</h2>
+      </div>
+    </div>
+    <ol class="review-decisions"><li>Blueprint review is pending.</li><li>Books API owns src/rest-api/** and exposes POST /books.</li><li>contract.demo-rest-api.boundary is reviewed from contracts/demo-rest-api.openapi.json.</li></ol>
+  </section>
+      <section id="verification-evidence" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Proof</p>
+        <h2>Verification Evidence</h2>
+      </div>
+    </div>
+    <div class="test-results"><p class="empty">No evidence recorded yet.</p></div>
+  </section>
+      <section id="sources" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Traceability</p>
+        <h2>Sources</h2>
+      </div>
+    </div>
+    <ol class="sources-list">
+    <li>
+      <span>PRD</span>
+      <code>prd.json</code>
+      <em>prd</em>
+    </li><li>
+      <span>Design Pack</span>
+      <code>design-pack.json</code>
+      <em>design-pack</em>
+    </li><li>
+      <span>Responsibility Units</span>
+      <code>responsibility-units.json</code>
+      <em>responsibility-units</em>
+    </li><li>
+      <span>Work Item DAG</span>
+      <code>work-item-dag.json</code>
+      <em>work-item-dag</em>
+    </li><li>
+      <span>work.demo-rest-api</span>
+      <code>work-items/work.demo-rest-api.json</code>
+      <em>work-item</em>
+    </li><li>
+      <span>contract.demo-rest-api.boundary</span>
+      <code>contracts/demo-rest-api.openapi.json</code>
+      <em>contract</em>
+    </li>
+  </ol>
+  </section>
+      <section id="diagnostics" class="architecture-section">
+    <details class="diagnostics-panel">
+      <summary>Diagnostics</summary>
+      <p class="section-note">Runtime state and board details are kept here for audit only. The Architecture Dossier above is the primary review surface.</p>
+      <details class="diagnostics-panel">
+    <summary>Developer Diagnostics</summary>
+    <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
+    <div class="doc-table">
+      <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>approval-required</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>pending</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-rest-api-1779166708718/.makeitreal/runs/demo-rest-api</code></div></div>
+    </div>
+    <div class="artifact-grid"><div>
+    <strong>PRD</strong>
+    <code>prd.json</code>
+  </div><div>
+    <strong>Design Pack</strong>
+    <code>design-pack.json</code>
+  </div><div>
+    <strong>Responsibility Units</strong>
+    <code>responsibility-units.json</code>
+  </div><div>
+    <strong>Preview Model</strong>
+    <code>preview/preview-model.json</code>
+  </div>
+    <div>
+      <strong>Run Directory</strong>
+      <code>/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-rest-api-1779166708718/.makeitreal/runs/demo-rest-api</code>
+    </div>
+  </div>
+  </details>
+      <section>
+        <h3>Board State</h3>
+        <div data-live-kanban><div class="compact-kanban" data-operator-kanban="true"><section class="kanban-lane" data-lane="Planned">
+    <header><span>Planned</span><strong>1</strong></header>
+    <article class="work-card" data-work-item-id="work.demo-rest-api">
+    <strong>Rest Api Managing Books Crud</strong>
+    <code>work.demo-rest-api</code>
+    <span>ru.demo-rest-api</span>
+    
+  </article>
+    
+  </section><section class="kanban-lane" data-lane="Ready">
+    <header><span>Ready</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="In Progress">
+    <header><span>In Progress</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Review">
+    <header><span>Review</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Done">
+    <header><span>Done</span><strong>0</strong></header>
+    
+    
+  </section></div></div>
+      </section>
+    </details>
+  </section>
+    </article>
+  </main>
+  <script src="./preview.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#eef4ff",
+        primaryTextColor: "#17202a",
+        primaryBorderColor: "#b8c7f5",
+        lineColor: "#667085",
+        fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

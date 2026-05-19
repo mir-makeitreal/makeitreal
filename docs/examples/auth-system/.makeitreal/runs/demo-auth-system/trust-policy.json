@@ -1,0 +1,12 @@
+{
+  "approvalPolicy": "never",
+  "commandExecution": "trusted-fixture-only",
+  "realAgentLaunch": "disabled",
+  "runId": "demo-auth-system",
+  "runnerMode": "scripted-simulator",
+  "sandbox": "workspace-only",
+  "schemaVersion": "1.0",
+  "source": "makeitreal:plan",
+  "unsupportedToolCall": "fail-fast",
+  "userInputRequired": "fail-fast"
+}

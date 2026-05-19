@@ -1,0 +1,809 @@
+{
+  "blueprint": {
+    "acceptanceCriteria": [
+      {
+        "id": "AC-001",
+        "statement": "POST /books is the only public HTTP surface for this work item."
+      },
+      {
+        "id": "AC-002",
+        "statement": "Request body declares: query."
+      },
+      {
+        "id": "AC-003",
+        "statement": "Responses declare success 200 and error statuses 400, 500."
+      },
+      {
+        "id": "AC-004",
+        "statement": "Declared dependency contracts are the only allowed cross-module calls; undeclared Inventory, persistence, or event behavior requires Blueprint revision."
+      },
+      {
+        "id": "AC-005",
+        "statement": "Ready gate passes before implementation starts and Done requires verification, OpenAPI conformance, and wiki evidence."
+      }
+    ],
+    "architecture": {
+      "edges": [
+        {
+          "contractId": "contract.demo-rest-api.boundary",
+          "from": "prd",
+          "to": "implementation-unit"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "prd",
+          "label": "PRD Source",
+          "responsibilityUnitId": "ru.demo-rest-api"
+        },
+        {
+          "id": "implementation-unit",
+          "label": "Implementation Responsibility Unit",
+          "responsibilityUnitId": "ru.demo-rest-api"
+        }
+      ]
+    },
+    "boundaries": [
+      {
+        "mayUseContracts": [
+          "contract.demo-rest-api.boundary"
+        ],
+        "owns": [
+          "src/rest-api/**"
+        ],
+        "responsibilityUnitId": "ru.demo-rest-api"
+      }
+    ],
+    "callStacks": [
+      {
+        "calls": [
+          "validate declared inputs",
+          "execute owned responsibility unit",
+          "return 200 or declared errors 400, 500"
+        ],
+        "entrypoint": "POST /books"
+      }
+    ],
+    "contracts": [
+      {
+        "contractId": "contract.demo-rest-api.boundary",
+        "kind": "openapi",
+        "path": "contracts/demo-rest-api.openapi.json",
+        "reason": null
+      }
+    ],
+    "goals": [
+      "Expose POST /books as the declared public API contract.",
+      "Validate request, response, status, and dependency behavior through contract evidence.",
+      "Verify the slice with node -e console.log('api tests pass')."
+    ],
+    "moduleInterfaces": [
+      {
+        "imports": [],
+        "moduleName": "Books API",
+        "owner": "team.demo",
+        "owns": [
+          "src/rest-api/**"
+        ],
+        "publicSurfaces": [
+          {
+            "consumers": [
+              "Declared downstream responsibility units and tests"
+            ],
+            "contractIds": [
+              "contract.demo-rest-api.boundary"
+            ],
+            "description": "HTTP contract surface for POST /books.",
+            "kind": "http",
+            "name": "POST /books",
+            "signature": {
+              "errors": [
+                {
+                  "code": "400.DECLARED_ERROR",
+                  "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                  "when": "The implementation returns the declared 400 response."
+                },
+                {
+                  "code": "500.DECLARED_ERROR",
+                  "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                  "when": "The implementation returns the declared 500 response."
+                },
+                {
+                  "code": "CONTRACT_MISMATCH",
+                  "handling": "Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior.",
+                  "when": "The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract."
+                }
+              ],
+              "inputs": [
+                {
+                  "description": "Payload accepted by POST /books.",
+                  "fields": [
+                    "query"
+                  ],
+                  "name": "requestBody",
+                  "required": true,
+                  "type": "object"
+                }
+              ],
+              "outputs": [
+                {
+                  "description": "Successful response body defined by the OpenAPI contract.",
+                  "name": "200 response",
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        ],
+        "purpose": "Own POST /books through declared paths, response statuses, and dependency contracts only.",
+        "responsibilityUnitId": "ru.demo-rest-api"
+      }
+    ],
+    "nonGoals": [
+      "Generate production implementation code during planning.",
+      "Infer undeclared fallback behavior for external SDKs or APIs."
+    ],
+    "primaryContract": {
+      "contractId": "contract.demo-rest-api.boundary",
+      "kind": "openapi",
+      "path": "contracts/demo-rest-api.openapi.json",
+      "reason": null
+    },
+    "sequences": [
+      {
+        "messages": [
+          {
+            "from": "Client",
+            "label": "POST /books",
+            "to": "Owned Service"
+          },
+          {
+            "from": "Owned Service",
+            "label": "200 or 400/500",
+            "to": "Client"
+          }
+        ],
+        "participants": [
+          "Client",
+          "Owned Service"
+        ],
+        "title": "POST /books contract sequence"
+      }
+    ],
+    "stateTransitions": [
+      {
+        "from": "Contract Frozen",
+        "gate": "design-pack",
+        "to": "Ready"
+      },
+      {
+        "from": "Human Review",
+        "gate": "wiki",
+        "to": "Done"
+      }
+    ],
+    "summary": [
+      "POST /books accepts only the declared request contract and returns only declared responses."
+    ],
+    "systemDossier": {
+      "approvalScope": {
+        "authorizedPaths": [
+          "src/rest-api/**"
+        ],
+        "blueprintFingerprint": "sha256:91dd9ca4522defb8bdf7ca130b9a018cfcc901ff137f15be4438645c70d6d413",
+        "requiredContracts": [
+          "contract.demo-rest-api.boundary"
+        ],
+        "requiredWorkItems": [
+          "work.demo-rest-api"
+        ]
+      },
+      "callStacks": [
+        {
+          "calls": [
+            "validate declared inputs",
+            "execute owned responsibility unit",
+            "return 200 or declared errors 400, 500"
+          ],
+          "entrypoint": "POST /books"
+        }
+      ],
+      "contractMatrix": [
+        {
+          "consumers": [],
+          "contractId": "contract.demo-rest-api.boundary",
+          "kind": "openapi",
+          "path": "contracts/demo-rest-api.openapi.json",
+          "providers": [
+            "Books API"
+          ],
+          "summary": "openapi contract at contracts/demo-rest-api.openapi.json"
+        }
+      ],
+      "contractSurfaces": [
+        {
+          "consumers": [
+            "Declared downstream responsibility units and tests"
+          ],
+          "contractIds": [
+            "contract.demo-rest-api.boundary"
+          ],
+          "description": "HTTP contract surface for POST /books.",
+          "kind": "http",
+          "moduleName": "Books API",
+          "name": "POST /books",
+          "owner": "team.demo",
+          "responsibilityUnitId": "ru.demo-rest-api",
+          "signature": {
+            "errors": [
+              {
+                "code": "400.DECLARED_ERROR",
+                "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                "when": "The implementation returns the declared 400 response."
+              },
+              {
+                "code": "500.DECLARED_ERROR",
+                "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                "when": "The implementation returns the declared 500 response."
+              },
+              {
+                "code": "CONTRACT_MISMATCH",
+                "handling": "Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior.",
+                "when": "The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract."
+              }
+            ],
+            "inputs": [
+              {
+                "description": "Payload accepted by POST /books.",
+                "fields": [
+                  "query"
+                ],
+                "name": "requestBody",
+                "required": true,
+                "type": "object"
+              }
+            ],
+            "outputs": [
+              {
+                "description": "Successful response body defined by the OpenAPI contract.",
+                "name": "200 response",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ],
+      "deliveryScope": {
+        "acceptanceCriteriaIds": [
+          "AC-001",
+          "AC-002",
+          "AC-003",
+          "AC-004",
+          "AC-005"
+        ],
+        "ownedPaths": [
+          "src/rest-api/**"
+        ],
+        "responsibilityUnitIds": [
+          "ru.demo-rest-api"
+        ]
+      },
+      "dependencyEdges": [],
+      "designPatterns": [
+        {
+          "name": "Contract-first responsibility boundary",
+          "rationale": "Adjacent modules may rely only on declared public surfaces and contract IDs."
+        },
+        {
+          "name": "Fail-fast contract mismatch",
+          "rationale": "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
+        }
+      ],
+      "goals": [
+        "Expose POST /books as the declared public API contract.",
+        "Validate request, response, status, and dependency behavior through contract evidence.",
+        "Verify the slice with node -e console.log('api tests pass')."
+      ],
+      "modules": [
+        {
+          "imports": [],
+          "moduleName": "Books API",
+          "ownedFileTree": {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "name": "**",
+                    "type": "folder"
+                  }
+                ],
+                "name": "rest-api",
+                "type": "folder"
+              }
+            ],
+            "name": "src",
+            "type": "folder"
+          },
+          "owner": "team.demo",
+          "owns": [
+            "src/rest-api/**"
+          ],
+          "publicSurfaces": [
+            {
+              "consumers": [
+                "Declared downstream responsibility units and tests"
+              ],
+              "contractIds": [
+                "contract.demo-rest-api.boundary"
+              ],
+              "description": "HTTP contract surface for POST /books.",
+              "kind": "http",
+              "name": "POST /books",
+              "signature": {
+                "errors": [
+                  {
+                    "code": "400.DECLARED_ERROR",
+                    "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                    "when": "The implementation returns the declared 400 response."
+                  },
+                  {
+                    "code": "500.DECLARED_ERROR",
+                    "handling": "Return only the declared OpenAPI error shape; do not invent fallback response bodies.",
+                    "when": "The implementation returns the declared 500 response."
+                  },
+                  {
+                    "code": "CONTRACT_MISMATCH",
+                    "handling": "Fail fast and revise the Blueprint contract before implementation; do not hide the mismatch with fallback behavior.",
+                    "when": "The implementation needs an input, output, status, or dependency not declared in the OpenAPI contract."
+                  }
+                ],
+                "inputs": [
+                  {
+                    "description": "Payload accepted by POST /books.",
+                    "fields": [
+                      "query"
+                    ],
+                    "name": "requestBody",
+                    "required": true,
+                    "type": "object"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "description": "Successful response body defined by the OpenAPI contract.",
+                    "name": "200 response",
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          ],
+          "purpose": "Own POST /books through declared paths, response statuses, and dependency contracts only.",
+          "responsibilityUnitId": "ru.demo-rest-api"
+        }
+      ],
+      "reviewDecisions": [
+        "Blueprint review is pending.",
+        "Books API owns src/rest-api/** and exposes POST /books.",
+        "contract.demo-rest-api.boundary is reviewed from contracts/demo-rest-api.openapi.json."
+      ],
+      "scenarioDetails": [
+        {
+          "id": "scenario-1",
+          "messages": [
+            {
+              "from": "Client",
+              "label": "POST /books",
+              "to": "Owned Service"
+            },
+            {
+              "from": "Owned Service",
+              "label": "200 or 400/500",
+              "to": "Client"
+            }
+          ],
+          "participants": [
+            "Client",
+            "Owned Service"
+          ],
+          "title": "POST /books contract sequence",
+          "visualizationKind": "mermaid"
+        }
+      ],
+      "scenarioIndex": [
+        {
+          "id": "scenario-1",
+          "participantCount": 2,
+          "stepCount": 2,
+          "title": "POST /books contract sequence",
+          "visualizationKind": "mermaid"
+        }
+      ],
+      "signalFlows": [
+        {
+          "messages": [
+            {
+              "from": "Client",
+              "label": "POST /books",
+              "to": "Owned Service"
+            },
+            {
+              "from": "Owned Service",
+              "label": "200 or 400/500",
+              "to": "Client"
+            }
+          ],
+          "participants": [
+            "Client",
+            "Owned Service"
+          ],
+          "title": "POST /books contract sequence"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "prd",
+          "label": "PRD",
+          "path": "prd.json"
+        },
+        {
+          "kind": "design-pack",
+          "label": "Design Pack",
+          "path": "design-pack.json"
+        },
+        {
+          "kind": "responsibility-units",
+          "label": "Responsibility Units",
+          "path": "responsibility-units.json"
+        },
+        {
+          "kind": "work-item-dag",
+          "label": "Work Item DAG",
+          "path": "work-item-dag.json"
+        },
+        {
+          "kind": "work-item",
+          "label": "work.demo-rest-api",
+          "path": "work-items/work.demo-rest-api.json"
+        },
+        {
+          "kind": "contract",
+          "label": "contract.demo-rest-api.boundary",
+          "path": "contracts/demo-rest-api.openapi.json"
+        }
+      ],
+      "stateTransitions": [
+        {
+          "from": "Contract Frozen",
+          "gate": "design-pack",
+          "to": "Ready"
+        },
+        {
+          "from": "Human Review",
+          "gate": "wiki",
+          "to": "Done"
+        }
+      ],
+      "summary": [
+        "POST /books accepts only the declared request contract and returns only declared responses."
+      ],
+      "surfaceTraceReference": [
+        {
+          "allowedUses": [
+            "Declared surface consumer."
+          ],
+          "callStacks": [
+            "POST /books"
+          ],
+          "consumers": [
+            "Declared downstream responsibility units and tests"
+          ],
+          "contractIds": [
+            "contract.demo-rest-api.boundary"
+          ],
+          "moduleName": "Books API",
+          "owner": "team.demo",
+          "providerWorkItems": [
+            "work.demo-rest-api"
+          ],
+          "responsibilityUnitId": "ru.demo-rest-api",
+          "scenarios": [
+            "POST /books contract sequence"
+          ],
+          "surfaceKind": "http",
+          "surfaceName": "POST /books"
+        }
+      ],
+      "systemPlacement": {
+        "edges": [],
+        "modules": [
+          {
+            "moduleName": "Books API",
+            "owner": "team.demo",
+            "purpose": "Own POST /books through declared paths, response statuses, and dependency contracts only.",
+            "responsibilityUnitId": "ru.demo-rest-api"
+          }
+        ],
+        "summary": "POST /books accepts only the declared request contract and returns only declared responses.",
+        "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware."
+      },
+      "taskDag": {
+        "edges": [],
+        "nodes": [
+          {
+            "allowedPaths": [
+              "src/rest-api/**"
+            ],
+            "contractIds": [
+              "contract.demo-rest-api.boundary"
+            ],
+            "id": "work.demo-rest-api",
+            "kind": "implementation",
+            "lane": "Contract Frozen",
+            "moduleName": "Books API",
+            "owner": "team.demo",
+            "requiredForDone": true,
+            "responsibilityUnitId": "ru.demo-rest-api",
+            "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware."
+          }
+        ]
+      },
+      "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware.",
+      "workerTopology": {
+        "assignments": [
+          {
+            "allowedPaths": [
+              "src/rest-api/**"
+            ],
+            "contractIds": [
+              "contract.demo-rest-api.boundary"
+            ],
+            "evidenceRole": "implementation-worker",
+            "handoff": "Native Claude Code Task receives this work item packet and may edit only the authorized paths.",
+            "moduleName": "Books API",
+            "owner": "team.demo",
+            "responsibilityUnitId": "ru.demo-rest-api",
+            "workItemId": "work.demo-rest-api"
+          }
+        ],
+        "reviewRoles": [
+          "spec-reviewer",
+          "quality-reviewer",
+          "verification-reviewer"
+        ]
+      }
+    },
+    "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware."
+  },
+  "board": {
+    "activeClaims": [],
+    "audit": {
+      "blueprintBlockedWorkItemIds": [
+        "work.demo-rest-api"
+      ],
+      "gateFailures": [
+        {
+          "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+          "evidence": [
+            "blueprint-review.json"
+          ],
+          "reason": "Blueprint review is pending user approval.",
+          "workItemId": "work.demo-rest-api"
+        }
+      ],
+      "ok": false,
+      "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-rest-api-1779166708718/.makeitreal/runs/demo-rest-api",
+      "skipped": false,
+      "staleBlueprintWorkItemIds": []
+    },
+    "blockedWork": [],
+    "boardId": "board.demo-rest-api",
+    "failedFast": [],
+    "laneCounts": {
+      "Contract Frozen": 1
+    },
+    "lanes": [
+      {
+        "name": "Intake",
+        "workItems": []
+      },
+      {
+        "name": "Discovery",
+        "workItems": []
+      },
+      {
+        "name": "Scoped",
+        "workItems": []
+      },
+      {
+        "name": "Blueprint Bound",
+        "workItems": []
+      },
+      {
+        "name": "Contract Frozen",
+        "workItems": [
+          {
+            "allowedPaths": [
+              "src/rest-api/**"
+            ],
+            "attemptNumber": null,
+            "claim": null,
+            "contractIds": [
+              "contract.demo-rest-api.boundary"
+            ],
+            "dependsOn": [],
+            "id": "work.demo-rest-api",
+            "isBlocked": false,
+            "isRetryReady": false,
+            "isRework": false,
+            "lane": "Contract Frozen",
+            "nextRetryAt": null,
+            "responsibilityUnitId": "ru.demo-rest-api",
+            "title": "Build a REST API for managing books with CRUD operations and authentication. The API should support listing, creating, reading, updating, and deleting books, with JWT-based auth middleware."
+          }
+        ]
+      },
+      {
+        "name": "Ready",
+        "workItems": []
+      },
+      {
+        "name": "Claimed",
+        "workItems": []
+      },
+      {
+        "name": "Running",
+        "workItems": []
+      },
+      {
+        "name": "Decomposing",
+        "workItems": []
+      },
+      {
+        "name": "Verifying",
+        "workItems": []
+      },
+      {
+        "name": "Human Review",
+        "workItems": []
+      },
+      {
+        "name": "Done",
+        "workItems": []
+      },
+      {
+        "name": "Failed Fast",
+        "workItems": []
+      },
+      {
+        "name": "Rework",
+        "workItems": []
+      },
+      {
+        "name": "Blocked",
+        "workItems": []
+      },
+      {
+        "name": "Cancelled",
+        "workItems": []
+      }
+    ],
+    "retryReady": [],
+    "rework": [],
+    "runtimeState": {
+      "boardId": "board.demo-rest-api",
+      "claimed": {},
+      "completedBookkeeping": {},
+      "rateLimitSnapshots": {},
+      "retryAttempts": {},
+      "running": {},
+      "schemaVersion": "1.0",
+      "sessionMetrics": {
+        "failedTurns": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "startedSessions": 0,
+        "totalTokens": 0,
+        "turnCount": 0
+      }
+    }
+  },
+  "design": {
+    "apiSpecs": [
+      "openapi: contract.demo-rest-api.boundary at contracts/demo-rest-api.openapi.json"
+    ],
+    "architectureEdges": [
+      "prd -> implementation-unit (contract.demo-rest-api.boundary)"
+    ],
+    "callStacks": [
+      "POST /books: validate declared inputs -> execute owned responsibility unit -> return 200 or declared errors 400, 500"
+    ],
+    "moduleInterfaces": [
+      "ru.demo-rest-api: POST /books"
+    ],
+    "responsibilityBoundaries": [
+      "ru.demo-rest-api: owns src/rest-api/**"
+    ],
+    "sequences": [
+      "POST /books contract sequence: Client -> Owned Service: POST /books",
+      "POST /books contract sequence: Owned Service -> Client: 200 or 400/500"
+    ],
+    "stateTransitions": [
+      "Contract Frozen -> Ready via design-pack",
+      "Human Review -> Done via wiki"
+    ]
+  },
+  "generatedAt": "2026-05-19T04:58:28.718Z",
+  "operatorCockpit": {
+    "blueprintStatus": "pending",
+    "controlSurface": "claude-code",
+    "evidenceLinks": [],
+    "firstRunChecklist": [
+      {
+        "command": "/makeitreal:doctor",
+        "id": "plugin",
+        "label": "Plugin Ready",
+        "status": "complete"
+      },
+      {
+        "command": "/makeitreal:plan <request>",
+        "id": "plan",
+        "label": "Plan",
+        "status": "complete"
+      },
+      {
+        "command": "Answer the review question or reply in chat",
+        "id": "blueprint-review",
+        "label": "Blueprint Review",
+        "status": "current"
+      },
+      {
+        "command": "/makeitreal:launch",
+        "id": "launch",
+        "label": "Launch",
+        "status": "pending"
+      },
+      {
+        "command": "/makeitreal:verify",
+        "id": "verification",
+        "label": "Verification",
+        "status": "pending"
+      },
+      {
+        "command": "/makeitreal:status",
+        "id": "done",
+        "label": "Done",
+        "status": "pending"
+      }
+    ],
+    "headline": "Blueprint review is waiting for approval.",
+    "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+    "nextCommand": "/makeitreal:plan approve",
+    "phase": "approval-required",
+    "readOnly": true
+  },
+  "run": {
+    "prdId": "prd.demo-rest-api",
+    "runDir": "/var/folders/dx/50ly1z_s07x_ydvr9wfrkkfr0000gn/T/makeitreal-demo-rest-api-1779166708718/.makeitreal/runs/demo-rest-api",
+    "runId": "demo-rest-api",
+    "workItemId": "work.demo-rest-api"
+  },
+  "schemaVersion": "1.0",
+  "status": {
+    "blockers": [
+      {
+        "authority": "blueprint-review",
+        "code": "HARNESS_BLUEPRINT_APPROVAL_PENDING",
+        "message": "Blueprint review is pending user approval.",
+        "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection."
+      }
+    ],
+    "blueprintStatus": "pending",
+    "evidenceSummary": [],
+    "headline": "Blueprint review is waiting for approval.",
+    "nextAction": "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+    "nextCommand": "/makeitreal:plan approve",
+    "phase": "approval-required"
+  }
+}

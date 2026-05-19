@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:4934e9477a82f24ae7c86b7e7bd55b85369a5ce98bb7b68ee4ee7cd578516235",
+  "decisionNote": null,
+  "prdId": "prd.demo-auth-system",
+  "reviewedAt": null,
+  "reviewedBy": null,
+  "reviewSource": "makeitreal:plan",
+  "runId": "demo-auth-system",
+  "schemaVersion": "1.0",
+  "status": "pending",
+  "workItemId": "work.demo-auth-system"
+}

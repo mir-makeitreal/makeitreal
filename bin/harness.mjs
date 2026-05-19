@@ -36,6 +36,8 @@ Internal commands used by Make It Real skills:
   config set <projectRoot>     Update config (--profile default|quiet, --live-wiki/--dashboard-* enabled|disabled)
   wiki sync <runDir>           Sync verified work to live wiki
   contracts openapi <runDir>   Validate OpenAPI contracts
+  demo [template]              Generate a demo blueprint (todo-app, rest-api, auth-system)
+  demo list                    List available demo templates
   plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts
     --request <text>           Required work request
     --slug <id>                Optional stable run id alias (--run also works)
@@ -52,6 +54,7 @@ Internal commands used by Make It Real skills:
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
   dashboard open <runDir>      Open the generated Kanban dashboard in the default browser
+  dashboard serve <runDir>     Start the live dashboard HTTP+WebSocket server
   hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
   hooks status <projectRoot> --run <runDir>  Show Make It Real Claude hook status
   board status <boardDir>      Show lane counts
@@ -425,6 +428,28 @@ async function runCommand(argv) {
     return { exitCode: result.ok ? 0 : 1, result: { ok: result.ok, command: "contracts openapi", errors: result.errors } };
   }
 
+  if (argv[0] === "demo") {
+    const { runDemo, listTemplates } = await import("../src/demo/demo-runner.mjs");
+    if (argv[1] === "list") {
+      return {
+        exitCode: 0,
+        result: {
+          ok: true,
+          command: "demo list",
+          templates: listTemplates(),
+          errors: []
+        }
+      };
+    }
+    const template = argv[1] && !argv[1].startsWith("--") ? argv[1] : parseFlag(argv, "--template") ?? "rest-api";
+    const result = await runDemo({
+      template,
+      projectRoot: parseFlag(argv, "--project-root") ?? null,
+      now: deterministicNow(argv)
+    });
+    return { exitCode: result.ok ? 0 : 1, result };
+  }
+
   if (argv[0] === "plan") {
     const request = parseFlag(argv, "--request");
     if (!request) {
@@ -577,6 +602,38 @@ async function runCommand(argv) {
       force: argv.includes("--force")
     });
     return { exitCode: result.ok ? 0 : 1, result };
+  }
+
+  if (argv[0] === "dashboard" && argv[1] === "serve") {
+    if (!argv[2]) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "dashboard serve",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "dashboard serve requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true
+          })]
+        }
+      };
+    }
+    const { startDashboardServer } = await import("../src/dashboard/server.mjs");
+    const info = await startDashboardServer({ runDir: argv[2], port: 0 });
+    return {
+      exitCode: 0,
+      result: {
+        ok: true,
+        command: "dashboard serve",
+        url: info.url,
+        port: info.port,
+        runDir: info.runDir,
+        portFilePath: info.portFilePath,
+        errors: []
+      }
+    };
   }
 
   if (argv[0] === "hooks" && argv[1] === "install") {

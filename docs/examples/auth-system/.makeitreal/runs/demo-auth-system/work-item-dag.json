@@ -1,0 +1,13 @@
+{
+  "edges": [],
+  "nodes": [
+    {
+      "id": "work.demo-auth-system",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru.demo-auth-system"
+    }
+  ],
+  "runId": "feature-demo-auth-system",
+  "schemaVersion": "1.0"
+}

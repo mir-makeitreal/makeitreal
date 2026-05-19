@@ -432,7 +432,8 @@ test("Make It Real exposes opt-in Claude plugin validation", async () => {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.equal(pkg.scripts["plugin:validate"], "node scripts/validate-claude-plugin.mjs");
   assert.equal(pkg.scripts["plugin:sync"], "node scripts/sync-plugin-engine.mjs");
-  assert.equal(pkg.scripts["release:check"], "npm run check && npm run plugin:sync -- --check && npm run plugin:validate");
+  assert.equal(pkg.scripts["plugin:check"], "node scripts/sync-plugin-engine.mjs --check");
+  assert.equal(pkg.scripts["release:check"], "npm run check && npm run plugin:check && npm run plugin:validate");
 
   const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "validate-claude-plugin.mjs"), "--help"], {
     cwd: repoRoot,
