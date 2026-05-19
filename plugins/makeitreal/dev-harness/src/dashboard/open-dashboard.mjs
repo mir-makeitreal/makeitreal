@@ -94,7 +94,11 @@ export async function openDashboard({
   dryRun = false,
   force = false,
   env = process.env,
-  platform = process.platform
+  platform = process.platform,
+  readPortFileFn = readPortFile,
+  isServerAliveFn = isServerAlive,
+  startServerFn = startServer,
+  openCommandRunner = spawnSync
 }) {
   const config = projectRoot
     ? await readProjectConfig({ projectRoot })
@@ -140,13 +144,13 @@ export async function openDashboard({
 
   // Try to use the live server
   let serverUrl = null;
-  const existingPort = await readPortFile(runDir);
-  if (existingPort && await isServerAlive(existingPort)) {
+  const existingPort = await readPortFileFn(runDir);
+  if (existingPort && await isServerAliveFn(existingPort)) {
     serverUrl = `http://127.0.0.1:${existingPort}`;
   } else {
     // Try to start the server
     try {
-      const info = await startServer(path.resolve(runDir));
+      const info = await startServerFn(path.resolve(runDir));
       if (info.ok && info.url) {
         serverUrl = info.url;
       }
@@ -157,7 +161,7 @@ export async function openDashboard({
 
   const openUrl = serverUrl ?? location.indexPath;
   const command = platformOpenCommand({ url: openUrl, platform });
-  const result = spawnSync(command.file, command.args, {
+  const result = openCommandRunner(command.file, command.args, {
     encoding: "utf8",
     shell: false,
     stdio: "ignore"

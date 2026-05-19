@@ -29,6 +29,7 @@ function printHelp() {
   console.log(`makeitreal-engine (internal)
 
 Internal commands used by Make It Real skills:
+  --pretty                     Pretty-print JSON for TTY humans; pipes keep raw JSON
   design render <runDir>       Render PRD/blueprint architecture preview
   gate <runDir> --target <lane> Evaluate gates for Ready or Done
   verify <runDir>              Run declared verification commands
@@ -38,6 +39,7 @@ Internal commands used by Make It Real skills:
   contracts openapi <runDir>   Validate OpenAPI contracts
   demo [template]              Generate a demo blueprint (todo-app, rest-api, auth-system)
   demo list                    List available demo templates
+  demo clean                   Remove /tmp makeitreal-demo-* directories
   plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts
     --request <text>           Required work request
     --slug <id>                Optional stable run id alias (--run also works)
@@ -53,7 +55,7 @@ Internal commands used by Make It Real skills:
   setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
-  dashboard open <runDir>      Open the generated Kanban dashboard in the default browser
+  dashboard open <runDir>      Auto-start and open the live Kanban dashboard in the default browser
   dashboard serve <runDir>     Start the live dashboard HTTP+WebSocket server
   hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
   hooks status <projectRoot> --run <runDir>  Show Make It Real Claude hook status
@@ -109,6 +111,41 @@ function parseFlags(argv, flagName) {
     }
   }
   return values;
+}
+
+function stripBooleanFlag(argv, flagName) {
+  return argv.filter((arg) => arg !== flagName);
+}
+
+function formatResultJson(result, { pretty = false, stdoutIsTTY = process.stdout.isTTY } = {}) {
+  return JSON.stringify(result, null, pretty && stdoutIsTTY ? 2 : undefined);
+}
+
+function demoSummary(result) {
+  if (!result?.ok || result.command !== "demo") {
+    return null;
+  }
+  const runDir = result.runDir ?? "";
+  return [
+    "Blueprint generated!",
+    `  Template: ${result.template} (${result.complexity})`,
+    `  Work items: ${result.workItemCount ?? (result.workItemId ? 1 : 0)}`,
+    `  Run dir: ${runDir}`,
+    `  Next: node bin/harness.mjs blueprint approve ${runDir}`
+  ].join("\n");
+}
+
+function printCommandResult(result, {
+  pretty = false,
+  stdoutIsTTY = process.stdout.isTTY
+} = {}) {
+  console.log(formatResultJson(result, { pretty, stdoutIsTTY }));
+  if (pretty && stdoutIsTTY) {
+    const summary = demoSummary(result);
+    if (summary) {
+      console.log(summary);
+    }
+  }
 }
 
 function parseVerificationCommands(argv) {
@@ -429,7 +466,7 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "demo") {
-    const { runDemo, listTemplates } = await import("../src/demo/demo-runner.mjs");
+    const { cleanDemoDirs, runDemo, listTemplates } = await import("../src/demo/demo-runner.mjs");
     if (argv[1] === "list") {
       return {
         exitCode: 0,
@@ -440,6 +477,10 @@ async function runCommand(argv) {
           errors: []
         }
       };
+    }
+    if (argv[1] === "clean") {
+      const result = await cleanDemoDirs();
+      return { exitCode: result.ok ? 0 : 1, result };
     }
     const template = argv[1] && !argv[1].startsWith("--") ? argv[1] : parseFlag(argv, "--template") ?? "rest-api";
     const result = await runDemo({
@@ -933,13 +974,17 @@ async function runCommand(argv) {
   };
 }
 
-runCommand(process.argv.slice(2)).then(({ exitCode, result }) => {
+const rawArgv = process.argv.slice(2);
+const pretty = rawArgv.includes("--pretty");
+const commandArgv = stripBooleanFlag(rawArgv, "--pretty");
+
+runCommand(commandArgv).then(({ exitCode, result }) => {
   if (result) {
-    console.log(JSON.stringify(result));
+    printCommandResult(result, { pretty });
   }
   process.exitCode = exitCode;
 }).catch((error) => {
-  console.log(JSON.stringify({
+  printCommandResult({
     ok: false,
     command: "unknown",
     errors: [{
@@ -950,6 +995,6 @@ runCommand(process.argv.slice(2)).then(({ exitCode, result }) => {
       evidence: [],
       recoverable: false
     }]
-  }));
+  }, { pretty });
   process.exitCode = 1;
 });

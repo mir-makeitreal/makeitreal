@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { access, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { runDemo, listTemplates } from "../src/demo/demo-runner.mjs";
@@ -8,10 +9,27 @@ import { readJsonFile } from "../src/io/json.mjs";
 
 const NOW = new Date("2026-05-19T00:00:00.000Z");
 
-function runHarness(args) {
+function runHarness(args, options = {}) {
   return spawnSync(process.execPath, ["bin/harness.mjs", ...args], {
     cwd: new URL("../", import.meta.url),
-    encoding: "utf8"
+    encoding: "utf8",
+    ...options,
+    env: { ...process.env, ...(options.env ?? {}) }
+  });
+}
+
+function runHarnessInTty(args, options = {}) {
+  const cwd = new URL("../", import.meta.url);
+  const env = { ...process.env, ...(options.env ?? {}) };
+  const script = [
+    "process.stdout.isTTY = true;",
+    `process.argv = ${JSON.stringify([process.execPath, "bin/harness.mjs", ...args])};`,
+    "await import('./bin/harness.mjs');"
+  ].join("\n");
+  return spawnSync(process.execPath, ["--input-type=module", "--eval", script], {
+    cwd,
+    encoding: "utf8",
+    env
   });
 }
 
@@ -145,4 +163,63 @@ test("demo default template is rest-api", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const output = JSON.parse(result.stdout);
   assert.equal(output.template, "rest-api");
+});
+
+test("demo --pretty keeps raw JSON when stdout is piped", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-demo-pipe-"));
+  try {
+    const result = runHarness(["demo", "--pretty", "--now", "2026-05-19T00:00:00.000Z"], {
+      env: { TMPDIR: tmpRoot }
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.doesNotMatch(result.stdout, /Blueprint generated!/);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.template, "rest-api");
+  } finally {
+    await rm(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("demo --pretty prints a TTY-only human summary", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-demo-tty-"));
+  try {
+    const result = runHarnessInTty(["demo", "--pretty", "--now", "2026-05-19T00:00:00.000Z"], {
+      env: { TMPDIR: tmpRoot }
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /\{\n  "ok": true,/);
+    assert.match(result.stdout, /Blueprint generated!/);
+    assert.match(result.stdout, /Template: rest-api \(medium\)/);
+    assert.match(result.stdout, /Work items: 1/);
+    assert.match(result.stdout, /Run dir: .+demo-rest-api/);
+    assert.match(result.stdout, /Next: node bin\/harness\.mjs blueprint approve .+demo-rest-api/);
+  } finally {
+    await rm(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("demo clean removes demo temp directories and reports the count", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-demo-clean-root-"));
+  const demoOne = path.join(tmpRoot, "makeitreal-demo-one-1");
+  const demoTwo = path.join(tmpRoot, "makeitreal-demo-two-2");
+  const keepDir = path.join(tmpRoot, "not-a-demo-dir");
+  try {
+    await mkdir(demoOne, { recursive: true });
+    await mkdir(demoTwo, { recursive: true });
+    await mkdir(keepDir, { recursive: true });
+
+    const result = runHarness(["demo", "clean"], {
+      env: { TMPDIR: tmpRoot }
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.command, "demo clean");
+    assert.equal(output.removedCount, 2);
+    await assert.rejects(access(demoOne), /ENOENT/);
+    await assert.rejects(access(demoTwo), /ENOENT/);
+    await access(keepDir);
+  } finally {
+    await rm(tmpRoot, { recursive: true, force: true });
+  }
 });

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { generatePlanRun } from "../plan/plan-generator.mjs";
@@ -47,6 +47,41 @@ export function listTemplates() {
   }));
 }
 
+async function readWorkItemCount(runDir) {
+  if (!runDir) {
+    return 0;
+  }
+  try {
+    const board = JSON.parse(await readFile(path.join(runDir, "board.json"), "utf8"));
+    return Array.isArray(board.workItems) ? board.workItems.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function cleanDemoDirs({ tmpDir = os.tmpdir() } = {}) {
+  const entries = await readdir(tmpDir, { withFileTypes: true });
+  let removedCount = 0;
+  const removedDirs = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith("makeitreal-demo-")) {
+      continue;
+    }
+    const dirPath = path.join(tmpDir, entry.name);
+    await rm(dirPath, { recursive: true, force: true });
+    removedCount += 1;
+    removedDirs.push(dirPath);
+  }
+  return {
+    ok: true,
+    command: "demo clean",
+    tmpDir,
+    removedCount,
+    removedDirs,
+    errors: []
+  };
+}
+
 export async function runDemo({
   template = "rest-api",
   projectRoot = null,
@@ -71,12 +106,6 @@ export async function runDemo({
       }]
     };
   }
-
-  const demoRoot = projectRoot ?? path.join(
-    await mkdir(path.join(os.tmpdir(), `makeitreal-demo-${template}-`), { recursive: true })
-      ? path.join(os.tmpdir(), `makeitreal-demo-${template}-${Date.now()}`)
-      : path.join(os.tmpdir(), `makeitreal-demo-${template}-${Date.now()}`),
-  );
 
   // Create a temp directory for the demo project
   const resolvedRoot = projectRoot ?? path.join(os.tmpdir(), `makeitreal-demo-${template}-${Date.now()}`);
@@ -117,6 +146,7 @@ export async function runDemo({
   const previewIndexPath = planResult.runDir
     ? path.join(planResult.runDir, "preview", "index.html")
     : null;
+  const workItemCount = await readWorkItemCount(planResult.runDir);
 
   return {
     ok: planResult.ok,
@@ -130,6 +160,7 @@ export async function runDemo({
     dashboardUrl: previewIndexPath,
     planOk: planResult.planOk,
     implementationReady: planResult.implementationReady,
+    workItemCount,
     workItemId: planResult.workItemId,
     contractId: planResult.contractId,
     errors: planResult.errors ?? []

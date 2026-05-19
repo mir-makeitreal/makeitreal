@@ -4,6 +4,7 @@ import { cp, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
 
 function runHarness(args, options = {}) {
   return spawnSync(process.execPath, ["bin/harness.mjs", ...args], {
@@ -49,5 +50,36 @@ test("dashboard open respects dashboard auto-open config", async () => {
     assert.equal(output.opened, false);
     assert.equal(output.skipped, true);
     assert.match(output.reason, /disabled/);
+  });
+});
+
+test("dashboard open starts the live server before opening when no server is running", async () => {
+  await withProjectRun(async ({ root, runDir }) => {
+    const rendered = runHarness(["design", "render", runDir]);
+    assert.equal(rendered.status, 0, rendered.stdout || rendered.stderr);
+
+    const openedCommands = [];
+    const result = await openDashboard({
+      runDir,
+      projectRoot: root,
+      platform: "linux",
+      readPortFileFn: async () => null,
+      isServerAliveFn: async () => false,
+      startServerFn: async (startedRunDir) => ({
+        ok: true,
+        url: "http://127.0.0.1:43210",
+        runDir: startedRunDir
+      }),
+      openCommandRunner: (file, args) => {
+        openedCommands.push({ file, args });
+        return { status: 0, error: null };
+      }
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    assert.equal(result.opened, true);
+    assert.equal(result.serverUrl, "http://127.0.0.1:43210");
+    assert.equal(result.dashboardUrl, "http://127.0.0.1:43210");
+    assert.deepEqual(openedCommands, [{ file: "xdg-open", args: ["http://127.0.0.1:43210"] }]);
   });
 });
