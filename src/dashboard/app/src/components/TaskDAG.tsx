@@ -20,8 +20,9 @@ import { useDashboardStore } from '../store/dashboard-store';
 type WorkItemFlowNode = ReactFlowNode<WorkItemFlowNodeData, 'workItem'>;
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
-const WORK_ITEM_NODE_WIDTH = 350;
-const WORK_ITEM_NODE_HEIGHT = 120;
+const WORK_ITEM_NODE_WIDTH = 400;
+const WORK_ITEM_NODE_HEIGHT = 110;
+const WORK_ITEM_NODE_MIN_WIDTH = 360;
 
 function laneStatusClass(lane: string, isBlocked: boolean): string {
   if (isBlocked || lane === 'Blocked') return 'status-blocked';
@@ -51,8 +52,9 @@ function WorkItemNode({ data, selected }: NodeProps<WorkItemFlowNode>) {
       <Handle type="target" position={Position.Top} />
       <div className={`lane-badge ${data.lane?.replace(/\s+/g, '')}`}>{data.lane}</div>
       <div className="node-title">{data.title}</div>
+      <div className="node-id">{data.workItemId}</div>
       {data.isBlocked && (
-        <div style={{ fontSize: 10, color: 'var(--accent-red)', marginTop: 2 }}>⚠ Blocked</div>
+        <div style={{ fontSize: 11, color: 'var(--accent-red)', marginTop: 4 }}>⚠ Blocked</div>
       )}
       <Handle type="source" position={Position.Bottom} />
     </div>
@@ -93,7 +95,7 @@ function buildDagNodes(workItems: WorkItem[]): WorkItemFlowNode[] {
     type: 'workItem',
     position: getNodePosition(g.node(wi.id), centerOffset, i),
     style: {
-      minWidth: WORK_ITEM_NODE_WIDTH,
+      minWidth: WORK_ITEM_NODE_MIN_WIDTH,
       width: WORK_ITEM_NODE_WIDTH,
     },
     data: {

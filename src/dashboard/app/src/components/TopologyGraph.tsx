@@ -20,12 +20,25 @@ import { useDashboardStore } from '../store/dashboard-store';
 
 type ModuleFlowNode = ReactFlowNode<ModuleFlowNodeData, 'module'>;
 
+function normalizeModuleType(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function moduleTypeClass(moduleType: unknown): string {
+  return `module-type-${(normalizeModuleType(moduleType) ?? 'module').toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'module'}`;
+}
+
+function archNodeModuleType(node: ArchNode): string {
+  const typedNode = node as ArchNode & { kind?: unknown; moduleType?: unknown };
+  return normalizeModuleType(typedNode.moduleType) ?? normalizeModuleType(typedNode.kind) ?? 'module';
+}
+
 function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
   const sel = useDashboardStore(s => s.selection);
   const isHighlighted = sel.nodeId === data.nodeId || sel.relatedModuleIds.includes(data.nodeId);
 
   return (
-    <div className={`module-node ${selected || isHighlighted ? 'selected' : ''}`}>
+    <div className={`module-node ${moduleTypeClass(data.moduleType)} ${selected || isHighlighted ? 'selected' : ''}`}>
       <Handle type="target" position={Position.Top} />
       <div className="node-label">{data.label}</div>
       {data.responsibilityUnitId && (
@@ -39,8 +52,10 @@ function ModuleNode({ data, selected }: NodeProps<ModuleFlowNode>) {
 const nodeTypes = { module: ModuleNode };
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1.0 };
-const MODULE_NODE_WIDTH = 350;
+const MODULE_NODE_WIDTH = 380;
 const MODULE_NODE_HEIGHT = 100;
+const MODULE_NODE_MIN_WIDTH = 350;
+const MODULE_NODE_MIN_HEIGHT = 80;
 
 // ── Auto-layout: dagre hierarchy ──
 
@@ -71,13 +86,15 @@ function autoLayout(archNodes: ArchNode[], archEdges: ArchEdge[]): ModuleFlowNod
     type: 'module',
     position: getNodePosition(g.node(n.id), centerOffset, i),
     style: {
-      minWidth: MODULE_NODE_WIDTH,
+      minWidth: MODULE_NODE_MIN_WIDTH,
+      minHeight: MODULE_NODE_MIN_HEIGHT,
       width: MODULE_NODE_WIDTH,
     },
     data: {
       label: n.label,
       nodeId: n.id,
       responsibilityUnitId: n.responsibilityUnitId ?? null,
+      moduleType: archNodeModuleType(n),
     },
   }));
 }
@@ -107,7 +124,11 @@ function buildEdges(archEdges: ArchEdge[]): Edge[] {
     target: e.to,
     label: e.contractId ?? undefined,
     style: { stroke: 'var(--rf-edge)' },
-    labelStyle: { fontSize: 10, fill: 'var(--text-secondary)' },
+    labelStyle: { fontSize: 12, fontWeight: 600, fill: 'var(--text-secondary)' },
+    labelShowBg: true,
+    labelBgStyle: { fill: 'var(--bg-secondary)', fillOpacity: 0.95 },
+    labelBgPadding: [6, 4],
+    labelBgBorderRadius: 4,
     animated: true,
     type: 'smoothstep',
   }));
