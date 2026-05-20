@@ -1,7 +1,19 @@
 import { createHarnessError } from "../domain/errors.mjs";
 
+export function isBoardSchemaValid(board) {
+  return Boolean(board) && Array.isArray(board.workItems);
+}
+
+export function boardSchemaError() {
+  return createHarnessError({
+    code: "HARNESS_BOARD_SCHEMA_INVALID",
+    reason: "board.json must contain a workItems array.",
+    evidence: ["board.json"]
+  });
+}
+
 function byId(board) {
-  return new Map(board.workItems.map((item) => [item.id, item]));
+  return new Map((board.workItems ?? []).map((item) => [item.id, item]));
 }
 
 function isDone(item) {
@@ -9,6 +21,9 @@ function isDone(item) {
 }
 
 export function getBlockedWorkItems(board) {
+  if (!isBoardSchemaValid(board)) {
+    return [];
+  }
   const itemsById = byId(board);
   return board.workItems.filter((item) =>
     item.lane === "Ready" && (item.dependsOn ?? []).some((id) => !isDone(itemsById.get(id)))
@@ -16,11 +31,17 @@ export function getBlockedWorkItems(board) {
 }
 
 export function getReadyWorkItems(board) {
+  if (!isBoardSchemaValid(board)) {
+    return [];
+  }
   const blockedIds = new Set(getBlockedWorkItems(board).map((item) => item.id));
   return board.workItems.filter((item) => item.lane === "Ready" && !blockedIds.has(item.id));
 }
 
 export function validateDependencyGraph(board) {
+  if (!isBoardSchemaValid(board)) {
+    return { ok: false, errors: [boardSchemaError()] };
+  }
   const itemsById = byId(board);
   const errors = [];
 

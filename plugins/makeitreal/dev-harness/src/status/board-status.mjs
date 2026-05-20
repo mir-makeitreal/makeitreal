@@ -1,6 +1,6 @@
 import { loadBoard } from "../board/board-store.mjs";
 import { listClaims } from "../board/claim-store.mjs";
-import { getBlockedWorkItems, getReadyWorkItems } from "../board/dependency-graph.mjs";
+import { boardSchemaError, getBlockedWorkItems, getReadyWorkItems, isBoardSchemaValid } from "../board/dependency-graph.mjs";
 import { validateBlueprintApproval, resolveBlueprintRunDir } from "../blueprint/review.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { runGates } from "../gates/index.mjs";
@@ -63,6 +63,14 @@ function hasRuntimePriorityLane(board) {
 
 export async function readBoardStatus({ boardDir, now = new Date(), readyGate: providedReadyGate = null }) {
   const board = await loadBoard(boardDir);
+  if (!isBoardSchemaValid(board)) {
+    return {
+      ok: false,
+      command: "board status",
+      boardId: board?.boardId ?? null,
+      errors: [boardSchemaError()]
+    };
+  }
   const activeClaims = await listClaims({ boardDir, now });
   const blockedWork = getBlockedWorkItems(board);
   const failedFast = (board.workItems ?? []).filter((item) => item.lane === "Failed Fast");

@@ -102,7 +102,8 @@ export function validateProjectConfig(config = {}) {
       code: "HARNESS_CONFIG_SCHEMA_UNSUPPORTED",
       reason: `Unsupported Make It Real config schemaVersion: ${schemaVersion}`,
       evidence: ["schemaVersion"],
-      recoverable: true
+      recoverable: true,
+      nextAction: "/makeitreal:setup"
     }));
   }
 

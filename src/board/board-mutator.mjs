@@ -5,6 +5,7 @@ import { createHarnessError } from "../domain/errors.mjs";
 import { invalidAllowedPathPattern, reservedControlPlanePath } from "../domain/path-policy.mjs";
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { readJsonFile, writeJsonFile, fileExists } from "../io/json.mjs";
+import { canTransition } from "../kanban/state-engine.mjs";
 
 const MAX_DECOMPOSITION_DEPTH = 2;
 const MAX_CHILDREN_PER_PROPOSAL = 8;
@@ -194,7 +195,15 @@ export async function materializeChildWorkItems({ boardDir, parentWorkItemId, pr
     childWorkItemIds.push(child.id);
   }
 
-  // Update parent
+  // Update parent through state machine
+  const decomposing = canTransition({
+    from: parentWorkItem.lane,
+    to: "Decomposing",
+    context: { gates: {} }
+  });
+  if (!decomposing.ok) {
+    return { ok: false, childWorkItemIds: [], errors: decomposing.errors };
+  }
   parentWorkItem.lane = "Decomposing";
   parentWorkItem.childWorkItemIds = childWorkItemIds;
 
@@ -307,6 +316,14 @@ export async function completeParentWhenChildrenDone({ boardDir, parentWorkItemI
     return { ok: true, transitioned: false, errors: [] };
   }
 
+  const verifying = canTransition({
+    from: parent.lane,
+    to: "Verifying",
+    context: { gates: { childrenComplete: true } }
+  });
+  if (!verifying.ok) {
+    return { ok: false, transitioned: false, errors: verifying.errors };
+  }
   parent.lane = "Verifying";
   await saveBoard(boardDir, board);
   await appendBoardEvent(boardDir, {

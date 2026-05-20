@@ -369,11 +369,43 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "design" && argv[1] === "render") {
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "design render",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "design render requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "design render <runDir>"
+          })]
+        }
+      };
+    }
     const result = await renderDesignPreview({ runDir: argv[2], now: deterministicNow(argv) });
     return { exitCode: result.ok ? 0 : 1, result: { command: "design render", ...result } };
   }
 
   if (argv[0] === "gate") {
+    if (!argv[1] || argv[1].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "gate",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "gate requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "gate <runDir> --target <lane>"
+          })]
+        }
+      };
+    }
     const result = await runGates({ runDir: argv[1], target: parseTarget(argv) });
     return { exitCode: result.ok ? 0 : 1, result };
   }
@@ -456,11 +488,43 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "wiki" && argv[1] === "sync") {
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "wiki sync",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "wiki sync requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "wiki sync <runDir>"
+          })]
+        }
+      };
+    }
     const result = await syncLiveWiki({ runDir: argv[2] });
     return { exitCode: result.ok ? 0 : 1, result: { command: "wiki sync", ...result } };
   }
 
   if (argv[0] === "contracts" && argv[1] === "openapi") {
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "contracts openapi",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "contracts openapi requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "contracts openapi <runDir>"
+          })]
+        }
+      };
+    }
     const result = await validateOpenApiContracts({ runDir: argv[2], baselineDir: parseFlag(argv, "--baseline") });
     return { exitCode: result.ok ? 0 : 1, result: { ok: result.ok, command: "contracts openapi", errors: result.errors } };
   }
@@ -785,6 +849,22 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "board" && argv[1] === "mailbox" && argv[2] === "send") {
+    if (!argv[3] || argv[3].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "board mailbox send",
+          errors: [createHarnessError({
+            code: "HARNESS_BOARD_DIR_REQUIRED",
+            reason: "board mailbox send requires <boardDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "board mailbox send <boardDir> --to <workerId> --message <text>"
+          })]
+        }
+      };
+    }
     const boardDir = argv[3];
     const fromWorkerId = parseFlag(argv, "--from") ?? "worker.local";
     const toWorkerId = parseFlag(argv, "--to") ?? "worker.local";
@@ -811,6 +891,22 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "orchestrator" && argv[1] === "tick") {
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "orchestrator tick",
+          errors: [createHarnessError({
+            code: "HARNESS_BOARD_DIR_REQUIRED",
+            reason: "orchestrator tick requires <boardDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "orchestrator tick <boardDir>"
+          })]
+        }
+      };
+    }
     const beforeDashboard = await refreshPreviewForTrigger({
       runDir: argv[2],
       trigger: "launch",
@@ -854,6 +950,22 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "orchestrator" && argv[1] === "native" && argv[2] === "start") {
+    if (!argv[3] || argv[3].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "orchestrator native start",
+          errors: [createHarnessError({
+            code: "HARNESS_BOARD_DIR_REQUIRED",
+            reason: "orchestrator native start requires <boardDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "orchestrator native start <boardDir>"
+          })]
+        }
+      };
+    }
     const beforeDashboard = await refreshPreviewForTrigger({
       runDir: argv[3],
       trigger: "launch",
@@ -895,6 +1007,22 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "orchestrator" && argv[1] === "native" && argv[2] === "finish") {
+    if (!argv[3] || argv[3].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "orchestrator native finish",
+          errors: [createHarnessError({
+            code: "HARNESS_BOARD_DIR_REQUIRED",
+            reason: "orchestrator native finish requires <boardDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "orchestrator native finish <boardDir> --work <id> --attempt <id>"
+          })]
+        }
+      };
+    }
     const resultText = argv.includes("--result-stdin")
       ? await readStdinText()
       : parseFlag(argv, "--result-json") ?? nativeFinishShortcutResult(argv);
@@ -953,6 +1081,22 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "orchestrator" && argv[1] === "reconcile") {
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "orchestrator reconcile",
+          errors: [createHarnessError({
+            code: "HARNESS_BOARD_DIR_REQUIRED",
+            reason: "orchestrator reconcile requires <boardDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "orchestrator reconcile <boardDir>"
+          })]
+        }
+      };
+    }
     const result = await reconcileBoard({ boardDir: argv[2], now: deterministicNow(argv) });
     return { exitCode: result.ok ? 0 : 1, result: { command: "orchestrator reconcile", ...result } };
   }

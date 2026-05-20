@@ -27,7 +27,8 @@ export async function readJsonFile(filePath) {
 
 export async function writeJsonFile(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true });
-  const temporaryPath = `${filePath}.tmp`;
+  const suffix = `${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+  const temporaryPath = `${filePath}.${suffix}.tmp`;
   await writeFile(temporaryPath, stableStringify(value), "utf8");
   await rename(temporaryPath, filePath);
 }

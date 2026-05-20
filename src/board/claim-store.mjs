@@ -1,6 +1,7 @@
 import { readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { createHarnessError } from "../domain/errors.mjs";
+import { withBoardLock } from "../io/file-lock.mjs";
 import { fileExists, readJsonFile, writeJsonFile } from "../io/json.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 import { validateBoardBlueprintApproval } from "../blueprint/review.mjs";
@@ -48,7 +49,7 @@ export async function listClaims({ boardDir, now }) {
   return claims;
 }
 
-export async function claimWorkItem({ boardDir, workItemId, workerId, now, leaseMs }) {
+export async function claimWorkItemUnlocked({ boardDir, workItemId, workerId, now, leaseMs }) {
   const board = await loadBoard(boardDir);
   const graph = validateDependencyGraph(board);
   if (!graph.ok) {
@@ -90,7 +91,7 @@ export async function claimWorkItem({ boardDir, workItemId, workerId, now, lease
     const expiredClaim = await readJsonFile(claimFilePath);
     if (isExpired(expiredClaim, now)) {
       await rm(claimFilePath, { force: true });
-      if (workItem.lane === "Claimed") {
+      if (workItem.lane === "Claimed" || workItem.lane === "Running") {
         const expired = canTransition({
           from: workItem.lane,
           to: "Ready",
@@ -159,7 +160,11 @@ export async function claimWorkItem({ boardDir, workItemId, workerId, now, lease
   return { ok: true, claim, errors: [] };
 }
 
-export async function releaseClaim({ boardDir, workItemId, workerId }) {
+export async function claimWorkItem(args) {
+  return withBoardLock(args.boardDir, () => claimWorkItemUnlocked(args));
+}
+
+export async function releaseClaimUnlocked({ boardDir, workItemId, workerId }) {
   const filePath = claimPath(boardDir, workItemId);
   if (!await fileExists(filePath)) {
     return { ok: true, errors: [] };
@@ -193,4 +198,8 @@ export async function releaseClaim({ boardDir, workItemId, workerId }) {
     await saveBoard(boardDir, board);
   }
   return { ok: true, errors: [] };
+}
+
+export async function releaseClaim(args) {
+  return withBoardLock(args.boardDir, () => releaseClaimUnlocked(args));
 }

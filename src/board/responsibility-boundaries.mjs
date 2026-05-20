@@ -1,16 +1,7 @@
 import path from "node:path";
 import { createHarnessError } from "../domain/errors.mjs";
 import { readJsonFile } from "../io/json.mjs";
-
-function matchesPattern(pattern, candidate) {
-  const normalizedPattern = pattern.replaceAll("\\", "/").replace(/\/+$/, "");
-  const normalizedCandidate = candidate.replaceAll("\\", "/").replace(/\/+$/, "");
-  if (normalizedPattern.endsWith("/**")) {
-    const base = normalizedPattern.slice(0, -3);
-    return normalizedCandidate === base || normalizedCandidate.startsWith(`${base}/`);
-  }
-  return normalizedPattern === normalizedCandidate;
-}
+import { matchesPattern } from "../domain/path-policy.mjs";
 
 function ownsContractPath(unit, paths) {
   return paths

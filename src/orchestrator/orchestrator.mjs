@@ -1,6 +1,7 @@
 import path from "node:path";
 import { appendBoardEvent, loadBoard, saveBoard } from "../board/board-store.mjs";
-import { claimWorkItem, listClaims, releaseClaim } from "../board/claim-store.mjs";
+import { claimWorkItemUnlocked, listClaims, releaseClaimUnlocked } from "../board/claim-store.mjs";
+import { withBoardLock } from "../io/file-lock.mjs";
 import { getReadyWorkItems, validateDependencyGraph } from "../board/dependency-graph.mjs";
 import { validateChangedPaths } from "../board/responsibility-boundaries.mjs";
 import { resolveBlueprintRunDir } from "../blueprint/review.mjs";
@@ -10,7 +11,7 @@ import { runGates } from "../gates/index.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 import { createRunAttempt, readRunAttempt, updateRunAttempt } from "./attempt-store.mjs";
-import { nextBackoffMs } from "./retry-policy.mjs";
+import { MAX_RETRY_ATTEMPTS, nextBackoffMs } from "./retry-policy.mjs";
 import { runScriptedAttempt } from "./runner-simulator.mjs";
 import {
   clearClaimed,
@@ -317,7 +318,11 @@ async function promoteReadyGateApprovedWork({ boardDir, board, now }) {
   return { ok: true, board, promotedWorkItemIds, errors: [] };
 }
 
-export async function orchestratorTick({ boardDir, workerId, concurrency, now, runnerScript, runnerMode = "scripted-simulator" }) {
+export async function orchestratorTick(args) {
+  return withBoardLock(args.boardDir, () => orchestratorTickInner(args));
+}
+
+async function orchestratorTickInner({ boardDir, workerId, concurrency, now, runnerScript, runnerMode = "scripted-simulator" }) {
   if (runnerMode !== "scripted-simulator") {
     return {
       ok: false,
@@ -354,17 +359,20 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
   const dispatchedWorkItemIds = [];
   const retryWorkItemIds = [];
   const promotedWorkItemIds = readyPromotion.promotedWorkItemIds;
+  const dispatchErrors = [];
   let runtimeState = null;
 
   for (const workItem of candidates) {
     const workspace = resolveWorkspace({ boardDir, workItemId: workItem.id });
     if (!workspace.ok) {
-      return { ok: false, errors: workspace.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
+      dispatchErrors.push(...workspace.errors);
+      continue;
     }
 
-    const claim = await claimWorkItem({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60000 });
+    const claim = await claimWorkItemUnlocked({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60000 });
     if (!claim.ok) {
-      return { ok: false, errors: claim.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
+      dispatchErrors.push(...claim.errors);
+      continue;
     }
     runtimeState ??= await loadRuntimeState(boardDir);
     recordClaimed(runtimeState, claim.claim);
@@ -373,7 +381,7 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
     const claimedBoard = await loadBoard(boardDir);
     const running = transitionLane(claimedBoard, workItem.id, "Running");
     if (!running.ok) {
-      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
       return { ok: false, errors: running.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
     }
     await saveBoard(boardDir, claimedBoard);
@@ -400,7 +408,7 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
     if (result.ok) {
       const verifying = transitionLane(latestBoard, workItem.id, "Verifying");
       if (!verifying.ok) {
-        await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+        await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
         return { ok: false, errors: verifying.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
       }
       dispatchedWorkItemIds.push(workItem.id);
@@ -420,7 +428,7 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
         latestAttemptId: result.attemptId ?? null
       });
       if (!failedFast.ok) {
-        await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+        await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
         return { ok: false, errors: failedFast.errors, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
       }
       retryWorkItemIds.push(workItem.id);
@@ -436,19 +444,25 @@ export async function orchestratorTick({ boardDir, workerId, concurrency, now, r
       clearRunning(runtimeState, workItem.id);
       clearClaimed(runtimeState, workItem.id);
       if (result.errors.length > 0) {
-        await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+        await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
         await saveBoard(boardDir, latestBoard);
         await saveRuntimeState(boardDir, runtimeState);
         return { ok: false, errors: result.errors, failure: result.failure ?? null, dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
       }
     }
 
-    await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+    await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
     await saveBoard(boardDir, latestBoard);
     await saveRuntimeState(boardDir, runtimeState);
   }
 
-  return { ok: true, errors: [], dispatchedWorkItemIds, retryWorkItemIds, promotedWorkItemIds };
+  return {
+    ok: dispatchErrors.length === 0,
+    errors: dispatchErrors,
+    dispatchedWorkItemIds,
+    retryWorkItemIds,
+    promotedWorkItemIds
+  };
 }
 
 function renderNativeTaskPrompt({ boardDir, workItem, attemptId, projectRoot, nodeKind = "implementation" }) {
@@ -660,7 +674,11 @@ ${nodeScope} Do not edit files. Return JSON:
 `;
 }
 
-export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.parent", concurrency = 1, now }) {
+export async function startNativeClaudeTask(args) {
+  return withBoardLock(args.boardDir, () => startNativeClaudeTaskInner(args));
+}
+
+async function startNativeClaudeTaskInner({ boardDir, workerId = "claude-code.parent", concurrency = 1, now }) {
   if (!Number.isInteger(concurrency) || concurrency < 1) {
     return {
       ok: false,
@@ -710,17 +728,21 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
   }
   const implementationMapping = mappingForEvidenceRole(roleMapping.mapping, "implementation-worker");
   const nativeTasks = [];
+  const dispatchErrors = [];
+  const runtimeState = await loadRuntimeState(boardDir);
   for (const workItem of readyWorkItems) {
-    const claim = await claimWorkItem({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60 * 60 * 1000 });
+    const claim = await claimWorkItemUnlocked({ boardDir, workItemId: workItem.id, workerId, now, leaseMs: 60 * 60 * 1000 });
     if (!claim.ok) {
-      return { ok: false, command: "orchestrator native start", nativeTasks, errors: claim.errors };
+      dispatchErrors.push(...claim.errors);
+      continue;
     }
 
     const claimedBoard = await loadBoard(boardDir);
     const running = transitionLane(claimedBoard, workItem.id, "Running");
     if (!running.ok) {
-      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
-      return { ok: false, command: "orchestrator native start", nativeTasks, errors: running.errors };
+      await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
+      dispatchErrors.push(...running.errors);
+      continue;
     }
     await saveBoard(boardDir, claimedBoard);
 
@@ -756,7 +778,6 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
       };
     });
 
-    const runtimeState = await loadRuntimeState(boardDir);
     recordClaimed(runtimeState, claim.claim);
     recordRunning(runtimeState, {
       workItemId: activeWorkItem.id,
@@ -818,11 +839,11 @@ export async function startNativeClaudeTask({ boardDir, workerId = "claude-code.
   }
 
   return {
-    ok: true,
+    ok: dispatchErrors.length === 0,
     command: "orchestrator native start",
     promotedWorkItemIds: readyPromotion.promotedWorkItemIds,
     nativeTasks,
-    errors: []
+    errors: dispatchErrors
   };
 }
 
@@ -851,7 +872,11 @@ function enrichReviewReportsWithDispatch({ reports, attempt }) {
   });
 }
 
-export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, workerId = "claude-code.parent", resultText, now }) {
+export async function finishNativeClaudeTask(args) {
+  return withBoardLock(args.boardDir, () => finishNativeClaudeTaskInner(args));
+}
+
+async function finishNativeClaudeTaskInner({ boardDir, workItemId, attemptId, workerId = "claude-code.parent", resultText, now }) {
   const board = await loadBoard(boardDir);
   const workItem = board.workItems.find((candidate) => candidate.id === workItemId);
   if (!workItem) {
@@ -934,7 +959,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
         errorReason: result.errors[0]?.reason ?? "Decomposition proposal validation failed."
       });
       await saveBoard(boardDir, board);
-      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
       return {
         ok: false,
         command: "orchestrator native finish",
@@ -966,7 +991,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
     clearRunning(runtimeState, workItem.id);
     clearClaimed(runtimeState, workItem.id);
     await saveRuntimeState(boardDir, runtimeState);
-    await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+    await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
 
     return {
       ok: true,
@@ -1009,7 +1034,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
   if (ok) {
     const verifying = transitionLane(board, workItem.id, "Verifying");
     if (!verifying.ok) {
-      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
       return { ok: false, command: "orchestrator native finish", errors: verifying.errors };
     }
     clearRunning(runtimeState, workItem.id);
@@ -1028,7 +1053,7 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
       latestAttemptId: attemptId
     });
     if (!failedFast.ok) {
-      await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
+      await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
       return { ok: false, command: "orchestrator native finish", errors: failedFast.errors };
     }
     recordRetry(runtimeState, {
@@ -1070,9 +1095,9 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
     attemptId,
     payload: { channel: "parent-native-task" }
   });
-  await releaseClaim({ boardDir, workItemId: workItem.id, workerId });
   await saveBoard(boardDir, board);
   await saveRuntimeState(boardDir, runtimeState);
+  await releaseClaimUnlocked({ boardDir, workItemId: workItem.id, workerId });
 
   return {
     ok,
@@ -1084,20 +1109,53 @@ export async function finishNativeClaudeTask({ boardDir, workItemId, attemptId, 
   };
 }
 
-export async function reconcileBoard({ boardDir, now }) {
+export async function reconcileBoard(args) {
+  return withBoardLock(args.boardDir, () => reconcileBoardInner(args));
+}
+
+async function reconcileBoardInner({ boardDir, now }) {
   const board = await loadBoard(boardDir);
   const runtimeState = await loadRuntimeState(boardDir);
   const releasedClaimWorkItemIds = [];
   const retryReadyWorkItemIds = [];
+  const expiredLeaseWorkItemIds = [];
+  const blockedRetryExhaustedWorkItemIds = [];
   const terminalLanes = new Set(["Done", "Cancelled"]);
 
   for (const claim of await listClaims({ boardDir, now })) {
     const workItem = board.workItems.find((item) => item.id === claim.workItemId);
     if (!workItem || terminalLanes.has(workItem.lane)) {
-      await releaseClaim({ boardDir, workItemId: claim.workItemId, workerId: claim.workerId });
+      await releaseClaimUnlocked({ boardDir, workItemId: claim.workItemId, workerId: claim.workerId });
       clearClaimed(runtimeState, claim.workItemId);
       clearRunning(runtimeState, claim.workItemId);
       releasedClaimWorkItemIds.push(claim.workItemId);
+    }
+  }
+
+  const activeClaimIds = new Set((await listClaims({ boardDir, now })).map((claim) => claim.workItemId));
+  for (const workItem of board.workItems) {
+    if (
+      (workItem.lane === "Claimed" || workItem.lane === "Running")
+      && !activeClaimIds.has(workItem.id)
+    ) {
+      const expired = canTransition({
+        from: workItem.lane,
+        to: "Ready",
+        context: { gates: { leaseExpired: true } }
+      });
+      if (!expired.ok) {
+        return { ok: false, errors: expired.errors, releasedClaimWorkItemIds, retryReadyWorkItemIds };
+      }
+      workItem.lane = "Ready";
+      clearClaimed(runtimeState, workItem.id);
+      clearRunning(runtimeState, workItem.id);
+      expiredLeaseWorkItemIds.push(workItem.id);
+      await appendBoardEvent(boardDir, {
+        event: "claim_expired",
+        workItemId: workItem.id,
+        timestamp: now.toISOString(),
+        payload: { source: "reconcileBoard" }
+      });
     }
   }
 
@@ -1107,6 +1165,25 @@ export async function reconcileBoard({ boardDir, now }) {
       workItem.nextRetryAt &&
       new Date(workItem.nextRetryAt).getTime() <= now.getTime()
     ) {
+      const attempts = workItem.attemptNumber ?? 0;
+      if (attempts >= MAX_RETRY_ATTEMPTS) {
+        const blocked = canTransition({ from: workItem.lane, to: "Blocked", context: { gates: {} } });
+        if (!blocked.ok) {
+          return { ok: false, errors: blocked.errors, releasedClaimWorkItemIds, retryReadyWorkItemIds };
+        }
+        workItem.lane = "Blocked";
+        workItem.blockedReason = "max retry attempts exceeded";
+        delete workItem.nextRetryAt;
+        clearRetry(runtimeState, workItem.id);
+        blockedRetryExhaustedWorkItemIds.push(workItem.id);
+        await appendBoardEvent(boardDir, {
+          event: "work_blocked",
+          workItemId: workItem.id,
+          timestamp: now.toISOString(),
+          payload: { reason: "max retry attempts exceeded", attemptNumber: attempts }
+        });
+        continue;
+      }
       const retry = canTransition({ from: workItem.lane, to: "Ready", context: { gates: { retry: true } } });
       if (!retry.ok) {
         return { ok: false, errors: retry.errors, releasedClaimWorkItemIds, retryReadyWorkItemIds };
@@ -1138,5 +1215,13 @@ export async function reconcileBoard({ boardDir, now }) {
     }
   }
 
-  return { ok: true, errors: [], releasedClaimWorkItemIds, retryReadyWorkItemIds, decomposingParentIds };
+  return {
+    ok: true,
+    errors: [],
+    releasedClaimWorkItemIds,
+    retryReadyWorkItemIds,
+    decomposingParentIds,
+    expiredLeaseWorkItemIds,
+    blockedRetryExhaustedWorkItemIds
+  };
 }
