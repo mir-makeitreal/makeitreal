@@ -52,7 +52,7 @@
         </details>
         <div class="overview-brief">
           <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>
-          <p><strong>Current phase:</strong> <span data-live-phase>launch-ready</span>. <span data-live-headline>Blueprint is approved and ready to launch.</span></p>
+          <p><strong>Current phase:</strong> <span data-live-phase>launch-ready</span>. <span data-live-headline>Board has work ready for launch.</span></p>
           <p><strong>Next Claude Code action:</strong> <code data-live-next-command>/makeitreal:launch</code></p>
         </div>
       </header>
@@ -69,7 +69,7 @@
       <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value"><code>work.feature-auth</code></div></div>
       <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value"><code>apps/web/auth/**</code></div></div>
       <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
-      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:494a957b3d6dbfa2add0c2dee8811ab997afa85438a2f3acd184e5f4efbbf2df</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb</code></div></div>
     </div>
   </section>
       <section id="system-placement" class="architecture-section">
@@ -726,7 +726,32 @@ const session = await httpResponse.json();</code></pre>
   </details>
       <section>
         <h3>Board State</h3>
-        <div data-live-kanban><div class="compact-kanban" data-operator-kanban="true"><p class="empty">No launch board materialized yet.</p></div></div>
+        <div data-live-kanban><div class="compact-kanban" data-operator-kanban="true"><section class="kanban-lane" data-lane="Planned">
+    <header><span>Planned</span><strong>1</strong></header>
+    <article class="work-card" data-work-item-id="work.feature-auth">
+    <strong>Feature Auth Login Surface</strong>
+    <code>work.feature-auth</code>
+    <span>ru.frontend</span>
+    
+  </article>
+    
+  </section><section class="kanban-lane" data-lane="Ready">
+    <header><span>Ready</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="In Progress">
+    <header><span>In Progress</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Review">
+    <header><span>Review</span><strong>0</strong></header>
+    
+    
+  </section><section class="kanban-lane" data-lane="Done">
+    <header><span>Done</span><strong>0</strong></header>
+    
+    
+  </section></div></div>
       </section>
     </details>
   </section>

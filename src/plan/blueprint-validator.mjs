@@ -282,13 +282,13 @@ export const VALIDATION_RULES = [
 /**
  * Validate a BlueprintProposal.
  * @param {object} proposal - The BlueprintProposal from Claude
- * @returns {{ ok: boolean, errors: Array<{id: string, message: string}>, warnings: Array<{id: string, message: string}> }}
+ * @returns {{ ok: boolean, errors: Array<{code: string, reason: string}>, warnings: Array<{code: string, reason: string}> }}
  */
 export function validateBlueprintProposal(proposal) {
   if (!proposal || typeof proposal !== "object") {
     return {
       ok: false,
-      errors: [{ id: "INVALID_PROPOSAL", message: "Proposal must be a non-null object" }],
+      errors: [{ code: "INVALID_PROPOSAL", reason: "Proposal must be a non-null object" }],
       warnings: []
     };
   }
@@ -299,7 +299,7 @@ export function validateBlueprintProposal(proposal) {
   if (missingFields.length > 0) {
     return {
       ok: false,
-      errors: [{ id: "MISSING_FIELDS", message: `Missing required fields: ${missingFields.join(", ")}` }],
+      errors: [{ code: "MISSING_FIELDS", reason: `Missing required fields: ${missingFields.join(", ")}` }],
       warnings: []
     };
   }
@@ -308,12 +308,12 @@ export function validateBlueprintProposal(proposal) {
   const warnings = [];
 
   for (const rule of VALIDATION_RULES) {
-    const message = rule.check(proposal);
-    if (message) {
+    const reason = rule.check(proposal);
+    if (reason) {
       if (rule.severity === "error") {
-        errors.push({ id: rule.id, message });
+        errors.push({ code: rule.id, reason });
       } else {
-        warnings.push({ id: rule.id, message });
+        warnings.push({ code: rule.id, reason });
       }
     }
   }

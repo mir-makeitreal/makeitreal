@@ -247,7 +247,7 @@
         "authorizedPaths": [
           "apps/web/auth/**"
         ],
-        "blueprintFingerprint": "sha256:494a957b3d6dbfa2add0c2dee8811ab997afa85438a2f3acd184e5f4efbbf2df",
+        "blueprintFingerprint": "sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb",
         "requiredContracts": [
           "contract.auth.login"
         ],
@@ -830,7 +830,112 @@
     },
     "title": "Authentication vertical slice"
   },
-  "board": null,
+  "board": {
+    "activeClaims": [],
+    "audit": {
+      "blueprintBlockedWorkItemIds": [],
+      "gateFailures": [],
+      "ok": true,
+      "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth",
+      "skipped": false,
+      "staleBlueprintWorkItemIds": []
+    },
+    "blockedWork": [],
+    "boardId": "board.feature-auth",
+    "failedFast": [],
+    "laneCounts": {
+      "Contract Frozen": 1
+    },
+    "lanes": [
+      {
+        "name": "Intake",
+        "workItems": []
+      },
+      {
+        "name": "Discovery",
+        "workItems": []
+      },
+      {
+        "name": "Scoped",
+        "workItems": []
+      },
+      {
+        "name": "Blueprint Bound",
+        "workItems": []
+      },
+      {
+        "name": "Contract Frozen",
+        "workItems": [
+          {
+            "allowedPaths": [
+              "apps/web/auth/**"
+            ],
+            "attemptNumber": null,
+            "claim": null,
+            "contractIds": [
+              "contract.auth.login"
+            ],
+            "dependsOn": [],
+            "id": "work.feature-auth",
+            "isBlocked": false,
+            "isRetryReady": false,
+            "isRework": false,
+            "lane": "Contract Frozen",
+            "nextRetryAt": null,
+            "responsibilityUnitId": "ru.frontend",
+            "title": "Implement feature-auth login surface"
+          }
+        ]
+      },
+      {
+        "name": "Ready",
+        "workItems": []
+      },
+      {
+        "name": "Claimed",
+        "workItems": []
+      },
+      {
+        "name": "Running",
+        "workItems": []
+      },
+      {
+        "name": "Decomposing",
+        "workItems": []
+      },
+      {
+        "name": "Verifying",
+        "workItems": []
+      },
+      {
+        "name": "Human Review",
+        "workItems": []
+      },
+      {
+        "name": "Done",
+        "workItems": []
+      },
+      {
+        "name": "Failed Fast",
+        "workItems": []
+      },
+      {
+        "name": "Rework",
+        "workItems": []
+      },
+      {
+        "name": "Blocked",
+        "workItems": []
+      },
+      {
+        "name": "Cancelled",
+        "workItems": []
+      }
+    ],
+    "retryReady": [],
+    "rework": [],
+    "runtimeState": null
+  },
   "design": {
     "apiSpecs": [
       "openapi: contract.auth.login at contracts/auth-login.openapi.json"
@@ -915,7 +1020,7 @@
         "status": "pending"
       }
     ],
-    "headline": "Blueprint is approved and ready to launch.",
+    "headline": "Board has work ready for launch.",
     "nextAction": "/makeitreal:launch",
     "nextCommand": "/makeitreal:launch",
     "phase": "launch-ready",
@@ -947,7 +1052,7 @@
         "workItemId": "work.feature-auth"
       }
     ],
-    "headline": "Blueprint is approved and ready to launch.",
+    "headline": "Board has work ready for launch.",
     "nextAction": "/makeitreal:launch",
     "nextCommand": "/makeitreal:launch",
     "phase": "launch-ready"

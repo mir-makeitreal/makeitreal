@@ -467,7 +467,7 @@ export async function startDashboardServer({
 
 // ── CLI entry point ──
 
-if (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const runDir = process.argv[2];
   if (!runDir) {
     console.error("Usage: node server.mjs <runDir>");

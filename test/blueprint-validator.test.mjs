@@ -118,34 +118,34 @@ describe("blueprint-validator", () => {
   it("rejects null proposal", () => {
     const result = validateBlueprintProposal(null);
     assert.equal(result.ok, false);
-    assert.equal(result.errors[0].id, "INVALID_PROPOSAL");
+    assert.equal(result.errors[0].code, "INVALID_PROPOSAL");
   });
 
   it("rejects missing required fields", () => {
     const result = validateBlueprintProposal({ intent: { title: "test" } });
     assert.equal(result.ok, false);
-    assert.equal(result.errors[0].id, "MISSING_FIELDS");
+    assert.equal(result.errors[0].code, "MISSING_FIELDS");
   });
 
   it("UNIQUE_NODE_IDS — detects duplicate node IDs", () => {
     const proposal = validProposal();
     proposal.architecture.nodes.push(proposal.architecture.nodes[0]);
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "UNIQUE_NODE_IDS"));
+    assert.ok(result.errors.some(e => e.code === "UNIQUE_NODE_IDS"));
   });
 
   it("UNIQUE_WORK_ITEM_IDS — detects duplicate work item IDs", () => {
     const proposal = validProposal();
     proposal.workItems.push({ ...proposal.workItems[0] });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "UNIQUE_WORK_ITEM_IDS"));
+    assert.ok(result.errors.some(e => e.code === "UNIQUE_WORK_ITEM_IDS"));
   });
 
   it("EDGES_REFERENCE_DECLARED_NODES — detects undeclared node refs", () => {
     const proposal = validProposal();
     proposal.architecture.edges.push({ from: "auth-api", to: "nonexistent", contractId: "contract.auth.db" });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "EDGES_REFERENCE_DECLARED_NODES"));
+    assert.ok(result.errors.some(e => e.code === "EDGES_REFERENCE_DECLARED_NODES"));
   });
 
   it("DAG_IS_ACYCLIC — detects cycles in work item dependencies", () => {
@@ -155,14 +155,14 @@ describe("blueprint-validator", () => {
       { ...proposal.workItems[0], id: "wi.b", dependsOn: ["wi.a"], allowedPaths: ["test/auth/**"], responsibilityUnitId: "ru.auth-api" }
     ];
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "DAG_IS_ACYCLIC"));
+    assert.ok(result.errors.some(e => e.code === "DAG_IS_ACYCLIC"));
   });
 
   it("CONTRACTS_REFERENCED_EXIST — detects missing contracts", () => {
     const proposal = validProposal();
     proposal.workItems[0].contractIds.push("contract.nonexistent");
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "CONTRACTS_REFERENCED_EXIST"));
+    assert.ok(result.errors.some(e => e.code === "CONTRACTS_REFERENCED_EXIST"));
   });
 
   it("NO_OVERLAPPING_OWNERSHIP — detects overlapping RU paths", () => {
@@ -177,21 +177,21 @@ describe("blueprint-validator", () => {
       responsibility: "Also handles auth"
     });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "NO_OVERLAPPING_OWNERSHIP"));
+    assert.ok(result.errors.some(e => e.code === "NO_OVERLAPPING_OWNERSHIP"));
   });
 
   it("WORK_ITEMS_WITHIN_RU_PATHS — detects out-of-bounds work item paths", () => {
     const proposal = validProposal();
     proposal.workItems[0].allowedPaths = ["src/other/**"];
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "WORK_ITEMS_WITHIN_RU_PATHS"));
+    assert.ok(result.errors.some(e => e.code === "WORK_ITEMS_WITHIN_RU_PATHS"));
   });
 
   it("ALLOWED_PATHS_ARE_VALID — detects invalid path patterns", () => {
     const proposal = validProposal();
     proposal.workItems[0].allowedPaths.push("/absolute/path");
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "ALLOWED_PATHS_ARE_VALID"));
+    assert.ok(result.errors.some(e => e.code === "ALLOWED_PATHS_ARE_VALID"));
   });
 
   it("EVERY_RU_HAS_WORK_ITEMS — warns about uncovered RUs", () => {
@@ -206,7 +206,7 @@ describe("blueprint-validator", () => {
       responsibility: "Nobody works here"
     });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.warnings.some(w => w.id === "EVERY_RU_HAS_WORK_ITEMS"));
+    assert.ok(result.warnings.some(w => w.code === "EVERY_RU_HAS_WORK_ITEMS"));
     assert.equal(result.ok, true, "Warnings don't block validation");
   });
 
@@ -221,14 +221,14 @@ describe("blueprint-validator", () => {
       surface: {}
     });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.warnings.some(w => w.id === "EVERY_CONTRACT_HAS_PROVIDER_WORK_ITEM"));
+    assert.ok(result.warnings.some(w => w.code === "EVERY_CONTRACT_HAS_PROVIDER_WORK_ITEM"));
   });
 
   it("ACCEPTANCE_CRITERIA_COVERED — warns about uncovered AC", () => {
     const proposal = validProposal();
     proposal.intent.acceptanceCriteria.push({ id: "AC-003", statement: "Not covered" });
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.warnings.some(w => w.id === "ACCEPTANCE_CRITERIA_COVERED"));
+    assert.ok(result.warnings.some(w => w.code === "ACCEPTANCE_CRITERIA_COVERED"));
   });
 
   it("WORK_ITEM_COUNT_WITHIN_LIMITS — rejects too many work items", () => {
@@ -247,7 +247,7 @@ describe("blueprint-validator", () => {
       });
     }
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.errors.some(e => e.id === "WORK_ITEM_COUNT_WITHIN_LIMITS"));
+    assert.ok(result.errors.some(e => e.code === "WORK_ITEM_COUNT_WITHIN_LIMITS"));
   });
 
   it("DEPENDENCY_DEPTH_WITHIN_LIMITS — warns about deep chains", () => {
@@ -267,7 +267,7 @@ describe("blueprint-validator", () => {
       });
     }
     const result = validateBlueprintProposal(proposal);
-    assert.ok(result.warnings.some(w => w.id === "DEPENDENCY_DEPTH_WITHIN_LIMITS"));
+    assert.ok(result.warnings.some(w => w.code === "DEPENDENCY_DEPTH_WITHIN_LIMITS"));
   });
 
   it("has all 14 validation rules", () => {

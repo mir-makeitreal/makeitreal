@@ -6,7 +6,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.1.46-blue" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
-  <img src="https://img.shields.io/badge/tests-48%20suites-brightgreen" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-373-brightgreen" alt="tests" />
   <img src="https://img.shields.io/badge/node-%E2%89%A520-success" alt="node" />
   <img src="https://img.shields.io/badge/deps-0-lightgrey" alt="zero deps" />
 </p>
@@ -246,7 +246,7 @@ Engine (src/)                        ← Pure logic, no AI dependencies
   └── io/            JSON persistence
 ```
 
-Pure validation logic — no network calls, no API keys, no external services. Runs inside Claude Code's Node.js runtime. 47 test suites, zero runtime dependencies.
+Pure validation logic — no network calls, no API keys, no external services. Runs inside Claude Code's Node.js runtime. 373 tests, zero runtime dependencies.
 
 ## Key Concepts
 

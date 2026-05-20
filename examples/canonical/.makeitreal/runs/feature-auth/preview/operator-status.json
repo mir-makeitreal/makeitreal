@@ -1,5 +1,84 @@
 {
-  "boardStatus": null,
+  "boardStatus": {
+    "activeClaims": [],
+    "audit": {
+      "blueprintBlockedWorkItemIds": [],
+      "gateFailures": [],
+      "ok": true,
+      "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth",
+      "skipped": false,
+      "staleBlueprintWorkItemIds": []
+    },
+    "blockedWork": [],
+    "blockers": [],
+    "boardId": "board.feature-auth",
+    "command": "board status",
+    "errors": [],
+    "evidenceSummary": [
+      {
+        "kind": "verification",
+        "ok": true,
+        "path": "evidence/verification.json",
+        "summary": "verification recorded",
+        "workItemId": "work.feature-auth"
+      },
+      {
+        "kind": "wiki-sync",
+        "ok": true,
+        "path": "evidence/wiki-sync.json",
+        "summary": "wiki-sync recorded",
+        "workItemId": "work.feature-auth"
+      }
+    ],
+    "failedFast": [],
+    "generatedAt": "2026-04-30T00:00:00.000Z",
+    "headline": "Board has work ready for launch.",
+    "laneCounts": {
+      "Contract Frozen": 1
+    },
+    "launchableWorkItemIds": [
+      "work.feature-auth"
+    ],
+    "nextAction": "/makeitreal:launch",
+    "ok": true,
+    "operatorSummary": {
+      "blockers": [],
+      "evidenceSummary": [
+        {
+          "kind": "verification",
+          "ok": true,
+          "path": "evidence/verification.json",
+          "summary": "verification recorded",
+          "workItemId": "work.feature-auth"
+        },
+        {
+          "kind": "wiki-sync",
+          "ok": true,
+          "path": "evidence/wiki-sync.json",
+          "summary": "wiki-sync recorded",
+          "workItemId": "work.feature-auth"
+        }
+      ],
+      "headline": "Board has work ready for launch.",
+      "launchableWorkItemIds": [
+        "work.feature-auth"
+      ],
+      "nextAction": "/makeitreal:launch",
+      "phase": "launch-ready",
+      "recommendedNativeTaskConcurrency": 1
+    },
+    "phase": "launch-ready",
+    "readyGate": {
+      "command": "gate",
+      "errors": [],
+      "ok": true,
+      "target": "Ready"
+    },
+    "recommendedNativeTaskConcurrency": 1,
+    "retryReady": [],
+    "rework": [],
+    "runtimeState": null
+  },
   "dashboardRefresh": {
     "attempted": true,
     "configPath": null,
@@ -15,7 +94,7 @@
     "blockers": [],
     "blueprint": {
       "errors": [],
-      "fingerprint": "sha256:494a957b3d6dbfa2add0c2dee8811ab997afa85438a2f3acd184e5f4efbbf2df",
+      "fingerprint": "sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb",
       "ok": true,
       "reviewedAt": "2026-04-30T00:00:00.000Z",
       "reviewedBy": "operator:fixture",
@@ -23,7 +102,86 @@
       "status": "approved"
     },
     "blueprintStatus": "approved",
-    "boardStatus": null,
+    "boardStatus": {
+      "activeClaims": [],
+      "audit": {
+        "blueprintBlockedWorkItemIds": [],
+        "gateFailures": [],
+        "ok": true,
+        "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth",
+        "skipped": false,
+        "staleBlueprintWorkItemIds": []
+      },
+      "blockedWork": [],
+      "blockers": [],
+      "boardId": "board.feature-auth",
+      "command": "board status",
+      "errors": [],
+      "evidenceSummary": [
+        {
+          "kind": "verification",
+          "ok": true,
+          "path": "evidence/verification.json",
+          "summary": "verification recorded",
+          "workItemId": "work.feature-auth"
+        },
+        {
+          "kind": "wiki-sync",
+          "ok": true,
+          "path": "evidence/wiki-sync.json",
+          "summary": "wiki-sync recorded",
+          "workItemId": "work.feature-auth"
+        }
+      ],
+      "failedFast": [],
+      "generatedAt": "2026-04-30T00:00:00.000Z",
+      "headline": "Board has work ready for launch.",
+      "laneCounts": {
+        "Contract Frozen": 1
+      },
+      "launchableWorkItemIds": [
+        "work.feature-auth"
+      ],
+      "nextAction": "/makeitreal:launch",
+      "ok": true,
+      "operatorSummary": {
+        "blockers": [],
+        "evidenceSummary": [
+          {
+            "kind": "verification",
+            "ok": true,
+            "path": "evidence/verification.json",
+            "summary": "verification recorded",
+            "workItemId": "work.feature-auth"
+          },
+          {
+            "kind": "wiki-sync",
+            "ok": true,
+            "path": "evidence/wiki-sync.json",
+            "summary": "wiki-sync recorded",
+            "workItemId": "work.feature-auth"
+          }
+        ],
+        "headline": "Board has work ready for launch.",
+        "launchableWorkItemIds": [
+          "work.feature-auth"
+        ],
+        "nextAction": "/makeitreal:launch",
+        "phase": "launch-ready",
+        "recommendedNativeTaskConcurrency": 1
+      },
+      "phase": "launch-ready",
+      "readyGate": {
+        "command": "gate",
+        "errors": [],
+        "ok": true,
+        "target": "Ready"
+      },
+      "recommendedNativeTaskConcurrency": 1,
+      "retryReady": [],
+      "rework": [],
+      "runtimeState": null
+    },
     "command": "status",
     "currentRun": {
       "errors": [],
@@ -61,7 +219,7 @@
       "target": "Ready"
     },
     "generatedAt": "2026-04-30T00:00:00.000Z",
-    "headline": "Blueprint is approved and ready to launch.",
+    "headline": "Board has work ready for launch.",
     "nextAction": "/makeitreal:launch",
     "nextCommand": "/makeitreal:launch",
     "ok": true,
@@ -84,9 +242,13 @@
           "workItemId": "work.feature-auth"
         }
       ],
-      "headline": "Blueprint is approved and ready to launch.",
+      "headline": "Board has work ready for launch.",
+      "launchableWorkItemIds": [
+        "work.feature-auth"
+      ],
       "nextAction": "/makeitreal:launch",
-      "phase": "launch-ready"
+      "phase": "launch-ready",
+      "recommendedNativeTaskConcurrency": 1
     },
     "phase": "launch-ready",
     "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs",
