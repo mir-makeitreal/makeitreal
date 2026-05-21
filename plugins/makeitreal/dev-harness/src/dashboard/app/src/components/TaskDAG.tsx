@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
-import Dagre from '@dagrejs/dagre';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ELK, { type ElkNode, type ElkExtendedEdge } from 'elkjs/lib/elk.bundled.js';
 import {
   ReactFlow,
   Background,
@@ -63,66 +63,72 @@ function WorkItemNode({ data, selected }: NodeProps<WorkItemFlowNode>) {
 
 const nodeTypes = { workItem: WorkItemNode };
 
-// ── Layout: dagre hierarchy ──
+// ── Layout: ELK.js layered (Sugiyama) ──
 
-function buildDagNodes(workItems: WorkItem[]): WorkItemFlowNode[] {
-  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', nodesep: 150, ranksep: 200, marginx: 40, marginy: 40 });
+const elk = new ELK();
+
+const ELK_DAG_OPTIONS = {
+  'elk.algorithm': 'layered',
+  'elk.direction': 'DOWN',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+  'elk.spacing.nodeNode': '60',
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+  'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+  'elk.edgeRouting': 'ORTHOGONAL',
+  'elk.padding': '[top=40,left=40,bottom=40,right=40]',
+};
+
+async function buildDagLayout(workItems: WorkItem[]): Promise<WorkItemFlowNode[]> {
   const idSet = new Set(workItems.map(wi => wi.id));
-
-  workItems.forEach(wi => {
-    g.setNode(wi.id, {
-      width: WORK_ITEM_NODE_WIDTH,
-      height: WORK_ITEM_NODE_HEIGHT,
-    });
-
-    wi.dependsOn.forEach(dep => {
+  const elkEdges: ElkExtendedEdge[] = [];
+  let edgeCounter = 0;
+  for (const wi of workItems) {
+    for (const dep of wi.dependsOn) {
       if (idSet.has(dep)) {
-        g.setEdge(dep, wi.id);
+        elkEdges.push({
+          id: `de${edgeCounter++}`,
+          sources: [dep],
+          targets: [wi.id],
+        });
       }
-    });
-  });
-
-  Dagre.layout(g);
-  const graph = g.graph();
-  const centerOffset = {
-    x: (graph.width ?? 0) / 2,
-    y: (graph.height ?? 0) / 2,
-  };
-
-  return workItems.map((wi, i) => ({
-    id: wi.id,
-    type: 'workItem',
-    position: getNodePosition(g.node(wi.id), centerOffset, i),
-    style: {
-      minWidth: WORK_ITEM_NODE_MIN_WIDTH,
-      width: WORK_ITEM_NODE_WIDTH,
-    },
-    data: {
-      workItemId: wi.id,
-      title: wi.title,
-      lane: wi.lane,
-      isBlocked: wi.isBlocked,
-    },
-  }));
-}
-
-function getNodePosition(
-  node: { x: number; y: number } | undefined,
-  centerOffset: { x: number; y: number },
-  index: number
-) {
-  if (!node || typeof node.x !== 'number' || typeof node.y !== 'number') {
-    return {
-      x: index * (WORK_ITEM_NODE_WIDTH + 150) - centerOffset.x,
-      y: -centerOffset.y,
-    };
+    }
   }
 
-  return {
-    x: node.x - centerOffset.x - WORK_ITEM_NODE_WIDTH / 2,
-    y: node.y - centerOffset.y - WORK_ITEM_NODE_HEIGHT / 2,
+  const graph: ElkNode = {
+    id: 'root',
+    layoutOptions: ELK_DAG_OPTIONS,
+    children: workItems.map(wi => ({
+      id: wi.id,
+      width: WORK_ITEM_NODE_WIDTH,
+      height: WORK_ITEM_NODE_HEIGHT,
+    })),
+    edges: elkEdges,
   };
+
+  const laidOut = await elk.layout(graph);
+  const positionMap = new Map<string, { x: number; y: number }>();
+  for (const child of laidOut.children ?? []) {
+    positionMap.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+  }
+
+  return workItems.map((wi, i) => {
+    const pos = positionMap.get(wi.id) ?? { x: i * (WORK_ITEM_NODE_WIDTH + 100), y: 0 };
+    return {
+      id: wi.id,
+      type: 'workItem',
+      position: pos,
+      style: {
+        minWidth: WORK_ITEM_NODE_MIN_WIDTH,
+        width: WORK_ITEM_NODE_WIDTH,
+      },
+      data: {
+        workItemId: wi.id,
+        title: wi.title,
+        lane: wi.lane,
+        isBlocked: wi.isBlocked,
+      },
+    };
+  });
 }
 
 function buildDagEdges(workItems: WorkItem[]): Edge[] {
@@ -155,8 +161,27 @@ interface Props {
 export function TaskDAG({ workItems, fullHeight = false }: Props) {
   const selectNode = useDashboardStore(s => s.selectNode);
 
-  const nodes = useMemo(() => buildDagNodes(workItems), [workItems]);
+  const [nodes, setNodes] = useState<WorkItemFlowNode[]>([]);
   const edges = useMemo(() => buildDagEdges(workItems), [workItems]);
+
+  useEffect(() => {
+    let cancelled = false;
+    buildDagLayout(workItems).then(result => {
+      if (!cancelled) setNodes(result);
+    }).catch(err => {
+      console.warn('ELK DAG layout failed, falling back to grid', err);
+      if (!cancelled) {
+        setNodes(workItems.map((wi, i) => ({
+          id: wi.id,
+          type: 'workItem',
+          position: { x: (i % 3) * (WORK_ITEM_NODE_WIDTH + 100), y: Math.floor(i / 3) * (WORK_ITEM_NODE_HEIGHT + 80) },
+          style: { minWidth: WORK_ITEM_NODE_MIN_WIDTH, width: WORK_ITEM_NODE_WIDTH },
+          data: { workItemId: wi.id, title: wi.title, lane: wi.lane, isBlocked: wi.isBlocked },
+        })));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [workItems]);
 
   const onNodeClick = useCallback<NodeMouseHandler<WorkItemFlowNode>>((_: React.MouseEvent, node) => {
     selectNode(node.id, 'workItem');

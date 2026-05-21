@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
-import Dagre from '@dagrejs/dagre';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ELK, { type ElkNode, type ElkExtendedEdge } from 'elkjs/lib/elk.bundled.js';
 import {
   ReactFlow,
   Background,
@@ -57,64 +57,65 @@ const MODULE_NODE_HEIGHT = 100;
 const MODULE_NODE_MIN_WIDTH = 350;
 const MODULE_NODE_MIN_HEIGHT = 80;
 
-// ── Auto-layout: dagre hierarchy ──
+// ── Auto-layout: ELK.js layered (Sugiyama) ──
 
-function autoLayout(archNodes: ArchNode[], archEdges: ArchEdge[]): ModuleFlowNode[] {
-  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', nodesep: 150, ranksep: 200, marginx: 40, marginy: 40 });
+const elk = new ELK();
 
-  archNodes.forEach(n => {
-    g.setNode(n.id, {
+const ELK_LAYERED_OPTIONS = {
+  'elk.algorithm': 'layered',
+  'elk.direction': 'DOWN',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+  'elk.spacing.nodeNode': '80',
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+  'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+  'elk.edgeRouting': 'ORTHOGONAL',
+  'elk.padding': '[top=40,left=40,bottom=40,right=40]',
+};
+
+async function elkLayout(
+  archNodes: ArchNode[],
+  archEdges: ArchEdge[]
+): Promise<ModuleFlowNode[]> {
+  const graph: ElkNode = {
+    id: 'root',
+    layoutOptions: ELK_LAYERED_OPTIONS,
+    children: archNodes.map(n => ({
+      id: n.id,
       width: MODULE_NODE_WIDTH,
       height: MODULE_NODE_HEIGHT,
-    });
-  });
-
-  archEdges.forEach(e => {
-    g.setEdge(e.from, e.to);
-  });
-
-  Dagre.layout(g);
-  const graph = g.graph();
-  const centerOffset = {
-    x: (graph.width ?? 0) / 2,
-    y: (graph.height ?? 0) / 2,
+    })),
+    edges: archEdges.map((e, i): ElkExtendedEdge => ({
+      id: `e${i}`,
+      sources: [e.from],
+      targets: [e.to],
+    })),
   };
 
-  return archNodes.map((n, i) => ({
-    id: n.id,
-    type: 'module',
-    position: getNodePosition(g.node(n.id), centerOffset, i),
-    style: {
-      minWidth: MODULE_NODE_MIN_WIDTH,
-      minHeight: MODULE_NODE_MIN_HEIGHT,
-      width: MODULE_NODE_WIDTH,
-    },
-    data: {
-      label: n.label,
-      nodeId: n.id,
-      responsibilityUnitId: n.responsibilityUnitId ?? null,
-      moduleType: archNodeModuleType(n),
-    },
-  }));
-}
-
-function getNodePosition(
-  node: { x: number; y: number } | undefined,
-  centerOffset: { x: number; y: number },
-  index: number
-) {
-  if (!node || typeof node.x !== 'number' || typeof node.y !== 'number') {
-    return {
-      x: index * (MODULE_NODE_WIDTH + 150) - centerOffset.x,
-      y: -centerOffset.y,
-    };
+  const laidOut = await elk.layout(graph);
+  const positionMap = new Map<string, { x: number; y: number }>();
+  for (const child of laidOut.children ?? []) {
+    positionMap.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
   }
 
-  return {
-    x: node.x - centerOffset.x - MODULE_NODE_WIDTH / 2,
-    y: node.y - centerOffset.y - MODULE_NODE_HEIGHT / 2,
-  };
+  return archNodes.map((n, i) => {
+    const pos = positionMap.get(n.id) ?? { x: i * (MODULE_NODE_WIDTH + 100), y: 0 };
+    return {
+      id: n.id,
+      type: 'module',
+      position: pos,
+      style: {
+        minWidth: MODULE_NODE_MIN_WIDTH,
+        minHeight: MODULE_NODE_MIN_HEIGHT,
+        width: MODULE_NODE_WIDTH,
+      },
+      data: {
+        label: n.label,
+        nodeId: n.id,
+        responsibilityUnitId: n.responsibilityUnitId ?? null,
+        moduleType: archNodeModuleType(n),
+      },
+    };
+  });
 }
 
 function buildEdges(archEdges: ArchEdge[]): Edge[] {
@@ -123,7 +124,10 @@ function buildEdges(archEdges: ArchEdge[]): Edge[] {
     source: e.from,
     target: e.to,
     label: e.contractId ?? undefined,
-    style: { stroke: 'var(--rf-edge)' },
+    style: {
+      stroke: 'var(--rf-edge)',
+      strokeWidth: 1.75,
+    },
     labelStyle: { fontSize: 12, fontWeight: 600, fill: 'var(--text-secondary)' },
     labelShowBg: true,
     labelBgStyle: { fill: 'var(--bg-secondary)', fillOpacity: 0.95 },
@@ -143,8 +147,32 @@ interface Props {
 export function TopologyGraph({ nodes: archNodes, edges: archEdges, fullHeight = false }: Props) {
   const selectNode = useDashboardStore(s => s.selectNode);
 
-  const nodes = useMemo(() => autoLayout(archNodes, archEdges), [archNodes, archEdges]);
+  const [nodes, setNodes] = useState<ModuleFlowNode[]>([]);
   const edges = useMemo(() => buildEdges(archEdges), [archEdges]);
+
+  useEffect(() => {
+    let cancelled = false;
+    elkLayout(archNodes, archEdges).then(result => {
+      if (!cancelled) setNodes(result);
+    }).catch(err => {
+      console.warn('ELK layout failed, falling back to grid', err);
+      if (!cancelled) {
+        setNodes(archNodes.map((n, i) => ({
+          id: n.id,
+          type: 'module',
+          position: { x: (i % 3) * (MODULE_NODE_WIDTH + 100), y: Math.floor(i / 3) * (MODULE_NODE_HEIGHT + 80) },
+          style: { minWidth: MODULE_NODE_MIN_WIDTH, minHeight: MODULE_NODE_MIN_HEIGHT, width: MODULE_NODE_WIDTH },
+          data: {
+            label: n.label,
+            nodeId: n.id,
+            responsibilityUnitId: n.responsibilityUnitId ?? null,
+            moduleType: archNodeModuleType(n),
+          },
+        })));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [archNodes, archEdges]);
 
   const onNodeClick = useCallback<NodeMouseHandler<ModuleFlowNode>>((_: React.MouseEvent, node) => {
     selectNode(node.id, 'module');

@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   /* Dark theme (default) */
   --bg-primary: #0d1117;
@@ -2491,6 +2493,36 @@ body {
 .scenario-card__scroller {
   overflow-x: auto;
   padding: 0 22px;
+}
+
+.seq-mermaid {
+  display: flex;
+  justify-content: center;
+  min-height: 120px;
+  padding: 8px 0;
+}
+
+.seq-mermaid svg {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(var(--shadow-md));
+  border-radius: var(--radius-md);
+}
+
+.seq-mermaid .actor {
+  rx: 8;
+  ry: 8;
+  filter: drop-shadow(var(--shadow-sm));
+}
+
+.seq-mermaid .messageText {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.seq-mermaid .sequenceNumber {
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 
 .seq-diagram {

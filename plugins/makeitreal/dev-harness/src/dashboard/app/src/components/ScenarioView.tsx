@@ -1,71 +1,185 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import mermaid from 'mermaid';
 import { useDashboardStore } from '../store/dashboard-store';
 import type { ScenarioDetail, ScenarioIndexEntry, SequenceMessage } from '../types/model';
 
-interface SequenceDiagramProps {
-  participants: string[];
-  messages: SequenceMessage[];
+let mermaidInitialized = false;
+
+function initMermaid(theme: 'dark' | 'light') {
+  const isDark = theme === 'dark';
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: 'base',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    themeVariables: isDark
+      ? {
+          background: '#0d1117',
+          primaryColor: '#161b22',
+          primaryTextColor: '#e6edf3',
+          primaryBorderColor: '#30363d',
+          lineColor: '#58a6ff',
+          secondaryColor: '#21262d',
+          tertiaryColor: '#1c2128',
+          actorBkg: '#161b22',
+          actorBorder: '#58a6ff',
+          actorTextColor: '#e6edf3',
+          actorLineColor: '#30363d',
+          signalColor: '#58a6ff',
+          signalTextColor: '#e6edf3',
+          labelBoxBkgColor: '#21262d',
+          labelBoxBorderColor: '#58a6ff',
+          labelTextColor: '#e6edf3',
+          loopTextColor: '#e6edf3',
+          noteBkgColor: '#1c2128',
+          noteBorderColor: '#bc8cff',
+          noteTextColor: '#e6edf3',
+          activationBkgColor: '#21262d',
+          activationBorderColor: '#58a6ff',
+          sequenceNumberColor: '#0d1117',
+        }
+      : {
+          background: '#ffffff',
+          primaryColor: '#f6f8fa',
+          primaryTextColor: '#1f2328',
+          primaryBorderColor: '#d0d7de',
+          lineColor: '#0969da',
+          secondaryColor: '#eaeef2',
+          tertiaryColor: '#ffffff',
+          actorBkg: '#f6f8fa',
+          actorBorder: '#0969da',
+          actorTextColor: '#1f2328',
+          actorLineColor: '#d0d7de',
+          signalColor: '#0969da',
+          signalTextColor: '#1f2328',
+          labelBoxBkgColor: '#eaeef2',
+          labelBoxBorderColor: '#0969da',
+          labelTextColor: '#1f2328',
+          loopTextColor: '#1f2328',
+          noteBkgColor: '#fff8c5',
+          noteBorderColor: '#8250df',
+          noteTextColor: '#1f2328',
+          activationBkgColor: '#eaeef2',
+          activationBorderColor: '#0969da',
+          sequenceNumberColor: '#ffffff',
+        },
+    sequence: {
+      diagramMarginX: 32,
+      diagramMarginY: 16,
+      actorMargin: 60,
+      width: 180,
+      height: 56,
+      boxMargin: 12,
+      boxTextMargin: 6,
+      noteMargin: 12,
+      messageMargin: 40,
+      mirrorActors: true,
+      showSequenceNumbers: true,
+      wrap: true,
+    },
+  });
+  mermaidInitialized = true;
 }
 
-function SequenceDiagram({ participants, messages }: SequenceDiagramProps) {
+function sanitizeMermaidLabel(text: string): string {
+  return text
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/;/g, ',')
+    .replace(/"/g, "'")
+    .trim();
+}
+
+function sanitizeParticipantId(p: string): string {
+  const cleaned = p.replace(/[^A-Za-z0-9_]/g, '_');
+  return /^[A-Za-z]/.test(cleaned) ? cleaned : `p_${cleaned}`;
+}
+
+function buildSequenceDefinition(participants: string[], messages: SequenceMessage[]): string {
+  const lines: string[] = ['sequenceDiagram', '  autonumber'];
+  const idMap = new Map<string, string>();
+  for (const p of participants) {
+    const id = sanitizeParticipantId(p);
+    idMap.set(p, id);
+    lines.push(`  participant ${id} as ${sanitizeMermaidLabel(p)}`);
+  }
+  for (const m of messages) {
+    const fromId = idMap.get(m.from) ?? sanitizeParticipantId(m.from);
+    const toId = idMap.get(m.to) ?? sanitizeParticipantId(m.to);
+    if (!idMap.has(m.from)) {
+      lines.push(`  participant ${fromId} as ${sanitizeMermaidLabel(m.from)}`);
+      idMap.set(m.from, fromId);
+    }
+    if (!idMap.has(m.to)) {
+      lines.push(`  participant ${toId} as ${sanitizeMermaidLabel(m.to)}`);
+      idMap.set(m.to, toId);
+    }
+    const arrow = fromId === toId ? '->>' : '->>';
+    lines.push(`  ${fromId}${arrow}${toId}: ${sanitizeMermaidLabel(m.label)}`);
+  }
+  return lines.join('\n');
+}
+
+interface MermaidSequenceProps {
+  diagramId: string;
+  participants: string[];
+  messages: SequenceMessage[];
+  theme: 'dark' | 'light';
+}
+
+function MermaidSequenceDiagram({ diagramId, participants, messages, theme }: MermaidSequenceProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    initMermaid(theme);
+
+    const definition = buildSequenceDefinition(participants, messages);
+    const renderId = `${diagramId}-${Date.now()}`;
+
+    mermaid
+      .render(renderId, definition)
+      .then(({ svg }) => {
+        if (cancelled) return;
+        if (containerRef.current) {
+          containerRef.current.innerHTML = svg;
+          const svgEl = containerRef.current.querySelector('svg');
+          if (svgEl) {
+            svgEl.removeAttribute('height');
+            svgEl.style.maxWidth = '100%';
+            svgEl.style.height = 'auto';
+          }
+        }
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('Mermaid render failed', message);
+        setError(message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [diagramId, participants, messages, theme]);
+
   if (participants.length === 0) {
     return <div className="seq-empty">No participants.</div>;
   }
 
-  const colWidth = 180;
-  const totalWidth = participants.length * colWidth;
-  const indexFor = (p: string) => Math.max(0, participants.indexOf(p));
-
-  return (
-    <div className="seq-diagram" style={{ minWidth: totalWidth }}>
-      <div className="seq-diagram__participants" style={{ gridTemplateColumns: `repeat(${participants.length}, ${colWidth}px)` }}>
-        {participants.map(p => (
-          <div key={p} className="seq-participant">
-            <div className="seq-participant__pill">{p}</div>
-          </div>
-        ))}
+  if (error) {
+    return (
+      <div className="seq-empty" role="alert">
+        Failed to render sequence diagram. {error}
       </div>
+    );
+  }
 
-      <div className="seq-diagram__lanes" style={{ gridTemplateColumns: `repeat(${participants.length}, ${colWidth}px)` }}>
-        {participants.map(p => <div key={p} className="seq-lane" />)}
-      </div>
-
-      <div className="seq-diagram__messages">
-        {messages.map((m, idx) => {
-          const fromIdx = indexFor(m.from);
-          const toIdx = indexFor(m.to);
-          const left = Math.min(fromIdx, toIdx) * colWidth + colWidth / 2;
-          const width = Math.max(Math.abs(toIdx - fromIdx) * colWidth, 4);
-          const reversed = toIdx < fromIdx;
-          const selfMessage = fromIdx === toIdx;
-
-          if (selfMessage) {
-            return (
-              <div key={idx} className="seq-message seq-message--self" style={{ left, width: colWidth / 2 }}>
-                <div className="seq-message__index">{idx + 1}</div>
-                <div className="seq-message__label">{m.label}</div>
-                <div className="seq-message__loop" />
-              </div>
-            );
-          }
-
-          return (
-            <div key={idx} className={`seq-message ${reversed ? 'seq-message--reverse' : ''}`} style={{ left, width }}>
-              <div className="seq-message__index">{idx + 1}</div>
-              <div className="seq-message__label">{m.label}</div>
-              <div className="seq-message__arrow">
-                <span className="seq-message__line" />
-                <span className="seq-message__head" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <div className="seq-mermaid" ref={containerRef} aria-label="Sequence diagram" />;
 }
 
-function ScenarioCard({ scenario }: { scenario: ScenarioDetail }) {
+function ScenarioCard({ scenario, theme }: { scenario: ScenarioDetail; theme: 'dark' | 'light' }) {
   return (
     <article className="scenario-card">
       <header className="scenario-card__header">
@@ -81,7 +195,12 @@ function ScenarioCard({ scenario }: { scenario: ScenarioDetail }) {
 
       <div className="scenario-card__diagram">
         <div className="scenario-card__scroller">
-          <SequenceDiagram participants={scenario.participants} messages={scenario.messages} />
+          <MermaidSequenceDiagram
+            diagramId={`mermaid-${scenario.id.replace(/[^A-Za-z0-9_-]/g, '_')}`}
+            participants={scenario.participants}
+            messages={scenario.messages}
+            theme={theme}
+          />
         </div>
       </div>
 
@@ -104,6 +223,7 @@ function ScenarioCard({ scenario }: { scenario: ScenarioDetail }) {
 
 export function ScenarioView() {
   const model = useDashboardStore(s => s.model);
+  const theme = useDashboardStore(s => s.theme);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const dossier = model?.blueprint.systemDossier;
@@ -115,6 +235,12 @@ export function ScenarioView() {
     for (const d of details) map.set(d.id, d);
     return map;
   }, [details]);
+
+  // Re-initialize mermaid theme when dashboard theme changes.
+  useEffect(() => {
+    mermaidInitialized = false;
+    initMermaid(theme);
+  }, [theme]);
 
   if (!model) return null;
 
@@ -185,7 +311,7 @@ export function ScenarioView() {
 
       <div className="scenario-list">
         {visibleScenarios.map(s => (
-          <ScenarioCard key={s.id} scenario={s} />
+          <ScenarioCard key={s.id} scenario={s} theme={theme} />
         ))}
         {visibleScenarios.length === 0 && (
           <div className="scenario-empty">No sequence details available.</div>
