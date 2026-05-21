@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useDashboardStore } from '../store/dashboard-store';
 import type { Board, WorkItem } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconBlock, IconBolt, IconCheck, IconClipboard, IconDot, IconEye } from './Icons';
 
 export interface KanbanBoardProps {
   board: Board | null;
@@ -16,13 +18,16 @@ const LANE_COLORS: Record<string, string> = {
   Blocked: 'var(--accent-red, #ef4444)',
 };
 
-const LANE_ICONS: Record<string, string> = {
-  Ready: '📋',
-  'In-Progress': '⚡',
-  Review: '👁️',
-  Done: '✅',
-  Blocked: '🚫',
-};
+function LaneIcon({ name }: { name: string }) {
+  switch (name) {
+    case 'Ready': return <IconClipboard />;
+    case 'In-Progress': return <IconBolt />;
+    case 'Review': return <IconEye />;
+    case 'Done': return <IconCheck />;
+    case 'Blocked': return <IconBlock />;
+    default: return <IconDot />;
+  }
+}
 
 function laneColor(laneName: string): string {
   return LANE_COLORS[laneName] ?? 'var(--border-primary)';
@@ -115,9 +120,11 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
 
   if (!board || !board.lanes || board.lanes.length === 0) {
     return (
-      <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>
-        No board data available.
-      </div>
+      <EmptyState
+        icon={<IconClipboard />}
+        title="No board"
+        message="No board data available."
+      />
     );
   }
 
@@ -143,7 +150,11 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
             aria-valuemax={100}
             aria-label="Done work item progress"
           >
-            <div className="kanban-summary__progress-bar" style={{ width: `${donePercent}%` }} />
+            <div
+              className="kanban-summary__progress-bar"
+              data-progress={donePercent}
+              ref={el => { if (el) el.style.width = `${donePercent}%`; }}
+            />
           </div>
           <span>{donePercent}%</span>
         </div>
@@ -158,62 +169,27 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
         )}
       </div>
 
-      <div
-        className="kanban-board"
-        style={{
-          display: 'flex',
-          gap: 12,
-          padding: 12,
-          overflowX: 'auto',
-          minHeight: 200,
-        }}
-      >
+      <div className="kanban-board__scroll-hint" aria-hidden="true">
+        Swipe sideways to see more lanes
+      </div>
+
+      <div className="kanban-board">
         {visibleLanes.map(lane => (
           <div
             key={lane.name}
-            className="kanban-lane"
-            style={{
-              minWidth: 220,
-              maxWidth: 320,
-              flex: '1 0 220px',
-              background: 'var(--bg-secondary)',
-              borderRadius: 8,
-              border: '1px solid var(--border-primary)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
+            className={`kanban-lane kanban-lane--${laneClass(lane.name)}`}
+            ref={el => { if (el) el.style.setProperty('--lane-color', laneColor(lane.name)); }}
           >
-            <div
-              style={{
-                padding: '10px 12px',
-                fontWeight: 600,
-                fontSize: 13,
-                borderBottom: `2px solid ${laneColor(lane.name)}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 14 }}>{LANE_ICONS[lane.name] ?? '📌'}</span>
+            <div className="kanban-lane__header">
+              <span className="kanban-lane__title">
+                <span className="kanban-lane__icon"><LaneIcon name={lane.name} /></span>
                 {lane.name}
               </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: laneColor(lane.name),
-                  background: 'var(--bg-primary)',
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  minWidth: 22,
-                  textAlign: 'center',
-                }}
-              >
+              <span className="kanban-lane__count">
                 {lane.workItems.length}
               </span>
             </div>
-            <div style={{ padding: 8, flex: 1, overflowY: 'auto', maxHeight: 400 }}>
+            <div className="kanban-lane__body">
               {lane.workItems.map(item => (
                 <WorkItemCard
                   key={item.id}
@@ -229,15 +205,11 @@ export function KanbanBoard({ board, onSelectWorkItem, selectedWorkItemId }: Kan
                 />
               ))}
               {lane.workItems.length === 0 && (
-                <div style={{
-                  padding: 16,
-                  color: 'var(--text-tertiary)',
-                  fontSize: 11,
-                  textAlign: 'center',
-                  fontStyle: 'italic',
-                }}>
-                  No items
-                </div>
+                <EmptyState
+                  variant="compact"
+                  icon={<IconDot />}
+                  message="No items"
+                />
               )}
             </div>
           </div>

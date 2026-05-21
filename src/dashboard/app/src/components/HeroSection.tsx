@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
 import type { OperatorCockpit, StatusModel } from '../types/model';
+import {
+  IconBlock,
+  IconBolt,
+  IconCheck,
+  IconClock,
+  IconDot,
+  IconEye,
+  IconRing,
+  IconSearch,
+  IconWarn,
+  IconX,
+} from './Icons';
 
 interface Props {
   status: StatusModel;
@@ -14,24 +26,28 @@ function phaseClass(phase: string): string {
   return 'pending';
 }
 
-function statusIcon(status: string): string {
-  if (status === 'complete') return '✓';
-  if (status === 'current') return '●';
-  if (status === 'blocked') return '✗';
-  return '○';
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'complete') return <IconCheck />;
+  if (status === 'current') return <IconDot />;
+  if (status === 'blocked') return <IconX />;
+  return <IconRing />;
 }
 
-const PHASE_ICONS: Record<string, string> = {
-  done: '✅',
-  running: '⚡',
-  verifying: '🔍',
-  blocked: '🚫',
-  'failed-fast': '💥',
-  'rework-required': '🔄',
-  'approval-required': '👁️',
-  'human-review': '👁️',
-  pending: '⏳',
-};
+function PhaseIcon({ phase }: { phase: string }) {
+  switch (phase) {
+    case 'done': return <IconCheck />;
+    case 'running': return <IconBolt />;
+    case 'verifying': return <IconSearch />;
+    case 'blocked': return <IconBlock />;
+    case 'failed-fast': return <IconWarn />;
+    case 'rework-required': return <IconClock />;
+    case 'approval-required':
+    case 'human-review':
+      return <IconEye />;
+    default:
+      return <IconClock />;
+  }
+}
 
 export function HeroSection({ status, cockpit }: Props) {
   const [reviewState, setReviewState] = useState<'idle' | 'submitting' | 'approved' | 'rejected' | 'error'>('idle');
@@ -57,8 +73,6 @@ export function HeroSection({ status, cockpit }: Props) {
     }
   };
 
-  const phaseIcon = PHASE_ICONS[status.phase] ?? PHASE_ICONS.pending;
-
   return (
     <div className="hero-section">
       <div className="hero-meta">
@@ -66,18 +80,18 @@ export function HeroSection({ status, cockpit }: Props) {
           <span className="status-dot" />
           {status.phase}
         </span>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <span className="hero-blueprint-label">
           Blueprint: {status.blueprintStatus}
         </span>
       </div>
 
       <h2 className="hero-headline">
-        <span style={{ marginRight: 8 }}>{phaseIcon}</span>
+        <span className="hero-headline__icon"><PhaseIcon phase={status.phase} /></span>
         {status.headline}
       </h2>
 
       <div className="hero-next-action">
-        <span style={{ color: 'var(--text-secondary)' }}>Next: </span>
+        <span className="hero-next-action__prefix">Next: </span>
         {cockpit.nextAction}
         {cockpit.nextCommand && (
           <>
@@ -88,66 +102,31 @@ export function HeroSection({ status, cockpit }: Props) {
       </div>
 
       {needsReview && (
-        <div className="hero-review-actions" style={{
-          marginTop: 16,
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-        }}>
+        <div className="hero-review-actions">
           {reviewState === 'idle' || reviewState === 'error' ? (
             <>
               <button
+                type="button"
                 onClick={() => handleReview('approve')}
-                className="btn-approve"
-                style={{
-                  padding: '10px 24px',
-                  background: 'var(--accent-green)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'opacity 0.15s',
-                }}
-                onMouseOver={e => (e.currentTarget.style.opacity = '0.85')}
-                onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+                className="hero-review-btn hero-review-btn--approve"
               >
-                ✓ Approve Blueprint
+                <IconCheck /> Approve Blueprint
               </button>
               <button
+                type="button"
                 onClick={() => handleReview('reject')}
-                className="btn-reject"
-                style={{
-                  padding: '10px 24px',
-                  background: 'transparent',
-                  color: 'var(--accent-red)',
-                  border: '1px solid var(--accent-red)',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'opacity 0.15s',
-                }}
-                onMouseOver={e => (e.currentTarget.style.opacity = '0.85')}
-                onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+                className="hero-review-btn hero-review-btn--reject"
               >
-                ✗ Reject
+                <IconX /> Reject
               </button>
               {reviewError && (
-                <span style={{ color: 'var(--accent-red)', fontSize: 12 }}>
+                <span className="hero-review-error">
                   Error: {reviewError}
                 </span>
               )}
             </>
           ) : reviewState === 'submitting' ? (
-            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Submitting…</span>
+            <span className="hero-review-status">Submitting…</span>
           ) : (
             <span className={`status-badge ${reviewState === 'approved' ? 'done' : 'blocked'}`}>
               <span className="status-dot" />
@@ -160,7 +139,7 @@ export function HeroSection({ status, cockpit }: Props) {
       <div className="checklist">
         {cockpit.firstRunChecklist.map((item) => (
           <div key={item.id} className={`checklist-item ${item.status}`}>
-            <span>{statusIcon(item.status)}</span>
+            <StatusIcon status={item.status} />
             <span>{item.label}</span>
           </div>
         ))}

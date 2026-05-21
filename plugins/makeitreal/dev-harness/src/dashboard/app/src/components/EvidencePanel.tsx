@@ -1,5 +1,7 @@
 import React from 'react';
 import type { ChecklistItem, EvidenceLink, OperatorCockpit } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconCheck, IconDot, IconRing, IconX } from './Icons';
 
 export interface EvidencePanelProps {
   cockpit: OperatorCockpit;
@@ -7,12 +9,14 @@ export interface EvidencePanelProps {
 
 type VisualStepStatus = 'complete' | 'current' | 'pending' | 'failed';
 
-const STATUS_ICONS: Record<VisualStepStatus, string> = {
-  complete: '✅',
-  current: '🔵',
-  pending: '⬜',
-  failed: '❌',
-};
+function StatusIcon({ status }: { status: VisualStepStatus }) {
+  switch (status) {
+    case 'complete': return <IconCheck />;
+    case 'current': return <IconDot />;
+    case 'failed': return <IconX />;
+    default: return <IconRing />;
+  }
+}
 
 const STATUS_LABELS: Record<VisualStepStatus, string> = {
   complete: 'complete',
@@ -49,7 +53,7 @@ function PipelineStep({ item, index }: { item: ChecklistItem; index: number }) {
   return (
     <div className={`pipeline-step pipeline-step--${status}`}>
       <div className="pipeline-step__icon" aria-hidden="true">
-        {STATUS_ICONS[status]}
+        <StatusIcon status={status} />
       </div>
       <div className="pipeline-step__body">
         <div className="pipeline-step__index">Step {index + 1}</div>
@@ -66,7 +70,7 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
   return (
     <div className={`pipeline-row pipeline-row--${status}`}>
       <span className="pipeline-row__icon" aria-hidden="true">
-        {STATUS_ICONS[status]}
+        <StatusIcon status={status} />
       </span>
       <div className="pipeline-row__main">
         <div className="pipeline-row__titleline">
@@ -174,7 +178,11 @@ export function EvidencePanel({ cockpit }: EvidencePanelProps) {
       )}
 
       {firstRunChecklist.length === 0 && evidenceLinks.length === 0 && (
-        <div className="evidence-panel__empty">No evidence data available.</div>
+        <EmptyState
+          icon={<IconRing />}
+          title="No evidence"
+          message="No evidence data has been recorded yet."
+        />
       )}
     </div>
   );

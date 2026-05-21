@@ -7,6 +7,49 @@ import type {
   PublicSurfaceInput,
   PublicSurfaceOutput,
 } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconCheck, IconChevronDown, IconChevronRight, IconClipboard, IconRing } from './Icons';
+
+function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(value);
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  return Promise.resolve();
+}
+
+function CodeBlockWithCopy({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    void copyText(code).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="surface-code-wrap">
+      <button
+        type="button"
+        className={`surface-code-copy${copied ? ' surface-code-copy--copied' : ''}`}
+        onClick={handleCopy}
+        aria-label={copied ? 'Code copied to clipboard' : 'Copy code example'}
+      >
+        {copied ? <IconCheck /> : <IconClipboard />}
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+      <pre className="surface-code"><code>{code}</code></pre>
+    </div>
+  );
+}
 
 interface ModuleGroup {
   responsibilityUnitId: string;
@@ -143,7 +186,7 @@ function SurfaceBlock({ surface }: { surface: ContractSurface }) {
     <details className="surface-block" open={open} onToggle={e => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary className="surface-block__summary">
         <span className="surface-block__name">
-          <span className="surface-block__caret">{open ? '−' : '+'}</span>
+          <span className="surface-block__caret">{open ? <IconChevronDown /> : <IconChevronRight />}</span>
           <code>{surface.name}</code>
         </span>
         <span className="surface-block__kind">{surface.kind}</span>
@@ -191,7 +234,7 @@ function SurfaceBlock({ surface }: { surface: ContractSurface }) {
 
         <div className="surface-block__section">
           <div className="surface-block__section-title">Example</div>
-          <pre className="surface-code"><code>{usageExample(surface)}</code></pre>
+          <CodeBlockWithCopy code={usageExample(surface)} />
         </div>
       </div>
     </details>
@@ -209,7 +252,11 @@ export function ContractSurfacesView() {
   if (groups.length === 0) {
     return (
       <div className="surfaces-view">
-        <div className="surfaces-empty">No contract surfaces declared in this blueprint.</div>
+        <EmptyState
+          icon={<IconRing />}
+          title="No surfaces"
+          message="No contract surfaces are declared in this blueprint."
+        />
       </div>
     );
   }

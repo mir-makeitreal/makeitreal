@@ -10,6 +10,8 @@ import type {
   SelectionState,
   WorkItem,
 } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconRing, IconX } from './Icons';
 
 export interface DetailDrawerProps {
   selection: SelectionState;
@@ -85,11 +87,15 @@ function DrawerContent({ selection, model, onClose, kindLabel }: DrawerContentPr
             onClick={onClose}
             aria-label="Close detail drawer"
           >
-            ✕
+            <IconX />
           </button>
         </header>
         <div className="detail-drawer__body">
-          <p className="detail-drawer__muted">Select a node to inspect.</p>
+          <EmptyState
+            icon={<IconRing />}
+            title="Nothing selected"
+            message="Select a node from the graph or board to see its details."
+          />
         </div>
       </>
     );
@@ -111,7 +117,7 @@ function DrawerContent({ selection, model, onClose, kindLabel }: DrawerContentPr
           onClick={onClose}
           aria-label="Close detail drawer"
         >
-          ✕
+          <IconX />
         </button>
       </header>
       <div className="detail-drawer__body">

@@ -6,6 +6,8 @@ import type {
   PublicSurfaceInput,
   PublicSurfaceOutput,
 } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconRing } from './Icons';
 
 interface Props {
   moduleInterfaces: ModuleInterface[];
@@ -202,9 +204,11 @@ export function ContractPanel({ moduleInterfaces }: Props) {
 
   if (moduleInterfaces.length === 0) {
     return (
-      <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>
-        No module interfaces defined.
-      </div>
+      <EmptyState
+        icon={<IconRing />}
+        title="No interfaces"
+        message="No module interfaces are defined."
+      />
     );
   }
 

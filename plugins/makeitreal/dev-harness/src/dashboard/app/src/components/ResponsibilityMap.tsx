@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Boundary, ModuleInterface } from '../types/model';
+import { EmptyState } from './EmptyState';
+import { IconChevronDown, IconChevronRight, IconFile, IconFolder, IconRing } from './Icons';
 
 export interface ResponsibilityMapProps {
   boundaries: Boundary[];
@@ -117,12 +119,14 @@ function PathTree({ paths }: { paths: string[] }) {
 }
 
 function PathTreeBranch({ node, pathKey }: { node: PathTreeNode; pathKey: string }) {
-  const icon = looksLikeFile(node) ? '📄' : '📁';
+  const isFile = looksLikeFile(node);
 
   return (
     <li style={treeItemStyle}>
       <div style={treeLineStyle}>
-        <span aria-hidden="true" style={treeIconStyle}>{icon}</span>
+        <span aria-hidden="true" style={treeIconStyle}>
+          {isFile ? <IconFile /> : <IconFolder />}
+        </span>
         <code style={treeLabelStyle}>{node.name}</code>
       </div>
       {node.children.length > 0 && (
@@ -209,9 +213,11 @@ export function ResponsibilityMap({
 
   if (moduleInterfaces.length === 0 && boundaries.length === 0) {
     return (
-      <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>
-        No responsibility boundaries defined.
-      </div>
+      <EmptyState
+        icon={<IconRing />}
+        title="No boundaries"
+        message="No responsibility boundaries are defined for this blueprint."
+      />
     );
   }
 
@@ -246,7 +252,7 @@ export function ResponsibilityMap({
             style={{
               border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
               borderLeft: `4px solid ${color}`,
-              borderRadius: 6,
+              borderRadius: 'var(--radius-md)',
               background: isSelected ? 'rgba(88, 166, 255, 0.08)' : 'var(--bg-surface)',
               boxShadow: isSelected ? '0 0 0 1px rgba(88, 166, 255, 0.22)' : 'var(--shadow-sm)',
               cursor: 'pointer',
@@ -283,7 +289,7 @@ export function ResponsibilityMap({
                 onClick={e => { e.stopPropagation(); toggleExpand(mod.responsibilityUnitId); }}
                 style={expandButtonStyle}
               >
-                {isExpanded ? '▼' : '▶'}
+                {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
               </button>
             </div>
 
@@ -368,7 +374,7 @@ export function ResponsibilityMap({
               style={{
                 border: '1px dashed var(--border-primary)',
                 borderLeft: `4px solid ${color}`,
-                borderRadius: 6,
+                borderRadius: 'var(--radius-md)',
                 background: 'var(--bg-secondary)',
                 minWidth: 0,
                 overflow: 'hidden',
@@ -393,7 +399,7 @@ export function ResponsibilityMap({
                   }}
                   style={expandButtonStyle}
                 >
-                  {isExpanded ? '▼' : '▶'}
+                  {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
                 </button>
               </div>
               <div style={cardBodyStyle}>
@@ -479,7 +485,7 @@ const cardTitleStyle: React.CSSProperties = {
 const ownerBadgeStyle: React.CSSProperties = {
   background: 'var(--bg-tertiary)',
   border: '1px solid var(--border-secondary)',
-  borderRadius: 999,
+  borderRadius: 'var(--radius-pill)',
   color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
@@ -508,7 +514,7 @@ const expandButtonStyle: React.CSSProperties = {
   alignItems: 'center',
   background: 'var(--bg-tertiary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 'var(--radius-md)',
   color: 'var(--text-secondary)',
   cursor: 'pointer',
   display: 'inline-flex',
@@ -539,7 +545,7 @@ const sectionHeaderStyle: React.CSSProperties = {
 
 const sectionCountStyle: React.CSSProperties = {
   background: 'var(--bg-tertiary)',
-  borderRadius: 999,
+  borderRadius: 'var(--radius-pill)',
   color: 'var(--text-tertiary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
@@ -601,7 +607,7 @@ const contractBadgeStyle: React.CSSProperties = {
   alignItems: 'center',
   background: 'rgba(88, 166, 255, 0.08)',
   border: '1px solid rgba(88, 166, 255, 0.32)',
-  borderRadius: 999,
+  borderRadius: 'var(--radius-pill)',
   cursor: 'pointer',
   display: 'inline-flex',
   gap: 6,
@@ -657,7 +663,7 @@ const surfaceRowStyle: React.CSSProperties = {
 
 const surfaceKindStyle: React.CSSProperties = {
   background: 'rgba(188, 140, 255, 0.12)',
-  borderRadius: 4,
+  borderRadius: 'var(--radius-sm)',
   color: 'var(--accent-purple)',
   flex: '0 0 auto',
   fontSize: 10,

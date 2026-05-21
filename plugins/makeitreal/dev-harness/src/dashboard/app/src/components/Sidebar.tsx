@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ViewId } from '../types/model';
 import { useDashboardStore } from '../store/dashboard-store';
+import { IconMenu, IconX } from './Icons';
 
 export interface SidebarProps {
   activeView: ViewId;
@@ -44,18 +45,12 @@ export function Sidebar({
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
         <button
+          type="button"
           onClick={onToggle}
           className="sidebar-toggle"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 16,
-            color: 'var(--text-primary)',
-          }}
         >
-          {collapsed ? '≡' : 'x'}
+          {collapsed ? <IconMenu /> : <IconX />}
         </button>
         {!collapsed && <h1>Make It Real</h1>}
       </div>
