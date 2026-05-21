@@ -1076,20 +1076,21 @@ function renderModuleNav(dossier = {}) {
 
 function renderDossierNav(dossier = {}) {
   const isEmpty = (key) => {
-    if (key === "approval-scope") return !(dossier.approvalScope);
-    if (key === "system-placement") return !(dossier.systemPlacement);
-    if (key === "task-dag") return (dossier.taskDag?.nodes ?? []).length === 0;
-    if (key === "worker-topology") return (dossier.workerTopology?.assignments ?? []).length === 0;
-    if (key === "responsibility-map") return (dossier.modules ?? []).length === 0;
-    if (key === "scenario-index") return (dossier.scenarioIndex ?? []).length === 0;
-    if (key === "contract-surfaces") return (dossier.modules ?? []).length === 0;
-    if (key === "surface-trace-reference") return (dossier.surfaceTraceReference ?? []).length === 0;
-    if (key === "scenario-reference") return (dossier.scenarioDetails ?? []).length === 0 && (dossier.signalFlows ?? []).length === 0;
-    if (key === "review-decisions") return (dossier.reviewDecisions ?? []).length === 0;
-    if (key === "sources") return (dossier.sources ?? []).length === 0;
+    if (key === "scenarios") return (dossier.scenarioIndex ?? []).length === 0 && (dossier.scenarioDetails ?? []).length === 0;
+    if (key === "execution-plan") return (dossier.taskDag?.nodes ?? []).length === 0;
+    if (key === "modules") return (dossier.modules ?? []).length === 0;
+    if (key === "acceptance-evidence") return false;
     return false;
   };
   const navCls = (key) => isEmpty(key) ? ' class="nav-empty"' : '';
+  const modules = dossier.modules ?? [];
+  const moduleSubNav = modules.map((module, moduleIndex) => {
+    const surfaceLinks = (module.publicSurfaces ?? [])
+      .filter((surface) => String(surface.name ?? "").trim().toLowerCase() !== String(module.moduleName ?? "").trim().toLowerCase())
+      .map((surface, surfaceIndex) => `<a class="nav-surface" href="#${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}">${escapeHtml(surface.name)}</a>`)
+      .join("");
+    return `<a class="nav-module" href="#${escapeHtml(moduleAnchor(module, moduleIndex))}">${escapeHtml(module.moduleName)}</a>${surfaceLinks}`;
+  }).join("");
   return `<nav class="architecture-nav" aria-label="Architecture Dossier sections">
     <p class="eyebrow">Make It Real</p>
     <strong>Architecture Dossier</strong>
@@ -1098,20 +1099,11 @@ function renderDossierNav(dossier = {}) {
       <input type="search" data-nav-filter placeholder="Module, surface, contract">
     </label>
     <a href="#overview" class="active">Overview</a>
-    <a href="#approval-scope"${navCls("approval-scope")}>Approval Scope</a>
-    <a href="#system-placement"${navCls("system-placement")}>System Placement</a>
-    <a href="#task-dag"${navCls("task-dag")}>Task DAG</a>
-    <a href="#worker-topology"${navCls("worker-topology")}>Worker Topology</a>
-    <a href="#responsibility-map"${navCls("responsibility-map")}>Responsibility Map</a>
-    <a href="#scenario-index"${navCls("scenario-index")}>Scenario Index</a>
-    <a href="#contract-surfaces"${navCls("contract-surfaces")}>Contract Surfaces</a>
-    <a href="#surface-trace-reference"${navCls("surface-trace-reference")}>Surface Trace Reference</a>
-    ${renderModuleNav(dossier)}
-    <a href="#scenario-reference"${navCls("scenario-reference")}>Scenario Reference</a>
-    <a href="#review-decisions"${navCls("review-decisions")}>Review Decisions</a>
-    <a href="#verification-evidence">Verification Evidence</a>
-    <a href="#sources"${navCls("sources")}>Sources</a>
-    <a href="#diagnostics">Diagnostics</a>
+    <a href="#scenarios"${navCls("scenarios")}>Scenarios</a>
+    <a href="#execution-plan"${navCls("execution-plan")}>Execution Plan</a>
+    <a href="#modules"${navCls("modules")}>Modules</a>
+    ${modules.length > 0 ? `<div class="nav-group"><span>Modules</span>${moduleSubNav}</div>` : ""}
+    <a href="#acceptance-evidence">Acceptance &amp; Evidence</a>
   </nav>`;
 }
 
@@ -1921,6 +1913,16 @@ function renderReferenceRail(model, dossier) {
   </aside>`;
 }
 
+function firstPublicSurface(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  for (const moduleInterface of modules) {
+    for (const surface of moduleInterface.publicSurfaces ?? []) {
+      return { moduleInterface, surface };
+    }
+  }
+  return null;
+}
+
 function publicSurfaceCount(moduleInterfaces = []) {
   return moduleInterfaces.reduce((total, moduleInterface) => total + (moduleInterface.publicSurfaces ?? []).length, 0);
 }
@@ -1932,25 +1934,12 @@ function requireSystemDossier(model) {
   return model.blueprint.systemDossier;
 }
 
-export function renderDashboardHtml(model) {
-  const dossier = requireSystemDossier(model);
-  const blueprint = model.blueprint;
+function renderOverviewSection(model, dossier, blueprint) {
   const primarySummary = referenceSummary({ blueprint, dossier });
   const title = referenceTitle(model);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Architecture Dossier - ${escapeHtml(title)}</title>
-  <link rel="stylesheet" href="./preview.css?v=${Date.now()}">
-</head>
-<body>
-  <main class="architecture-shell">
-    ${renderDossierNav(dossier)}
-
-    <article class="architecture-main">
-      <header id="overview" class="architecture-hero">
+  const scope = dossier.approvalScope ?? {};
+  const placement = dossier.systemPlacement ?? {};
+  return `<header id="overview" class="architecture-hero">
         <div class="hero-topline">
           <p class="eyebrow">Blueprint Reference</p>
           <span class="status-pill" data-live-blueprint-status>${escapeHtml(model.status.blueprintStatus ?? "unknown")}</span>
@@ -1967,54 +1956,260 @@ export function renderDashboardHtml(model) {
           <p><strong>Current phase:</strong> <span data-live-phase>${escapeHtml(model.status.phase ?? "unknown")}</span>. <span data-live-headline>${escapeHtml(model.status.headline ?? "Status unavailable.")}</span></p>
           <p><strong>Next Claude Code action:</strong> <code data-live-next-command>${escapeHtml(model.status.nextCommand ?? model.status.nextAction ?? "none")}</code></p>
         </div>
-      </header>
 
-      ${renderApprovalScope(dossier)}
-      ${renderSystemPlacement(dossier)}
-      ${renderTaskDag(dossier)}
-      ${renderWorkerTopology(dossier)}
-      ${renderResponsibilityMap(dossier.modules)}
-
-      <section id="scenario-index" class="architecture-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Flows</p>
-            <h2>Scenario Index</h2>
-          </div>
+        <div class="doc-table approval-scope-table" style="margin-top:20px;">
+          <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>${escapeHtml(scope.blueprintFingerprint ?? "pending review seed")}</code></div></div>
+          <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value">${(scope.authorizedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
+          <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value">${(scope.requiredContracts ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
+          <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value">${(scope.requiredWorkItems ?? []).map((id) => `<code>${escapeHtml(id)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
         </div>
-        <p class="section-note">High-level scenario list for review. Detailed walk-throughs stay in Scenario Reference so large blueprints do not overload the overview.</p>
-        ${renderScenarioIndex(dossier.scenarioIndex)}
-      </section>
 
-      ${renderContractSurfaces(dossier)}
-      ${renderSurfaceTraceReference(dossier.surfaceTraceReference)}
+        ${mermaidDiagramCard({
+          title: "Architecture Topology",
+          description: "Responsibility units and declared contract edges for the software under change.",
+          diagram: moduleTopologyMermaid(dossier) ?? systemMapMermaid(dossier)
+        })}
+        ${mermaidDiagramCard({
+          title: "Contract Surface Detail",
+          description: "Public surfaces with declared inputs, outputs, and errors per responsibility unit.",
+          diagram: systemMapMermaid(dossier)
+        })}
 
-      <section id="scenario-reference" class="architecture-section">
-        <div class="section-heading">
+        ${renderDesignPatterns(dossier.designPatterns)}
+      </header>`;
+}
+
+function renderScenariosSection(dossier = {}) {
+  const scenarios = dossier.scenarioDetails ?? [];
+  const scenarioIndex = dossier.scenarioIndex ?? [];
+  return `<section id="scenarios" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Flows</p>
+        <h2>Scenarios</h2>
+      </div>
+    </div>
+    <p class="section-note">Software scenarios show the end-to-end flow before diving into individual modules. Each scenario links to the modules and surfaces involved.</p>
+    ${renderScenarioIndex(scenarioIndex)}
+    ${renderFlowTimeline(dossier)}
+    ${renderScenarioDetails(scenarios)}
+  </section>`;
+}
+
+function renderExecutionPlanSection(dossier = {}) {
+  const taskDag = dossier.taskDag ?? {};
+  const nodes = taskDag.nodes ?? [];
+  const topology = dossier.workerTopology ?? {};
+  const assignments = topology.assignments ?? [];
+  return `<section id="execution-plan" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Execution</p>
+        <h2>Execution Plan</h2>
+      </div>
+    </div>
+    <p class="section-note">Work is split by responsibility boundary. A child Task can execute a node without reading sibling implementation context.</p>
+    ${mermaidDiagramCard({
+      title: "Responsibility Task Graph",
+      description: "Required work items and dependency contracts for native Claude Code Task fan-out.",
+      diagram: taskDagMermaid(dossier)
+    }) || '<p class="empty">No task graph declared.</p>'}
+    ${(() => {
+      const dagNodes = (dossier.taskDag?.nodes ?? []);
+      const dagEdges = (dossier.taskDag?.edges ?? []);
+      if (dagNodes.length === 0) return "";
+      const inDeg = new Map(dagNodes.map((n) => [n.id, 0]));
+      for (const e of dagEdges) { inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1); }
+      let frontier = dagNodes.filter((n) => (inDeg.get(n.id) ?? 0) === 0).map((n) => n.id);
+      let maxP = frontier.length;
+      const visited = new Set(frontier);
+      const adj = new Map(dagNodes.map((n) => [n.id, []]));
+      for (const e of dagEdges) { (adj.get(e.from) ?? []).push(e.to); }
+      while (frontier.length > 0) {
+        const next = [];
+        for (const id of frontier) {
+          for (const child of (adj.get(id) ?? [])) {
+            inDeg.set(child, (inDeg.get(child) ?? 1) - 1);
+            if (inDeg.get(child) === 0 && !visited.has(child)) { visited.add(child); next.push(child); }
+          }
+        }
+        if (next.length > maxP) maxP = next.length;
+        frontier = next;
+      }
+      return `<p class="section-note"><strong>Maximum parallelism: ${maxP} concurrent agent${maxP === 1 ? "" : "s"}</strong></p>`;
+    })()}
+    <div class="task-dag-table" role="table" aria-label="Task DAG">
+      <div class="task-dag-row header" role="row">
+        <div role="columnheader">Work Item</div>
+        <div role="columnheader">Responsibility</div>
+        <div role="columnheader">Contracts</div>
+        <div role="columnheader">Authorized Paths</div>
+      </div>
+      ${nodes.map((node) => `<div class="task-dag-row" role="row">
+        <div role="cell" data-label="Work Item"><strong>${escapeHtml(conciseTitleFromText(node.title))}</strong><code>${escapeHtml(node.id)}</code><span>${escapeHtml(node.kind)}</span></div>
+        <div role="cell" data-label="Responsibility"><strong>${escapeHtml(node.moduleName ?? node.responsibilityUnitId)}</strong><code>${escapeHtml(node.responsibilityUnitId)}</code></div>
+        <div role="cell" data-label="Contracts">${(node.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}</div>
+        <div role="cell" data-label="Authorized Paths">${(node.allowedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div>
+      </div>`).join("")}
+    </div>
+
+    ${assignments.length > 0 ? `<div class="section-heading" style="margin-top:28px;">
+      <div>
+        <p class="eyebrow">Native Agents</p>
+        <h3>Worker Topology</h3>
+      </div>
+    </div>
+    <p class="section-note">Each assignment is the planned native Task packet: one responsibility unit, declared contracts, and authorized paths.</p>
+    <div class="worker-topology-list">
+      ${assignments.map((assignment) => `<article class="worker-assignment">
+        <header>
           <div>
-            <p class="eyebrow">Flows</p>
-            <h2>Scenario Reference</h2>
+            <p class="module-id">${escapeHtml(assignment.workItemId)}</p>
+            <h3>${escapeHtml(assignment.moduleName)}</h3>
           </div>
+          <code>${escapeHtml(assignment.evidenceRole)}</code>
+        </header>
+        <p>${escapeHtml(assignment.handoff)}</p>
+        <div class="doc-table compact-doc-table">
+          <div class="doc-row"><div class="doc-key">Responsibility Unit</div><div class="doc-value"><code>${escapeHtml(assignment.responsibilityUnitId)}</code></div></div>
+          <div class="doc-row"><div class="doc-key">Contracts</div><div class="doc-value">${(assignment.contractIds ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("")}</div></div>
+          <div class="doc-row"><div class="doc-key">Paths</div><div class="doc-value">${(assignment.allowedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("")}</div></div>
         </div>
-        ${renderFlowTimeline(dossier)}
-        ${renderScenarioDetails(dossier.scenarioDetails)}
-      </section>
+      </article>`).join("")}
+    </div>
+    <p class="section-note">Review roles: ${(topology.reviewRoles ?? []).map((role) => `<code>${escapeHtml(role)}</code>`).join(" ")}</p>` : ""}
+  </section>`;
+}
 
-      <section id="acceptance" class="architecture-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Acceptance</p>
-            <h2>Acceptance Criteria</h2>
+function renderModuleSdkSection(module, moduleIndex, dossier) {
+  const surfaces = module.publicSurfaces ?? [];
+  const traces = dossier.surfaceTraceReference ?? [];
+  return `<article id="${escapeHtml(moduleAnchor(module, moduleIndex))}" class="module-reference-card">
+    <header>
+      <div>
+        <p class="module-id">${escapeHtml(module.responsibilityUnitId)}</p>
+        <h3>${escapeHtml(module.moduleName)}</h3>
+      </div>
+      ${module.owner ? `<span>${escapeHtml(module.owner)}</span>` : ""}
+    </header>
+    <p class="section-note">${escapeHtml(module.purpose ?? "Declared responsibility unit.")}</p>
+
+    ${renderFileTree(module.ownedFileTree)}
+
+    ${surfaces.map((surface, surfaceIndex) => {
+      const surfaceTrace = traces.find((t) => t.moduleName === module.moduleName && t.surfaceName === surface.name);
+      const traceHtml = surfaceTrace ? `<div class="doc-table compact-doc-table" style="margin-top:10px;">
+        ${surfaceTrace.consumers.length > 0 ? `<div class="doc-row"><div class="doc-key">Consumers</div><div class="doc-value">${renderTextChips(surfaceTrace.consumers)}</div></div>` : ""}
+        ${surfaceTrace.callStacks.length > 0 ? `<div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value">${renderCodeList(surfaceTrace.callStacks)}</div></div>` : ""}
+        ${surfaceTrace.scenarios.length > 0 ? `<div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value">${renderTextChips(surfaceTrace.scenarios)}</div></div>` : ""}
+      </div>` : "";
+      return `<section id="${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}" class="surface-reference">
+        ${renderSurfaceSummary({ moduleInterface: module, surface })}
+        ${renderSchemaDisplay(surface)}
+        <div class="surface-detail-grid">
+          ${renderSignatureTable("Parameters", surface.signature?.inputs ?? [], ["type", "required", "description"])}
+          ${renderSignatureTable("Returns", surface.signature?.outputs ?? [], ["type", "description"])}
+          ${renderSignatureTable("Errors", surface.signature?.errors ?? [], ["when", "handling"])}
+        </div>
+        ${traceHtml}
+        <section class="sdk-example" aria-label="Usage example">
+          <div class="sdk-panel-title">
+            <span>Usage Example</span>
+            <strong>Call only through the declared contract surface</strong>
           </div>
-        </div>
-        ${renderAcceptance(blueprint.acceptanceCriteria, dossier.workItems)}
-      </section>
+          ${renderCodeBlock(usageSnippet({ moduleInterface: module, surface }))}
+        </section>
+      </section>`;
+    }).join("")}
 
-      ${renderDesignPatterns(dossier.designPatterns)}
-      ${renderReviewDecisions(dossier.reviewDecisions)}
-      ${renderVerificationEvidence(model.status)}
-      ${renderSourcesSection(dossier)}
-      ${renderDiagnostics(model, model.status)}
+    <p class="section-note" style="color: var(--muted); font-size: 12px; margin-top: 8px;">Boundary enforcement: edits outside these paths are blocked by the PreToolUse hook during implementation.</p>
+  </article>`;
+}
+
+function renderModulesSection(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  if (modules.length === 0) {
+    return `<section id="modules" class="architecture-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SDK Reference</p>
+          <h2>Modules</h2>
+        </div>
+      </div>
+      <p class="empty">No modules declared.</p>
+    </section>`;
+  }
+  return `<section id="modules" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">SDK Reference</p>
+        <h2>Modules</h2>
+      </div>
+      <span>${modules.length} module${modules.length === 1 ? "" : "s"}</span>
+    </div>
+    <p class="section-note">Each module shows its owned paths, all public surfaces with full contract schemas, usage examples, and boundary enforcement. Consumers should rely on these contracts, not implementation details.</p>
+    ${renderModuleDirectory(modules)}
+    <div class="module-reference">
+      ${modules.map((module, moduleIndex) => renderModuleSdkSection(module, moduleIndex, dossier)).join("")}
+    </div>
+  </section>`;
+}
+
+function renderAcceptanceEvidenceSection(model, dossier, blueprint) {
+  return `<section id="acceptance-evidence" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Acceptance</p>
+        <h2>Acceptance &amp; Evidence</h2>
+      </div>
+    </div>
+
+    <h3>Acceptance Criteria</h3>
+    ${renderAcceptance(blueprint.acceptanceCriteria, dossier.workItems)}
+
+    ${(dossier.reviewDecisions ?? []).length > 0 ? `<h3 style="margin-top:20px;">Review Decisions</h3>
+    <ol class="review-decisions">${dossier.reviewDecisions.map((decision) => `<li>${escapeHtml(decision)}</li>`).join("")}</ol>` : ""}
+
+    <h3 style="margin-top:20px;">Verification Evidence</h3>
+    ${renderTestResults(model.status.evidenceSummary ?? [])}
+
+    <h3 style="margin-top:20px;">Sources</h3>
+    ${renderSourcesList(dossier.sources ?? [])}
+
+    <details class="diagnostics-panel" style="margin-top:20px;">
+      <summary>Diagnostics</summary>
+      <p class="section-note">Runtime state and board details are kept here for audit only. The Architecture Dossier above is the primary review surface.</p>
+      ${renderDeveloperDiagnostics(model, model.status)}
+      <section>
+        <h3>Board State</h3>
+        <div data-live-kanban>${renderCompactKanban(model.board)}</div>
+      </section>
+    </details>
+  </section>`;
+}
+
+export function renderDashboardHtml(model) {
+  const dossier = requireSystemDossier(model);
+  const blueprint = model.blueprint;
+  const title = referenceTitle(model);
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Make It Real Architecture Dossier - ${escapeHtml(title)}</title>
+  <link rel="stylesheet" href="./preview.css?v=${Date.now()}">
+</head>
+<body>
+  <main class="architecture-shell">
+    ${renderDossierNav(dossier)}
+
+    <article class="architecture-main">
+      ${renderOverviewSection(model, dossier, blueprint)}
+      ${renderScenariosSection(dossier)}
+      ${renderExecutionPlanSection(dossier)}
+      ${renderModulesSection(dossier)}
+      ${renderAcceptanceEvidenceSection(model, dossier, blueprint)}
     </article>
   </main>
   <script src="./preview.js?v=${Date.now()}"></script>

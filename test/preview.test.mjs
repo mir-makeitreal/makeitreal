@@ -360,14 +360,12 @@ test("renders canonical architecture preview", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "Architecture Dossier",
-      "Approval Scope",
-      "System Placement",
-      "Task DAG",
+      "Blueprint Fingerprint",
+      "Architecture Topology",
+      "Execution Plan",
       "Worker Topology",
-      "Responsibility Map",
-      "Scenario Index",
-      "Contract Surfaces",
-      "Scenario Reference",
+      "Scenarios",
+      "Modules",
       "Review Decisions",
       "Verification Evidence",
       "Sources",
@@ -512,15 +510,12 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     const html = await readFile(path.join(previewDir, "index.html"), "utf8");
     for (const label of [
       "Architecture Dossier",
-      "Approval Scope",
-      "System Placement",
-      "Task DAG",
+      "Blueprint Fingerprint",
+      "Architecture Topology",
+      "Execution Plan",
       "Worker Topology",
-      "Responsibility Map",
-      "Scenario Index",
-      "Contract Surfaces",
-      "Surface Trace Reference",
-      "Scenario Reference",
+      "Scenarios",
+      "Modules",
       "Review Decisions",
       "Verification Evidence",
       "Sources",
@@ -693,9 +688,9 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.match(html, /normalizeDisplayName\(input\)/);
     assert.match(html, /Original request/);
     assert.match(html, /display-name normalization responsibility unit/);
-    assert.match(html, /Public Interfaces/);
+    assert.match(html, /Boundary enforcement/);
     assert.match(html, /Architecture Dossier/);
-    assert.match(html, /Responsibility Map/);
+    assert.match(html, /SDK Reference/);
     assert.match(html, /Usage Example/);
     assert.match(html, /Board State/);
     assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
@@ -765,7 +760,7 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
     assert.deepEqual(previewModel.blueprint.systemDossier.dependencyEdges, []);
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
-    assert.match(html, /Module Topology/);
+    assert.match(html, /Architecture Topology/);
     assert.match(html, /Match Route: matchRoute/);
     assert.match(html, /request: object \{ method: string, path: string \}/);
     assert.match(html, /matchResult:/);
