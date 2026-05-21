@@ -159,6 +159,7 @@ button { font-family: inherit; }
 }
 
 .architecture-nav a[hidden] { display: none; }
+.architecture-nav a.nav-empty { opacity: 0.4; }
 
 .architecture-nav a:hover {
   background: var(--soft);

@@ -151,7 +151,8 @@ function relativeImportPath(ownedPath) {
   if (!path) {
     return "./module";
   }
-  return path.startsWith(".") ? path : `./${path}`;
+  const concretePath = path.includes("*") ? path.replace(/\/?\*\*?.*$/, "") || path : path;
+  return concretePath.startsWith(".") ? concretePath : `./${concretePath}`;
 }
 
 function sampleValueForType(type) {
@@ -284,12 +285,15 @@ if (!httpResponse.ok) {
 const ${outputName} = await httpResponse.json();`;
   }
   const importPath = relativeImportPath(moduleInterface?.owns?.[0]);
+  const importComment = String(moduleInterface?.owns?.[0] ?? "").includes("*")
+    ? `// TODO: resolve this import path after implementation\n`
+    : "";
   const outputName = safeIdentifier(surface.signature.outputs[0].name, "result");
   const args = surface.signature.inputs
     .map((input) => sampleValueForInput(input))
     .join(", ");
   if (/^[A-Za-z_$][\w$]*$/.test(surface.name)) {
-    return `import { ${surface.name} } from "${importPath}";
+    return `${importComment}import { ${surface.name} } from "${importPath}";
 
 const ${outputName} = ${surface.name}(${args});`;
   }
@@ -324,6 +328,9 @@ function renderFileTree(tree) {
 }
 
 function renderSchemaField(field = {}, role = "field") {
+  const errorCode = String(field.code ?? "");
+  const httpStatusMatch = role === "error" ? errorCode.match(/^(\d{3})\./) : null;
+  const httpBadge = httpStatusMatch ? `<span class="http-status-badge" style="display:inline-block;background:var(--bad);color:#fff;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">${httpStatusMatch[1]}</span>` : "";
   const meta = [
     field.type,
     field.required === true ? "required" : null,
@@ -335,7 +342,7 @@ function renderSchemaField(field = {}, role = "field") {
   const descriptionHtml = field.description ? `<p>${escapeHtml(field.description)}</p>` : "";
   const detailsHtml = [metaHtml, descriptionHtml].filter(Boolean).join("");
   return `<li>
-    <code>${escapeHtml(field.name ?? field.code ?? role)}</code>${detailsHtml ? `
+    ${httpBadge}<code>${escapeHtml(field.name ?? field.code ?? role)}</code>${detailsHtml ? `
     ${detailsHtml}` : ""}
   </li>`;
 }
@@ -555,7 +562,7 @@ function renderSurfaceSummary({ moduleInterface, surface }) {
       { label: "Errors", value: String(errorCount) },
       { label: "Provider", value: moduleInterface.moduleName }
     ])}
-    ${(surface.consumers ?? []).length > 0 ? `<p class="muted">Consumers: ${surface.consumers.map((consumer) => escapeHtml(consumer)).join(", ")}</p>` : ""}
+    ${(surface.consumers ?? []).length > 0 ? `<p class="muted">Consumers: ${surface.consumers.map((consumer) => escapeHtml(consumer)).join(", ")}</p>` : '<p class="consumer-warning" style="color: var(--warn);">No declared consumers — verify this is intentional</p>'}
   </section>`;
 }
 
@@ -1013,6 +1020,21 @@ function renderModuleNav(dossier = {}) {
 }
 
 function renderDossierNav(dossier = {}) {
+  const isEmpty = (key) => {
+    if (key === "approval-scope") return !(dossier.approvalScope);
+    if (key === "system-placement") return !(dossier.systemPlacement);
+    if (key === "task-dag") return (dossier.taskDag?.nodes ?? []).length === 0;
+    if (key === "worker-topology") return (dossier.workerTopology?.assignments ?? []).length === 0;
+    if (key === "responsibility-map") return (dossier.modules ?? []).length === 0;
+    if (key === "scenario-index") return (dossier.scenarioIndex ?? []).length === 0;
+    if (key === "contract-surfaces") return (dossier.modules ?? []).length === 0;
+    if (key === "surface-trace-reference") return (dossier.surfaceTraceReference ?? []).length === 0;
+    if (key === "scenario-reference") return (dossier.scenarioDetails ?? []).length === 0 && (dossier.signalFlows ?? []).length === 0;
+    if (key === "review-decisions") return (dossier.reviewDecisions ?? []).length === 0;
+    if (key === "sources") return (dossier.sources ?? []).length === 0;
+    return false;
+  };
+  const navCls = (key) => isEmpty(key) ? ' class="nav-empty"' : '';
   return `<nav class="architecture-nav" aria-label="Architecture Dossier sections">
     <p class="eyebrow">Make It Real</p>
     <strong>Architecture Dossier</strong>
@@ -1021,19 +1043,19 @@ function renderDossierNav(dossier = {}) {
       <input type="search" data-nav-filter placeholder="Module, surface, contract">
     </label>
     <a href="#overview" class="active">Overview</a>
-    <a href="#approval-scope">Approval Scope</a>
-    <a href="#system-placement">System Placement</a>
-    <a href="#task-dag">Task DAG</a>
-    <a href="#worker-topology">Worker Topology</a>
-    <a href="#responsibility-map">Responsibility Map</a>
-    <a href="#scenario-index">Scenario Index</a>
-    <a href="#contract-surfaces">Contract Surfaces</a>
-    <a href="#surface-trace-reference">Surface Trace Reference</a>
+    <a href="#approval-scope"${navCls("approval-scope")}>Approval Scope</a>
+    <a href="#system-placement"${navCls("system-placement")}>System Placement</a>
+    <a href="#task-dag"${navCls("task-dag")}>Task DAG</a>
+    <a href="#worker-topology"${navCls("worker-topology")}>Worker Topology</a>
+    <a href="#responsibility-map"${navCls("responsibility-map")}>Responsibility Map</a>
+    <a href="#scenario-index"${navCls("scenario-index")}>Scenario Index</a>
+    <a href="#contract-surfaces"${navCls("contract-surfaces")}>Contract Surfaces</a>
+    <a href="#surface-trace-reference"${navCls("surface-trace-reference")}>Surface Trace Reference</a>
     ${renderModuleNav(dossier)}
-    <a href="#scenario-reference">Scenario Reference</a>
-    <a href="#review-decisions">Review Decisions</a>
+    <a href="#scenario-reference"${navCls("scenario-reference")}>Scenario Reference</a>
+    <a href="#review-decisions"${navCls("review-decisions")}>Review Decisions</a>
     <a href="#verification-evidence">Verification Evidence</a>
-    <a href="#sources">Sources</a>
+    <a href="#sources"${navCls("sources")}>Sources</a>
     <a href="#diagnostics">Diagnostics</a>
   </nav>`;
 }
@@ -1096,7 +1118,7 @@ function renderContractMatrix(rows = []) {
       <p>${escapeHtml(row.summary)}</p>
       <dl>
         <div><dt>Providers</dt><dd>${escapeHtml((row.providers ?? []).join(", ") || "None declared")}</dd></div>
-        <div><dt>Consumers</dt><dd>${escapeHtml((row.consumers ?? []).join(", ") || "None declared")}</dd></div>
+        <div><dt>Consumers</dt><dd>${(row.consumers ?? []).length === 0 ? '<span class="consumer-warning" style="color: var(--warn);">No declared consumers — verify this is intentional</span>' : escapeHtml(row.consumers.join(", "))}</dd></div>
         <div><dt>Path</dt><dd>${escapeHtml(row.path ?? "Boundary declaration")}</dd></div>
       </dl>
     </article>`).join("")}
@@ -1295,6 +1317,30 @@ function renderTaskDag(dossier = {}) {
       description: "Required work items and dependency contracts for native Claude Code Task fan-out.",
       diagram: taskDagMermaid(dossier)
     }) || '<p class="empty">No task graph declared.</p>'}
+    ${(() => {
+      const dagNodes = (dossier.taskDag?.nodes ?? []);
+      const dagEdges = (dossier.taskDag?.edges ?? []);
+      if (dagNodes.length === 0) return "";
+      const inDeg = new Map(dagNodes.map((n) => [n.id, 0]));
+      for (const e of dagEdges) { inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1); }
+      let frontier = dagNodes.filter((n) => (inDeg.get(n.id) ?? 0) === 0).map((n) => n.id);
+      let maxP = frontier.length;
+      const visited = new Set(frontier);
+      const adj = new Map(dagNodes.map((n) => [n.id, []]));
+      for (const e of dagEdges) { (adj.get(e.from) ?? []).push(e.to); }
+      while (frontier.length > 0) {
+        const next = [];
+        for (const id of frontier) {
+          for (const child of (adj.get(id) ?? [])) {
+            inDeg.set(child, (inDeg.get(child) ?? 1) - 1);
+            if (inDeg.get(child) === 0 && !visited.has(child)) { visited.add(child); next.push(child); }
+          }
+        }
+        if (next.length > maxP) maxP = next.length;
+        frontier = next;
+      }
+      return `<p class="section-note"><strong>Maximum parallelism: ${maxP} concurrent agent${maxP === 1 ? "" : "s"}</strong></p>`;
+    })()}
     <div class="task-dag-table" role="table" aria-label="Task DAG">
       <div class="task-dag-row header" role="row">
         <div role="columnheader">Work Item</div>
@@ -1364,6 +1410,7 @@ function renderResponsibilityMap(modules = []) {
         <p>${escapeHtml(module.purpose ?? "Declared responsibility unit.")}</p>
         ${module.owner ? `<p class="section-note">Owner: ${escapeHtml(module.owner)}</p>` : ""}
         ${renderFileTree(module.ownedFileTree)}
+        <p class="section-note" style="color: var(--muted); font-size: 12px; margin-top: 8px;">Boundary enforcement: edits outside these paths are blocked by the PreToolUse hook during implementation.</p>
         <h4>Public Interfaces</h4>
         <ul class="surface-list">${(module.publicSurfaces ?? []).map((surface, surfaceIndex) =>
           `<li><a href="#${escapeHtml(surfaceAnchor(module, surface, index, surfaceIndex))}">${escapeHtml(surface.name)}</a></li>`
@@ -1458,6 +1505,26 @@ function renderSurfaceTraceReference(traces = []) {
           <div class="doc-row"><div class="doc-key">Call Stacks</div><div class="doc-value">${renderCodeList(trace.callStacks)}</div></div>
           <div class="doc-row"><div class="doc-key">Scenarios</div><div class="doc-value">${renderTextChips(trace.scenarios)}</div></div>
         </div>
+      </article>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderDesignPatterns(patterns = []) {
+  if (!patterns || patterns.length === 0) {
+    return "";
+  }
+  return `<section id="design-patterns" class="architecture-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Architecture</p>
+        <h2>Design Patterns</h2>
+      </div>
+    </div>
+    <div class="design-patterns-list">
+      ${patterns.map((pattern) => `<article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
+        <strong>${escapeHtml(pattern.name ?? "Unnamed pattern")}</strong>
+        <p class="muted" style="margin:4px 0 0;">${escapeHtml(pattern.rationale ?? "")}</p>
       </article>`).join("")}
     </div>
   </section>`;
@@ -1831,6 +1898,7 @@ export function renderDashboardHtml(model) {
         ${renderAcceptance(blueprint.acceptanceCriteria)}
       </section>
 
+      ${renderDesignPatterns(dossier.designPatterns)}
       ${renderReviewDecisions(dossier.reviewDecisions)}
       ${renderVerificationEvidence(model.status)}
       ${renderSourcesSection(dossier)}
@@ -2089,6 +2157,7 @@ button { font-family: inherit; }
 }
 
 .architecture-nav a[hidden] { display: none; }
+.architecture-nav a.nav-empty { opacity: 0.4; }
 
 .architecture-nav a:hover {
   background: var(--soft);
