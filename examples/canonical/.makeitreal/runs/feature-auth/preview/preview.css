@@ -623,6 +623,9 @@ h4 {
 .diagram-card {
   overflow: hidden;
   padding: 0;
+  border: 1px solid #21262d;
+  border-radius: 12px;
+  background: #0d1117;
 }
 
 .diagram-card header {
@@ -648,11 +651,12 @@ h4 {
 .mermaid {
   margin: 0;
   min-height: 140px;
-  padding: 28px 24px;
-  overflow: auto;
+  padding: 32px 32px;
+  overflow-x: auto;
+  overflow-y: hidden;
   background:
-    radial-gradient(1100px 400px at 20% -20%, rgba(88,166,255,0.06), transparent 60%),
-    radial-gradient(900px 360px at 110% 120%, rgba(88,166,255,0.05), transparent 60%),
+    radial-gradient(ellipse 900px 500px at 30% 20%, rgba(88,166,255,0.08), transparent 65%),
+    radial-gradient(ellipse 700px 400px at 75% 80%, rgba(56,139,253,0.06), transparent 65%),
     #0d1117;
   color: #e6edf3;
   text-align: center;
@@ -663,29 +667,31 @@ h4 {
   max-width: 100%;
   height: auto;
   background: transparent !important;
+  filter: drop-shadow(0 0 40px rgba(88,166,255,0.04));
 }
 
 .mermaid svg .edgePath .path,
 .mermaid svg .flowchart-link {
   stroke: #58a6ff;
-  stroke-width: 1.5px;
+  stroke-width: 2px;
 }
 
 .mermaid svg .edgeLabel {
   background-color: #0d1117 !important;
   color: #e6edf3 !important;
+  font-size: 12px !important;
 }
-.mermaid svg .edgeLabel rect { fill: #0d1117 !important; }
-.mermaid svg .edgeLabel foreignObject div { background-color: #0d1117 !important; color: #e6edf3 !important; }
+.mermaid svg .edgeLabel rect { fill: #0d1117 !important; rx: 6; ry: 6; }
+.mermaid svg .edgeLabel foreignObject div { background-color: #0d1117 !important; color: #e6edf3 !important; padding: 2px 8px !important; border-radius: 6px; }
 
 .mermaid svg .node rect,
 .mermaid svg .node polygon,
 .mermaid svg .node circle,
 .mermaid svg .node ellipse,
 .mermaid svg .node path {
-  rx: 10;
-  ry: 10;
-  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.04)) drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+  rx: 12;
+  ry: 12;
+  filter: drop-shadow(0 2px 8px rgba(88,166,255,0.15)) drop-shadow(0 6px 16px rgba(0,0,0,0.30));
 }
 
 .mermaid svg .node .label,
@@ -693,7 +699,17 @@ h4 {
 .mermaid svg .label foreignObject div {
   color: #e6edf3 !important;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 14px !important;
   line-height: 1.4;
+  padding: 4px 8px;
+}
+
+.mermaid svg .node foreignObject {
+  overflow: visible;
+}
+
+.mermaid svg .node rect {
+  min-width: 180px;
 }
 
 .mermaid svg .node .nodeLabel b { color: #e6edf3; font-weight: 600; }
