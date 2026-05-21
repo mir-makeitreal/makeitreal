@@ -1480,6 +1480,44 @@ function renderContractSurfaces(dossier = {}) {
   if (modules.length === 0) {
     return '<p class="empty">No contract surfaces declared.</p>';
   }
+
+  // Build a map: contractId → array of { module, moduleIndex, surface, surfaceIndex, role }
+  const contractMap = new Map();
+  // Also track consumer modules per contract via imports
+  const consumerImports = new Map();
+
+  for (let moduleIndex = 0; moduleIndex < modules.length; moduleIndex++) {
+    const module = modules[moduleIndex];
+
+    // Public surfaces → provider role
+    for (let surfaceIndex = 0; surfaceIndex < (module.publicSurfaces ?? []).length; surfaceIndex++) {
+      const surface = module.publicSurfaces[surfaceIndex];
+      const ids = (surface.contractIds ?? []).length > 0 ? surface.contractIds : ["__unbound__"];
+      for (const contractId of ids) {
+        if (!contractMap.has(contractId)) contractMap.set(contractId, []);
+        contractMap.get(contractId).push({ module, moduleIndex, surface, surfaceIndex, role: "provider" });
+      }
+    }
+
+    // Imports → consumer role (surface entry synthesised from the import)
+    for (const imp of (module.imports ?? [])) {
+      const contractId = imp.contractId ?? "__unbound__";
+      if (!consumerImports.has(contractId)) consumerImports.set(contractId, []);
+      consumerImports.get(contractId).push({ moduleName: module.moduleName, responsibilityUnitId: module.responsibilityUnitId, allowedUse: imp.allowedUse, surface: imp.surface });
+    }
+  }
+
+  // Sort contract IDs: real contracts alphabetically, "__unbound__" last
+  const sortedKeys = [...contractMap.keys()].sort((a, b) => {
+    if (a === "__unbound__") return 1;
+    if (b === "__unbound__") return -1;
+    return a.localeCompare(b);
+  });
+
+  if (sortedKeys.length === 0) {
+    return '<p class="empty">No contract surfaces declared.</p>';
+  }
+
   return `<section id="contract-surfaces" class="architecture-section">
     <div class="section-heading">
       <div>
@@ -1489,19 +1527,28 @@ function renderContractSurfaces(dossier = {}) {
     </div>
     <p class="section-note">Each public surface is shown as an SDK-style schema. Consumers should rely on this contract, not provider implementation details.</p>
     <div class="contract-surface-list">
-      ${modules.flatMap((module, moduleIndex) => (module.publicSurfaces ?? []).map((surface, surfaceIndex) =>
-        `<article id="${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}" class="contract-surface">
-          <p class="module-id">${escapeHtml(module.moduleName)} · ${escapeHtml(module.responsibilityUnitId)}</p>
-          ${renderSchemaDisplay(surface)}
-          <section class="sdk-example" aria-label="Usage example">
-            <div class="sdk-panel-title">
-              <span>Usage Example</span>
-              <strong>Declared surface only</strong>
-            </div>
-            ${renderCodeBlock(usageSnippet({ moduleInterface: module, surface }))}
-          </section>
-        </article>`
-      )).join("")}
+      ${sortedKeys.map((contractId) => {
+        const label = contractId === "__unbound__" ? "Unbound Surfaces" : contractId;
+        const entries = contractMap.get(contractId);
+        const consumers = consumerImports.get(contractId) ?? [];
+        return `<div class="contract-group">
+          <h3 class="contract-group-heading"><code>${escapeHtml(label)}</code></h3>
+          ${consumers.length > 0 ? `<p class="contract-consumers">Consumers: ${consumers.map((c) => `<strong>${escapeHtml(c.moduleName)}</strong>`).join(", ")}</p>` : ""}
+          ${entries.map(({ module, moduleIndex, surface, surfaceIndex, role }) =>
+            `<article id="${escapeHtml(surfaceAnchor(module, surface, moduleIndex, surfaceIndex))}" class="contract-surface">
+              <p class="module-id">${escapeHtml(role)}: ${escapeHtml(module.moduleName)} · ${escapeHtml(module.responsibilityUnitId)}</p>
+              ${renderSchemaDisplay(surface)}
+              <section class="sdk-example" aria-label="Usage example">
+                <div class="sdk-panel-title">
+                  <span>Usage Example</span>
+                  <strong>Declared surface only</strong>
+                </div>
+                ${renderCodeBlock(usageSnippet({ moduleInterface: module, surface }))}
+              </section>
+            </article>`
+          ).join("")}
+        </div>`;
+      }).join("")}
     </div>
   </section>`;
 }
