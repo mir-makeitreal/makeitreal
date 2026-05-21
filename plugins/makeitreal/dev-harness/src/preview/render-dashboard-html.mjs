@@ -1,3 +1,7 @@
+// DEPRECATED: This static HTML renderer is superseded by the React dashboard (src/dashboard/app/).
+//  Kept as fallback for environments without a running dashboard server.
+//  New features should be added to the React dashboard only.
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
