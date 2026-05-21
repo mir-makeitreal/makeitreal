@@ -3,42 +3,44 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
 const appSource = new URL("../src/dashboard/app/src/App.tsx", import.meta.url);
+const sidebarSource = new URL("../src/dashboard/app/src/components/Sidebar.tsx", import.meta.url);
 
-test("dashboard app declares the keyboard shortcut contract", async () => {
+test("dashboard app is a single scrollable architecture document", async () => {
   const source = await readFile(appSource, "utf8");
 
-  assert.match(source, /const VIEW_SHORTCUTS: Record<string, ViewId> = \{\s*'1': 'overview',\s*'2': 'architecture',\s*'3': 'tasks',\s*'4': 'contracts',/s);
-  assert.match(source, /document\.addEventListener\('keydown', handleKeyDown\)/);
-  assert.match(source, /document\.removeEventListener\('keydown', handleKeyDown\)/);
-  assert.match(source, /isEditableTarget\(event\.target\)/);
-  assert.match(source, /setShortcutsOpen\(true\)/);
-  assert.match(source, /setShortcutsOpen\(false\)/);
-  assert.match(source, /event\.key === 'Escape'/);
-
+  // Sections are declared with ids for scroll-to anchors.
   for (const label of [
-    "1",
-    "Overview view",
-    "2",
-    "Architecture view",
-    "3",
-    "Tasks view",
-    "4",
-    "Contracts view",
-    "5",
-    "Approval view",
-    "6",
-    "Surfaces view",
-    "7",
-    "Scenarios view",
-    "8",
-    "Reviews view",
-    "d",
-    "Toggle dark/light mode",
-    "?",
-    "Show keyboard shortcuts",
-    "Escape",
-    "Close drawer or modal"
+    "'architecture'",
+    "'execution'",
+    "'modules'",
+    "'surfaces'",
+    "'scenarios'",
+    "Architecture",
+    "Execution Plan",
+    "Modules",
+    "Contract Surfaces",
+    "Scenarios",
   ]) {
-    assert.match(source, new RegExp(label.replace(/[/?]/g, "\\$&")));
+    assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+
+  // Scroll spy via IntersectionObserver is wired up.
+  assert.match(source, /IntersectionObserver/);
+  assert.match(source, /setActiveSection/);
+
+  // Page is a document, not a tabbed dashboard.
+  assert.match(source, /Architecture Dossier/);
+  assert.doesNotMatch(source, /KanbanBoard/);
+  assert.doesNotMatch(source, /ApprovalScopeView/);
+  assert.doesNotMatch(source, /HeroSection/);
+  assert.doesNotMatch(source, /ReviewDecisionsView/);
+  assert.doesNotMatch(source, /EvidencePanel/);
+});
+
+test("sidebar renders a table of contents", async () => {
+  const source = await readFile(sidebarSource, "utf8");
+
+  assert.match(source, /doc-toc/);
+  assert.match(source, /activeSection/);
+  assert.match(source, /scrollIntoView/);
 });

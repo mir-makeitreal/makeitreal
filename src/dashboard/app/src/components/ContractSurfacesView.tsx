@@ -8,8 +8,7 @@ import type {
   PublicSurfaceInput,
   PublicSurfaceOutput,
 } from '../types/model';
-import { EmptyState } from './EmptyState';
-import { IconCheck, IconChevronDown, IconChevronRight, IconClipboard, IconRing } from './Icons';
+import { IconCheck, IconChevronDown, IconChevronRight, IconClipboard } from './Icons';
 
 function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
@@ -268,25 +267,13 @@ export function ContractSurfacesView() {
   if (groups.length === 0) {
     return (
       <div className="surfaces-view">
-        <EmptyState
-          icon={<IconRing />}
-          title="No surfaces"
-          message="No contract surfaces are declared in this blueprint."
-        />
+        <p className="doc-empty">No contract surfaces are declared in this blueprint.</p>
       </div>
     );
   }
 
   return (
     <div className="surfaces-view">
-      <header className="surfaces-view__header">
-        <div className="surfaces-view__eyebrow">SDK Reference</div>
-        <h1 className="surfaces-view__title">Contract Surfaces</h1>
-        <p className="surfaces-view__lead">
-          Authoritative reference for every public surface declared across modules. Inputs,
-          outputs, errors, and example usage — extracted from the system dossier.
-        </p>
-      </header>
 
       <div className="surfaces-groups">
         {groups.map(group => (

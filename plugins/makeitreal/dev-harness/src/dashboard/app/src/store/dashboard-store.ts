@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PreviewModel, ViewId, SelectionState, NodeType } from '../types/model';
+import type { PreviewModel, SelectionState, NodeType } from '../types/model';
 
 interface DashboardStore {
   model: PreviewModel | null;
@@ -9,9 +9,7 @@ interface DashboardStore {
   connected: boolean;
 
   selection: SelectionState;
-  activeView: ViewId;
-  theme: 'dark' | 'light';
-  sidebarCollapsed: boolean;
+  activeSection: string;
 
   setModel: (model: PreviewModel) => void;
   setLoading: (loading: boolean) => void;
@@ -21,9 +19,7 @@ interface DashboardStore {
   selectNode: (nodeId: string, nodeType: NodeType) => void;
   clearSelection: () => void;
 
-  setActiveView: (view: ViewId) => void;
-  toggleTheme: () => void;
-  toggleSidebar: () => void;
+  setActiveSection: (sectionId: string) => void;
 
   fetchModel: () => Promise<void>;
 }
@@ -44,9 +40,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
   connected: false,
 
   selection: { ...emptySelection },
-  activeView: 'overview',
-  theme: 'dark' as const,
-  sidebarCollapsed: false,
+  activeSection: 'architecture',
 
   setModel: (model) => set({
     model,
@@ -68,9 +62,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
 
   clearSelection: () => set({ selection: { ...emptySelection } }),
 
-  setActiveView: (view) => set({ activeView: view }),
-  toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setActiveSection: (sectionId) => set({ activeSection: sectionId }),
 
   fetchModel: async () => {
     set({ loading: true });

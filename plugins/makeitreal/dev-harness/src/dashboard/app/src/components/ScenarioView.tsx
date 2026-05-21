@@ -253,7 +253,7 @@ function ScenarioCard({ scenario, theme }: { scenario: ScenarioDetail; theme: 'd
 
 export function ScenarioView() {
   const model = useDashboardStore(s => s.model);
-  const theme = useDashboardStore(s => s.theme);
+  const theme: 'dark' | 'light' = 'dark';
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const dossier = model?.blueprint.systemDossier;

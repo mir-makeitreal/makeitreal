@@ -1,111 +1,79 @@
 import React from 'react';
-import type { ViewId } from '../types/model';
 import { useDashboardStore } from '../store/dashboard-store';
-import { IconMenu, IconX } from './Icons';
 
-export interface SidebarProps {
-  activeView: ViewId;
-  onNavigate: (view: ViewId) => void;
-  collapsed: boolean;
-  onToggle: () => void;
-  connected: boolean;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
+export interface SidebarSection {
+  id: string;
+  label: string;
 }
 
-const NAV_ITEMS: { id: ViewId; label: string; mark: string }[] = [
-  { id: 'overview', label: 'Overview', mark: 'OV' },
-  { id: 'architecture', label: 'Architecture', mark: 'AR' },
-  { id: 'tasks', label: 'Tasks', mark: 'TK' },
-  { id: 'contracts', label: 'Contracts', mark: 'CN' },
-  { id: 'approval', label: 'Approval', mark: 'AP' },
-  { id: 'surfaces', label: 'Surfaces', mark: 'SF' },
-  { id: 'scenarios', label: 'Scenarios', mark: 'SC' },
-  { id: 'reviews', label: 'Reviews', mark: 'RV' },
-];
+export interface SidebarProps {
+  sections: SidebarSection[];
+  activeSection: string;
+  onNavigate: (id: string) => void;
+  connected: boolean;
+}
 
-export function Sidebar({
-  activeView,
-  onNavigate,
-  collapsed,
-  onToggle,
-  connected,
-  theme,
-  onToggleTheme,
-}: SidebarProps) {
+export function Sidebar({ sections, activeSection, onNavigate, connected }: SidebarProps) {
   const model = useDashboardStore(s => s.model);
-  const allWorkItems = model?.board?.lanes?.flatMap(lane => lane.workItems) ?? [];
-  const totalWorkItems = allWorkItems.length;
-  const doneWorkItems = allWorkItems.filter(item => item.lane === 'Done').length;
-  const donePercent = totalWorkItems === 0 ? 0 : Math.round((doneWorkItems / totalWorkItems) * 100);
-  const phase = model?.status.phase ?? 'Unknown';
-  const moduleCount = model?.blueprint.architecture.nodes.length ?? 0;
+  const modules = model?.blueprint.moduleInterfaces ?? [];
+
+  function handleClick(event: React.MouseEvent<HTMLAnchorElement>, id: string) {
+    event.preventDefault();
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      onNavigate(id);
+    }
+  }
 
   return (
-    <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-header">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="sidebar-toggle"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <IconMenu /> : <IconX />}
-        </button>
-        {!collapsed && <h1>Make It Real</h1>}
+    <aside className="doc-sidebar">
+      <div className="doc-sidebar__brand">
+        <span className="doc-sidebar__brand-mark">MIR</span>
+        <span className="doc-sidebar__brand-text">Architecture Dossier</span>
       </div>
 
-      <nav className="sidebar-nav">
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            className={`nav-item ${activeView === item.id ? 'active' : ''}`}
-            onClick={() => onNavigate(item.id)}
-            title={item.label}
-          >
-            <span className="icon nav-mark">{item.mark}</span>
-            {!collapsed && item.label}
-          </button>
-        ))}
+      <nav className="doc-sidebar__nav" aria-label="Document sections">
+        <ul className="doc-toc">
+          {sections.map(section => (
+            <li key={section.id}>
+              <a
+                href={`#${section.id}`}
+                onClick={e => handleClick(e, section.id)}
+                className={`doc-toc__link${activeSection === section.id ? ' doc-toc__link--active' : ''}`}
+              >
+                {section.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {modules.length > 0 && (
+          <div className="doc-sidebar__group">
+            <div className="doc-sidebar__group-label">Modules</div>
+            <ul className="doc-toc doc-toc--nested">
+              {modules.map(mod => (
+                <li key={mod.responsibilityUnitId}>
+                  <a
+                    href={`#module-${mod.responsibilityUnitId}`}
+                    onClick={e => handleClick(e, `module-${mod.responsibilityUnitId}`)}
+                    className="doc-toc__link doc-toc__link--sub"
+                  >
+                    {mod.moduleName}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </nav>
 
-      <div className="sidebar-footer">
-        {!collapsed && model && (
-          <section className="sidebar-status" aria-label="Status summary">
-            <div className="sidebar-status__title">Status</div>
-            <div className="sidebar-status__row">
-              <span>Work items</span>
-              <span>{doneWorkItems}/{totalWorkItems} done</span>
-            </div>
-            <div
-              className="sidebar-status__progress"
-              role="progressbar"
-              aria-valuenow={donePercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Done work item progress"
-            >
-              <div className="sidebar-status__progress-bar" style={{ width: `${donePercent}%` }} />
-            </div>
-            <div className="sidebar-status__row">
-              <span>Phase</span>
-              <span>{phase}</span>
-            </div>
-            <div className="sidebar-status__row">
-              <span>Modules</span>
-              <span>{moduleCount}</span>
-            </div>
-          </section>
-        )}
-        <button className="nav-item" onClick={onToggleTheme}>
-          <span className="icon nav-mark">{theme === 'dark' ? 'LT' : 'DK'}</span>
-          {!collapsed && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
-        </button>
-        <div className="connection-indicator">
-          <span className={`dot ${connected ? 'connected' : 'disconnected'}`} />
-          {!collapsed && (connected ? 'Live' : 'Disconnected')}
-        </div>
+      <div className="doc-sidebar__footer">
+        <span className={`doc-sidebar__status doc-sidebar__status--${connected ? 'live' : 'offline'}`}>
+          <span className="doc-sidebar__status-dot" />
+          {connected ? 'Live' : 'Offline'}
+        </span>
       </div>
-    </div>
+    </aside>
   );
 }

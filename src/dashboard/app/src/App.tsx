@@ -1,288 +1,82 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useDashboardStore } from './store/dashboard-store';
 import { useWebSocket } from './hooks/useWebSocket';
-import { HeroSection } from './components/HeroSection';
+import { Sidebar, type SidebarSection } from './components/Sidebar';
 import { TopologyGraph } from './components/TopologyGraph';
 import { TaskDAG } from './components/TaskDAG';
-import { ContractPanel } from './components/ContractPanel';
-import { Sidebar } from './components/Sidebar';
-import { ResponsibilityMap } from './components/ResponsibilityMap';
-import { KanbanBoard } from './components/KanbanBoard';
-import { EvidencePanel } from './components/EvidencePanel';
-import { DetailDrawer } from './components/DetailDrawer';
-import { ApprovalScopeView } from './components/ApprovalScopeView';
 import { ContractSurfacesView } from './components/ContractSurfacesView';
 import { ScenarioView } from './components/ScenarioView';
-import { ReviewDecisionsView } from './components/ReviewDecisionsView';
-import { EmptyState } from './components/EmptyState';
-import { IconClipboard, IconWarn, IconX } from './components/Icons';
-import type { ViewId } from './types/model';
+import { ModulesSection } from './components/ModulesSection';
+import { ResponsibilityMap } from './components/ResponsibilityMap';
+import { DetailDrawer } from './components/DetailDrawer';
+import { IconWarn } from './components/Icons';
 
-function OverviewView() {
-  const model = useDashboardStore(s => s.model);
-  if (!model) return null;
-
-  const allWorkItems = model.board?.lanes?.flatMap(l => l.workItems) ?? [];
-
-  return (
-    <div>
-      <HeroSection status={model.status} cockpit={model.operatorCockpit} />
-
-      <div className="cards-grid">
-        <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="card-header">
-            Architecture
-            <span className="card-meta">
-              {model.blueprint.architecture.nodes.length} modules
-            </span>
-          </div>
-          <div className="card-body card-body--flush">
-            <TopologyGraph
-              nodes={model.blueprint.architecture.nodes}
-              edges={model.blueprint.architecture.edges}
-            />
-          </div>
-        </div>
-
-        {allWorkItems.length > 0 && (
-          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="card-header">
-              Task DAG
-              <span className="card-meta">
-                {allWorkItems.length} items
-              </span>
-            </div>
-            <div className="card-body card-body--flush">
-              <TaskDAG workItems={allWorkItems} />
-            </div>
-          </div>
-        )}
-
-        <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="card-header">
-            Module Interfaces
-            <span className="card-meta">
-              {model.blueprint.moduleInterfaces.length} modules
-            </span>
-          </div>
-          <div className="card-body card-body--flush">
-            <ContractPanel moduleInterfaces={model.blueprint.moduleInterfaces} />
-          </div>
-        </div>
-
-        {model.blueprint.contracts.length > 0 && (
-          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="card-header">Contracts</div>
-            <div className="card-body">
-              {model.blueprint.contracts.map(c => (
-                <div key={c.contractId} className="contract-item contract-item--listed">
-                  <div className="contract-id">{c.contractId}</div>
-                  <div className="contract-kind">{c.kind} — {c.path}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(model.operatorCockpit.evidenceLinks.length > 0 || model.operatorCockpit.firstRunChecklist.length > 0) && (
-          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="card-header">Evidence</div>
-            <div className="card-body card-body--flush">
-              <EvidencePanel cockpit={model.operatorCockpit} />
-            </div>
-          </div>
-        )}
-
-        {model.blueprint.boundaries.length > 0 && (
-          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="card-header">
-              Responsibility Map
-              <span className="card-meta">
-                {model.blueprint.boundaries.length} boundaries
-              </span>
-            </div>
-            <div className="card-body card-body--flush">
-              <ResponsibilityMap
-                boundaries={model.blueprint.boundaries}
-                moduleInterfaces={model.blueprint.moduleInterfaces}
-              />
-            </div>
-          </div>
-        )}
-
-        {model.board && (
-          <div className="card card--vercel card--span-full transition-all hover:shadow-xl">
-            <div className="card-header">Kanban Board</div>
-            <div className="card-body card-body--flush">
-              <KanbanBoard board={model.board} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ArchitectureView() {
-  const model = useDashboardStore(s => s.model);
-  if (!model) return null;
-
-  return (
-    <div className="dedicated-flow-view">
-      <TopologyGraph
-        nodes={model.blueprint.architecture.nodes}
-        edges={model.blueprint.architecture.edges}
-        fullHeight
-      />
-    </div>
-  );
-}
-
-function TasksView() {
-  const model = useDashboardStore(s => s.model);
-  if (!model) return null;
-  const allWorkItems = model.board?.lanes?.flatMap(l => l.workItems) ?? [];
-
-  return (
-    <div className="dedicated-flow-view">
-      <TaskDAG workItems={allWorkItems} fullHeight />
-    </div>
-  );
-}
-
-function ContractsView() {
-  const model = useDashboardStore(s => s.model);
-  if (!model) return null;
-
-  return (
-    <div className="dedicated-contracts-view">
-      <ContractPanel moduleInterfaces={model.blueprint.moduleInterfaces} />
-    </div>
-  );
-}
-
-const VIEWS: Record<ViewId, React.FC> = {
-  overview: OverviewView,
-  approval: ApprovalScopeView,
-  architecture: ArchitectureView,
-  tasks: TasksView,
-  contracts: ContractsView,
-  surfaces: ContractSurfacesView,
-  scenarios: ScenarioView,
-  reviews: ReviewDecisionsView,
-};
-
-const VIEW_SHORTCUTS: Record<string, ViewId> = {
-  '1': 'overview',
-  '2': 'architecture',
-  '3': 'tasks',
-  '4': 'contracts',
-  '5': 'approval',
-  '6': 'surfaces',
-  '7': 'scenarios',
-  '8': 'reviews',
-};
-
-const KEYBOARD_SHORTCUTS = [
-  { key: '1', action: 'Overview view' },
-  { key: '2', action: 'Architecture view' },
-  { key: '3', action: 'Tasks view' },
-  { key: '4', action: 'Contracts view' },
-  { key: '5', action: 'Approval view' },
-  { key: '6', action: 'Surfaces view' },
-  { key: '7', action: 'Scenarios view' },
-  { key: '8', action: 'Reviews view' },
-  { key: 'd', action: 'Toggle dark/light mode' },
-  { key: '?', action: 'Show keyboard shortcuts' },
-  { key: 'Escape', action: 'Close drawer or modal' },
+const SECTIONS: SidebarSection[] = [
+  { id: 'architecture', label: 'Architecture' },
+  { id: 'execution', label: 'Execution Plan' },
+  { id: 'modules', label: 'Modules' },
+  { id: 'surfaces', label: 'Contract Surfaces' },
+  { id: 'scenarios', label: 'Scenarios' },
 ];
-
-function isEditableTarget(target: EventTarget | null) {
-  return target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || document.activeElement instanceof HTMLInputElement
-    || document.activeElement instanceof HTMLTextAreaElement;
-}
-
-function KeyboardShortcutsOverlay({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      role="presentation"
-      onClick={onClose}
-      className="dialog-overlay"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="keyboard-shortcuts-title"
-        onClick={event => event.stopPropagation()}
-        className="dialog-panel"
-      >
-        <div className="dialog-header">
-          <h2 id="keyboard-shortcuts-title">
-            Keyboard Shortcuts
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close keyboard shortcuts"
-            className="dialog-close"
-          >
-            <IconX />
-          </button>
-        </div>
-
-        <div className="dialog-body">
-          {KEYBOARD_SHORTCUTS.map(shortcut => (
-            <div key={shortcut.key} className="dialog-shortcut-row">
-              <span className="dialog-shortcut-row__label">{shortcut.action}</span>
-              <kbd>{shortcut.key}</kbd>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function LoadingSkeleton() {
   return (
-    <div className="skeleton-screen" aria-busy="true" aria-label="Loading dashboard">
-      <div className="skeleton-sidebar">
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-        <div className="skeleton-row" />
-      </div>
-      <div className="skeleton-main">
-        <div className="skeleton-hero" />
-        <div className="skeleton-grid">
-          <div className="skeleton-card" />
-          <div className="skeleton-card" />
-          <div className="skeleton-card" />
-          <div className="skeleton-card" />
-        </div>
+    <div className="doc-loading" aria-busy="true" aria-label="Loading architecture dossier">
+      <div className="doc-loading__sidebar" />
+      <div className="doc-loading__main">
+        <div className="doc-loading__row doc-loading__row--lg" />
+        <div className="doc-loading__row" />
+        <div className="doc-loading__block" />
       </div>
     </div>
   );
+}
+
+function useScrollSpy(sectionIds: string[]) {
+  const setActiveSection = useDashboardStore(s => s.setActiveSection);
+
+  useEffect(() => {
+    if (sectionIds.length === 0) return;
+    const elements = sectionIds
+      .map(id => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (elements.length === 0) return;
+
+    const visibility = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          visibility.set(entry.target.id, entry.intersectionRatio);
+        }
+        let bestId = sectionIds[0];
+        let bestRatio = -1;
+        for (const id of sectionIds) {
+          const ratio = visibility.get(id) ?? 0;
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestId = id;
+          }
+        }
+        if (bestRatio > 0) setActiveSection(bestId);
+      },
+      {
+        rootMargin: '-20% 0px -60% 0px',
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      },
+    );
+
+    for (const el of elements) observer.observe(el);
+    return () => observer.disconnect();
+  }, [sectionIds, setActiveSection]);
 }
 
 export default function App() {
   const {
     loading, error, model, connected,
-    activeView, setActiveView: setView,
+    activeSection, setActiveSection,
     selection, clearSelection,
-    theme, toggleTheme,
-    sidebarCollapsed, toggleSidebar,
     fetchModel,
   } = useDashboardStore();
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const setSelectedNodeId = useCallback((nodeId: string | null) => {
-    if (nodeId === null) clearSelection();
-  }, [clearSelection]);
 
   useWebSocket();
 
@@ -291,65 +85,26 @@ export default function App() {
   }, [fetchModel]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }, []);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (isEditableTarget(event.target)) return;
+  const sectionIds = useMemo(() => SECTIONS.map(s => s.id), []);
+  useScrollSpy(sectionIds);
 
-      if (event.key === 'Escape') {
-        const hadOpenShortcutOverlay = shortcutsOpen;
-        const hadOpenDetailDrawer = selection.nodeId !== null;
+  const allWorkItems = useMemo(
+    () => model?.board?.lanes?.flatMap(l => l.workItems) ?? [],
+    [model],
+  );
 
-        if (hadOpenShortcutOverlay) setShortcutsOpen(false);
-        if (hadOpenDetailDrawer) setSelectedNodeId(null);
-        if (hadOpenShortcutOverlay || hadOpenDetailDrawer) event.preventDefault();
-        return;
-      }
-
-      const view = VIEW_SHORTCUTS[event.key];
-      if (view) {
-        event.preventDefault();
-        setView(view);
-        return;
-      }
-
-      if (event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        toggleTheme();
-        return;
-      }
-
-      if (event.key === '?') {
-        event.preventDefault();
-        setShortcutsOpen(true);
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selection.nodeId, setSelectedNodeId, setView, shortcutsOpen, toggleTheme]);
-
-  const ViewComponent = VIEWS[activeView] ?? OverviewView;
-
-  if (loading && !model) {
-    return <LoadingSkeleton />;
-  }
+  if (loading && !model) return <LoadingSkeleton />;
 
   if (error && !model) {
     return (
-      <div className="error-screen">
+      <div className="doc-error">
         <div>
-          <div className="error-screen__title">
-            <IconWarn /> Dashboard Error
-          </div>
+          <div className="doc-error__title"><IconWarn /> Failed to load dossier</div>
           <div>{error}</div>
-          <button
-            type="button"
-            className="error-screen__retry"
-            onClick={() => fetchModel()}
-          >
+          <button type="button" className="doc-error__retry" onClick={() => fetchModel()}>
             Retry
           </button>
         </div>
@@ -357,22 +112,94 @@ export default function App() {
     );
   }
 
+  if (!model) return null;
+
+  const blueprintTitle = model.blueprint.title || 'Untitled';
+
   return (
-    <div className="app-layout">
+    <div className="doc-layout">
       <Sidebar
-        activeView={activeView}
-        onNavigate={setView}
-        collapsed={sidebarCollapsed}
-        onToggle={toggleSidebar}
+        sections={SECTIONS}
+        activeSection={activeSection}
+        onNavigate={setActiveSection}
         connected={connected}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
-      <main className="main-content">
-        <div key={activeView} className="view-fade">
-          <ViewComponent />
-        </div>
+      <main className="doc-main">
+        <header className="doc-header">
+          <div className="doc-header__eyebrow">Architecture Dossier</div>
+          <h1 className="doc-header__title">{blueprintTitle}</h1>
+          {model.blueprint.summary.length > 0 && (
+            <p className="doc-header__lead">{model.blueprint.summary[0]}</p>
+          )}
+        </header>
+
+        <Section id="architecture" eyebrow="Topology" title="Architecture">
+          <p className="doc-section__lead">
+            Module topology with contract edges. Click a node to inspect its surfaces, owned
+            paths, and inbound/outbound contracts.
+          </p>
+          <div className="doc-diagram doc-diagram--lg">
+            <TopologyGraph
+              nodes={model.blueprint.architecture.nodes}
+              edges={model.blueprint.architecture.edges}
+              fullHeight
+            />
+          </div>
+        </Section>
+
+        <Section id="execution" eyebrow="Parallel agents" title="Execution Plan">
+          <p className="doc-section__lead">
+            Work items and their dependency order. Independent branches can be executed by
+            parallel agents; downstream items wait for upstream completion.
+          </p>
+          {allWorkItems.length === 0 ? (
+            <p className="doc-empty">No work items declared.</p>
+          ) : (
+            <div className="doc-diagram doc-diagram--md">
+              <TaskDAG workItems={allWorkItems} fullHeight />
+            </div>
+          )}
+        </Section>
+
+        <Section id="modules" eyebrow="Ownership" title="Modules">
+          <p className="doc-section__lead">
+            One entry per module: who owns it, what files it owns, and what public surfaces
+            it exposes.
+          </p>
+          <ModulesSection modules={model.blueprint.moduleInterfaces} />
+          {model.blueprint.boundaries.length > 0 && (
+            <>
+              <h3 className="doc-subsection__title">Responsibility map</h3>
+              <ResponsibilityMap
+                boundaries={model.blueprint.boundaries}
+                moduleInterfaces={model.blueprint.moduleInterfaces}
+              />
+            </>
+          )}
+        </Section>
+
+        <Section id="surfaces" eyebrow="SDK reference" title="Contract Surfaces">
+          <p className="doc-section__lead">
+            Every public surface. Each entry documents parameters, returns, errors, and a
+            usage example — the canonical reference for callers.
+          </p>
+          <ContractSurfacesView />
+        </Section>
+
+        <Section id="scenarios" eyebrow="Behavior" title="Scenarios">
+          <p className="doc-section__lead">
+            End-to-end sequences showing how participants collaborate to satisfy
+            user-facing scenarios.
+          </p>
+          <ScenarioView />
+        </Section>
+
+        <footer className="doc-footer">
+          <span>{model.run.runId}</span>
+          <span>·</span>
+          <span>Generated {new Date(model.generatedAt).toLocaleString()}</span>
+        </footer>
       </main>
 
       <DetailDrawer
@@ -380,8 +207,26 @@ export default function App() {
         model={model}
         onClose={clearSelection}
       />
-
-      {shortcutsOpen && <KeyboardShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
     </div>
+  );
+}
+
+interface SectionProps {
+  id: string;
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+}
+
+function Section({ id, eyebrow, title, children }: SectionProps) {
+  const ref = useRef<HTMLElement>(null);
+  return (
+    <section id={id} ref={ref} className="doc-section">
+      <header className="doc-section__head">
+        <div className="doc-section__eyebrow">{eyebrow}</div>
+        <h2 className="doc-section__title">{title}</h2>
+      </header>
+      <div className="doc-section__body">{children}</div>
+    </section>
   );
 }

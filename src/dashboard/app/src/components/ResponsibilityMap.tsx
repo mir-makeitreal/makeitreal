@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Boundary, ModuleInterface } from '../types/model';
-import { EmptyState } from './EmptyState';
-import { IconChevronDown, IconChevronRight, IconFile, IconFolder, IconRing } from './Icons';
+import { IconChevronDown, IconChevronRight, IconFile, IconFolder } from './Icons';
 
 export interface ResponsibilityMapProps {
   boundaries: Boundary[];
@@ -210,13 +209,7 @@ export function ResponsibilityMap({
   );
 
   if (moduleInterfaces.length === 0 && boundaries.length === 0) {
-    return (
-      <EmptyState
-        icon={<IconRing />}
-        title="No boundaries"
-        message="No responsibility boundaries are defined for this blueprint."
-      />
-    );
+    return <p className="doc-empty">No responsibility boundaries are defined for this blueprint.</p>;
   }
 
   return (
