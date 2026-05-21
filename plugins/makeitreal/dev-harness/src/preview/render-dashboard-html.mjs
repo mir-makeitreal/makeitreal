@@ -1,7 +1,3 @@
-// DEPRECATED: This static HTML renderer is superseded by the React dashboard (src/dashboard/app/).
-//  Kept as fallback for environments without a running dashboard server.
-//  New features should be added to the React dashboard only.
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -714,16 +710,100 @@ function systemMapMermaid(dossier = {}) {
   return lines.join("\n");
 }
 
+function moduleTopologyMermaid(dossier = {}) {
+  const modules = dossier.modules ?? [];
+  if (modules.length === 0) {
+    return null;
+  }
+  const moduleIds = new Map();
+  const lines = ["flowchart LR"];
+  for (const [index, moduleInterface] of modules.entries()) {
+    const nodeId = `m${index}`;
+    moduleIds.set(moduleInterface.responsibilityUnitId, nodeId);
+    moduleIds.set(moduleInterface.moduleName, nodeId);
+    const name = mermaidLabel(moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId);
+    const ruId = mermaidLabel(moduleInterface.responsibilityUnitId ?? "");
+    const surfaceCount = (moduleInterface.publicSurfaces ?? []).length;
+    const surfaceLabel = surfaceCount === 1 ? "1 surface" : `${surfaceCount} surfaces`;
+    const label = `<b>${escapeHtml(name)}</b><br/>${escapeHtml(ruId)}<br/>${escapeHtml(surfaceLabel)}`;
+    lines.push(`  ${nodeId}["${label}"]`);
+    lines.push(`  class ${nodeId} module`);
+  }
+
+  const seenEdges = new Set();
+  for (const moduleInterface of modules) {
+    const fromId = moduleIds.get(moduleInterface.responsibilityUnitId);
+    if (!fromId) continue;
+    for (const dependency of moduleInterface.imports ?? []) {
+      const toId =
+        moduleIds.get(dependency.providerResponsibilityUnitId) ||
+        moduleIds.get(dependency.providerModuleName) ||
+        moduleIds.get(dependency.providerName);
+      if (!toId) continue;
+      const edgeKey = `${fromId}->${toId}:${dependency.contractId ?? dependency.surface ?? ""}`;
+      if (seenEdges.has(edgeKey)) continue;
+      seenEdges.add(edgeKey);
+      const edgeLabel = mermaidLabel(dependency.contractId ?? dependency.surface ?? "contract");
+      lines.push(`  ${fromId} -->|"${edgeLabel}"| ${toId}`);
+    }
+  }
+
+  for (const edge of dossier.dependencyEdges ?? []) {
+    const fromId = moduleIds.get(edge.from) || moduleIds.get(edge.fromResponsibilityUnitId);
+    const toId = moduleIds.get(edge.to) || moduleIds.get(edge.toResponsibilityUnitId);
+    if (!fromId || !toId) continue;
+    const edgeKey = `${fromId}->${toId}:${edge.contractId ?? ""}`;
+    if (seenEdges.has(edgeKey)) continue;
+    seenEdges.add(edgeKey);
+    lines.push(`  ${fromId} -->|"${mermaidLabel(edge.contractId ?? "contract")}"| ${toId}`);
+  }
+
+  lines.push("  classDef module fill:#161b22,stroke:#30363d,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
+  return lines.join("\n");
+}
+
+function taskLaneClass(lane = "") {
+  const normalized = String(lane ?? "").toLowerCase();
+  if (normalized.includes("done") || normalized.includes("complete") || normalized.includes("verified")) {
+    return "done";
+  }
+  if (
+    normalized.includes("doing") ||
+    normalized.includes("running") ||
+    normalized.includes("active") ||
+    normalized.includes("inprogress") ||
+    normalized.includes("in_progress") ||
+    normalized.includes("in progress") ||
+    normalized.includes("review")
+  ) {
+    return "running";
+  }
+  if (normalized.includes("block") || normalized.includes("fail")) {
+    return "blocked";
+  }
+  return "ready";
+}
+
 function taskDagMermaid(dossier = {}) {
   const nodes = dossier.taskDag?.nodes ?? [];
   if (nodes.length === 0) {
     return null;
   }
   const nodeIds = new Map(nodes.map((node, index) => [node.id, `task_${index}`]));
-  const lines = ["flowchart LR"];
+  const lines = ["flowchart TB"];
   for (const node of nodes) {
-    const label = `${node.moduleName ?? node.responsibilityUnitId}\\n${node.kind ?? "implementation"}\\n${node.id}`;
-    lines.push(`  ${nodeIds.get(node.id)}["${mermaidLabel(label)}"]`);
+    const nodeId = nodeIds.get(node.id);
+    const title = mermaidLabel(node.title ?? node.moduleName ?? node.responsibilityUnitId ?? node.id);
+    const moduleLabel = mermaidLabel(node.moduleName ?? node.responsibilityUnitId ?? "");
+    const laneLabel = mermaidLabel(node.lane ?? node.status ?? node.kind ?? "ready");
+    const kindLabel = mermaidLabel(node.kind ?? "implementation");
+    const label = [
+      `<b>${escapeHtml(title)}</b>`,
+      escapeHtml(moduleLabel),
+      `${escapeHtml(kindLabel)} · ${escapeHtml(laneLabel)}`
+    ].join("<br/>");
+    lines.push(`  ${nodeId}["${label}"]`);
+    lines.push(`  class ${nodeId} ${taskLaneClass(node.lane ?? node.status)}`);
   }
   for (const edge of dossier.taskDag?.edges ?? []) {
     const from = nodeIds.get(edge.from);
@@ -732,6 +812,10 @@ function taskDagMermaid(dossier = {}) {
       lines.push(`  ${from} -->|"${mermaidLabel(edge.contractId ?? "depends on")}"| ${to}`);
     }
   }
+  lines.push("  classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
+  lines.push("  classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
+  lines.push("  classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
+  lines.push("  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
   return lines.join("\n");
 }
 
@@ -1156,6 +1240,11 @@ function renderSystemPlacement(dossier = {}) {
     ${mermaidDiagramCard({
       title: "Module Topology",
       description: "Responsibility units and declared contract edges for the software under change.",
+      diagram: moduleTopologyMermaid(dossier) ?? systemMapMermaid(dossier)
+    })}
+    ${mermaidDiagramCard({
+      title: "Contract Surface Detail",
+      description: "Public surfaces with declared inputs, outputs, and errors per responsibility unit.",
       diagram: systemMapMermaid(dossier)
     })}
     <div class="doc-table architecture-table">
@@ -1751,16 +1840,85 @@ export function renderDashboardHtml(model) {
   <script src="./preview.js"></script>
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,
       securityLevel: "strict",
       theme: "base",
+      fontFamily: mermaidFont,
+      flowchart: {
+        curve: "basis",
+        htmlLabels: true,
+        useMaxWidth: true,
+        padding: 18,
+        nodeSpacing: 60,
+        rankSpacing: 70
+      },
+      sequence: {
+        useMaxWidth: true,
+        diagramMarginX: 32,
+        diagramMarginY: 24,
+        boxMargin: 12,
+        boxTextMargin: 6,
+        noteMargin: 12,
+        messageMargin: 38,
+        mirrorActors: false,
+        actorFontFamily: mermaidFont,
+        noteFontFamily: mermaidFont,
+        messageFontFamily: mermaidFont
+      },
       themeVariables: {
-        primaryColor: "#eef4ff",
-        primaryTextColor: "#17202a",
-        primaryBorderColor: "#b8c7f5",
-        lineColor: "#667085",
-        fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        background: "transparent",
+        primaryColor: "#1c2128",
+        primaryTextColor: "#e6edf3",
+        primaryBorderColor: "#30363d",
+        secondaryColor: "#1c2128",
+        secondaryBorderColor: "#30363d",
+        secondaryTextColor: "#e6edf3",
+        tertiaryColor: "#0d1117",
+        tertiaryBorderColor: "#30363d",
+        tertiaryTextColor: "#e6edf3",
+        mainBkg: "#1c2128",
+        secondBkg: "#1c2128",
+        lineColor: "#58a6ff",
+        textColor: "#e6edf3",
+        labelTextColor: "#e6edf3",
+        nodeTextColor: "#e6edf3",
+        edgeLabelBackground: "#0d1117",
+        clusterBkg: "#0d1117",
+        clusterBorder: "#30363d",
+        titleColor: "#e6edf3",
+        fontFamily: mermaidFont,
+        fontSize: "14px",
+        /* sequence */
+        actorBkg: "#1c2128",
+        actorBorder: "#30363d",
+        actorTextColor: "#e6edf3",
+        actorLineColor: "#30363d",
+        signalColor: "#58a6ff",
+        signalTextColor: "#e6edf3",
+        labelBoxBkgColor: "#1c2128",
+        labelBoxBorderColor: "#30363d",
+        labelTextColor: "#e6edf3",
+        loopTextColor: "#e6edf3",
+        noteBkgColor: "#1c2128",
+        noteBorderColor: "#30363d",
+        noteTextColor: "#e6edf3",
+        activationBkgColor: "#1c2128",
+        activationBorderColor: "#58a6ff",
+        sequenceNumberColor: "#0d1117",
+        /* state */
+        specialStateColor: "#58a6ff",
+        altBackground: "#1c2128",
+        innerEndBackground: "#1c2128",
+        compositeBackground: "#1c2128",
+        compositeBorder: "#30363d",
+        compositeTitleBackground: "#1c2128",
+        stateLabelColor: "#e6edf3",
+        stateBkg: "#1c2128",
+        labelColor: "#e6edf3",
+        errorBkgColor: "#3d1d24",
+        errorTextColor: "#f87171"
       }
     });
   </script>
@@ -2420,15 +2578,62 @@ h4 {
 .mermaid {
   margin: 0;
   min-height: 140px;
-  padding: 22px;
+  padding: 28px 24px;
   overflow: auto;
-  background: var(--panel-2);
-  color: var(--ink);
+  background:
+    radial-gradient(1100px 400px at 20% -20%, rgba(88,166,255,0.06), transparent 60%),
+    radial-gradient(900px 360px at 110% 120%, rgba(88,166,255,0.05), transparent 60%),
+    #0d1117;
+  color: #e6edf3;
   text-align: center;
-  font-family: var(--sans) !important;
+  font-family: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif !important;
 }
 
-.mermaid svg { max-width: 100%; height: auto; }
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent !important;
+}
+
+.mermaid svg .edgePath .path,
+.mermaid svg .flowchart-link {
+  stroke: #58a6ff;
+  stroke-width: 1.5px;
+}
+
+.mermaid svg .edgeLabel {
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+}
+.mermaid svg .edgeLabel rect { fill: #0d1117 !important; }
+.mermaid svg .edgeLabel foreignObject div { background-color: #0d1117 !important; color: #e6edf3 !important; }
+
+.mermaid svg .node rect,
+.mermaid svg .node polygon,
+.mermaid svg .node circle,
+.mermaid svg .node ellipse,
+.mermaid svg .node path {
+  rx: 10;
+  ry: 10;
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.04)) drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+}
+
+.mermaid svg .node .label,
+.mermaid svg .node .nodeLabel,
+.mermaid svg .label foreignObject div {
+  color: #e6edf3 !important;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  line-height: 1.4;
+}
+
+.mermaid svg .node .nodeLabel b { color: #e6edf3; font-weight: 600; }
+
+.mermaid svg .marker { fill: #58a6ff !important; stroke: #58a6ff !important; }
+
+[data-theme="light"] .mermaid {
+  background: #f6f8fa;
+  color: #1f2328;
+}
 
 .mermaid-source {
   border-top: 1px solid var(--soft-line);

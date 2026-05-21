@@ -86,6 +86,29 @@
       <span>Responsibility units and declared contract edges for the software under change.</span>
     </header>
     <pre class="mermaid">flowchart LR
+  m0[&quot;&lt;b&gt;Auth UI&lt;/b&gt;&lt;br/&gt;ru.frontend&lt;br/&gt;1 surface&quot;]
+  class m0 module
+  m1[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;1 surface&quot;]
+  class m1 module
+  m0 --&gt;|&quot;contract.auth.login&quot;| m1
+  classDef module fill:#161b22,stroke:#30363d,stroke-width:1px,color:#e6edf3,rx:10,ry:10</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  m0[&quot;&lt;b&gt;Auth UI&lt;/b&gt;&lt;br/&gt;ru.frontend&lt;br/&gt;1 surface&quot;]
+  class m0 module
+  m1[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;1 surface&quot;]
+  class m1 module
+  m0 --&gt;|&quot;contract.auth.login&quot;| m1
+  classDef module fill:#161b22,stroke:#30363d,stroke-width:1px,color:#e6edf3,rx:10,ry:10</code></pre>
+    </details>
+  </article>
+    <article class="diagram-card">
+    <header>
+      <strong>Contract Surface Detail</strong>
+      <span>Public surfaces with declared inputs, outputs, and errors per responsibility unit.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
   surface_0_0[&quot;Auth UI: LoginForm.submit&quot;]
   input_0_0_0([&quot;credentials.email: string&quot;])
   input_0_0_0 --&gt; surface_0_0
@@ -152,12 +175,22 @@
       <strong>Responsibility Task Graph</strong>
       <span>Required work items and dependency contracts for native Claude Code Task fan-out.</span>
     </header>
-    <pre class="mermaid">flowchart LR
-  task_0[&quot;Auth UI\nimplementation\nwork.feature-auth&quot;]</pre>
+    <pre class="mermaid">flowchart TB
+  task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
+  class task_0 ready
+  classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>flowchart LR
-  task_0[&quot;Auth UI\nimplementation\nwork.feature-auth&quot;]</code></pre>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TB
+  task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
+  class task_0 ready
+  classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</code></pre>
     </details>
   </article>
     <div class="task-dag-table" role="table" aria-label="Task DAG">
@@ -760,16 +793,85 @@ const session = await httpResponse.json();</code></pre>
   <script src="./preview.js"></script>
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,
       securityLevel: "strict",
       theme: "base",
+      fontFamily: mermaidFont,
+      flowchart: {
+        curve: "basis",
+        htmlLabels: true,
+        useMaxWidth: true,
+        padding: 18,
+        nodeSpacing: 60,
+        rankSpacing: 70
+      },
+      sequence: {
+        useMaxWidth: true,
+        diagramMarginX: 32,
+        diagramMarginY: 24,
+        boxMargin: 12,
+        boxTextMargin: 6,
+        noteMargin: 12,
+        messageMargin: 38,
+        mirrorActors: false,
+        actorFontFamily: mermaidFont,
+        noteFontFamily: mermaidFont,
+        messageFontFamily: mermaidFont
+      },
       themeVariables: {
-        primaryColor: "#eef4ff",
-        primaryTextColor: "#17202a",
-        primaryBorderColor: "#b8c7f5",
-        lineColor: "#667085",
-        fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        background: "transparent",
+        primaryColor: "#1c2128",
+        primaryTextColor: "#e6edf3",
+        primaryBorderColor: "#30363d",
+        secondaryColor: "#1c2128",
+        secondaryBorderColor: "#30363d",
+        secondaryTextColor: "#e6edf3",
+        tertiaryColor: "#0d1117",
+        tertiaryBorderColor: "#30363d",
+        tertiaryTextColor: "#e6edf3",
+        mainBkg: "#1c2128",
+        secondBkg: "#1c2128",
+        lineColor: "#58a6ff",
+        textColor: "#e6edf3",
+        labelTextColor: "#e6edf3",
+        nodeTextColor: "#e6edf3",
+        edgeLabelBackground: "#0d1117",
+        clusterBkg: "#0d1117",
+        clusterBorder: "#30363d",
+        titleColor: "#e6edf3",
+        fontFamily: mermaidFont,
+        fontSize: "14px",
+        /* sequence */
+        actorBkg: "#1c2128",
+        actorBorder: "#30363d",
+        actorTextColor: "#e6edf3",
+        actorLineColor: "#30363d",
+        signalColor: "#58a6ff",
+        signalTextColor: "#e6edf3",
+        labelBoxBkgColor: "#1c2128",
+        labelBoxBorderColor: "#30363d",
+        labelTextColor: "#e6edf3",
+        loopTextColor: "#e6edf3",
+        noteBkgColor: "#1c2128",
+        noteBorderColor: "#30363d",
+        noteTextColor: "#e6edf3",
+        activationBkgColor: "#1c2128",
+        activationBorderColor: "#58a6ff",
+        sequenceNumberColor: "#0d1117",
+        /* state */
+        specialStateColor: "#58a6ff",
+        altBackground: "#1c2128",
+        innerEndBackground: "#1c2128",
+        compositeBackground: "#1c2128",
+        compositeBorder: "#30363d",
+        compositeTitleBackground: "#1c2128",
+        stateLabelColor: "#e6edf3",
+        stateBkg: "#1c2128",
+        labelColor: "#e6edf3",
+        errorBkgColor: "#3d1d24",
+        errorTextColor: "#f87171"
       }
     });
   </script>
