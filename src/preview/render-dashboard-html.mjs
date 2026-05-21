@@ -37,8 +37,8 @@ function renderAcceptance(criteria = [], workItems = []) {
           ${linkedCommands.map((entry) => `<div style="margin-top:2px;"><code style="font-size:12px;">${escapeHtml(entry.cmd)}</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(${escapeHtml(entry.workItemId)})</span></div>`).join("")}
         </div>`
       : allVerificationCommands.length > 0
-        ? `<div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--muted, #7d8590);">
-          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">General verification</span>
+        ? `<div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border:1px dashed var(--warn, #d29922);">
+          <span style="font-size:11px;color:var(--warn, #d29922);font-weight:600;">Unlinked — general verification only</span>
           ${allVerificationCommands.map((entry) => `<div style="margin-top:2px;"><code style="font-size:12px;">${escapeHtml(entry.cmd)}</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(${escapeHtml(entry.workItemId)})</span></div>`).join("")}
         </div>`
         : "";
@@ -282,11 +282,15 @@ function declaredRequestBodyFields(surface) {
     return wholeBody.fields.map((field) => typeof field === "string" ? { name: field, type: "string" } : field);
   }
 
-  throw new Error(`HARNESS_PREVIEW_MODEL_INVALID: ${surface.name} must declare request body fields.`);
+  return [];
 }
 
 function requestBodyDeclaration(surface) {
-  const body = declaredRequestBodyFields(surface)
+  const fields = declaredRequestBodyFields(surface);
+  if (fields.length === 0) {
+    return `/* ⚠ No request body fields declared for ${surface.name} */\nconst requestBody = {};\n\n`;
+  }
+  const body = fields
     .map((input) => `  ${input.name}: ${sampleValueForInput(input)}`)
     .join(",\n");
   return `const requestBody = {\n${body}\n};\n\n`;
@@ -1669,6 +1673,16 @@ function renderEvidenceLinks(links = []) {
   }).join("")}</div>`;
 }
 
+function relativeRunDir(runDir) {
+  const path = String(runDir ?? "");
+  const marker = ".makeitreal/";
+  const index = path.indexOf(marker);
+  if (index >= 0) {
+    return path.slice(index);
+  }
+  return path;
+}
+
 function renderRawArtifacts(model) {
   const artifacts = [
     ["PRD", "prd.json"],
@@ -1682,7 +1696,7 @@ function renderRawArtifacts(model) {
   </div>`).join("")}
     <div>
       <strong>Run Directory</strong>
-      <code>${escapeHtml(model.run.runDir)}</code>
+      <code>${escapeHtml(relativeRunDir(model.run.runDir))}</code>
     </div>
   </div>`;
 }
@@ -1694,7 +1708,7 @@ function renderDeveloperDiagnostics(model, status) {
     <div class="doc-table">
       <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>${escapeHtml(status.phase ?? "unknown")}</code></div></div>
       <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>${escapeHtml(status.blueprintStatus ?? "unknown")}</code></div></div>
-      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>${escapeHtml(model.run.runDir)}</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>${escapeHtml(relativeRunDir(model.run.runDir))}</code></div></div>
     </div>
     ${renderRawArtifacts(model)}
   </details>`;
@@ -1882,7 +1896,7 @@ export function renderDashboardHtml(model) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - ${escapeHtml(title)}</title>
-  <link rel="stylesheet" href="./preview.css">
+  <link rel="stylesheet" href="./preview.css?v=${Date.now()}">
 </head>
 <body>
   <main class="architecture-shell">
@@ -1956,7 +1970,7 @@ export function renderDashboardHtml(model) {
       ${renderDiagnostics(model, model.status)}
     </article>
   </main>
-  <script src="./preview.js"></script>
+  <script src="./preview.js?v=${Date.now()}"></script>
   <script type="module">
     let mermaid;
     try {

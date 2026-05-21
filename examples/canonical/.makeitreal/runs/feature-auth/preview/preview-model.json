@@ -248,6 +248,7 @@
           "apps/web/auth/**"
         ],
         "blueprintFingerprint": "sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb",
+        "diagnosticWarnings": [],
         "requiredContracts": [
           "contract.auth.login"
         ],
@@ -401,6 +402,14 @@
         {
           "name": "Contract-first responsibility boundary",
           "rationale": "Adjacent modules may rely only on declared public surfaces and contract IDs."
+        },
+        {
+          "name": "Explicit module boundary",
+          "rationale": "2 responsibility units enforce ownership separation; cross-module access requires a declared contract."
+        },
+        {
+          "name": "Async surface contract",
+          "rationale": "Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination."
         },
         {
           "name": "Fail-fast contract mismatch",

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css">
+  <link rel="stylesheet" href="./preview.css?v=1779356950750">
 </head>
 <body>
   <main class="architecture-shell">
@@ -690,6 +690,12 @@ const session = await httpResponse.json();</code></pre>
         <strong>Contract-first responsibility boundary</strong>
         <p class="muted" style="margin:4px 0 0;">Adjacent modules may rely only on declared public surfaces and contract IDs.</p>
       </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
+        <strong>Explicit module boundary</strong>
+        <p class="muted" style="margin:4px 0 0;">2 responsibility units enforce ownership separation; cross-module access requires a declared contract.</p>
+      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
+        <strong>Async surface contract</strong>
+        <p class="muted" style="margin:4px 0 0;">Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination.</p>
+      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
         <strong>Fail-fast contract mismatch</strong>
         <p class="muted" style="margin:4px 0 0;">Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation.</p>
       </article>
@@ -768,7 +774,7 @@ const session = await httpResponse.json();</code></pre>
     <div class="doc-table">
       <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>launch-ready</code></div></div>
       <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>approved</code></div></div>
-      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth</code></div></div>
+      <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>.makeitreal/runs/feature-auth</code></div></div>
     </div>
     <div class="artifact-grid"><div>
     <strong>PRD</strong>
@@ -785,7 +791,7 @@ const session = await httpResponse.json();</code></pre>
   </div>
     <div>
       <strong>Run Directory</strong>
-      <code>/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth</code>
+      <code>.makeitreal/runs/feature-auth</code>
     </div>
   </div>
   </details>
@@ -822,7 +828,7 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js"></script>
+  <script src="./preview.js?v=1779356950752"></script>
   <script type="module">
     let mermaid;
     try {

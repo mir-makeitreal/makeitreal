@@ -133,6 +133,7 @@ function modelDependencyEdges({ designPack, contracts }) {
   const importEdges = moduleInterfaces.flatMap((moduleInterface) =>
     (moduleInterface.imports ?? []).map((dependency) => {
       const provider = moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId);
+      if (!provider) return null;
       return {
       from: moduleInterface.responsibilityUnitId,
       fromLabel: moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId,
@@ -144,12 +145,12 @@ function modelDependencyEdges({ designPack, contracts }) {
       allowedUse: dependency.allowedUse ?? contractSummary(contractsById.get(dependency.contractId), "Declared module import."),
       relation: "consumer-to-provider"
     };
-  })
+  }).filter(Boolean)
   );
 
   const seen = new Set();
   return [...importEdges, ...architectureEdges].filter((edge) => {
-    const key = `${edge.from}|${edge.to}|${edge.contractId}`;
+    const key = `${edge.from}|${edge.to}|${edge.contractId}|${edge.relation}`;
     if (seen.has(key)) {
       return false;
     }
@@ -233,12 +234,15 @@ function requiredWorkItemIds({ workItemDag, workItems }) {
 function modelApprovalScope({ workItemDag, workItems, blueprintFingerprint }) {
   const workItemsById = workItemIndex(workItems);
   const requiredIds = requiredWorkItemIds({ workItemDag, workItems });
+  const missingIds = requiredIds.filter((id) => !workItemsById.has(id));
   const requiredItems = requiredIds.map((id) => workItemsById.get(id)).filter(Boolean);
+  const diagnosticWarnings = missingIds.map((id) => `DAG node "${id}" references a missing work item.`);
   return {
     blueprintFingerprint: blueprintFingerprint ?? null,
     requiredWorkItems: requiredIds,
     authorizedPaths: uniqueText(requiredItems.flatMap((workItem) => workItem.allowedPaths ?? [])),
-    requiredContracts: uniqueText(requiredItems.flatMap((workItem) => workItem.contractIds ?? []))
+    requiredContracts: uniqueText(requiredItems.flatMap((workItem) => workItem.contractIds ?? [])),
+    diagnosticWarnings
   };
 }
 
@@ -391,7 +395,7 @@ function derivedScenariosFromModuleGraph(moduleInterfaces = []) {
         ];
       });
       return {
-        id: surfaceScenarioId(surface, moduleIndex + surfaceIndex),
+        id: surfaceScenarioId(surface, `${moduleIndex}-${surfaceIndex}`),
         title: `${surface.name} contract call`,
         participants: uniqueText(["Caller", moduleInterface.moduleName, ...(moduleInterface.imports ?? []).map((dependency) => moduleByResponsibilityUnit.get(dependency.providerResponsibilityUnitId)?.moduleName).filter(Boolean)]),
         messages: [
@@ -560,6 +564,42 @@ function modelSurfaceTraceReference({ moduleInterfaces, dependencyEdges, workIte
   );
 }
 
+function deriveDesignPatterns({ moduleInterfaces, dependencyEdges, scenarioDetails }) {
+  const patterns = [];
+  if (dependencyEdges.length > 0) {
+    patterns.push({
+      name: "Contract-first responsibility boundary",
+      rationale: "Adjacent modules may rely only on declared public surfaces and contract IDs."
+    });
+  }
+  if (moduleInterfaces.length > 1) {
+    patterns.push({
+      name: "Explicit module boundary",
+      rationale: `${moduleInterfaces.length} responsibility units enforce ownership separation; cross-module access requires a declared contract.`
+    });
+  }
+  const hasAsyncSurfaces = moduleInterfaces.some((m) =>
+    (m.publicSurfaces ?? []).some((s) => String(s.kind ?? "").toLowerCase().includes("async") || String(s.kind ?? "").toLowerCase().includes("event"))
+  );
+  if (hasAsyncSurfaces) {
+    patterns.push({
+      name: "Async surface contract",
+      rationale: "Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination."
+    });
+  }
+  if (moduleInterfaces.length > 2) {
+    patterns.push({
+      name: "Responsibility decomposition",
+      rationale: `System is decomposed into ${moduleInterfaces.length} focused responsibility units to limit blast radius and simplify reasoning.`
+    });
+  }
+  patterns.push({
+    name: "Fail-fast contract mismatch",
+    rationale: "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
+  });
+  return patterns;
+}
+
 export function buildSystemDossier({
   prd,
   designPack,
@@ -614,16 +654,7 @@ export function buildSystemDossier({
       responsibilityUnitIds: uniqueText((designPack.responsibilityBoundaries ?? []).map((boundary) => boundary.responsibilityUnitId)),
       acceptanceCriteriaIds: (prd.acceptanceCriteria ?? []).map((criterion) => criterion.id ?? "AC")
     },
-    designPatterns: [
-      {
-        name: "Contract-first responsibility boundary",
-        rationale: "Adjacent modules may rely only on declared public surfaces and contract IDs."
-      },
-      {
-        name: "Fail-fast contract mismatch",
-        rationale: "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
-      }
-    ],
+    designPatterns: deriveDesignPatterns({ moduleInterfaces, dependencyEdges, scenarioDetails }),
     workItems: (workItems ?? []).map((workItem) => ({
       id: workItem.id,
       title: workItem.title ?? workItem.id,
