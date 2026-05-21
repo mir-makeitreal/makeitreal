@@ -29,7 +29,7 @@ function OverviewView() {
       <HeroSection status={model.status} cockpit={model.operatorCockpit} />
 
       <div className="cards-grid">
-        <div className="card">
+        <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="card-header">
             Architecture
             <span className="card-meta">
@@ -45,7 +45,7 @@ function OverviewView() {
         </div>
 
         {allWorkItems.length > 0 && (
-          <div className="card">
+          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="card-header">
               Task DAG
               <span className="card-meta">
@@ -58,7 +58,7 @@ function OverviewView() {
           </div>
         )}
 
-        <div className="card">
+        <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="card-header">
             Module Interfaces
             <span className="card-meta">
@@ -71,7 +71,7 @@ function OverviewView() {
         </div>
 
         {model.blueprint.contracts.length > 0 && (
-          <div className="card">
+          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="card-header">Contracts</div>
             <div className="card-body">
               {model.blueprint.contracts.map(c => (
@@ -85,7 +85,7 @@ function OverviewView() {
         )}
 
         {(model.operatorCockpit.evidenceLinks.length > 0 || model.operatorCockpit.firstRunChecklist.length > 0) && (
-          <div className="card">
+          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="card-header">Evidence</div>
             <div className="card-body card-body--flush">
               <EvidencePanel cockpit={model.operatorCockpit} />
@@ -94,7 +94,7 @@ function OverviewView() {
         )}
 
         {model.blueprint.boundaries.length > 0 && (
-          <div className="card">
+          <div className="card card--vercel transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="card-header">
               Responsibility Map
               <span className="card-meta">
@@ -111,7 +111,7 @@ function OverviewView() {
         )}
 
         {model.board && (
-          <div className="card card--span-full">
+          <div className="card card--vercel card--span-full transition-all hover:shadow-xl">
             <div className="card-header">Kanban Board</div>
             <div className="card-body card-body--flush">
               <KanbanBoard board={model.board} />

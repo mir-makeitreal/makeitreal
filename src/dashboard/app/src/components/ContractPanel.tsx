@@ -106,7 +106,7 @@ function InputsTable({ inputs }: { inputs: PublicSurfaceInput[] }) {
   return (
     <div className="signature-table-block">
       <div className="sig-header">Inputs</div>
-      <table className="signature-table">
+      <table className="signature-table signature-table--striped">
         <thead>
           <tr>
             <th>Name</th>
@@ -136,7 +136,7 @@ function OutputsTable({ outputs }: { outputs: PublicSurfaceOutput[] }) {
   return (
     <div className="signature-table-block">
       <div className="sig-header">Outputs</div>
-      <table className="signature-table">
+      <table className="signature-table signature-table--striped">
         <thead>
           <tr>
             <th>Name</th>
@@ -164,7 +164,7 @@ function ErrorsTable({ errors }: { errors: PublicSurfaceError[] }) {
   return (
     <div className="signature-table-block">
       <div className="sig-header">Errors</div>
-      <table className="signature-table">
+      <table className="signature-table signature-table--striped">
         <thead>
           <tr>
             <th>Code</th>
@@ -284,7 +284,7 @@ export function ContractPanel({ moduleInterfaces }: Props) {
                   Imports
                   <span>{mod.imports.length}</span>
                 </h4>
-                <table className="signature-table import-table">
+                <table className="signature-table signature-table--striped import-table">
                   <thead>
                     <tr>
                       <th>Surface</th>

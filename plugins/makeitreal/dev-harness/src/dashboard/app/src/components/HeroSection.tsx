@@ -26,11 +26,33 @@ function phaseClass(phase: string): string {
   return 'pending';
 }
 
-function StatusIcon({ status }: { status: string }) {
-  if (status === 'complete') return <IconCheck />;
-  if (status === 'current') return <IconDot />;
-  if (status === 'blocked') return <IconX />;
-  return <IconRing />;
+function StepStatusIcon({ status }: { status: string }) {
+  if (status === 'complete') {
+    return (
+      <span className="checklist-step__dot checklist-step__dot--complete" aria-hidden="true">
+        <IconCheck />
+      </span>
+    );
+  }
+  if (status === 'current') {
+    return (
+      <span className="checklist-step__dot checklist-step__dot--current" aria-hidden="true">
+        <span className="checklist-step__pulse" />
+      </span>
+    );
+  }
+  if (status === 'blocked') {
+    return (
+      <span className="checklist-step__dot checklist-step__dot--blocked" aria-hidden="true">
+        <IconX />
+      </span>
+    );
+  }
+  return (
+    <span className="checklist-step__dot checklist-step__dot--pending" aria-hidden="true">
+      <IconRing />
+    </span>
+  );
 }
 
 function PhaseIcon({ phase }: { phase: string }) {
@@ -73,16 +95,22 @@ export function HeroSection({ status, cockpit }: Props) {
     }
   };
 
+  const completeSteps = cockpit.firstRunChecklist.filter(i => i.status === 'complete').length;
+  const totalSteps = cockpit.firstRunChecklist.length;
+
   return (
     <div className="hero-section">
-      <div className="hero-meta">
-        <span className={`status-badge ${phaseClass(status.phase)}`}>
-          <span className="status-dot" />
-          {status.phase}
-        </span>
-        <span className="hero-blueprint-label">
-          Blueprint: {status.blueprintStatus}
-        </span>
+      <div className="hero-section__top">
+        <div className="hero-meta">
+          <span className={`status-badge ${phaseClass(status.phase)}`}>
+            <span className="status-dot" />
+            {status.phase}
+          </span>
+          <span className="hero-blueprint-label">
+            <span className="hero-blueprint-label__key">Blueprint</span>
+            <span className="hero-blueprint-label__val">{status.blueprintStatus}</span>
+          </span>
+        </div>
       </div>
 
       <h2 className="hero-headline">
@@ -91,13 +119,10 @@ export function HeroSection({ status, cockpit }: Props) {
       </h2>
 
       <div className="hero-next-action">
-        <span className="hero-next-action__prefix">Next: </span>
-        {cockpit.nextAction}
+        <span className="hero-next-action__prefix">Next</span>
+        <span className="hero-next-action__text">{cockpit.nextAction}</span>
         {cockpit.nextCommand && (
-          <>
-            {' — '}
-            <code>{cockpit.nextCommand}</code>
-          </>
+          <code className="hero-next-action__cmd">{cockpit.nextCommand}</code>
         )}
       </div>
 
@@ -108,14 +133,14 @@ export function HeroSection({ status, cockpit }: Props) {
               <button
                 type="button"
                 onClick={() => handleReview('approve')}
-                className="hero-review-btn hero-review-btn--approve"
+                className="hero-review-btn hero-review-btn--approve transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
               >
                 <IconCheck /> Approve Blueprint
               </button>
               <button
                 type="button"
                 onClick={() => handleReview('reject')}
-                className="hero-review-btn hero-review-btn--reject"
+                className="hero-review-btn hero-review-btn--reject transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
               >
                 <IconX /> Reject
               </button>
@@ -136,14 +161,29 @@ export function HeroSection({ status, cockpit }: Props) {
         </div>
       )}
 
-      <div className="checklist">
-        {cockpit.firstRunChecklist.map((item) => (
-          <div key={item.id} className={`checklist-item ${item.status}`}>
-            <StatusIcon status={item.status} />
-            <span>{item.label}</span>
+      {totalSteps > 0 && (
+        <div className="checklist-pipeline">
+          <div className="checklist-pipeline__header">
+            <span className="checklist-pipeline__label">First-run pipeline</span>
+            <span className="checklist-pipeline__progress">{completeSteps} / {totalSteps}</span>
           </div>
-        ))}
-      </div>
+          <ol className="checklist">
+            {cockpit.firstRunChecklist.map((item, idx) => (
+              <li key={item.id} className={`checklist-step checklist-step--${item.status}`}>
+                <span className="checklist-step__rail" aria-hidden="true" />
+                <StepStatusIcon status={item.status} />
+                <span className="checklist-step__body">
+                  <span className="checklist-step__index">Step {idx + 1}</span>
+                  <span className="checklist-step__label">{item.label}</span>
+                </span>
+                <span className={`checklist-step__pill checklist-step__pill--${item.status}`}>
+                  {item.status}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

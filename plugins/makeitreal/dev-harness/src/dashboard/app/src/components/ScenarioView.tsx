@@ -1,11 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import mermaid from 'mermaid';
 import { useDashboardStore } from '../store/dashboard-store';
 import type { ScenarioDetail, ScenarioIndexEntry, SequenceMessage } from '../types/model';
 
+type MermaidModule = typeof import('mermaid')['default'];
+
+let mermaidInstance: MermaidModule | null = null;
+let mermaidLoader: Promise<MermaidModule> | null = null;
 let mermaidInitialized = false;
 
-function initMermaid(theme: 'dark' | 'light') {
+async function getMermaid(): Promise<MermaidModule> {
+  if (mermaidInstance) return mermaidInstance;
+  if (!mermaidLoader) {
+    mermaidLoader = import('mermaid').then(mod => {
+      mermaidInstance = mod.default;
+      return mermaidInstance;
+    });
+  }
+  return mermaidLoader;
+}
+
+async function initMermaid(theme: 'dark' | 'light') {
+  const mermaid = await getMermaid();
   const isDark = theme === 'dark';
   mermaid.initialize({
     startOnLoad: false,
@@ -129,17 +144,20 @@ interface MermaidSequenceProps {
 function MermaidSequenceDiagram({ diagramId, participants, messages, theme }: MermaidSequenceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    initMermaid(theme);
+    setLoading(true);
 
     const definition = buildSequenceDefinition(participants, messages);
     const renderId = `${diagramId}-${Date.now()}`;
 
-    mermaid
-      .render(renderId, definition)
-      .then(({ svg }) => {
+    (async () => {
+      try {
+        await initMermaid(theme);
+        const mermaid = await getMermaid();
+        const { svg } = await mermaid.render(renderId, definition);
         if (cancelled) return;
         if (containerRef.current) {
           containerRef.current.innerHTML = svg;
@@ -151,13 +169,15 @@ function MermaidSequenceDiagram({ diagramId, participants, messages, theme }: Me
           }
         }
         setError(null);
-      })
-      .catch((err: unknown) => {
+        setLoading(false);
+      } catch (err: unknown) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
         console.warn('Mermaid render failed', message);
         setError(message);
-      });
+        setLoading(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -176,7 +196,17 @@ function MermaidSequenceDiagram({ diagramId, participants, messages, theme }: Me
     );
   }
 
-  return <div className="seq-mermaid" ref={containerRef} aria-label="Sequence diagram" />;
+  return (
+    <div className="seq-mermaid-wrap">
+      {loading && (
+        <div className="seq-loading" aria-live="polite">
+          <span className="seq-loading__spinner" aria-hidden="true" />
+          <span>Loading diagram…</span>
+        </div>
+      )}
+      <div className="seq-mermaid" ref={containerRef} aria-label="Sequence diagram" />
+    </div>
+  );
 }
 
 function ScenarioCard({ scenario, theme }: { scenario: ScenarioDetail; theme: 'dark' | 'light' }) {
@@ -239,7 +269,7 @@ export function ScenarioView() {
   // Re-initialize mermaid theme when dashboard theme changes.
   useEffect(() => {
     mermaidInitialized = false;
-    initMermaid(theme);
+    void initMermaid(theme);
   }, [theme]);
 
   if (!model) return null;

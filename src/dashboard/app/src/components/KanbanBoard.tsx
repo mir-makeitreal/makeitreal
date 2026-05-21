@@ -65,7 +65,7 @@ function WorkItemCard({
   return (
     <button
       type="button"
-      className={`kanban-card ${isSelected ? 'selected' : ''}`}
+      className={`kanban-card transition-all hover:-translate-y-px hover:shadow-lg ${isSelected ? 'selected' : ''}`}
       onClick={onClick}
       aria-pressed={isSelected}
       aria-label={`Open details for ${item.title}`}

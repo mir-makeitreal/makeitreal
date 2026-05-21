@@ -106,36 +106,38 @@ function PathTree({ paths }: { paths: string[] }) {
   const tree = buildPathTree(paths);
 
   if (tree.length === 0) {
-    return <div style={emptyStateStyle}>No owned paths.</div>;
+    return <div className="rmap-empty">No owned paths.</div>;
   }
 
   return (
-    <ul style={treeRootStyle}>
+    <ul className="rmap-tree">
       {tree.map(node => (
-        <PathTreeBranch key={node.name} node={node} pathKey={node.name} />
+        <PathTreeBranch key={node.name} node={node} pathKey={node.name} depth={0} />
       ))}
     </ul>
   );
 }
 
-function PathTreeBranch({ node, pathKey }: { node: PathTreeNode; pathKey: string }) {
+function PathTreeBranch({ node, pathKey, depth }: { node: PathTreeNode; pathKey: string; depth: number }) {
   const isFile = looksLikeFile(node);
+  const isFolder = node.children.length > 0;
 
   return (
-    <li style={treeItemStyle}>
-      <div style={treeLineStyle}>
-        <span aria-hidden="true" style={treeIconStyle}>
-          {isFile ? <IconFile /> : <IconFolder />}
+    <li className="rmap-tree__item">
+      <div className={`rmap-tree__line rmap-tree__line--${isFolder ? 'folder' : isFile ? 'file' : 'leaf'}`}>
+        <span aria-hidden="true" className="rmap-tree__icon">
+          {isFolder ? <IconFolder /> : <IconFile />}
         </span>
-        <code style={treeLabelStyle}>{node.name}</code>
+        <code className="rmap-tree__label">{node.name}</code>
       </div>
-      {node.children.length > 0 && (
-        <ul style={treeChildStyle}>
+      {isFolder && (
+        <ul className="rmap-tree__children">
           {node.children.map(child => (
             <PathTreeBranch
               key={`${pathKey}/${child.name}`}
               node={child}
               pathKey={`${pathKey}/${child.name}`}
+              depth={depth + 1}
             />
           ))}
         </ul>
@@ -162,14 +164,10 @@ function ContractBadge({
         event.stopPropagation();
         onCopy(contractId);
       }}
-      style={{
-        ...contractBadgeStyle,
-        borderColor: copied ? 'rgba(63, 185, 80, 0.55)' : 'rgba(88, 166, 255, 0.32)',
-        color: copied ? 'var(--accent-green)' : 'var(--accent-blue)',
-      }}
+      className={`rmap-contract-badge${copied ? ' rmap-contract-badge--copied' : ''} transition-colors`}
     >
-      <span style={contractBadgeTextStyle}>{contractId}</span>
-      {copied && <span style={contractBadgeCopiedStyle}>copied</span>}
+      <span className="rmap-contract-badge__text">{contractId}</span>
+      {copied && <span className="rmap-contract-badge__copied">copied</span>}
     </button>
   );
 }
@@ -222,16 +220,7 @@ export function ResponsibilityMap({
   }
 
   return (
-    <div
-      className="responsibility-map"
-      style={{
-        padding: 16,
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(400px, 1fr))',
-        gap: 12,
-        overflowX: 'auto',
-      }}
-    >
+    <div className="responsibility-map rmap-grid">
       {moduleInterfaces.map(mod => {
         const boundary = boundaryMap.get(mod.responsibilityUnitId);
         const isSelected = selectedModuleId === mod.responsibilityUnitId;
@@ -248,57 +237,38 @@ export function ResponsibilityMap({
         return (
           <div
             key={mod.responsibilityUnitId}
-            className={`responsibility-unit ${isSelected ? 'selected' : ''}`}
-            style={{
-              border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-              borderLeft: `4px solid ${color}`,
-              borderRadius: 'var(--radius-md)',
-              background: isSelected ? 'rgba(88, 166, 255, 0.08)' : 'var(--bg-surface)',
-              boxShadow: isSelected ? '0 0 0 1px rgba(88, 166, 255, 0.22)' : 'var(--shadow-sm)',
-              cursor: 'pointer',
-              minWidth: 0,
-              overflow: 'hidden',
-            }}
+            className={`rmap-card${isSelected ? ' rmap-card--selected' : ''}`}
+            ref={el => { if (el) el.style.setProperty('--rmap-accent', color); }}
             onClick={() => onSelectModule?.(mod.responsibilityUnitId)}
           >
-            <div
-              style={{
-                padding: '12px 14px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 12,
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={cardTitleRowStyle}>
-                  <div style={cardTitleStyle}>{mod.moduleName}</div>
-                  <span style={ownerBadgeStyle}>{mod.owner ?? 'unowned'}</span>
+            <div className="rmap-card__head">
+              <div className="rmap-card__head-main">
+                <div className="rmap-card__title-row">
+                  <div className="rmap-card__title">{mod.moduleName}</div>
+                  <span className="rmap-owner-badge">{mod.owner ?? 'unowned'}</span>
                 </div>
                 {mod.purpose && (
-                  <div style={purposeStyle}>
-                    {mod.purpose}
-                  </div>
+                  <div className="rmap-card__purpose">{mod.purpose}</div>
                 )}
-                <div style={unitIdStyle}>{mod.responsibilityUnitId}</div>
+                <div className="rmap-card__unit-id">{mod.responsibilityUnitId}</div>
               </div>
               <button
                 type="button"
                 aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${mod.moduleName} file tree`}
                 aria-expanded={isExpanded}
                 onClick={e => { e.stopPropagation(); toggleExpand(mod.responsibilityUnitId); }}
-                style={expandButtonStyle}
+                className="rmap-expand-btn transition-colors"
               >
                 {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
               </button>
             </div>
 
-            <div style={cardBodyStyle}>
-              <section style={sectionStyle}>
-                <div style={sectionHeaderStyle}>
+            <div className="rmap-card__body">
+              <section className="rmap-section">
+                <div className="rmap-section__header">
                   <span>Owned Paths</span>
                   {hiddenPathCount > 0 && (
-                    <span style={sectionCountStyle}>+{hiddenPathCount}</span>
+                    <span className="rmap-section__count">+{hiddenPathCount}</span>
                   )}
                 </div>
                 <PathTree paths={visiblePaths} />
@@ -309,20 +279,20 @@ export function ResponsibilityMap({
                       event.stopPropagation();
                       toggleExpand(mod.responsibilityUnitId);
                     }}
-                    style={showMoreStyle}
+                    className="rmap-show-more"
                   >
                     Show full tree
                   </button>
                 )}
               </section>
 
-              <section style={sectionStyle}>
-                <div style={sectionHeaderStyle}>
+              <section className="rmap-section">
+                <div className="rmap-section__header">
                   <span>Contracts</span>
-                  <span style={sectionCountStyle}>{contractIds.length}</span>
+                  <span className="rmap-section__count">{contractIds.length}</span>
                 </div>
                 {contractIds.length > 0 ? (
-                  <div style={badgeRowStyle}>
+                  <div className="rmap-badge-row">
                     {contractIds.map(contractId => (
                       <ContractBadge
                         key={contractId}
@@ -333,21 +303,21 @@ export function ResponsibilityMap({
                     ))}
                   </div>
                 ) : (
-                  <div style={emptyStateStyle}>No contract IDs.</div>
+                  <div className="rmap-empty">No contract IDs.</div>
                 )}
               </section>
 
               {isExpanded && mod.publicSurfaces.length > 0 && (
-                <section style={sectionStyle}>
-                  <div style={sectionHeaderStyle}>
+                <section className="rmap-section">
+                  <div className="rmap-section__header">
                     <span>Public Surfaces</span>
-                    <span style={sectionCountStyle}>{mod.publicSurfaces.length}</span>
+                    <span className="rmap-section__count">{mod.publicSurfaces.length}</span>
                   </div>
-                  <div style={surfaceListStyle}>
+                  <div className="rmap-surface-list">
                     {mod.publicSurfaces.map(surface => (
-                      <div key={`${surface.kind}:${surface.name}`} style={surfaceRowStyle}>
-                        <span style={surfaceKindStyle}>{surface.kind}</span>
-                        <span style={surfaceNameStyle}>{surface.name}</span>
+                      <div key={`${surface.kind}:${surface.name}`} className="rmap-surface-row">
+                        <span className="rmap-surface-kind">{surface.kind}</span>
+                        <span className="rmap-surface-name">{surface.name}</span>
                       </div>
                     ))}
                   </div>
@@ -371,23 +341,19 @@ export function ResponsibilityMap({
           return (
             <div
               key={boundary.responsibilityUnitId}
-              style={{
-                border: '1px dashed var(--border-primary)',
-                borderLeft: `4px solid ${color}`,
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-secondary)',
-                minWidth: 0,
-                overflow: 'hidden',
-              }}
+              className="rmap-card rmap-card--boundary"
+              ref={el => { if (el) el.style.setProperty('--rmap-accent', color); }}
               onClick={() => onSelectModule?.(boundary.responsibilityUnitId)}
             >
-              <div style={{ ...cardHeaderStyle, alignItems: 'flex-start' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={cardTitleRowStyle}>
-                    <div style={cardTitleStyle}>{boundary.responsibilityUnitId}</div>
-                    <span style={ownerBadgeStyle}>boundary-only</span>
+              <div className="rmap-card__head">
+                <div className="rmap-card__head-main">
+                  <div className="rmap-card__title-row">
+                    <div className="rmap-card__title">{boundary.responsibilityUnitId}</div>
+                    <span className="rmap-owner-badge">boundary-only</span>
                   </div>
-                  <div style={purposeStyle}>No module interface is registered for this boundary.</div>
+                  <div className="rmap-card__purpose">
+                    No module interface is registered for this boundary.
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -397,16 +363,16 @@ export function ResponsibilityMap({
                     event.stopPropagation();
                     toggleExpand(boundary.responsibilityUnitId);
                   }}
-                  style={expandButtonStyle}
+                  className="rmap-expand-btn transition-colors"
                 >
                   {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
                 </button>
               </div>
-              <div style={cardBodyStyle}>
-                <section style={sectionStyle}>
-                  <div style={sectionHeaderStyle}>
+              <div className="rmap-card__body">
+                <section className="rmap-section">
+                  <div className="rmap-section__header">
                     <span>Owned Paths</span>
-                    {hiddenPathCount > 0 && <span style={sectionCountStyle}>+{hiddenPathCount}</span>}
+                    {hiddenPathCount > 0 && <span className="rmap-section__count">+{hiddenPathCount}</span>}
                   </div>
                   <PathTree paths={visiblePaths} />
                   {hiddenPathCount > 0 && (
@@ -416,20 +382,20 @@ export function ResponsibilityMap({
                         event.stopPropagation();
                         toggleExpand(boundary.responsibilityUnitId);
                       }}
-                      style={showMoreStyle}
+                      className="rmap-show-more"
                     >
                       Show full tree
                     </button>
                   )}
                 </section>
 
-                <section style={sectionStyle}>
-                  <div style={sectionHeaderStyle}>
+                <section className="rmap-section">
+                  <div className="rmap-section__header">
                     <span>Contracts</span>
-                    <span style={sectionCountStyle}>{boundary.mayUseContracts.length}</span>
+                    <span className="rmap-section__count">{boundary.mayUseContracts.length}</span>
                   </div>
                   {boundary.mayUseContracts.length > 0 ? (
-                    <div style={badgeRowStyle}>
+                    <div className="rmap-badge-row">
                       {boundary.mayUseContracts.map(contractId => (
                         <ContractBadge
                           key={contractId}
@@ -440,7 +406,7 @@ export function ResponsibilityMap({
                       ))}
                     </div>
                   ) : (
-                    <div style={emptyStateStyle}>No contract IDs.</div>
+                    <div className="rmap-empty">No contract IDs.</div>
                   )}
                 </section>
               </div>
@@ -450,231 +416,3 @@ export function ResponsibilityMap({
     </div>
   );
 }
-
-const cardHeaderStyle: React.CSSProperties = {
-  padding: '12px 14px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 12,
-};
-
-const cardBodyStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border-secondary)',
-  display: 'grid',
-  gap: 12,
-  padding: '12px 14px 14px',
-};
-
-const cardTitleRowStyle: React.CSSProperties = {
-  alignItems: 'center',
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 8,
-  minWidth: 0,
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  color: 'var(--text-primary)',
-  fontSize: 13,
-  fontWeight: 700,
-  lineHeight: 1.25,
-  minWidth: 0,
-  overflowWrap: 'anywhere',
-};
-
-const ownerBadgeStyle: React.CSSProperties = {
-  background: 'var(--bg-tertiary)',
-  border: '1px solid var(--border-secondary)',
-  borderRadius: 'var(--radius-pill)',
-  color: 'var(--text-secondary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  fontWeight: 600,
-  lineHeight: 1.2,
-  padding: '3px 8px',
-};
-
-const purposeStyle: React.CSSProperties = {
-  color: 'var(--text-secondary)',
-  fontSize: 11,
-  lineHeight: 1.45,
-  marginTop: 6,
-  overflowWrap: 'anywhere',
-};
-
-const unitIdStyle: React.CSSProperties = {
-  color: 'var(--text-tertiary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  marginTop: 6,
-  overflowWrap: 'anywhere',
-};
-
-const expandButtonStyle: React.CSSProperties = {
-  alignItems: 'center',
-  background: 'var(--bg-tertiary)',
-  border: '1px solid var(--border-primary)',
-  borderRadius: 'var(--radius-md)',
-  color: 'var(--text-secondary)',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  flex: '0 0 auto',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 11,
-  height: 28,
-  justifyContent: 'center',
-  lineHeight: 1,
-  width: 28,
-};
-
-const sectionStyle: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  alignItems: 'center',
-  color: 'var(--text-tertiary)',
-  display: 'flex',
-  fontSize: 10,
-  fontWeight: 700,
-  justifyContent: 'space-between',
-  letterSpacing: 0.4,
-  marginBottom: 8,
-  textTransform: 'uppercase',
-};
-
-const sectionCountStyle: React.CSSProperties = {
-  background: 'var(--bg-tertiary)',
-  borderRadius: 'var(--radius-pill)',
-  color: 'var(--text-tertiary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  fontWeight: 600,
-  padding: '2px 7px',
-};
-
-const treeRootStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 3,
-  listStyle: 'none',
-  margin: 0,
-  padding: 0,
-};
-
-const treeChildStyle: React.CSSProperties = {
-  borderLeft: '1px solid var(--border-secondary)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 3,
-  listStyle: 'none',
-  margin: '3px 0 0 9px',
-  padding: '0 0 0 12px',
-};
-
-const treeItemStyle: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const treeLineStyle: React.CSSProperties = {
-  alignItems: 'center',
-  display: 'flex',
-  gap: 6,
-  minWidth: 0,
-};
-
-const treeIconStyle: React.CSSProperties = {
-  flex: '0 0 auto',
-  fontSize: 12,
-  lineHeight: 1,
-};
-
-const treeLabelStyle: React.CSSProperties = {
-  color: 'var(--text-secondary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  lineHeight: 1.4,
-  overflowWrap: 'anywhere',
-};
-
-const badgeRowStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 6,
-};
-
-const contractBadgeStyle: React.CSSProperties = {
-  alignItems: 'center',
-  background: 'rgba(88, 166, 255, 0.08)',
-  border: '1px solid rgba(88, 166, 255, 0.32)',
-  borderRadius: 'var(--radius-pill)',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  gap: 6,
-  minWidth: 0,
-  padding: '4px 8px',
-};
-
-const contractBadgeTextStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  fontWeight: 600,
-  lineHeight: 1.2,
-  overflowWrap: 'anywhere',
-};
-
-const contractBadgeCopiedStyle: React.CSSProperties = {
-  color: 'var(--accent-green)',
-  fontSize: 9,
-  fontWeight: 700,
-  lineHeight: 1,
-  textTransform: 'uppercase',
-};
-
-const emptyStateStyle: React.CSSProperties = {
-  color: 'var(--text-tertiary)',
-  fontSize: 11,
-  lineHeight: 1.4,
-};
-
-const showMoreStyle: React.CSSProperties = {
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--accent-blue)',
-  cursor: 'pointer',
-  fontSize: 11,
-  fontWeight: 600,
-  marginTop: 8,
-  padding: 0,
-};
-
-const surfaceListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
-
-const surfaceRowStyle: React.CSSProperties = {
-  alignItems: 'center',
-  display: 'flex',
-  gap: 8,
-  minWidth: 0,
-};
-
-const surfaceKindStyle: React.CSSProperties = {
-  background: 'rgba(188, 140, 255, 0.12)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--accent-purple)',
-  flex: '0 0 auto',
-  fontSize: 10,
-  fontWeight: 700,
-  padding: '2px 6px',
-  textTransform: 'uppercase',
-};
-
-const surfaceNameStyle: React.CSSProperties = {
-  color: 'var(--text-secondary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  overflowWrap: 'anywhere',
-};

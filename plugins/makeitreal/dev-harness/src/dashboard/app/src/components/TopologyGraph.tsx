@@ -148,12 +148,17 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges, fullHeight =
   const selectNode = useDashboardStore(s => s.selectNode);
 
   const [nodes, setNodes] = useState<ModuleFlowNode[]>([]);
+  const [layoutLoading, setLayoutLoading] = useState(true);
   const edges = useMemo(() => buildEdges(archEdges), [archEdges]);
 
   useEffect(() => {
     let cancelled = false;
+    setLayoutLoading(true);
     elkLayout(archNodes, archEdges).then(result => {
-      if (!cancelled) setNodes(result);
+      if (!cancelled) {
+        setNodes(result);
+        setLayoutLoading(false);
+      }
     }).catch(err => {
       console.warn('ELK layout failed, falling back to grid', err);
       if (!cancelled) {
@@ -169,6 +174,7 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges, fullHeight =
             moduleType: archNodeModuleType(n),
           },
         })));
+        setLayoutLoading(false);
       }
     });
     return () => { cancelled = true; };
@@ -188,6 +194,12 @@ export function TopologyGraph({ nodes: archNodes, edges: archEdges, fullHeight =
 
   return (
     <div className={`flow-container${fullHeight ? ' flow-container-full' : ''}`}>
+      {layoutLoading && (
+        <div className="flow-layout-loading" aria-live="polite" aria-busy="true">
+          <span className="flow-layout-loading__spinner" aria-hidden="true" />
+          <span className="flow-layout-loading__label">Computing layout…</span>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}

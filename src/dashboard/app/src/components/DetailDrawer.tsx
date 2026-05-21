@@ -53,14 +53,21 @@ export function DetailDrawer({ selection, model, onClose }: DetailDrawerProps) {
   const kindLabel = active.nodeType ? KIND_LABEL[active.nodeType] ?? active.nodeType : '';
 
   return (
-    <aside
-      className={`detail-drawer${open ? ' detail-drawer--open' : ''}`}
-      role="dialog"
-      aria-hidden={!open}
-      aria-label={active.nodeId ? `${kindLabel} details` : 'Detail drawer'}
-    >
-      <DrawerContent selection={active} model={model} onClose={onClose} kindLabel={kindLabel} />
-    </aside>
+    <>
+      <div
+        className={`detail-drawer-backdrop${open ? ' detail-drawer-backdrop--open' : ''}`}
+        aria-hidden="true"
+        onClick={onClose}
+      />
+      <aside
+        className={`detail-drawer${open ? ' detail-drawer--open' : ''}`}
+        role="dialog"
+        aria-hidden={!open}
+        aria-label={active.nodeId ? `${kindLabel} details` : 'Detail drawer'}
+      >
+        <DrawerContent selection={active} model={model} onClose={onClose} kindLabel={kindLabel} />
+      </aside>
+    </>
   );
 }
 

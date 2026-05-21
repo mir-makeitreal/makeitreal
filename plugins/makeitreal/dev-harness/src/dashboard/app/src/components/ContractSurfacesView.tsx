@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Highlight, themes } from 'prism-react-renderer';
 import { useDashboardStore } from '../store/dashboard-store';
 import type {
   ContractSurface,
@@ -46,7 +47,22 @@ function CodeBlockWithCopy({ code }: { code: string }) {
         {copied ? <IconCheck /> : <IconClipboard />}
         {copied ? 'Copied' : 'Copy'}
       </button>
-      <pre className="surface-code"><code>{code}</code></pre>
+      <Highlight code={code} language="tsx" theme={themes.nightOwl}>
+        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+          <pre className={`surface-code ${className}`} style={style}>
+            {tokens.map((line, i) => (
+              <div key={i} {...getLineProps({ line })}>
+                <span className="surface-code__line-no">{i + 1}</span>
+                <span className="surface-code__line-content">
+                  {line.map((token, key) => (
+                    <span key={key} {...getTokenProps({ token })} />
+                  ))}
+                </span>
+              </div>
+            ))}
+          </pre>
+        )}
+      </Highlight>
     </div>
   );
 }
