@@ -13,14 +13,41 @@ function renderTextList(values = []) {
   return `<ul class="clean-list">${values.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul>`;
 }
 
-function renderAcceptance(criteria = []) {
+function renderAcceptance(criteria = [], workItems = []) {
   if (criteria.length === 0) {
     return '<p class="empty">No acceptance criteria recorded.</p>';
   }
-  return `<div class="criteria-list">${criteria.map((criterion) => `<div class="criterion">
-    <strong>${escapeHtml(criterion.id ?? "AC")}</strong>
+  const acToWorkItems = new Map();
+  for (const workItem of workItems) {
+    const tracedAcIds = workItem.prdTrace?.acceptanceCriteriaIds ?? [];
+    for (const acId of tracedAcIds) {
+      const current = acToWorkItems.get(acId) ?? [];
+      current.push(workItem);
+      acToWorkItems.set(acId, current);
+    }
+  }
+  const allVerificationCommands = workItems.flatMap((workItem) => (workItem.verificationCommands ?? []).map((cmd) => ({ cmd, workItemId: workItem.id })));
+  return `<div class="criteria-list">${criteria.map((criterion) => {
+    const acId = criterion.id ?? "AC";
+    const linked = acToWorkItems.get(acId) ?? [];
+    const linkedCommands = linked.flatMap((workItem) => (workItem.verificationCommands ?? []).map((cmd) => ({ cmd, workItemId: workItem.id })));
+    const verificationHtml = linkedCommands.length > 0
+      ? `<div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--ok, #3fb950);">
+          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">Verification</span>
+          ${linkedCommands.map((entry) => `<div style="margin-top:2px;"><code style="font-size:12px;">${escapeHtml(entry.cmd)}</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(${escapeHtml(entry.workItemId)})</span></div>`).join("")}
+        </div>`
+      : allVerificationCommands.length > 0
+        ? `<div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--muted, #7d8590);">
+          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">General verification</span>
+          ${allVerificationCommands.map((entry) => `<div style="margin-top:2px;"><code style="font-size:12px;">${escapeHtml(entry.cmd)}</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(${escapeHtml(entry.workItemId)})</span></div>`).join("")}
+        </div>`
+        : "";
+    return `<div class="criterion">
+    <strong>${escapeHtml(acId)}</strong>
     <span>${escapeHtml(criterion.statement ?? criterion)}</span>
-  </div>`).join("")}</div>`;
+    ${verificationHtml}
+  </div>`;
+  }).join("")}</div>`;
 }
 
 function humanizeIdentifier(value) {
@@ -327,10 +354,33 @@ function renderFileTree(tree) {
   </div>`;
 }
 
+function typeBadgeHtml(type) {
+  const normalized = String(type ?? "").toLowerCase();
+  const knownTypes = ["string", "number", "boolean", "object", "array", "integer"];
+  const matched = knownTypes.find((known) => normalized.includes(known));
+  if (!matched) {
+    return "";
+  }
+  return `<span class="type-badge" style="display:inline-block;background:#1c6b50;color:#e6edf3;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">${escapeHtml(matched)}</span>`;
+}
+
+function constraintNoteHtml(description) {
+  if (!description) {
+    return "";
+  }
+  const constraintPatterns = [/\bmust be\b/i, /\bminimum\b/i, /\bmaximum\b/i, /\bpattern\b/i, /\bone of\b/i, /\bmin\b/i, /\bmax\b/i, /\bat least\b/i, /\bat most\b/i, /\brequired when\b/i];
+  const hasConstraint = constraintPatterns.some((pattern) => pattern.test(description));
+  if (!hasConstraint) {
+    return "";
+  }
+  return `<p class="constraint-note" style="margin:2px 0 0;font-size:11px;color:var(--warn);font-style:italic;">⚠ Constraint: ${escapeHtml(description)}</p>`;
+}
+
 function renderSchemaField(field = {}, role = "field") {
   const errorCode = String(field.code ?? "");
   const httpStatusMatch = role === "error" ? errorCode.match(/^(\d{3})\./) : null;
   const httpBadge = httpStatusMatch ? `<span class="http-status-badge" style="display:inline-block;background:var(--bad);color:#fff;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">${httpStatusMatch[1]}</span>` : "";
+  const typed = typeBadgeHtml(field.type);
   const meta = [
     field.type,
     field.required === true ? "required" : null,
@@ -340,9 +390,10 @@ function renderSchemaField(field = {}, role = "field") {
   ].filter(Boolean);
   const metaHtml = meta.length > 0 ? `<span>${escapeHtml(meta.join(" · "))}</span>` : "";
   const descriptionHtml = field.description ? `<p>${escapeHtml(field.description)}</p>` : "";
-  const detailsHtml = [metaHtml, descriptionHtml].filter(Boolean).join("");
+  const constraint = constraintNoteHtml(field.description);
+  const detailsHtml = [metaHtml, descriptionHtml, constraint].filter(Boolean).join("");
   return `<li>
-    ${httpBadge}<code>${escapeHtml(field.name ?? field.code ?? role)}</code>${detailsHtml ? `
+    ${httpBadge}${typed}<code>${escapeHtml(field.name ?? field.code ?? role)}</code>${detailsHtml ? `
     ${detailsHtml}` : ""}
   </li>`;
 }
@@ -1895,7 +1946,7 @@ export function renderDashboardHtml(model) {
             <h2>Acceptance Criteria</h2>
           </div>
         </div>
-        ${renderAcceptance(blueprint.acceptanceCriteria)}
+        ${renderAcceptance(blueprint.acceptanceCriteria, dossier.workItems)}
       </section>
 
       ${renderDesignPatterns(dossier.designPatterns)}
@@ -1907,7 +1958,15 @@ export function renderDashboardHtml(model) {
   </main>
   <script src="./preview.js"></script>
   <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    let mermaid;
+    try {
+      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+    } catch (_cdnError) {
+      document.querySelectorAll("details.mermaid-source").forEach((el) => el.open = true);
+      document.querySelectorAll("pre.mermaid").forEach((el) => el.style.display = "none");
+    }
+    if (!mermaid) { /* offline — sources already revealed above */ }
+    else {
     const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,
@@ -1989,6 +2048,7 @@ export function renderDashboardHtml(model) {
         errorTextColor: "#f87171"
       }
     });
+    }
   </script>
 </body>
 </html>

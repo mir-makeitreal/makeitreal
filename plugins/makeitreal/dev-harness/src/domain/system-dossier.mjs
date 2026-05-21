@@ -623,6 +623,15 @@ export function buildSystemDossier({
         name: "Fail-fast contract mismatch",
         rationale: "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
       }
-    ]
+    ],
+    workItems: (workItems ?? []).map((workItem) => ({
+      id: workItem.id,
+      title: workItem.title ?? workItem.id,
+      responsibilityUnitId: workItem.responsibilityUnitId ?? null,
+      prdTrace: workItem.prdTrace ?? {},
+      verificationCommands: (workItem.verificationCommands ?? []).map((cmd) =>
+        typeof cmd === "string" ? cmd : `${cmd.file ?? ""}${(cmd.args ?? []).length > 0 ? " " + cmd.args.join(" ") : ""}`
+      )
+    }))
   };
 }

@@ -336,10 +336,10 @@
       <section>
     <h4>Inputs</h4>
     <ul><li>
-    <code>credentials.email</code>
+    <span class="type-badge" style="display:inline-block;background:#1c6b50;color:#e6edf3;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">string</span><code>credentials.email</code>
     <span>string · required</span><p>User email address collected by the login form.</p>
   </li><li>
-    <code>credentials.password</code>
+    <span class="type-badge" style="display:inline-block;background:#1c6b50;color:#e6edf3;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">string</span><code>credentials.password</code>
     <span>string · required</span><p>User password collected by the login form.</p>
   </li></ul>
   </section>
@@ -384,10 +384,10 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
       <section>
     <h4>Inputs</h4>
     <ul><li>
-    <code>request.body.email</code>
+    <span class="type-badge" style="display:inline-block;background:#1c6b50;color:#e6edf3;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">string</span><code>request.body.email</code>
     <span>string · required</span><p>Email value from the auth UI.</p>
   </li><li>
-    <code>request.body.password</code>
+    <span class="type-badge" style="display:inline-block;background:#1c6b50;color:#e6edf3;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;">string</span><code>request.body.password</code>
     <span>string · required</span><p>Password value from the auth UI.</p>
   </li></ul>
   </section>
@@ -657,12 +657,24 @@ const session = await httpResponse.json();</code></pre>
         <div class="criteria-list"><div class="criterion">
     <strong>AC-001</strong>
     <span>A user can submit credentials through the auth UI.</span>
+    <div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--ok, #3fb950);">
+          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">Verification</span>
+          <div style="margin-top:2px;"><code style="font-size:12px;">node -e console.log('verification ok')</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(work.feature-auth)</span></div>
+        </div>
   </div><div class="criterion">
     <strong>AC-002</strong>
     <span>The auth UI calls only the declared auth contract.</span>
+    <div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--ok, #3fb950);">
+          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">Verification</span>
+          <div style="margin-top:2px;"><code style="font-size:12px;">node -e console.log('verification ok')</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(work.feature-auth)</span></div>
+        </div>
   </div><div class="criterion">
     <strong>AC-003</strong>
     <span>Verification evidence and live wiki sync are recorded before Done.</span>
+    <div class="ac-verification" style="margin-top:6px;padding:6px 10px;background:var(--surface-raised, #161b22);border-radius:var(--radius-sm, 6px);border-left:3px solid var(--ok, #3fb950);">
+          <span style="font-size:11px;color:var(--muted, #7d8590);font-weight:600;">Verification</span>
+          <div style="margin-top:2px;"><code style="font-size:12px;">node -e console.log('verification ok')</code> <span style="font-size:11px;color:var(--muted, #7d8590);">(work.feature-auth)</span></div>
+        </div>
   </div></div>
       </section>
 
@@ -812,7 +824,15 @@ const session = await httpResponse.json();</code></pre>
   </main>
   <script src="./preview.js"></script>
   <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    let mermaid;
+    try {
+      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+    } catch (_cdnError) {
+      document.querySelectorAll("details.mermaid-source").forEach((el) => el.open = true);
+      document.querySelectorAll("pre.mermaid").forEach((el) => el.style.display = "none");
+    }
+    if (!mermaid) { /* offline — sources already revealed above */ }
+    else {
     const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,
@@ -894,6 +914,7 @@ const session = await httpResponse.json();</code></pre>
         errorTextColor: "#f87171"
       }
     });
+    }
   </script>
 </body>
 </html>

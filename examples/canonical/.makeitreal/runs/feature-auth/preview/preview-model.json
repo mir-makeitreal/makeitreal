@@ -826,7 +826,24 @@
           "quality-reviewer",
           "verification-reviewer"
         ]
-      }
+      },
+      "workItems": [
+        {
+          "id": "work.feature-auth",
+          "prdTrace": {
+            "acceptanceCriteriaIds": [
+              "AC-001",
+              "AC-002",
+              "AC-003"
+            ]
+          },
+          "responsibilityUnitId": "ru.frontend",
+          "title": "work.feature-auth",
+          "verificationCommands": [
+            "node -e console.log('verification ok')"
+          ]
+        }
+      ]
     },
     "title": "Authentication vertical slice"
   },
