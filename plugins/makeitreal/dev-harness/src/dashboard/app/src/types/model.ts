@@ -566,7 +566,11 @@ export type ViewId =
   | 'overview'
   | 'architecture'
   | 'tasks'
-  | 'contracts';
+  | 'contracts'
+  | 'approval'
+  | 'surfaces'
+  | 'scenarios'
+  | 'reviews';
 
 export type NodeType = 'module' | 'workItem' | 'contract' | 'boundary';
 

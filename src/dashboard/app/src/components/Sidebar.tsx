@@ -12,11 +12,15 @@ export interface SidebarProps {
   onToggleTheme: () => void;
 }
 
-const NAV_ITEMS: { id: ViewId; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'architecture', label: 'Architecture', icon: '🏗️' },
-  { id: 'tasks', label: 'Tasks', icon: '📋' },
-  { id: 'contracts', label: 'Contracts', icon: '📜' },
+const NAV_ITEMS: { id: ViewId; label: string; mark: string }[] = [
+  { id: 'overview', label: 'Overview', mark: 'OV' },
+  { id: 'architecture', label: 'Architecture', mark: 'AR' },
+  { id: 'tasks', label: 'Tasks', mark: 'TK' },
+  { id: 'contracts', label: 'Contracts', mark: 'CN' },
+  { id: 'approval', label: 'Approval', mark: 'AP' },
+  { id: 'surfaces', label: 'Surfaces', mark: 'SF' },
+  { id: 'scenarios', label: 'Scenarios', mark: 'SC' },
+  { id: 'reviews', label: 'Reviews', mark: 'RV' },
 ];
 
 export function Sidebar({
@@ -51,7 +55,7 @@ export function Sidebar({
             color: 'var(--text-primary)',
           }}
         >
-          {collapsed ? '☰' : '✕'}
+          {collapsed ? '≡' : 'x'}
         </button>
         {!collapsed && <h1>Make It Real</h1>}
       </div>
@@ -64,7 +68,7 @@ export function Sidebar({
             onClick={() => onNavigate(item.id)}
             title={item.label}
           >
-            <span className="icon">{item.icon}</span>
+            <span className="icon nav-mark">{item.mark}</span>
             {!collapsed && item.label}
           </button>
         ))}
@@ -99,7 +103,7 @@ export function Sidebar({
           </section>
         )}
         <button className="nav-item" onClick={onToggleTheme}>
-          <span className="icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          <span className="icon nav-mark">{theme === 'dark' ? 'LT' : 'DK'}</span>
           {!collapsed && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
         </button>
         <div className="connection-indicator">

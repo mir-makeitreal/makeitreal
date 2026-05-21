@@ -10,6 +10,10 @@ import { ResponsibilityMap } from './components/ResponsibilityMap';
 import { KanbanBoard } from './components/KanbanBoard';
 import { EvidencePanel } from './components/EvidencePanel';
 import { DetailDrawer } from './components/DetailDrawer';
+import { ApprovalScopeView } from './components/ApprovalScopeView';
+import { ContractSurfacesView } from './components/ContractSurfacesView';
+import { ScenarioView } from './components/ScenarioView';
+import { ReviewDecisionsView } from './components/ReviewDecisionsView';
 import type { ViewId } from './types/model';
 
 function OverviewView() {
@@ -157,9 +161,13 @@ function ContractsView() {
 
 const VIEWS: Record<ViewId, React.FC> = {
   overview: OverviewView,
+  approval: ApprovalScopeView,
   architecture: ArchitectureView,
   tasks: TasksView,
   contracts: ContractsView,
+  surfaces: ContractSurfacesView,
+  scenarios: ScenarioView,
+  reviews: ReviewDecisionsView,
 };
 
 const VIEW_SHORTCUTS: Record<string, ViewId> = {
@@ -167,6 +175,10 @@ const VIEW_SHORTCUTS: Record<string, ViewId> = {
   '2': 'architecture',
   '3': 'tasks',
   '4': 'contracts',
+  '5': 'approval',
+  '6': 'surfaces',
+  '7': 'scenarios',
+  '8': 'reviews',
 };
 
 const KEYBOARD_SHORTCUTS = [
@@ -174,6 +186,10 @@ const KEYBOARD_SHORTCUTS = [
   { key: '2', action: 'Architecture view' },
   { key: '3', action: 'Tasks view' },
   { key: '4', action: 'Contracts view' },
+  { key: '5', action: 'Approval view' },
+  { key: '6', action: 'Surfaces view' },
+  { key: '7', action: 'Scenarios view' },
+  { key: '8', action: 'Reviews view' },
   { key: 'd', action: 'Toggle dark/light mode' },
   { key: '?', action: 'Show keyboard shortcuts' },
   { key: 'Escape', action: 'Close drawer or modal' },
