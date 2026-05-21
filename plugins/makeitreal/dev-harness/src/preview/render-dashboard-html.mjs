@@ -1971,16 +1971,9 @@ export function renderDashboardHtml(model) {
     </article>
   </main>
   <script src="./preview.js?v=${Date.now()}"></script>
-  <script type="module">
-    let mermaid;
-    try {
-      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs")).default;
-    } catch (_cdnError) {
-      document.querySelectorAll("details.mermaid-source").forEach((el) => el.open = true);
-      document.querySelectorAll("pre.mermaid").forEach((el) => el.style.display = "none");
-    }
-    if (!mermaid) { /* offline — sources already revealed above */ }
-    else {
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
+  <script>
+    if (typeof mermaid !== "undefined") {
     const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,

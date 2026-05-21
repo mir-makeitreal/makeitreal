@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css?v=1779357011842">
+  <link rel="stylesheet" href="./preview.css?v=1779357550445">
 </head>
 <body>
   <main class="architecture-shell">
@@ -828,17 +828,10 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js?v=1779357011844"></script>
-  <script type="module">
-    let mermaid;
-    try {
-      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs")).default;
-    } catch (_cdnError) {
-      document.querySelectorAll("details.mermaid-source").forEach((el) => el.open = true);
-      document.querySelectorAll("pre.mermaid").forEach((el) => el.style.display = "none");
-    }
-    if (!mermaid) { /* offline — sources already revealed above */ }
-    else {
+  <script src="./preview.js?v=1779357550447"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
+  <script>
+    if (typeof mermaid !== "undefined") {
     const mermaidFont = 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     mermaid.initialize({
       startOnLoad: true,
