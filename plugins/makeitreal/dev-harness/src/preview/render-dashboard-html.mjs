@@ -1974,7 +1974,7 @@ export function renderDashboardHtml(model) {
   <script type="module">
     let mermaid;
     try {
-      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs")).default;
     } catch (_cdnError) {
       document.querySelectorAll("details.mermaid-source").forEach((el) => el.open = true);
       document.querySelectorAll("pre.mermaid").forEach((el) => el.style.display = "none");
