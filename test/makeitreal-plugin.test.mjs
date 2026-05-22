@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
@@ -399,15 +399,20 @@ test("Make It Real installed plugin copy uses the embedded engine", async () => 
     const embeddedPkg = JSON.parse(await readFile(path.join(installedPlugin, "dev-harness", "package.json"), "utf8"));
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
     assert.equal(embeddedPkg.version, rootPkg.version);
-    const renderer = await readFile(path.join(installedPlugin, "dev-harness", "src", "preview", "render-dashboard-html.mjs"), "utf8");
-    assert.match(renderer, /Blueprint Reference/);
-    assert.match(renderer, /Visual Blueprint/);
-    assert.match(renderer, /Contract Matrix/);
-    assert.match(renderer, /Module Directory/);
-    assert.match(renderer, /Usage Example/);
-    assert.match(renderer, /Parameters/);
-    assert.match(renderer, /Contracts/);
-    assert.match(renderer, /Developer Diagnostics/);
+    const previewDir = path.join(installedPlugin, "dev-harness", "src", "preview");
+    const renderer = await readFile(path.join(previewDir, "render-dashboard-html.mjs"), "utf8");
+    const templateFiles = await readdir(path.join(previewDir, "templates"));
+    const templateContent = (await Promise.all(
+      templateFiles.map((f) => readFile(path.join(previewDir, "templates", f), "utf8"))
+    )).join("\n");
+    const combined = renderer + "\n" + templateContent;
+    assert.match(combined, /Blueprint Reference/);
+    assert.match(combined, /Architecture Dossier/);
+    assert.match(combined, /Module Directory/);
+    assert.match(combined, /Usage Example/);
+    assert.match(combined, /Parameters/);
+    assert.match(combined, /Contracts/);
+    assert.match(combined, /Developer Diagnostics/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
