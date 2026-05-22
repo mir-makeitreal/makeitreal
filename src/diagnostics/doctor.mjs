@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { readProjectConfig } from "../config/project-config.mjs";
-import { dashboardLocation } from "../dashboard/open-dashboard.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { getClaudeHookStatus } from "../hooks/claude-settings.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
@@ -232,24 +231,24 @@ async function checkHooks({ projectRoot, currentRun }) {
   });
 }
 
-async function checkDashboard({ currentRun }) {
+async function checkPreview({ currentRun }) {
   if (!currentRun.ok || !currentRun.runDir) {
-    return skipped("Dashboard diagnostics require a current run.", {
-      dashboardUrl: null
+    return skipped("Preview diagnostics require a current run.", {
+      previewPath: null
     });
   }
-  const location = dashboardLocation({ runDir: currentRun.runDir });
-  if (!await fileExists(location.indexPath)) {
+  const indexPath = path.join(path.resolve(currentRun.runDir), "preview", "index.html");
+  if (!await fileExists(indexPath)) {
     return fail({
       code: "HARNESS_DASHBOARD_PREVIEW_MISSING",
-      summary: "Make It Real dashboard preview is missing.",
+      summary: "Make It Real preview is missing.",
       reason: "The current run does not have preview/index.html.",
-      evidence: [location.indexPath],
+      evidence: [indexPath],
       nextAction: "/makeitreal:status",
-      extra: location
+      extra: { indexPath }
     });
   }
-  return pass("Make It Real dashboard preview exists.", location);
+  return pass("Make It Real preview exists.", { indexPath });
 }
 
 function checkClaudeBinary({ env }) {
@@ -313,7 +312,7 @@ export async function runDoctor({
   const plugin = await checkPlugin({ env });
   const currentRun = await checkCurrentRun({ projectRoot: resolvedProjectRoot, runDir, env });
   const hooks = await checkHooks({ projectRoot: resolvedProjectRoot, currentRun });
-  const dashboard = await checkDashboard({ currentRun });
+  const dashboard = await checkPreview({ currentRun });
   const claudeBinary = checkClaudeBinary({ env });
   const checks = { config, plugin, currentRun, hooks, dashboard, claudeBinary };
   const healthy = Object.values(checks).every((check) => check.status !== "fail");

@@ -1,15 +1,23 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { dashboardRefreshEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
-import { dashboardLocation } from "../dashboard/open-dashboard.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { buildPreviewModel } from "./preview-model.mjs";
 import { renderDashboardCss, renderDashboardHtml, renderDashboardJs } from "./render-dashboard-html.mjs";
 
+function previewLocation({ runDir }) {
+  const indexPath = path.join(path.resolve(runDir), "preview", "index.html");
+  return {
+    indexPath,
+    dashboardUrl: pathToFileURL(indexPath).href
+  };
+}
+
 function refreshEnvelope({ attempted, skipped, reason = null, configPath = null, previewDir = null, generatedAt, errors = [] }) {
   const location = previewDir
-    ? dashboardLocation({ runDir: path.dirname(path.resolve(previewDir)) })
+    ? previewLocation({ runDir: path.dirname(path.resolve(previewDir)) })
     : { indexPath: null, dashboardUrl: null };
   return {
     attempted,

@@ -10,7 +10,6 @@ import { sendMailboxMessage } from "../src/board/mailbox.mjs";
 import { applyNativeBlueprintReviewDecision } from "../src/blueprint/interactive-approval.mjs";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled, setProjectConfigProfile } from "../src/config/project-config.mjs";
-import { openDashboard } from "../src/dashboard/open-dashboard.mjs";
 import { runDoctor } from "../src/diagnostics/doctor.mjs";
 import { createHarnessError } from "../src/domain/errors.mjs";
 import { runGates } from "../src/gates/index.mjs";
@@ -54,9 +53,7 @@ Internal commands used by Make It Real skills:
   blueprint review <runDir>    Record a native Claude Code Blueprint review decision
   setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
-  doctor <projectRoot>         Diagnose plugin, hooks, config, dashboard, and Claude CLI
-  dashboard open <runDir>      Auto-start and open the live Kanban dashboard in the default browser
-  dashboard serve <runDir>     Start the live dashboard HTTP+WebSocket server
+  doctor <projectRoot>         Diagnose plugin, hooks, config, preview, and Claude CLI
   hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
   hooks status <projectRoot> --run <runDir>  Show Make It Real Claude hook status
   board status <boardDir>      Show lane counts
@@ -682,63 +679,6 @@ async function runCommand(argv) {
       now: deterministicNow(argv)
     });
     return { exitCode: 0, result };
-  }
-
-  if (argv[0] === "dashboard" && argv[1] === "open") {
-    if (!argv[2]) {
-      return {
-        exitCode: 1,
-        result: {
-          ok: false,
-          command: "dashboard open",
-          errors: [createHarnessError({
-            code: "HARNESS_RUN_DIR_REQUIRED",
-            reason: "dashboard open requires <runDir>.",
-            evidence: ["argv"],
-            recoverable: true
-          })]
-        }
-      };
-    }
-    const result = await openDashboard({
-      runDir: argv[2],
-      projectRoot: resolveProjectRootFlag(parseFlag(argv, "--project-root")),
-      dryRun: argv.includes("--dry-run"),
-      force: argv.includes("--force")
-    });
-    return { exitCode: result.ok ? 0 : 1, result };
-  }
-
-  if (argv[0] === "dashboard" && argv[1] === "serve") {
-    if (!argv[2]) {
-      return {
-        exitCode: 1,
-        result: {
-          ok: false,
-          command: "dashboard serve",
-          errors: [createHarnessError({
-            code: "HARNESS_RUN_DIR_REQUIRED",
-            reason: "dashboard serve requires <runDir>.",
-            evidence: ["argv"],
-            recoverable: true
-          })]
-        }
-      };
-    }
-    const { startDashboardServer } = await import("../src/dashboard/server.mjs");
-    const info = await startDashboardServer({ runDir: argv[2], port: 0 });
-    return {
-      exitCode: 0,
-      result: {
-        ok: true,
-        command: "dashboard serve",
-        url: info.url,
-        port: info.port,
-        runDir: info.runDir,
-        portFilePath: info.portFilePath,
-        errors: []
-      }
-    };
   }
 
   if (argv[0] === "hooks" && argv[1] === "install") {
