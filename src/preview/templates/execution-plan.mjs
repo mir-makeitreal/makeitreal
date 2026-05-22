@@ -32,11 +32,26 @@ export function taskLaneClass(lane = "") {
 
 export function taskDagMermaid(dossier = {}) {
   const nodes = dossier.taskDag?.nodes ?? [];
+  const modules = dossier.modules ?? [];
   if (nodes.length === 0) {
     return null;
   }
   const nodeIds = new Map(nodes.map((node, index) => [node.id, `task_${index}`]));
   const lines = ["flowchart TB"];
+
+  // Build a map of which RU modules each work item covers
+  const workItemModules = new Map();
+  for (const node of nodes) {
+    const existing = workItemModules.get(node.id) ?? [];
+    existing.push(node);
+    workItemModules.set(node.id, existing);
+  }
+
+  // Collect all RU IDs referenced by work items
+  const coveredRuIds = new Set(nodes.map((n) => n.responsibilityUnitId));
+  // Find uncovered modules from dossier.modules
+  const uncoveredModules = modules.filter((m) => !coveredRuIds.has(m.responsibilityUnitId));
+
   for (const node of nodes) {
     const nodeId = nodeIds.get(node.id);
     const title = mermaidLabel(node.title ?? node.moduleName ?? node.responsibilityUnitId ?? node.id);
@@ -51,6 +66,27 @@ export function taskDagMermaid(dossier = {}) {
     lines.push(`  ${nodeId}["${label}"]`);
     lines.push(`  class ${nodeId} ${taskLaneClass(node.lane ?? node.status)}`);
   }
+
+  // If there are few work items but multiple modules, show RU modules as sub-nodes
+  // to indicate potential parallelism
+  if (nodes.length <= 2 && modules.length > 1) {
+    // Show uncovered modules as potential parallel task nodes
+    for (const [i, mod] of uncoveredModules.entries()) {
+      const subId = `ru_uncovered_${i}`;
+      const modName = mermaidLabel(mod.moduleName ?? mod.responsibilityUnitId);
+      const label = `<b>${escapeHtml(modName)}</b><br/>${escapeHtml(mermaidLabel(mod.responsibilityUnitId))}<br/>potential parallel task`;
+      lines.push(`  ${subId}["${label}"]:::potential`);
+    }
+    // For single work items that cover one RU but other RUs exist,
+    // show dotted "could parallelize" edges
+    if (nodes.length === 1 && uncoveredModules.length > 0) {
+      const mainNodeId = nodeIds.get(nodes[0].id);
+      for (const [i] of uncoveredModules.entries()) {
+        lines.push(`  ${mainNodeId} -.-|"parallel opportunity"| ru_uncovered_${i}`);
+      }
+    }
+  }
+
   for (const edge of dossier.taskDag?.edges ?? []) {
     const from = nodeIds.get(edge.from);
     const to = nodeIds.get(edge.to);
@@ -62,14 +98,22 @@ export function taskDagMermaid(dossier = {}) {
   lines.push("  classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
   lines.push("  classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
   lines.push("  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10");
+  lines.push("  classDef potential fill:#1c1c2e,stroke:#8e95f5,stroke-width:1px,stroke-dasharray:5 5,color:#c9c9d1,rx:10,ry:10");
   return lines.join("\n");
 }
 
 export function renderExecutionPlanSection(dossier = {}) {
   const taskDag = dossier.taskDag ?? {};
   const nodes = taskDag.nodes ?? [];
+  const modules = dossier.modules ?? [];
   const topology = dossier.workerTopology ?? {};
   const assignments = topology.assignments ?? [];
+
+  // Detect if there's only 1 work item but multiple responsibility units
+  const coveredRuIds = new Set(nodes.map((n) => n.responsibilityUnitId));
+  const uncoveredModules = modules.filter((m) => !coveredRuIds.has(m.responsibilityUnitId));
+  const hasParallelOpportunity = nodes.length === 1 && modules.length > 1 && uncoveredModules.length > 0;
+
   return `<section id="execution-plan" class="architecture-section">
     <div class="section-heading">
       <div>
@@ -91,6 +135,10 @@ export function renderExecutionPlanSection(dossier = {}) {
       for (const e of dagEdges) { inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1); }
       let frontier = dagNodes.filter((n) => (inDeg.get(n.id) ?? 0) === 0).map((n) => n.id);
       let maxP = frontier.length;
+      // Include potential parallel RUs
+      if (hasParallelOpportunity) {
+        maxP = Math.max(maxP, modules.length);
+      }
       const visited = new Set(frontier);
       const adj = new Map(dagNodes.map((n) => [n.id, []]));
       for (const e of dagEdges) { (adj.get(e.from) ?? []).push(e.to); }
@@ -107,6 +155,14 @@ export function renderExecutionPlanSection(dossier = {}) {
       }
       return `<p class="section-note"><strong>Maximum parallelism: ${maxP} concurrent agent${maxP === 1 ? "" : "s"}</strong></p>`;
     })()}
+    ${hasParallelOpportunity ? `<div style="padding:10px 14px;border:1px solid var(--accent-border);border-radius:var(--radius-sm);background:var(--accent-soft);margin-bottom:16px;">
+      <strong style="color:var(--accent-strong);font-size:13px;">Parallel Execution Opportunity</strong>
+      <p style="margin:4px 0 0;font-size:13px;color:var(--ink-2);">This architecture has <strong>${modules.length} responsibility units</strong> but only <strong>1 work item</strong>. The following modules could run as parallel tasks:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${modules.map((m) => {
+        const isCovered = coveredRuIds.has(m.responsibilityUnitId);
+        return `<span style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid ${isCovered ? "var(--ok)" : "var(--accent-border)"};background:${isCovered ? "rgba(59,185,80,0.08)" : "var(--accent-soft)"};font-size:12px;font-weight:500;"><code>${escapeHtml(m.moduleName ?? m.responsibilityUnitId)}</code> ${isCovered ? "(active)" : "(available)"}</span>`;
+      }).join("")}</div>
+    </div>` : ""}
     <div class="task-dag-table" role="table" aria-label="Task DAG">
       <div class="task-dag-row header" role="row">
         <div role="columnheader">Work Item</div>

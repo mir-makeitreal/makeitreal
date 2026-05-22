@@ -1540,6 +1540,11 @@ h4 {
 
 .criterion strong { color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 600; }
 .criterion span { color: var(--ink-2); font-size: 13.5px; }
+.criterion .ac-verification { grid-column: 1 / -1; }
+
+/* === Design pattern diagrams === */
+.design-patterns-list { display: grid; gap: 16px; }
+.design-pattern-card .pattern-diagram { margin-top: 10px; }
 
 /* === Review decisions === */
 .review-decisions {

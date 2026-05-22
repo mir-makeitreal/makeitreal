@@ -38,6 +38,7 @@ function renderRawArtifacts(model) {
 }
 
 function renderDeveloperDiagnostics(model, status) {
+  const fingerprint = model.blueprint?.systemDossier?.approvalScope?.blueprintFingerprint;
   return `<details class="diagnostics-panel">
     <summary>Developer Diagnostics</summary>
     <p class="section-note">Canonical files remain available for audit, automation, and zero-context agent handoff. These are diagnostics, not the primary Blueprint review surface.</p>
@@ -45,6 +46,7 @@ function renderDeveloperDiagnostics(model, status) {
       <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>${escapeHtml(status.phase ?? "unknown")}</code></div></div>
       <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>${escapeHtml(status.blueprintStatus ?? "unknown")}</code></div></div>
       <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>${escapeHtml(relativeRunDir(model.run.runDir))}</code></div></div>
+      ${fingerprint ? `<div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>${escapeHtml(fingerprint)}</code></div></div>` : ""}
     </div>
     ${renderRawArtifacts(model)}
   </details>`;

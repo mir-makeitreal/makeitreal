@@ -132,6 +132,11 @@ export function renderDesignPatterns(patterns = []) {
       ${patterns.map((pattern) => `<article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
         <strong>${escapeHtml(pattern.name ?? "Unnamed pattern")}</strong>
         <p class="muted" style="margin:4px 0 0;">${escapeHtml(pattern.rationale ?? "")}</p>
+        ${pattern.mermaid ? mermaidDiagramCard({
+          title: pattern.name,
+          description: pattern.rationale,
+          diagram: pattern.mermaid
+        }) : ""}
       </article>`).join("")}
     </div>
   </section>`;
@@ -203,7 +208,6 @@ export function renderOverviewSection(model, dossier, blueprint) {
         </div>
 
         <div class="doc-table approval-scope-table" style="margin-top:20px;">
-          <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>${escapeHtml(scope.blueprintFingerprint ?? "pending review seed")}</code></div></div>
           <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value">${(scope.authorizedPaths ?? []).map((ownedPath) => `<code>${escapeHtml(ownedPath)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
           <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value">${(scope.requiredContracts ?? []).map((contractId) => `<code>${escapeHtml(contractId)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>
           <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value">${(scope.requiredWorkItems ?? []).map((id) => `<code>${escapeHtml(id)}</code>`).join("") || '<span class="empty">None declared.</span>'}</div></div>

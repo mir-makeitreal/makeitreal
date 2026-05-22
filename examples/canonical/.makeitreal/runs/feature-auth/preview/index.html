@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css?v=1779431415945">
+  <link rel="stylesheet" href="./preview.css?v=1779434439038">
 </head>
 <body>
   <main class="architecture-shell">
@@ -43,7 +43,6 @@
         </div>
 
         <div class="doc-table approval-scope-table" style="margin-top:20px;">
-          <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb</code></div></div>
           <div class="doc-row"><div class="doc-key">Authorized Paths</div><div class="doc-value"><code>apps/web/auth/**</code></div></div>
           <div class="doc-row"><div class="doc-key">Required Contracts</div><div class="doc-value"><code>contract.auth.login</code></div></div>
           <div class="doc-row"><div class="doc-key">Required Work Items</div><div class="doc-value"><code>work.feature-auth</code></div></div>
@@ -123,17 +122,103 @@
     </div>
     <div class="design-patterns-list">
       <article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Contract-first responsibility boundary</strong>
-        <p class="muted" style="margin:4px 0 0;">Adjacent modules may rely only on declared public surfaces and contract IDs.</p>
+        <strong>Client-Server (Request-Reply)</strong>
+        <p class="muted" style="margin:4px 0 0;">1 consumer-to-provider edge: clients call servers through declared contracts only.</p>
+        <article class="diagram-card">
+    <header>
+      <strong>Client-Server (Request-Reply)</strong>
+      <span>1 consumer-to-provider edge: clients call servers through declared contracts only.</span>
+    </header>
+    <pre class="mermaid">sequenceDiagram
+  participant Auth UI
+  participant Auth Service
+  Auth UI-&gt;&gt;+Auth Service: contract.auth.login
+  Auth Service--&gt;&gt;-Auth UI: response</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
+  participant Auth UI
+  participant Auth Service
+  Auth UI-&gt;&gt;+Auth Service: contract.auth.login
+  Auth Service--&gt;&gt;-Auth UI: response</code></pre>
+    </details>
+  </article>
       </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Explicit module boundary</strong>
-        <p class="muted" style="margin:4px 0 0;">2 responsibility units enforce ownership separation; cross-module access requires a declared contract.</p>
+        <strong>Observer / Event-Driven</strong>
+        <p class="muted" style="margin:4px 0 0;">1 async or event-driven surface decouple producers from consumers via declared events.</p>
+        <article class="diagram-card">
+    <header>
+      <strong>Observer / Event-Driven</strong>
+      <span>1 async or event-driven surface decouple producers from consumers via declared events.</span>
+    </header>
+    <pre class="mermaid">flowchart LR
+  pub_0[&quot;Auth UI&quot;]
+  sub_0_0[&quot;Auth page composition&quot;]
+  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_0
+  sub_0_1[&quot;browser interaction tests&quot;]
+  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_1</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart LR
+  pub_0[&quot;Auth UI&quot;]
+  sub_0_0[&quot;Auth page composition&quot;]
+  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_0
+  sub_0_1[&quot;browser interaction tests&quot;]
+  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_1</code></pre>
+    </details>
+  </article>
       </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Async surface contract</strong>
-        <p class="muted" style="margin:4px 0 0;">Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination.</p>
+        <strong>Contract-First Design</strong>
+        <p class="muted" style="margin:4px 0 0;">1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse.</p>
+        <article class="diagram-card">
+    <header>
+      <strong>Contract-First Design</strong>
+      <span>1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse.</span>
+    </header>
+    <pre class="mermaid">flowchart TB
+  contract_0{{&quot;contract.auth.login&quot;}}
+  cprov_0_0[&quot;Auth Service&quot;] --&gt; contract_0
+  contract_0 --&gt; ccons_0_0[&quot;Auth UI&quot;]</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TB
+  contract_0{{&quot;contract.auth.login&quot;}}
+  cprov_0_0[&quot;Auth Service&quot;] --&gt; contract_0
+  contract_0 --&gt; ccons_0_0[&quot;Auth UI&quot;]</code></pre>
+    </details>
+  </article>
       </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Fail-fast contract mismatch</strong>
+        <strong>Bounded Context (Domain-Driven Design)</strong>
+        <p class="muted" style="margin:4px 0 0;">2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract.</p>
+        <article class="diagram-card">
+    <header>
+      <strong>Bounded Context (Domain-Driven Design)</strong>
+      <span>2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract.</span>
+    </header>
+    <pre class="mermaid">flowchart TB
+  subgraph bc_0[&quot;Auth UI&quot;]
+    bc_0_paths[&quot;apps/web/auth/**&quot;]
+  end
+  subgraph bc_1[&quot;Auth Service&quot;]
+    bc_1_paths[&quot;services/auth/**, contracts/auth-login.openapi.json&quot;]
+  end
+  bc_0 --&gt;|&quot;contract.auth.login&quot;| bc_1</pre>
+    <details class="mermaid-source">
+      <summary>Mermaid source</summary>
+      <pre class="code-block" data-language="mermaid"><code>flowchart TB
+  subgraph bc_0[&quot;Auth UI&quot;]
+    bc_0_paths[&quot;apps/web/auth/**&quot;]
+  end
+  subgraph bc_1[&quot;Auth Service&quot;]
+    bc_1_paths[&quot;services/auth/**, contracts/auth-login.openapi.json&quot;]
+  end
+  bc_0 --&gt;|&quot;contract.auth.login&quot;| bc_1</code></pre>
+    </details>
+  </article>
+      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
+        <strong>Fail-Fast Contract Mismatch</strong>
         <p class="muted" style="margin:4px 0 0;">Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation.</p>
+        
       </article>
     </div>
   </section>
@@ -328,22 +413,33 @@
     <pre class="mermaid">flowchart TB
   task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
   class task_0 ready
+  ru_uncovered_0[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;potential parallel task&quot;]:::potential
+  task_0 -.-|&quot;parallel opportunity&quot;| ru_uncovered_0
   classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</pre>
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef potential fill:#1c1c2e,stroke:#8e95f5,stroke-width:1px,stroke-dasharray:5 5,color:#c9c9d1,rx:10,ry:10</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
       <pre class="code-block" data-language="mermaid"><code>flowchart TB
   task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
   class task_0 ready
+  ru_uncovered_0[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;potential parallel task&quot;]:::potential
+  task_0 -.-|&quot;parallel opportunity&quot;| ru_uncovered_0
   classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</code></pre>
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10
+  classDef potential fill:#1c1c2e,stroke:#8e95f5,stroke-width:1px,stroke-dasharray:5 5,color:#c9c9d1,rx:10,ry:10</code></pre>
     </details>
   </article>
-    <p class="section-note"><strong>Maximum parallelism: 1 concurrent agent</strong></p>
+    <p class="section-note"><strong>Maximum parallelism: 2 concurrent agents</strong></p>
+    <div style="padding:10px 14px;border:1px solid var(--accent-border);border-radius:var(--radius-sm);background:var(--accent-soft);margin-bottom:16px;">
+      <strong style="color:var(--accent-strong);font-size:13px;">Parallel Execution Opportunity</strong>
+      <p style="margin:4px 0 0;font-size:13px;color:var(--ink-2);">This architecture has <strong>2 responsibility units</strong> but only <strong>1 work item</strong>. The following modules could run as parallel tasks:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><span style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--ok);background:rgba(59,185,80,0.08);font-size:12px;font-weight:500;"><code>Auth UI</code> (active)</span><span style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--accent-border);background:var(--accent-soft);font-size:12px;font-weight:500;"><code>Auth Service</code> (available)</span></div>
+    </div>
     <div class="task-dag-table" role="table" aria-label="Task DAG">
       <div class="task-dag-row header" role="row">
         <div role="columnheader">Work Item</div>
@@ -767,6 +863,7 @@ const session = await httpResponse.json();</code></pre>
       <div class="doc-row"><div class="doc-key">Current run phase</div><div class="doc-value"><code>launch-ready</code></div></div>
       <div class="doc-row"><div class="doc-key">Blueprint status</div><div class="doc-value"><code>approved</code></div></div>
       <div class="doc-row"><div class="doc-key">Run directory</div><div class="doc-value"><code>.makeitreal/runs/feature-auth</code></div></div>
+      <div class="doc-row"><div class="doc-key">Blueprint Fingerprint</div><div class="doc-value"><code>sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb</code></div></div>
     </div>
     <div class="artifact-grid"><div>
     <strong>PRD</strong>
@@ -820,7 +917,7 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js?v=1779431415947"></script>
+  <script src="./preview.js?v=1779434439042"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
   <script>
     if (typeof mermaid !== "undefined") {

@@ -566,37 +566,137 @@ function modelSurfaceTraceReference({ moduleInterfaces, dependencyEdges, workIte
 
 function deriveDesignPatterns({ moduleInterfaces, dependencyEdges, scenarioDetails }) {
   const patterns = [];
-  if (dependencyEdges.length > 0) {
+  const moduleNames = moduleInterfaces.map((m) => m.moduleName ?? m.responsibilityUnitId);
+
+  // Client-Server / Request-Reply pattern — when modules have consumer-to-provider imports
+  const consumerEdges = dependencyEdges.filter((e) => e.relation === "consumer-to-provider");
+  if (consumerEdges.length > 0) {
+    const diagramLines = ["sequenceDiagram"];
+    for (const edge of consumerEdges) {
+      diagramLines.push(`  participant ${edge.fromLabel}`);
+    }
+    const providerNames = new Set();
+    for (const edge of consumerEdges) {
+      providerNames.add(edge.toLabel);
+    }
+    for (const name of providerNames) {
+      diagramLines.push(`  participant ${name}`);
+    }
+    for (const edge of consumerEdges) {
+      const label = edge.contractId ?? edge.surface ?? "request";
+      diagramLines.push(`  ${edge.fromLabel}->>+${edge.toLabel}: ${label}`);
+      diagramLines.push(`  ${edge.toLabel}-->>-${edge.fromLabel}: response`);
+    }
     patterns.push({
-      name: "Contract-first responsibility boundary",
-      rationale: "Adjacent modules may rely only on declared public surfaces and contract IDs."
+      name: "Client-Server (Request-Reply)",
+      rationale: `${consumerEdges.length} consumer-to-provider ${consumerEdges.length === 1 ? "edge" : "edges"}: clients call servers through declared contracts only.`,
+      mermaid: diagramLines.join("\n")
     });
   }
-  if (moduleInterfaces.length > 1) {
-    patterns.push({
-      name: "Explicit module boundary",
-      rationale: `${moduleInterfaces.length} responsibility units enforce ownership separation; cross-module access requires a declared contract.`
-    });
-  }
-  const hasAsyncSurfaces = moduleInterfaces.some((m) =>
-    (m.publicSurfaces ?? []).some((s) => String(s.kind ?? "").toLowerCase().includes("async") || String(s.kind ?? "").toLowerCase().includes("event"))
+
+  // Observer / Event-Driven pattern — when surfaces are async or event-driven
+  const asyncSurfaces = moduleInterfaces.flatMap((m) =>
+    (m.publicSurfaces ?? [])
+      .filter((s) => {
+        const kind = String(s.kind ?? "").toLowerCase();
+        return kind.includes("async") || kind.includes("event") || kind.includes("hook") || kind.includes("callback");
+      })
+      .map((s) => ({ moduleName: m.moduleName, surface: s }))
   );
-  if (hasAsyncSurfaces) {
+  if (asyncSurfaces.length > 0) {
+    const diagramLines = ["flowchart LR"];
+    for (const [i, entry] of asyncSurfaces.entries()) {
+      const pubId = `pub_${i}`;
+      const subId = `sub_${i}`;
+      diagramLines.push(`  ${pubId}["${entry.moduleName}"]`);
+      const consumers = entry.surface.consumers ?? [];
+      if (consumers.length > 0) {
+        for (const [j, consumer] of consumers.entries()) {
+          const cId = `${subId}_${j}`;
+          diagramLines.push(`  ${cId}["${consumer}"]`);
+          diagramLines.push(`  ${pubId} -.->|"${entry.surface.name}"| ${cId}`);
+        }
+      } else {
+        diagramLines.push(`  ${subId}(["Subscribers"])`);
+        diagramLines.push(`  ${pubId} -.->|"${entry.surface.name}"| ${subId}`);
+      }
+    }
     patterns.push({
-      name: "Async surface contract",
-      rationale: "Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination."
+      name: "Observer / Event-Driven",
+      rationale: `${asyncSurfaces.length} async or event-driven ${asyncSurfaces.length === 1 ? "surface" : "surfaces"} decouple producers from consumers via declared events.`,
+      mermaid: diagramLines.join("\n")
     });
   }
+
+  // Contract-First Design — when contracts are declared between modules
+  const contractIds = uniqueText(dependencyEdges.map((e) => e.contractId).filter(Boolean));
+  if (contractIds.length > 0) {
+    const diagramLines = ["flowchart TB"];
+    for (const [i, contractId] of contractIds.entries()) {
+      const cId = `contract_${i}`;
+      diagramLines.push(`  ${cId}{{"${contractId}"}}`);
+      const providers = dependencyEdges.filter((e) => e.contractId === contractId && e.relation !== "consumer-to-provider");
+      const consumers = dependencyEdges.filter((e) => e.contractId === contractId && e.relation === "consumer-to-provider");
+      const providerModules = [...new Set([...providers.map((e) => e.fromLabel), ...consumers.map((e) => e.toLabel)])];
+      const consumerModules = [...new Set(consumers.map((e) => e.fromLabel))];
+      for (const [j, name] of providerModules.entries()) {
+        const pId = `cprov_${i}_${j}`;
+        diagramLines.push(`  ${pId}["${name}"] --> ${cId}`);
+      }
+      for (const [j, name] of consumerModules.entries()) {
+        const uId = `ccons_${i}_${j}`;
+        diagramLines.push(`  ${cId} --> ${uId}["${name}"]`);
+      }
+    }
+    patterns.push({
+      name: "Contract-First Design",
+      rationale: `${contractIds.length} declared ${contractIds.length === 1 ? "contract" : "contracts"} (${contractIds.join(", ")}) govern module boundaries — implementation must conform to the contract, not the reverse.`,
+      mermaid: diagramLines.join("\n")
+    });
+  }
+
+  // Bounded Context (DDD) — when modules have strict ownership paths
+  if (moduleInterfaces.length > 1) {
+    const modulesWithOwnership = moduleInterfaces.filter((m) => (m.owns ?? []).length > 0);
+    if (modulesWithOwnership.length > 1) {
+      const diagramLines = ["flowchart TB"];
+      for (const [i, m] of modulesWithOwnership.entries()) {
+        const mId = `bc_${i}`;
+        const ownsLabel = (m.owns ?? []).slice(0, 3).join(", ");
+        diagramLines.push(`  subgraph ${mId}["${m.moduleName ?? m.responsibilityUnitId}"]`);
+        diagramLines.push(`    ${mId}_paths["${ownsLabel}"]`);
+        diagramLines.push(`  end`);
+      }
+      // Show contract edges between bounded contexts
+      for (const edge of dependencyEdges.slice(0, 5)) {
+        const fromIdx = modulesWithOwnership.findIndex((m) => m.moduleName === edge.fromLabel || m.responsibilityUnitId === edge.from);
+        const toIdx = modulesWithOwnership.findIndex((m) => m.moduleName === edge.toLabel || m.responsibilityUnitId === edge.to);
+        if (fromIdx >= 0 && toIdx >= 0) {
+          diagramLines.push(`  bc_${fromIdx} -->|"${edge.contractId ?? "contract"}"| bc_${toIdx}`);
+        }
+      }
+      patterns.push({
+        name: "Bounded Context (Domain-Driven Design)",
+        rationale: `${modulesWithOwnership.length} modules enforce strict file ownership boundaries — cross-context access requires a declared contract.`,
+        mermaid: diagramLines.join("\n")
+      });
+    }
+  }
+
+  // Responsibility Decomposition — for 3+ modules
   if (moduleInterfaces.length > 2) {
     patterns.push({
-      name: "Responsibility decomposition",
-      rationale: `System is decomposed into ${moduleInterfaces.length} focused responsibility units to limit blast radius and simplify reasoning.`
+      name: "Responsibility Decomposition",
+      rationale: `System is decomposed into ${moduleInterfaces.length} focused responsibility units (${moduleNames.join(", ")}) to limit blast radius and simplify reasoning.`
     });
   }
+
+  // Fail-Fast Contract Mismatch — always present
   patterns.push({
-    name: "Fail-fast contract mismatch",
+    name: "Fail-Fast Contract Mismatch",
     rationale: "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
   });
+
   return patterns;
 }
 

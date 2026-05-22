@@ -400,19 +400,27 @@
       ],
       "designPatterns": [
         {
-          "name": "Contract-first responsibility boundary",
-          "rationale": "Adjacent modules may rely only on declared public surfaces and contract IDs."
+          "mermaid": "sequenceDiagram\n  participant Auth UI\n  participant Auth Service\n  Auth UI->>+Auth Service: contract.auth.login\n  Auth Service-->>-Auth UI: response",
+          "name": "Client-Server (Request-Reply)",
+          "rationale": "1 consumer-to-provider edge: clients call servers through declared contracts only."
         },
         {
-          "name": "Explicit module boundary",
-          "rationale": "2 responsibility units enforce ownership separation; cross-module access requires a declared contract."
+          "mermaid": "flowchart LR\n  pub_0[\"Auth UI\"]\n  sub_0_0[\"Auth page composition\"]\n  pub_0 -.->|\"LoginForm.submit\"| sub_0_0\n  sub_0_1[\"browser interaction tests\"]\n  pub_0 -.->|\"LoginForm.submit\"| sub_0_1",
+          "name": "Observer / Event-Driven",
+          "rationale": "1 async or event-driven surface decouple producers from consumers via declared events."
         },
         {
-          "name": "Async surface contract",
-          "rationale": "Asynchronous or event-driven surfaces declare explicit async contracts for consumer coordination."
+          "mermaid": "flowchart TB\n  contract_0{{\"contract.auth.login\"}}\n  cprov_0_0[\"Auth Service\"] --> contract_0\n  contract_0 --> ccons_0_0[\"Auth UI\"]",
+          "name": "Contract-First Design",
+          "rationale": "1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse."
         },
         {
-          "name": "Fail-fast contract mismatch",
+          "mermaid": "flowchart TB\n  subgraph bc_0[\"Auth UI\"]\n    bc_0_paths[\"apps/web/auth/**\"]\n  end\n  subgraph bc_1[\"Auth Service\"]\n    bc_1_paths[\"services/auth/**, contracts/auth-login.openapi.json\"]\n  end\n  bc_0 -->|\"contract.auth.login\"| bc_1",
+          "name": "Bounded Context (Domain-Driven Design)",
+          "rationale": "2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract."
+        },
+        {
+          "name": "Fail-Fast Contract Mismatch",
           "rationale": "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
         }
       ],
