@@ -89,9 +89,12 @@ function normalizeDesignPack(proposal, runId) {
     })),
     moduleInterfaces: (proposal.responsibilityUnits ?? []).map(ru => ({
       responsibilityUnitId: ru.id,
+      moduleName: ru.moduleName ?? ru.label ?? ru.id,
       owner: ru.owner ?? "team.implementation",
       owns: ru.owns ?? [],
       mustProvideContracts: ru.mustProvideContracts ?? [],
+      publicSurfaces: ru.publicSurfaces ?? [],
+      imports: ru.imports ?? [],
       responsibility: ru.responsibility ?? ""
     })),
     callStacks: buildCallStacks(proposal),
@@ -104,6 +107,8 @@ function buildCallStacks(proposal) {
   for (const seq of (proposal.sequences ?? [])) {
     if (!seq.steps || seq.steps.length === 0) continue;
     stacks.push({
+      entrypoint: seq.title,
+      calls: seq.steps.map(step => `${step.from} -> ${step.to}: ${step.action}`),
       label: seq.title,
       frames: seq.steps.map(step => ({
         callee: step.to,

@@ -8,7 +8,10 @@ import { claimWorkItem } from "../src/board/claim-store.mjs";
 import { getReadyWorkItems, validateDependencyGraph } from "../src/board/dependency-graph.mjs";
 import { sendMailboxMessage } from "../src/board/mailbox.mjs";
 import { applyNativeBlueprintReviewDecision } from "../src/blueprint/interactive-approval.mjs";
-import { decideBlueprintReview } from "../src/blueprint/review.mjs";
+import { decideBlueprintReview, seedBlueprintReview } from "../src/blueprint/review.mjs";
+import { validateBlueprintProposal } from "../src/plan/blueprint-validator.mjs";
+import { normalizeBlueprintProposal, writeBlueprintArtifacts } from "../src/plan/blueprint-normalizer.mjs";
+import { materializeLaunchBoard } from "../src/plan/artifact-assembly.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled, setProjectConfigProfile } from "../src/config/project-config.mjs";
 import { runDoctor } from "../src/diagnostics/doctor.mjs";
 import { createHarnessError } from "../src/domain/errors.mjs";
@@ -51,6 +54,7 @@ Internal commands used by Make It Real skills:
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
   blueprint review <runDir>    Record a native Claude Code Blueprint review decision
+  blueprint import <runDir>    Import a BlueprintProposal JSON from stdin (Claude Code generates, engine validates+writes)
   setup <projectRoot>          Initialize Make It Real state and optionally record --run
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, preview, and Claude CLI
@@ -591,6 +595,126 @@ async function runCommand(argv) {
       now: deterministicNow(argv)
     });
     return { exitCode: result.ok ? 0 : 1, result };
+  }
+
+  if (argv[0] === "blueprint" && argv[1] === "import") {
+    const runDir = argv[2];
+    if (!runDir || runDir.startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "blueprint import",
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: "blueprint import requires <runDir>.",
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: "blueprint import <runDir>"
+          })]
+        }
+      };
+    }
+
+    const stdinText = await readStdinText();
+    if (!stdinText.trim()) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "blueprint import",
+          errors: [createHarnessError({
+            code: "HARNESS_BLUEPRINT_STDIN_EMPTY",
+            reason: "blueprint import requires a BlueprintProposal JSON on stdin.",
+            evidence: ["stdin"],
+            recoverable: true
+          })]
+        }
+      };
+    }
+
+    let proposal;
+    try {
+      proposal = JSON.parse(stdinText);
+    } catch (parseError) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "blueprint import",
+          errors: [createHarnessError({
+            code: "HARNESS_BLUEPRINT_PARSE_ERROR",
+            reason: `Invalid JSON on stdin: ${parseError.message}`,
+            evidence: ["stdin"],
+            recoverable: true
+          })]
+        }
+      };
+    }
+
+    const validation = validateBlueprintProposal(proposal);
+    if (!validation.ok) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: "blueprint import",
+          validationErrors: validation.errors,
+          validationWarnings: validation.warnings,
+          errors: validation.errors.map(e => createHarnessError({
+            code: `HARNESS_BLUEPRINT_VALIDATION_${e.code}`,
+            reason: e.reason,
+            evidence: ["stdin"],
+            recoverable: true
+          }))
+        }
+      };
+    }
+
+    const runId = parseFlag(argv, "--slug") ?? parseFlag(argv, "--run") ?? null;
+    const runnerMode = parseFlag(argv, "--runner") ?? "claude-code";
+    const normalized = normalizeBlueprintProposal(proposal);
+    await writeBlueprintArtifacts(normalized, runDir, runId);
+
+    const slug = (proposal.intent?.title ?? "blueprint")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+
+    const launchBoard = await materializeLaunchBoard({
+      runDir,
+      runId,
+      slug: slug || "blueprint",
+      workItems: normalized.workItems,
+      workItemDag: normalized.workItemDag,
+      runnerMode
+    });
+
+    const blueprintReview = await seedBlueprintReview({ runDir, now: deterministicNow(argv) });
+    const preview = await renderDesignPreview({ runDir, now: deterministicNow(argv) });
+
+    const allErrors = [
+      ...(validation.warnings ?? []).map(w => createHarnessError({
+        code: `HARNESS_BLUEPRINT_WARNING_${w.code}`,
+        reason: w.reason,
+        evidence: ["stdin"],
+        recoverable: true
+      })),
+      ...(launchBoard.errors ?? []),
+      ...(blueprintReview.errors ?? []),
+      ...(preview.errors ?? [])
+    ];
+
+    return {
+      exitCode: blueprintReview.ok && preview.ok ? 0 : 1,
+      result: {
+        ok: blueprintReview.ok && preview.ok,
+        command: "blueprint import",
+        runDir,
+        runId,
+        workItemCount: normalized.workItems.length,
+        validationWarnings: validation.warnings,
+        errors: allErrors
+      }
+    };
   }
 
   if (argv[0] === "blueprint" && argv[1] === "review") {

@@ -7,6 +7,8 @@ description: Use when a feature request needs Make It Real PRD, architecture, re
 
 Create a zero-context implementation packet before any code changes. The packet must be specific enough for another agent or machine to verify implementation against it. The user-facing action is `/makeitreal:plan`.
 
+**YOU (Claude Code) are the architect.** Generate the BlueprintProposal JSON yourself from the project context and user request. The engine only validates and saves — it does not do the architecture thinking.
+
 Subcommands:
 
 - `/makeitreal:plan` with no request starts interactive intake through Claude Code `AskUserQuestion`, then generates the Blueprint from the collected canonical request.
@@ -112,9 +114,187 @@ For broad requests, prefer vertical slice work items when one team can own the f
 
 When reporting `suggestedBoundaries`, show each proposed owner, allowed path set, contract ID, and verification command. Treat it as a review proposal, not automatic approval.
 
-## Engine Bridge
+## Architecture: Claude Code Generates, Engine Validates
 
-When the plugin binary is available, start by running:
+The primary workflow is:
+
+1. **You (Claude Code) read project context** — file tree, package.json, existing code, existing patterns
+2. **You generate a BlueprintProposal JSON** — following the schema and rules below
+3. **You pipe the JSON to the engine** — the engine validates and saves artifacts
+4. **You present the Blueprint for review** — using the operator-facing report format above
+
+### How to Import a BlueprintProposal
+
+After generating the BlueprintProposal JSON, write it to a temporary file and pipe it to the engine:
+
+```bash
+cat /tmp/blueprint-proposal.json | makeitreal-engine blueprint import "$RUN_DIR" --runner claude-code
+```
+
+Or inline:
+
+```bash
+echo '<BlueprintProposal JSON>' | makeitreal-engine blueprint import "$RUN_DIR" --runner claude-code
+```
+
+The engine will:
+1. Parse and validate the JSON against all structural rules
+2. Normalize into canonical artifacts (PRD, design-pack, work-items, contracts, etc.)
+3. Write artifacts to `$RUN_DIR`
+4. Create board.json, trust-policy.json, runtime-state.json
+5. Seed blueprint-review.json for pending approval
+6. Render the design preview/dashboard
+7. Return `{ok, runDir, runId, workItemCount, errors}`
+
+If validation fails, the engine returns structured errors. Fix the proposal and retry.
+
+Optional flags:
+- `--slug <id>` or `--run <id>` — set a stable run ID
+- `--runner claude-code|scripted-simulator` — runner mode for trust policy (default: claude-code)
+
+### BlueprintProposal JSON Schema
+
+Generate a JSON object with this exact structure:
+
+```json
+{
+  "intent": {
+    "title": "Human-readable title",
+    "summary": "1-3 sentence description",
+    "goals": ["Measurable outcome 1", "Measurable outcome 2"],
+    "nonGoals": ["Explicit exclusion"],
+    "userVisibleBehavior": ["Observable behavior when done"],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-001",
+        "statement": "Concrete acceptance criterion",
+        "verifiedBy": "wi.work-item-id"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption": "Description",
+        "confidence": "high|medium|low",
+        "ifWrong": "Consequence"
+      }
+    ]
+  },
+  "architecture": {
+    "style": "Architecture style description",
+    "rationale": "Why this architecture",
+    "nodes": [
+      {
+        "id": "node-id",
+        "label": "Human label",
+        "kind": "service|module|database|external|queue|ui-component",
+        "responsibilityUnitId": "ru.unit-id",
+        "description": "What this node does"
+      }
+    ],
+    "edges": [
+      {
+        "from": "node-id-a",
+        "to": "node-id-b",
+        "contractId": "contract.id",
+        "label": "relationship description",
+        "style": "sync|async|event|import"
+      }
+    ]
+  },
+  "responsibilityUnits": [
+    {
+      "id": "ru.unit-id",
+      "label": "Human label",
+      "owner": "team.implementation",
+      "owns": ["src/path/**", "test/path/**"],
+      "mustProvideContracts": ["contract.id"],
+      "mayUseContracts": ["contract.other-id"],
+      "responsibility": "What this unit is responsible for"
+    }
+  ],
+  "contracts": [
+    {
+      "contractId": "contract.id",
+      "kind": "openapi|module-io|component|event|migration",
+      "title": "Contract title",
+      "provider": "ru.unit-id",
+      "consumers": ["ru.other-unit"],
+      "surface": {}
+    }
+  ],
+  "workItems": [
+    {
+      "id": "wi.work-item-id",
+      "title": "Work item title",
+      "kind": "implementation|domain-pm|integration-evidence",
+      "responsibilityUnitId": "ru.unit-id",
+      "contractIds": ["contract.id"],
+      "dependsOn": [],
+      "allowedPaths": ["src/path/**", "test/path/**"],
+      "estimatedComplexity": "trivial|small|medium|large",
+      "decomposable": false,
+      "verificationCommands": [
+        {"command": "npm test -- --grep pattern", "purpose": "Run relevant tests"}
+      ],
+      "deliverables": ["src/path/file.mjs"],
+      "acceptanceCriteriaIds": ["AC-001"]
+    }
+  ],
+  "sequences": [
+    {
+      "title": "Sequence title",
+      "participants": ["Component A", "Component B"],
+      "steps": [
+        {"from": "Component A", "to": "Component B", "action": "method call", "data": "payload description"}
+      ]
+    }
+  ]
+}
+```
+
+### Architecture Generation Rules
+
+- Every work item must have explicit `allowedPaths` (glob patterns for files it may touch)
+- Every cross-boundary dependency must be declared as a contract
+- The work item DAG must be acyclic — `dependsOn` references must not form cycles
+- Work items should be vertical slices when possible
+- Verification must be concrete: actual test commands, not "write tests"
+- If a work item is too large for one agent session, mark it `decomposable: true`
+- Do NOT invent file paths that don't exist unless the work item creates them
+- Do NOT assume frameworks/libraries not visible in project context
+- When uncertain, mark assumptions explicitly in the `assumptions` array
+- Maximum 12 work items
+- Maximum dependency chain depth of 5
+- Work item `allowedPaths` must be within their responsibility unit's `owns` paths
+- Responsibility unit `owns` paths must not overlap across units
+- All `contractId` references in edges, work items, and RUs must be declared in `contracts`
+- All architecture edge `from`/`to` must reference declared node `id`s
+- Acceptance criteria IDs must match pattern `AC-NNN`
+
+### Validation Rules (engine enforces these)
+
+The engine runs these checks on import. If any error-severity rule fails, the import is rejected:
+
+| Rule | Severity | What it checks |
+|------|----------|---------------|
+| UNIQUE_NODE_IDS | error | No duplicate architecture node IDs |
+| UNIQUE_WORK_ITEM_IDS | error | No duplicate work item IDs |
+| EDGES_REFERENCE_DECLARED_NODES | error | Edge from/to reference existing nodes |
+| DAG_IS_ACYCLIC | error | Work item dependency graph has no cycles |
+| CONTRACTS_REFERENCED_EXIST | error | All referenced contractIds are declared |
+| NO_OVERLAPPING_OWNERSHIP | error | RU owns paths don't overlap |
+| WORK_ITEMS_WITHIN_RU_PATHS | error | WI allowedPaths within parent RU owns |
+| ALLOWED_PATHS_ARE_VALID | error | Path patterns are valid globs |
+| VERIFICATION_COMMANDS_PARSE | error | Verification commands are well-formed |
+| WORK_ITEM_COUNT_WITHIN_LIMITS | error | At most 12 work items |
+| EVERY_RU_HAS_WORK_ITEMS | warning | Every RU has at least one work item |
+| EVERY_CONTRACT_HAS_PROVIDER_WORK_ITEM | warning | Every contract has an implementing WI |
+| ACCEPTANCE_CRITERIA_COVERED | warning | All ACs are referenced by some WI |
+| DEPENDENCY_DEPTH_WITHIN_LIMITS | warning | Dependency chain depth ≤ 5 |
+
+## Fallback: Engine-Generated Plan (offline mode)
+
+When the `blueprint import` path is unavailable or for scripted/offline use, the legacy engine path is still available:
 
 ```bash
 makeitreal-engine plan "${CLAUDE_PROJECT_DIR:-$PWD}" --request "<canonical request>" --runner claude-code --verify '{"file":"npm","args":["test"]}'
@@ -126,7 +306,9 @@ Derive the structured verification command from the project context. `--verify` 
 
 Never pass a generated placeholder such as `--allowed-path modules/<slug>/**` when the request already names concrete files or directories. Concrete requested paths are the responsibility boundary; guessed module workspaces create false path-boundary failures during launch.
 
-After a successful plan creates `preview/index.html`, run:
+## Post-Import Steps
+
+After a successful `blueprint import` creates `preview/index.html`, run:
 
 ```bash
 makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"
