@@ -19,7 +19,6 @@ import { runGates } from "../src/gates/index.mjs";
 import { getClaudeHookStatus, installClaudeHooks } from "../src/hooks/claude-settings.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { finishNativeClaudeTask, orchestratorTick, reconcileBoard, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
-import { generatePlanRun } from "../src/plan/plan-generator.mjs";
 import { refreshPreviewForTrigger, renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { initializeProject } from "../src/project/bootstrap.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
@@ -42,15 +41,8 @@ Internal commands used by Make It Real skills:
   demo [template]              Generate a demo blueprint (todo-app, rest-api, auth-system)
   demo list                    List available demo templates
   demo clean                   Remove /tmp makeitreal-demo-* directories
-  plan <projectRoot>           Generate PRD/design/contract/work-item run artifacts
-    --request <text>           Required work request
-    --slug <id>                Optional stable run id alias (--run also works)
-    --owner <team>             Responsibility owner for this work item
-    --allowed-path <pattern>   Repeatable ownership boundary
-    --api openapi|rest|none    API contract mode; rest maps to OpenAPI
-    --verify <json>            Repeatable verification command: {"file":"npm","args":["test"]}
-                              {"command":"npm","args":["test"]} is accepted as an alias
-    --runner scripted-simulator|claude-code
+  plan <projectRoot>           [REMOVED] Plan generation is now done by Claude Code via /makeitreal:plan
+                               Use 'blueprint import' to save Claude's output.
   blueprint approve <runDir>   Approve Blueprint review evidence
   blueprint reject <runDir>    Reject Blueprint review evidence
   blueprint review <runDir>    Record a native Claude Code Blueprint review decision
@@ -557,44 +549,20 @@ async function runCommand(argv) {
   }
 
   if (argv[0] === "plan") {
-    const request = parseFlag(argv, "--request");
-    if (!request) {
-      return {
-        exitCode: 1,
-        result: {
-          ok: false,
-          command: "plan",
-          errors: [createHarnessError({
-            code: "HARNESS_PLAN_REQUEST_REQUIRED",
-            reason: "plan requires --request <text>.",
-            evidence: ["argv"]
-          })]
-        }
-      };
-    }
-    const parsedVerification = parseVerificationCommands(argv);
-    if (parsedVerification.errors.length > 0) {
-      return {
-        exitCode: 1,
-        result: {
-          ok: false,
-          command: "plan",
-          errors: parsedVerification.errors
-        }
-      };
-    }
-    const result = await generatePlanRun({
-      projectRoot: resolveProjectRootArg(argv[1]),
-      request,
-      runId: parseFlag(argv, "--slug") ?? parseFlag(argv, "--run"),
-      owner: parseFlag(argv, "--owner") ?? "team.implementation",
-      allowedPaths: parseFlags(argv, "--allowed-path"),
-      apiKind: parseFlag(argv, "--api"),
-      verificationCommands: parsedVerification.commands,
-      runnerMode: parseFlag(argv, "--runner") ?? "scripted-simulator",
-      now: deterministicNow(argv)
-    });
-    return { exitCode: result.ok ? 0 : 1, result };
+    return {
+      exitCode: 1,
+      result: {
+        ok: false,
+        command: "plan",
+        errors: [createHarnessError({
+          code: "HARNESS_PLAN_REMOVED",
+          reason: "Plan generation is now done by Claude Code via /makeitreal:plan. Use 'blueprint import' to save Claude's output.",
+          evidence: ["argv"],
+          recoverable: true,
+          nextAction: "blueprint import <runDir>"
+        })]
+      }
+    };
   }
 
   if (argv[0] === "blueprint" && argv[1] === "import") {

@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
-import { generatePlanRun } from "../src/plan/plan-generator.mjs";
+import { importBlueprint, minimalProposal } from "./helpers/blueprint-import.mjs";
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-"));
@@ -49,12 +49,16 @@ test("board status blocks approved boards when Ready gate fails", async () => {
 test("board status exposes launch batch only after approved Ready gate", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-ready-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot,
-      request: "Implement a pure JavaScript display-name normalizer in src/normalize-name.mjs with tests.",
+      proposal: minimalProposal({
+        title: "Display Name Normalizer",
+        workItemId: "wi.display-name-normalizer",
+        ruId: "ru.display-name-normalizer",
+        allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+        verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }]
+      }),
       runId: "display-name-normalizer",
-      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
-      verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -84,12 +88,16 @@ test("board status exposes launch batch only after approved Ready gate", async (
 test("board status recommends one native task per responsibility unit", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-ru-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot,
-      request: "Implement a pure JavaScript display-name normalizer in src/normalize-name.mjs with tests.",
+      proposal: minimalProposal({
+        title: "Display Name Normalizer RU",
+        workItemId: "wi.display-name-normalizer-ru",
+        ruId: "ru.display-name-normalizer-ru",
+        allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+        verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }]
+      }),
       runId: "display-name-normalizer-ru",
-      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
-      verificationCommands: [{ file: "node", args: ["--test", "test/normalize-name.test.mjs"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -157,12 +165,16 @@ test("board status reports stale Blueprint work and is no-write", async () => {
 test("board status blocks Contract Frozen planned work until Blueprint approval", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-plan-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot,
-      request: "Build a board status approval module",
+      proposal: minimalProposal({
+        title: "Board Status Approval Module",
+        workItemId: "wi.board-status-approval",
+        ruId: "ru.board-status-approval",
+        allowedPaths: ["modules/board-status-approval/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('board status ok')"] }]
+      }),
       runId: "board-status-approval",
-      allowedPaths: ["modules/board-status-approval/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('board status ok')"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);

@@ -200,6 +200,7 @@
       "path": "contracts/auth-login.openapi.json",
       "reason": null
     },
+    "request": "",
     "sequences": [
       {
         "messages": [

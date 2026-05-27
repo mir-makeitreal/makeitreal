@@ -25,8 +25,8 @@ export function validateDesignPack(designPack) {
     errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: "architecture.nodes must be a non-empty array.", evidence: ["design-pack.json"] }));
   }
 
-  if (!designPack?.architecture?.edges || !hasNonEmptyArray(designPack.architecture.edges)) {
-    errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: "architecture.edges must be a non-empty array.", evidence: ["design-pack.json"] }));
+  if (!designPack?.architecture?.edges || !Array.isArray(designPack.architecture.edges)) {
+    errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: "architecture.edges must be an array.", evidence: ["design-pack.json"] }));
   }
 
   if (!designPack?.stateFlow?.lanes || !hasNonEmptyArray(designPack.stateFlow.lanes)) {

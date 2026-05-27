@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -43,22 +43,94 @@ test("CLI uses wall-clock timestamps unless --now is supplied", async () => {
 
   try {
     const before = Date.now() - 1000;
-    const result = spawnSync(process.execPath, [
+
+    // Create a minimal BlueprintProposal JSON for import via CLI
+    const proposal = {
+      intent: {
+        title: "Timestamp Smoke Module",
+        summary: "Build a small timestamp smoke module",
+        goals: ["Deliver timestamp smoke module."],
+        userVisibleBehavior: ["Module works."],
+        acceptanceCriteria: [{ id: "AC-001", statement: "Module works." }],
+        nonGoals: ["Nothing out of scope."]
+      },
+      architecture: {
+        nodes: [{ id: "ru.timestamp-smoke", label: "Timestamp Smoke", responsibilityUnitId: "ru.timestamp-smoke" }],
+        edges: []
+      },
+      responsibilityUnits: [{
+        id: "ru.timestamp-smoke",
+        label: "Timestamp Smoke",
+        owner: "team.implementation",
+        owns: ["src/timestamp-smoke/**"],
+        mustProvideContracts: ["contract.timestamp-smoke"],
+        mayUseContracts: [],
+        publicSurfaces: [{
+          name: "timestampSmoke",
+          kind: "module",
+          contractIds: ["contract.timestamp-smoke"],
+          signature: {
+            inputs: [{ name: "input", type: "string" }],
+            outputs: [{ name: "result", type: "string" }],
+            errors: [{ code: "SMOKE_ERROR", when: "Invalid input." }]
+          }
+        }],
+        responsibility: "Timestamp smoke module."
+      }],
+      contracts: [{ contractId: "contract.timestamp-smoke", kind: "none", title: "Timestamp Smoke Contract" }],
+      workItems: [{
+        id: "wi.timestamp-smoke",
+        title: "Timestamp Smoke",
+        responsibilityUnitId: "ru.timestamp-smoke",
+        contractIds: ["contract.timestamp-smoke"],
+        dependsOn: [],
+        allowedPaths: ["src/timestamp-smoke/**"],
+        acceptanceCriteriaIds: ["AC-001"],
+        verificationCommands: [{ command: { file: "node", args: ["-e", "console.log('ok')"] }, purpose: "Verify" }],
+        kind: "implementation"
+      }],
+      sequences: [{
+        title: "Timestamp smoke call",
+        participants: ["Caller", "TimestampSmoke"],
+        steps: [
+          { from: "Caller", to: "TimestampSmoke", action: "timestampSmoke(input)" },
+          { from: "TimestampSmoke", to: "Caller", action: "returns result" }
+        ]
+      }]
+    };
+
+    const runDir = path.join(projectRoot, ".makeitreal", "runs", "timestamp-smoke");
+
+    // Step 1: Import blueprint via CLI (reads from stdin)
+    const importResult = spawnSync(process.execPath, [
       "bin/harness.mjs",
-      "plan",
+      "blueprint",
+      "import",
+      runDir
+    ], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8",
+      env,
+      input: JSON.stringify(proposal)
+    });
+    assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
+
+    // Step 2: Setup to write current-run.json with wall-clock time
+    const setupResult = spawnSync(process.execPath, [
+      "bin/harness.mjs",
+      "setup",
       projectRoot,
-      "--request",
-      "Build a small timestamp smoke module",
-      "--verify",
-      JSON.stringify({ file: "node", args: ["-e", "console.log('ok')"] })
+      "--run",
+      runDir
     ], {
       cwd: new URL("../", import.meta.url),
       encoding: "utf8",
       env
     });
+    assert.equal(setupResult.status, 0, setupResult.stderr || setupResult.stdout);
+
     const after = Date.now() + 1000;
 
-    assert.equal(result.status, 0, result.stderr || result.stdout);
     const state = JSON.parse(await readFile(path.join(projectRoot, ".makeitreal", "current-run.json"), "utf8"));
     const updatedAtMs = Date.parse(state.updatedAt);
     assert.equal(updatedAtMs >= before, true);

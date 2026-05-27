@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { installClaudeHooks } from "../src/hooks/claude-settings.mjs";
-import { generatePlanRun } from "../src/plan/plan-generator.mjs";
+import { importBlueprint, minimalProposal } from "./helpers/blueprint-import.mjs";
 import { runDoctor } from "../src/diagnostics/doctor.mjs";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -36,13 +36,17 @@ test("doctor reports plugin, hooks, current run, dashboard, and Claude binary wi
   const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-bin-"));
   try {
     await writeFakeClaude(binDir);
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Build a doctor diagnostic module",
+      proposal: minimalProposal({
+        title: "Doctor Diagnostic Module",
+        workItemId: "wi.doctor-diagnostics",
+        ruId: "ru.doctor-diagnostics",
+        owner: "team.diagnostics",
+        allowedPaths: ["modules/doctor-diagnostics/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('doctor ok')"] }]
+      }),
       runId: "doctor-diagnostics",
-      owner: "team.diagnostics",
-      allowedPaths: ["modules/doctor-diagnostics/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('doctor ok')"] }],
       now: new Date("2026-05-08T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -152,13 +156,17 @@ test("doctor CLI accepts a documented positional run path", async () => {
   const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-positional-bin-"));
   try {
     await writeFakeClaude(binDir);
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Build positional doctor diagnostics",
+      proposal: minimalProposal({
+        title: "Positional Doctor Diagnostics",
+        workItemId: "wi.positional-doctor",
+        ruId: "ru.positional-doctor",
+        owner: "team.diagnostics",
+        allowedPaths: ["modules/positional-doctor/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('positional doctor ok')"] }]
+      }),
       runId: "positional-doctor",
-      owner: "team.diagnostics",
-      allowedPaths: ["modules/positional-doctor/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('positional doctor ok')"] }],
       now: new Date("2026-05-08T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);

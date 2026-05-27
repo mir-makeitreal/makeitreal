@@ -199,7 +199,7 @@ export function renderOverviewSection(model, dossier, blueprint) {
         <p class="summary-line">${escapeHtml(primarySummary)}</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
-          <p>${escapeHtml(blueprint.title ?? model.run.workItemId)}</p>
+          <p>${escapeHtml(blueprint.request || blueprint.title || model.run.workItemId)}</p>
         </details>
         <div class="overview-brief">
           <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>

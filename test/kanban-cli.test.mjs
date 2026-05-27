@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { readJsonFile, writeJsonFile } from "../src/io/json.mjs";
+import { minimalProposal } from "./helpers/blueprint-import.mjs";
 
 async function withBoard(callback) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-cli-board-"));
@@ -18,10 +19,11 @@ async function withBoard(callback) {
   }
 }
 
-function runHarness(args) {
+function runHarness(args, options = {}) {
   return spawnSync(process.execPath, ["bin/harness.mjs", ...args], {
     cwd: new URL("../", import.meta.url),
-    encoding: "utf8"
+    encoding: "utf8",
+    ...options
   });
 }
 
@@ -104,45 +106,54 @@ test("orchestrator reconcile can advance retry time through CLI", async () => {
 test("freshly planned and approved run can enter Ready through public CLI path", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-cli-planned-"));
   try {
-    const plan = runHarness([
-      "plan",
-      projectRoot,
-      "--request",
-      "Build a launchable report module",
-      "--run",
-      "launchable-report",
-      "--allowed-path",
-      "modules/launchable-report/**",
-      "--verify",
-      JSON.stringify({ file: "node", args: ["-e", "console.log('report ok')"] })
-    ]);
-    assert.equal(plan.status, 0, plan.stdout || plan.stderr);
-    const planOutput = JSON.parse(plan.stdout);
-    assert.equal(planOutput.ok, true);
-    assert.equal(planOutput.implementationReady, false);
+    const workItemId = "wi.launchable-report";
+    const runDir = path.join(projectRoot, ".makeitreal", "runs", "launchable-report");
+    const proposal = minimalProposal({
+      title: "Launchable Report Module",
+      workItemId,
+      ruId: "ru.launchable-report",
+      owner: "team.reports",
+      allowedPaths: ["modules/launchable-report/**"],
+      verificationCommands: [{ file: "node", args: ["-e", "console.log('report ok')"] }]
+    });
 
-    const board = await readJsonFile(path.join(planOutput.runDir, "board.json"));
+    // Claude Code produces the BlueprintProposal; the engine validates+writes it.
+    // scripted-simulator matches the runner used by the public `orchestrator tick` CLI.
+    const imported = runHarness(
+      ["blueprint", "import", runDir, "--run", "launchable-report", "--runner", "scripted-simulator"],
+      { input: JSON.stringify(proposal) }
+    );
+    assert.equal(imported.status, 0, imported.stdout || imported.stderr);
+    const importOutput = JSON.parse(imported.stdout);
+    assert.equal(importOutput.ok, true);
+    assert.equal(importOutput.runDir, runDir);
+
+    // Freshly imported run is not implementation-ready until the Blueprint is approved.
+    const preApprovalGate = runHarness(["gate", runDir, "--target", "Ready"]);
+    assert.equal(preApprovalGate.status, 1, preApprovalGate.stdout || preApprovalGate.stderr);
+
+    const board = await readJsonFile(path.join(runDir, "board.json"));
     assert.equal(board.workItems[0].lane, "Contract Frozen");
-    assert.equal(board.workItems[0].id, planOutput.workItemId);
+    assert.equal(board.workItems[0].id, workItemId);
 
     const approve = runHarness([
       "blueprint",
       "approve",
-      planOutput.runDir,
+      runDir,
       "--by",
       "operator:test"
     ]);
     assert.equal(approve.status, 0, approve.stdout || approve.stderr);
 
-    const readyGate = runHarness(["gate", planOutput.runDir, "--target", "Ready"]);
+    const readyGate = runHarness(["gate", runDir, "--target", "Ready"]);
     assert.equal(readyGate.status, 0, readyGate.stdout || readyGate.stderr);
 
-    const tick = runHarness(["orchestrator", "tick", planOutput.runDir, "--concurrency", "1"]);
+    const tick = runHarness(["orchestrator", "tick", runDir, "--concurrency", "1"]);
     assert.equal(tick.status, 0, tick.stdout || tick.stderr);
-    assert.deepEqual(JSON.parse(tick.stdout).promotedWorkItemIds, [planOutput.workItemId]);
-    assert.deepEqual(JSON.parse(tick.stdout).dispatchedWorkItemIds, [planOutput.workItemId]);
+    assert.deepEqual(JSON.parse(tick.stdout).promotedWorkItemIds, [workItemId]);
+    assert.deepEqual(JSON.parse(tick.stdout).dispatchedWorkItemIds, [workItemId]);
 
-    const launchedBoard = await readJsonFile(path.join(planOutput.runDir, "board.json"));
+    const launchedBoard = await readJsonFile(path.join(runDir, "board.json"));
     assert.equal(launchedBoard.workItems[0].lane, "Verifying");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

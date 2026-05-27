@@ -121,7 +121,9 @@ export function referenceTitle(model) {
   if (modules.length > 1) {
     return architecturePacketTitle({ rawTitle, modules, dependencyEdges: dossier.dependencyEdges ?? [] });
   }
-  return conciseTitleFromText(rawTitle) || "Blueprint";
+  // Claude Code authors a concise intent.title directly, so use it verbatim —
+  // distilling it would mangle acronyms (e.g. "Orders API" → "Orders Api").
+  return rawTitle || "Blueprint";
 }
 
 export function referenceSummary({ blueprint, dossier }) {

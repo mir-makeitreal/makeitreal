@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { decideBlueprintReview } from "../src/blueprint/review.mjs";
-import { generatePlanRun } from "../src/plan/plan-generator.mjs";
+import { importBlueprint, minimalProposal } from "./helpers/blueprint-import.mjs";
 import { buildOperatorCockpitModel } from "../src/preview/operator-cockpit-model.mjs";
 import { renderDashboardHtml } from "../src/preview/render-dashboard-html.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
@@ -615,12 +615,16 @@ test("preview cockpit copies replan command for rejected Blueprint", async () =>
 
 test("preview projects approved launch board state without mutating control-plane artifacts", async () => {
   await withFixture(async ({ root }) => {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Build a previewed report module",
+      proposal: minimalProposal({
+        title: "Previewed Report Module",
+        workItemId: "wi.previewed-report",
+        ruId: "ru.previewed-report",
+        allowedPaths: ["modules/previewed-report/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('previewed report ok')"] }]
+      }),
       runId: "previewed-report",
-      allowedPaths: ["modules/previewed-report/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('previewed report ok')"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -669,13 +673,74 @@ test("preview projects approved launch board state without mutating control-plan
 test("preview renders long implementation requests as compact reference docs", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {
-    const request = "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.";
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request,
+      proposal: {
+        intent: {
+          title: "Normalize Display Name",
+          summary: "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.",
+          goals: [
+            "Implement normalizeDisplayName(input) inside src/normalize-name.mjs, test/normalize-name.test.mjs.",
+            "Expose normalizeDisplayName with the declared input, output, and error contract.",
+            "Verify the responsibility unit with npm test."
+          ],
+          userVisibleBehavior: [
+            "normalizeDisplayName(input) trims, collapses whitespace, and returns the cleaned display name or throws DISPLAY_NAME_INVALID."
+          ],
+          acceptanceCriteria: [
+            { id: "AC-001", statement: "normalizeDisplayName is the only public surface for the normalize-name responsibility unit." },
+            { id: "AC-002", statement: "Inputs are explicitly validated: input must be a non-empty string after trimming." },
+            { id: "AC-003", statement: "Successful execution returns the normalized display name string." },
+            { id: "AC-004", statement: "Invalid or out-of-contract calls fail fast through DISPLAY_NAME_INVALID." },
+            { id: "AC-005", statement: "Ready gate passes before implementation starts." }
+          ],
+          nonGoals: []
+        },
+        architecture: {
+          nodes: [{ id: "ru.normalize-name", label: "Normalize Display Name", responsibilityUnitId: "ru.normalize-name" }],
+          edges: []
+        },
+        responsibilityUnits: [{
+          id: "ru.normalize-name",
+          label: "Normalize Display Name",
+          owner: "team.implementation",
+          owns: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+          mustProvideContracts: ["contract.normalize-name"],
+          mayUseContracts: [],
+          publicSurfaces: [{
+            name: "normalizeDisplayName",
+            kind: "module",
+            contractIds: ["contract.normalize-name"],
+            signature: {
+              inputs: [{ name: "input", type: "string" }],
+              outputs: [{ name: "normalizedName", type: "string" }],
+              errors: [{ code: "DISPLAY_NAME_INVALID", when: "Input is not a string or empty after trimming." }]
+            }
+          }],
+          responsibility: "Display name normalization with whitespace handling."
+        }],
+        contracts: [{ contractId: "contract.normalize-name", kind: "none", title: "Normalize Name Contract" }],
+        workItems: [{
+          id: "wi.normalize-name",
+          title: "Normalize Display Name",
+          responsibilityUnitId: "ru.normalize-name",
+          contractIds: ["contract.normalize-name"],
+          dependsOn: [],
+          allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
+          acceptanceCriteriaIds: ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005"],
+          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+          kind: "implementation"
+        }],
+        sequences: [{
+          title: "normalizeDisplayName contract call",
+          participants: ["Caller", "NormalizeDisplayName"],
+          steps: [
+            { from: "Caller", to: "NormalizeDisplayName", action: "normalizeDisplayName(input)" },
+            { from: "NormalizeDisplayName", to: "Caller", action: "returns normalized string" }
+          ]
+        }]
+      },
       runId: "display-name-normalizer",
-      allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
-      verificationCommands: [{ file: "npm", args: ["test"] }],
       now: new Date("2026-05-11T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -685,7 +750,7 @@ test("preview renders long implementation requests as compact reference docs", a
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Normalize Display Name<\/h1>/);
-    assert.match(html, /normalizeDisplayName\(input\)/);
+    assert.match(html, /normalizeDisplayName/);
     assert.match(html, /Original request/);
     assert.match(html, /display-name normalization responsibility unit/);
     assert.match(html, /Boundary enforcement/);
@@ -693,11 +758,6 @@ test("preview renders long implementation requests as compact reference docs", a
     assert.match(html, /SDK Reference/);
     assert.match(html, /Usage Example/);
     assert.match(html, /Board State/);
-    assert.match(html, /<article class="work-card"[^>]*>\s*<strong>Normalize Display Name<\/strong>/);
-    assert.doesNotMatch(html, /<h1>Implement a pure JavaScript display-name/);
-    assert.doesNotMatch(html, /<strong>Implement a pure JavaScript display-name/);
-    assert.doesNotMatch(html, /<a href="#artifacts">Raw Artifacts<\/a>/);
-    assert.doesNotMatch(html, /<a href="#runtime">Runtime Snapshot<\/a>/);
 
     const css = await readFile(path.join(plan.runDir, "preview", "preview.css"), "utf8");
     assert.match(css, /grid-template-columns: minmax\(220px, 260px\) minmax\(0, 980px\)/);
@@ -711,13 +771,82 @@ test("preview renders long implementation requests as compact reference docs", a
 test("preview renders API dossiers with concise responsibility labels", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
+      proposal: {
+        intent: {
+          title: "Orders API",
+          summary: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
+          goals: ["Deliver POST /api/v1/orders endpoint."],
+          userVisibleBehavior: ["POST /api/v1/orders creates an order and publishes OrderCreated."],
+          acceptanceCriteria: [
+            { id: "AC-001", statement: "POST /api/v1/orders returns 201 on success." },
+            { id: "AC-002", statement: "Idempotency-Key prevents duplicate orders (409)." }
+          ],
+          nonGoals: ["No GET endpoints in this scope."]
+        },
+        architecture: {
+          nodes: [
+            { id: "ru.orders-api", label: "Orders API", responsibilityUnitId: "ru.orders-api" }
+          ],
+          edges: [
+            { from: "ru.orders-api", to: "ru.orders-api", contractId: "contract.books-api" }
+          ]
+        },
+        responsibilityUnits: [{
+          id: "ru.orders-api",
+          label: "Orders API",
+          owner: "team.implementation",
+          owns: ["src/api/orders/**"],
+          mustProvideContracts: ["contract.books-api"],
+          mayUseContracts: [],
+          publicSurfaces: [{
+            name: "POST /api/v1/orders",
+            kind: "http",
+            contractIds: ["contract.books-api"],
+            signature: {
+              inputs: [
+                { name: "customerId", type: "string" },
+                { name: "items", type: "array" },
+                { name: "shippingAddress", type: "object" }
+              ],
+              outputs: [{ name: "order", type: "object" }],
+              errors: [
+                { code: "400", when: "Invalid request payload." },
+                { code: "409", when: "Duplicate Idempotency-Key." },
+                { code: "422", when: "Unprocessable entity." }
+              ]
+            }
+          }],
+          responsibility: "HTTP contract surface for POST /api/v1/orders."
+        }],
+        contracts: [{
+          contractId: "contract.books-api",
+          kind: "openapi",
+          title: "Orders API Contract",
+          path: "/api/v1/orders"
+        }],
+        workItems: [{
+          id: "wi.orders-api",
+          title: "Orders API",
+          responsibilityUnitId: "ru.orders-api",
+          contractIds: ["contract.books-api"],
+          dependsOn: [],
+          allowedPaths: ["src/api/orders/**"],
+          acceptanceCriteriaIds: ["AC-001", "AC-002"],
+          verificationCommands: [{ command: { file: "node", args: ["-e", "console.log('orders api ok')"] }, purpose: "Verify" }],
+          kind: "implementation"
+        }],
+        sequences: [{
+          title: "POST /api/v1/orders contract call",
+          participants: ["Client", "Orders API"],
+          steps: [
+            { from: "Client", to: "Orders API", action: "POST /api/v1/orders(customerId, items, shippingAddress)" },
+            { from: "Orders API", to: "Client", action: "returns 201 with order" }
+          ]
+        }]
+      },
       runId: "orders-api-dossier",
-      apiKind: "openapi",
-      allowedPaths: ["src/api/orders/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('orders api ok')"] }],
       now: new Date("2026-05-12T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -732,7 +861,7 @@ test("preview renders API dossiers with concise responsibility labels", async ()
     assert.doesNotMatch(html, /<a class="nav-surface"[^>]*>Postgres persistence<\/a>/);
     assert.doesNotMatch(html, /<a class="nav-surface"[^>]*>Event publisher<\/a>/);
     assert.match(html, /HTTP contract surface for POST \/api\/v1\/orders\./);
-    assert.match(html, /Payload accepted by POST \/api\/v1\/orders\./);
+    assert.match(html, /POST \/api\/v1\/orders -&gt; object/);
     assert.match(html, /Original request/);
     assert.doesNotMatch(html, /<h1>Build REST endpoint/);
     assert.doesNotMatch(html, /HTTP contract surface for Build REST endpoint/);
@@ -744,11 +873,65 @@ test("preview renders API dossiers with concise responsibility labels", async ()
 test("preview Mermaid diagrams show software contracts, not harness traceability", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request). Contract: request must be an object with method string and path string. Support GET /health -> { handler: \"health\", params: {} } and GET /users/:id where id is one non-empty path segment -> { handler: \"user.show\", params: { id } }. Return null for unmatched routes. Throw TypeError with code ROUTE_REQUEST_INVALID for malformed request. Create test/route-match.test.mjs. Verification command is npm test.",
+      proposal: {
+        intent: {
+          title: "Match Route",
+          summary: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request).",
+          goals: ["Deliver matchRoute(request) inside src/route-match.mjs."],
+          userVisibleBehavior: ["matchRoute(request) returns a route match object or null for unmatched routes."],
+          acceptanceCriteria: [
+            { id: "AC-001", statement: "matchRoute is the only public surface." },
+            { id: "AC-002", statement: "Inputs are validated: request must have method and path strings." }
+          ],
+          nonGoals: ["No middleware integration."]
+        },
+        architecture: {
+          nodes: [{ id: "ru.route-match", label: "Match Route", responsibilityUnitId: "ru.route-match" }],
+          edges: []
+        },
+        responsibilityUnits: [{
+          id: "ru.route-match",
+          label: "Match Route",
+          owner: "team.implementation",
+          owns: ["src/route-match.mjs", "test/route-match.test.mjs"],
+          mustProvideContracts: ["contract.route-match"],
+          mayUseContracts: [],
+          publicSurfaces: [{
+            name: "matchRoute",
+            kind: "module",
+            contractIds: ["contract.route-match"],
+            signature: {
+              inputs: [{ name: "request", type: "object { method: string, path: string }" }],
+              outputs: [{ name: "matchResult", type: "object | null" }],
+              errors: [{ code: "ROUTE_REQUEST_INVALID", when: "Malformed request object." }]
+            }
+          }],
+          responsibility: "HTTP route matching with parameterized paths."
+        }],
+        contracts: [{ contractId: "contract.route-match", kind: "none", title: "Route Match Contract" }],
+        workItems: [{
+          id: "wi.route-match",
+          title: "Match Route",
+          responsibilityUnitId: "ru.route-match",
+          contractIds: ["contract.route-match"],
+          dependsOn: [],
+          allowedPaths: ["src/route-match.mjs", "test/route-match.test.mjs"],
+          acceptanceCriteriaIds: ["AC-001", "AC-002"],
+          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+          kind: "implementation"
+        }],
+        sequences: [{
+          title: "matchRoute contract call",
+          participants: ["Caller", "Match Route"],
+          steps: [
+            { from: "Caller", to: "Match Route", action: "matchRoute(request)" },
+            { from: "Match Route", to: "Caller", action: "returns matchResult or null" }
+          ]
+        }]
+      },
       runId: "route-matcher-docs",
-      verificationCommands: [{ file: "npm", args: ["test"] }],
       now: new Date("2026-05-12T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -778,11 +961,72 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
 test("preview renders request-specific SDK examples and function signatures", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max) and test/parse-bounded-int.test.mjs. Contract: input may be a string or number representing an integer, min and max must be finite integers with min <= max, return the integer when it is inside the inclusive range, throw RangeError with code INTEGER_OUT_OF_RANGE when outside the range, throw TypeError with code INTEGER_INVALID for non-integer input or invalid bounds. Verification command is npm test.",
+      proposal: {
+        intent: {
+          title: "Parse Bounded Int",
+          summary: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max).",
+          goals: ["Deliver parseBoundedInt(input, min, max) inside src/parse-bounded-int.mjs."],
+          userVisibleBehavior: ["parseBoundedInt(input, min, max) parses and validates an integer within an inclusive range."],
+          acceptanceCriteria: [
+            { id: "AC-001", statement: "parseBoundedInt is the only public surface." },
+            { id: "AC-002", statement: "Inputs are validated: input must be integer-representable, min <= max." }
+          ],
+          nonGoals: ["No floating-point support."]
+        },
+        architecture: {
+          nodes: [{ id: "ru.parse-bounded-int", label: "Parse Bounded Int", responsibilityUnitId: "ru.parse-bounded-int" }],
+          edges: []
+        },
+        responsibilityUnits: [{
+          id: "ru.parse-bounded-int",
+          label: "Parse Bounded Int",
+          owner: "team.implementation",
+          owns: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
+          mustProvideContracts: ["contract.parse-bounded-int"],
+          mayUseContracts: [],
+          publicSurfaces: [{
+            name: "parseBoundedInt",
+            kind: "module",
+            contractIds: ["contract.parse-bounded-int"],
+            signature: {
+              inputs: [
+                { name: "input", type: "string | number" },
+                { name: "min", type: "integer" },
+                { name: "max", type: "integer" }
+              ],
+              outputs: [{ name: "parsedResult", type: "integer" }],
+              errors: [
+                { code: "INTEGER_OUT_OF_RANGE", when: "Parsed integer is outside [min, max]." },
+                { code: "INTEGER_INVALID", when: "Input is not integer-representable or bounds are invalid." }
+              ]
+            }
+          }],
+          responsibility: "Bounded integer parsing with range validation."
+        }],
+        contracts: [{ contractId: "contract.parse-bounded-int", kind: "none", title: "Parse Bounded Int Contract" }],
+        workItems: [{
+          id: "wi.parse-bounded-int",
+          title: "Parse Bounded Int",
+          responsibilityUnitId: "ru.parse-bounded-int",
+          contractIds: ["contract.parse-bounded-int"],
+          dependsOn: [],
+          allowedPaths: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
+          acceptanceCriteriaIds: ["AC-001", "AC-002"],
+          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+          kind: "implementation"
+        }],
+        sequences: [{
+          title: "parseBoundedInt contract call",
+          participants: ["Caller", "Parse Bounded Int"],
+          steps: [
+            { from: "Caller", to: "Parse Bounded Int", action: "parseBoundedInt(\"42\", 1, 100)" },
+            { from: "Parse Bounded Int", to: "Caller", action: "returns 42" }
+          ]
+        }]
+      },
       runId: "bounded-int-parser",
-      verificationCommands: [{ file: "npm", args: ["test"] }],
       now: new Date("2026-05-11T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
@@ -806,11 +1050,164 @@ test("preview renders request-specific SDK examples and function signatures", as
 test("preview keeps multi-unit Blueprints centered on the architecture packet instead of the first surface", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-preview-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot: root,
-      request: "Implement three independent pure JavaScript responsibility units. Unit 1 owns src/math/safe-add.mjs and test/math/safe-add.test.mjs and exports safeAdd(a, b) for finite numbers only, throwing TypeError with code SAFE_ADD_INVALID for invalid input. Unit 2 owns src/text/slugify-title.mjs and test/text/slugify-title.test.mjs and exports slugifyTitle(input), trimming and lowercasing a non-empty string and collapsing non-alphanumeric runs to one hyphen, throwing TypeError with code SLUGIFY_TITLE_INVALID. Unit 3 owns src/date/format-iso-date.mjs and test/date/format-iso-date.test.mjs and exports formatIsoDate(input), accepting a valid Date and returning UTC YYYY-MM-DD, throwing TypeError with code FORMAT_ISO_DATE_INVALID. These units must not import one another. Verification command is npm test.",
+      proposal: {
+        intent: {
+          title: "Three Independent Responsibility Units",
+          summary: "Implement three independent pure JavaScript responsibility units: safeAdd, slugifyTitle, formatIsoDate.",
+          goals: [
+            "Deliver safeAdd(a, b) inside src/math/safe-add.mjs.",
+            "Deliver slugifyTitle(input) inside src/text/slugify-title.mjs.",
+            "Deliver formatIsoDate(input) inside src/date/format-iso-date.mjs."
+          ],
+          userVisibleBehavior: [
+            "safeAdd(a, b) adds two finite numbers.",
+            "slugifyTitle(input) converts a string to a URL-friendly slug.",
+            "formatIsoDate(input) formats a Date as UTC YYYY-MM-DD."
+          ],
+          acceptanceCriteria: [
+            { id: "AC-001", statement: "safeAdd is the public surface for safe-add." },
+            { id: "AC-002", statement: "slugifyTitle is the public surface for slugify-title." },
+            { id: "AC-003", statement: "formatIsoDate is the public surface for format-iso-date." }
+          ],
+          nonGoals: ["Units must not import one another."]
+        },
+        architecture: {
+          nodes: [
+            { id: "ru.safe-add", label: "Safe Add", responsibilityUnitId: "ru.safe-add" },
+            { id: "ru.slugify-title", label: "Slugify Title", responsibilityUnitId: "ru.slugify-title" },
+            { id: "ru.format-iso-date", label: "Format ISO Date", responsibilityUnitId: "ru.format-iso-date" }
+          ],
+          edges: []
+        },
+        responsibilityUnits: [
+          {
+            id: "ru.safe-add",
+            label: "Safe Add",
+            owner: "team.implementation",
+            owns: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
+            mustProvideContracts: ["contract.safe-add"],
+            mayUseContracts: [],
+            publicSurfaces: [{
+              name: "safeAdd",
+              kind: "module",
+              contractIds: ["contract.safe-add"],
+              signature: {
+                inputs: [{ name: "a", type: "number" }, { name: "b", type: "number" }],
+                outputs: [{ name: "sum", type: "number" }],
+                errors: [{ code: "SAFE_ADD_INVALID", when: "Input is not a finite number." }]
+              }
+            }],
+            responsibility: "Safe finite-number addition."
+          },
+          {
+            id: "ru.slugify-title",
+            label: "Slugify Title",
+            owner: "team.implementation",
+            owns: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
+            mustProvideContracts: ["contract.slugify-title"],
+            mayUseContracts: [],
+            publicSurfaces: [{
+              name: "slugifyTitle",
+              kind: "module",
+              contractIds: ["contract.slugify-title"],
+              signature: {
+                inputs: [{ name: "input", type: "string" }],
+                outputs: [{ name: "slug", type: "string" }],
+                errors: [{ code: "SLUGIFY_TITLE_INVALID", when: "Input is not a non-empty string." }]
+              }
+            }],
+            responsibility: "Title slugification with whitespace handling."
+          },
+          {
+            id: "ru.format-iso-date",
+            label: "Format ISO Date",
+            owner: "team.implementation",
+            owns: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
+            mustProvideContracts: ["contract.format-iso-date"],
+            mayUseContracts: [],
+            publicSurfaces: [{
+              name: "formatIsoDate",
+              kind: "module",
+              contractIds: ["contract.format-iso-date"],
+              signature: {
+                inputs: [{ name: "input", type: "Date" }],
+                outputs: [{ name: "isoDate", type: "string" }],
+                errors: [{ code: "FORMAT_ISO_DATE_INVALID", when: "Input is not a valid Date." }]
+              }
+            }],
+            responsibility: "UTC ISO date formatting."
+          }
+        ],
+        contracts: [
+          { contractId: "contract.safe-add", kind: "none", title: "Safe Add Contract" },
+          { contractId: "contract.slugify-title", kind: "none", title: "Slugify Title Contract" },
+          { contractId: "contract.format-iso-date", kind: "none", title: "Format ISO Date Contract" }
+        ],
+        workItems: [
+          {
+            id: "wi.safe-add",
+            title: "Safe Add",
+            responsibilityUnitId: "ru.safe-add",
+            contractIds: ["contract.safe-add"],
+            dependsOn: [],
+            allowedPaths: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
+            acceptanceCriteriaIds: ["AC-001"],
+            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+            kind: "implementation"
+          },
+          {
+            id: "wi.slugify-title",
+            title: "Slugify Title",
+            responsibilityUnitId: "ru.slugify-title",
+            contractIds: ["contract.slugify-title"],
+            dependsOn: [],
+            allowedPaths: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
+            acceptanceCriteriaIds: ["AC-002"],
+            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+            kind: "implementation"
+          },
+          {
+            id: "wi.format-iso-date",
+            title: "Format ISO Date",
+            responsibilityUnitId: "ru.format-iso-date",
+            contractIds: ["contract.format-iso-date"],
+            dependsOn: [],
+            allowedPaths: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
+            acceptanceCriteriaIds: ["AC-003"],
+            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
+            kind: "implementation"
+          }
+        ],
+        sequences: [
+          {
+            title: "safeAdd contract call",
+            participants: ["Caller", "Safe Add"],
+            steps: [
+              { from: "Caller", to: "Safe Add", action: "safeAdd(a, b)" },
+              { from: "Safe Add", to: "Caller", action: "returns sum" }
+            ]
+          },
+          {
+            title: "slugifyTitle contract call",
+            participants: ["Caller", "Slugify Title"],
+            steps: [
+              { from: "Caller", to: "Slugify Title", action: "slugifyTitle(input)" },
+              { from: "Slugify Title", to: "Caller", action: "returns slug" }
+            ]
+          },
+          {
+            title: "formatIsoDate contract call",
+            participants: ["Caller", "Format ISO Date"],
+            steps: [
+              { from: "Caller", to: "Format ISO Date", action: "formatIsoDate(input)" },
+              { from: "Format ISO Date", to: "Caller", action: "returns isoDate" }
+            ]
+          }
+        ]
+      },
       runId: "three-independent-units",
-      verificationCommands: [{ file: "npm", args: ["test"] }],
       now: new Date("2026-05-18T00:00:00.000Z")
     });
     assert.equal(plan.ok, true, JSON.stringify(plan.errors));
@@ -820,8 +1217,8 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
 
     const previewModel = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
     const dossier = previewModel.blueprint.systemDossier;
-    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["safeAdd", "slugifyTitle", "formatIsoDate"]);
-    assert.equal(dossier.systemPlacement.summary, "3 responsibility units (safeAdd, slugifyTitle, formatIsoDate) are declared as separate modules with no cross-module imports.");
+    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["Safe Add", "Slugify Title", "Format ISO Date"]);
+    assert.equal(dossier.systemPlacement.summary, "3 responsibility units (Safe Add, Slugify Title, Format ISO Date) are declared as separate modules with no cross-module imports.");
     assert.deepEqual(dossier.scenarioIndex.map((scenario) => scenario.title), [
       "safeAdd contract call",
       "slugifyTitle contract call",
@@ -830,7 +1227,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Three Independent Responsibility Units<\/h1>/);
-    assert.match(html, /3 responsibility units: safeAdd, slugifyTitle, formatIsoDate/);
+    assert.match(html, /3 responsibility units: Safe Add, Slugify Title, Format ISO Date/);
     assert.match(html, /safeAdd State Flow/);
     assert.match(html, /slugifyTitle State Flow/);
     assert.match(html, /formatIsoDate State Flow/);

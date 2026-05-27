@@ -66,6 +66,7 @@ function modelBlueprint({ prd, designPack, responsibilityUnits, workItems, workI
   const moduleInterfaces = modelModuleInterfaces({ designPack, responsibilityUnits });
   return {
     title: prd.title,
+    request: prd.request ?? "",
     summary: prd.userVisibleBehavior ?? [],
     goals: prd.goals ?? [],
     nonGoals: prd.nonGoals ?? [],

@@ -68,13 +68,20 @@ function normalizeDesignPack(proposal, runId) {
       lanes: CANONICAL_LANES,
       transitions: CANONICAL_TRANSITIONS
     },
-    apiSpecs: (proposal.contracts ?? [])
-      .filter(c => c.kind === "openapi")
-      .map(c => ({
-        kind: "openapi",
+    apiSpecs: (proposal.contracts ?? []).map(c => {
+      if (c.kind === "openapi") {
+        return {
+          kind: "openapi",
+          contractId: c.contractId,
+          path: `contracts/${slugify(c.title)}.openapi.json`
+        };
+      }
+      return {
+        kind: c.kind ?? "none",
         contractId: c.contractId,
-        path: `contracts/${slugify(c.title)}.openapi.json`
-      })),
+        reason: c.reason ?? `${c.title ?? c.contractId} contract (no API spec).`
+      };
+    }),
     componentContracts: (proposal.contracts ?? [])
       .filter(c => c.kind === "component")
       .map(c => ({
@@ -91,6 +98,9 @@ function normalizeDesignPack(proposal, runId) {
       responsibilityUnitId: ru.id,
       moduleName: ru.moduleName ?? ru.label ?? ru.id,
       owner: ru.owner ?? "team.implementation",
+      // The module purpose shown in the dossier comes from the unit's declared
+      // purpose, falling back to its responsibility statement.
+      purpose: ru.purpose ?? ru.responsibility ?? null,
       owns: ru.owns ?? [],
       mustProvideContracts: ru.mustProvideContracts ?? [],
       publicSurfaces: ru.publicSurfaces ?? [],

@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { decideBlueprintReview, seedBlueprintReview } from "../src/blueprint/review.mjs";
 import { writeJsonFile } from "../src/io/json.mjs";
 import { orchestratorTick, reconcileBoard } from "../src/orchestrator/orchestrator.mjs";
-import { generatePlanRun } from "../src/plan/plan-generator.mjs";
+import { importBlueprint, minimalProposal } from "./helpers/blueprint-import.mjs";
 import { renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { writeCurrentRunState } from "../src/project/run-state.mjs";
 import { readEvidenceSummary } from "../src/status/operator-summary.mjs";
@@ -202,13 +202,17 @@ test("status reports current-run missing without failing the operator command", 
 test("status projects board recovery phases through the public current-run surface", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "makeitreal-status-board-"));
   try {
-    const plan = await generatePlanRun({
+    const plan = await importBlueprint({
       projectRoot,
-      request: "Build a retryable report module",
+      proposal: minimalProposal({
+        title: "Retryable Report Module",
+        workItemId: "wi.retryable-report",
+        ruId: "ru.retryable-report",
+        owner: "team.reports",
+        allowedPaths: ["modules/retryable-report/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('retryable report ok')"] }]
+      }),
       runId: "retryable-report",
-      allowedPaths: ["modules/retryable-report/**"],
-      owner: "team.reports",
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('retryable report ok')"] }],
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
