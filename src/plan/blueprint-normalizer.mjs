@@ -12,6 +12,45 @@ function slugify(value) {
   return truncated || "blueprint";
 }
 
+const HTTP_METHOD_PATTERN = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(.+)$/i;
+
+function parseHttpEndpoint(contractName) {
+  const trimmed = String(contractName ?? "").trim();
+  const match = trimmed.match(HTTP_METHOD_PATTERN);
+  if (match) {
+    const method = match[1].toLowerCase();
+    const rawPath = match[2].trim();
+    const path = rawPath.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, "{$1}");
+    return { method, path };
+  }
+  return { method: "post", path: `/${slugify(trimmed)}` };
+}
+
+const ERROR_STATUS_RULES = [
+  { pattern: /^(UNAUTHORIZED|INVALID_CREDENTIALS|INVALID_TOKEN)$/i, status: "401" },
+  { pattern: /^(FORBIDDEN|ACCESS_DENIED)$/i, status: "403" },
+  { pattern: /^NOT_FOUND$/i, status: "404" },
+  { pattern: /^(ALREADY_EXISTS|EMAIL_TAKEN|DUPLICATE)$/i, status: "409" },
+  { pattern: /^(VALIDATION_ERROR|INVALID_INPUT)$/i, status: "422" }
+];
+
+function statusForErrorCode(code) {
+  const c = String(code ?? "");
+  for (const { pattern, status } of ERROR_STATUS_RULES) {
+    if (pattern.test(c)) return status;
+  }
+  return "400";
+}
+
+function operationIdFor(method, urlPath) {
+  const pathSlug = String(urlPath)
+    .replace(/[{}]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return pathSlug ? `${method}-${pathSlug}` : method;
+}
+
 const CANONICAL_LANES = [
   "Intake", "Discovery", "Scoped", "Blueprint Bound",
   "Contract Frozen", "Ready", "Claimed", "Running",
@@ -351,9 +390,16 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
 
     const own = moduleContracts.get(module.name) ?? [];
     const ownIds = own.map(c => c.contractId);
-    const depIds = (module.dependsOn ?? []).flatMap(dep =>
-      (moduleContracts.get(dep) ?? []).map(c => c.contractId)
-    );
+    const dependencyContracts = (module.dependsOn ?? []).flatMap(dep => {
+      const depContracts = moduleContracts.get(dep) ?? [];
+      return depContracts.map(c => ({
+        contractId: c.contractId,
+        providerResponsibilityUnitId: ruIdFor(dep),
+        surface: c.contract.name,
+        allowedUse: "consume"
+      }));
+    });
+    const depIds = dependencyContracts.map(d => d.contractId);
     const contractIds = [...new Set([...ownIds, ...depIds])];
 
     const verifyCommand = parseVerifyCommand(wi.verifyCommand);
@@ -379,7 +425,7 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
       lane: "Contract Frozen",
       responsibilityUnitId: ruIdFor(module.name),
       contractIds,
-      dependencyContracts: [],
+      dependencyContracts,
       dependsOn: (wi.dependsOn ?? []).map(workIdFor),
       allowedPaths: [...(module.ownedPaths ?? [])],
       prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
@@ -389,7 +435,12 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
   }).filter(Boolean);
 }
 
-function buildWorkItemDag(workItems) {
+function buildWorkItemDag(workItems, modules, moduleContracts) {
+  const moduleByWorkId = new Map();
+  for (const m of modules) {
+    moduleByWorkId.set(workIdFor(m.name), m.name);
+  }
+
   return {
     schemaVersion: "1.0",
     nodes: workItems.map(wi => ({
@@ -399,60 +450,92 @@ function buildWorkItemDag(workItems) {
       requiredForDone: true
     })),
     edges: workItems.flatMap(wi =>
-      (wi.dependsOn ?? []).map(dep => ({
-        from: dep,
-        to: wi.id,
-        kind: "contract-dependency"
-      }))
+      (wi.dependsOn ?? []).map(depWorkId => {
+        const providerModuleName = moduleByWorkId.get(depWorkId);
+        const providerContracts = providerModuleName
+          ? (moduleContracts.get(providerModuleName) ?? [])
+          : [];
+        const edge = {
+          from: depWorkId,
+          to: wi.id,
+          kind: "contract-dependency"
+        };
+        if (providerContracts.length > 0) {
+          edge.contractId = providerContracts[0].contractId;
+          edge.contractIds = providerContracts.map(c => c.contractId);
+        }
+        return edge;
+      })
     )
   };
 }
 
 function buildOpenApiDocument(contract, contractId) {
-  return {
-    openapi: "3.0.3",
-    info: { title: contract.name, version: "1.0.0" },
-    paths: {
-      [`/${slugify(contract.name)}`]: {
-        post: {
-          summary: contract.name,
-          requestBody: {
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: (contract.inputs ?? []).reduce((acc, input) => {
-                    acc[input.name] = { type: input.type ?? "string" };
-                    return acc;
-                  }, {}),
-                  required: (contract.inputs ?? [])
-                    .filter(input => input.required)
-                    .map(input => input.name)
-                }
-              }
-            }
-          },
-          responses: {
-            "200": {
-              description: "Success",
-              content: {
-                "application/json": {
-                  schema: {
-                    type: "object",
-                    properties: (contract.outputs ?? []).reduce((acc, output) => {
-                      acc[output.name] = { type: output.type ?? "string" };
-                      return acc;
-                    }, {})
-                  }
-                }
-              }
-            },
-            ...(contract.errors ?? []).reduce((acc, err) => {
-              acc[err.code] = { description: err.when ?? `Error ${err.code}` };
+  const { method, path: urlPath } = parseHttpEndpoint(contract.name);
+  const inputs = contract.inputs ?? [];
+  const outputs = contract.outputs ?? [];
+  const errors = contract.errors ?? [];
+  const hasInputs = inputs.length > 0;
+
+  const requestBody = {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: inputs.reduce((acc, input) => {
+            acc[input.name] = { type: input.type ?? "string" };
+            return acc;
+          }, {}),
+          required: inputs.filter(input => input.required).map(input => input.name)
+        }
+      }
+    }
+  };
+  if (hasInputs) requestBody.required = true;
+
+  const errorsByStatus = new Map();
+  for (const err of errors) {
+    const status = statusForErrorCode(err.code);
+    if (!errorsByStatus.has(status)) errorsByStatus.set(status, []);
+    errorsByStatus.get(status).push(err);
+  }
+
+  const responses = {
+    "200": {
+      description: "Success",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            properties: outputs.reduce((acc, output) => {
+              acc[output.name] = { type: output.type ?? "string" };
               return acc;
             }, {})
           }
         }
+      }
+    }
+  };
+  for (const [status, errs] of errorsByStatus) {
+    const description = errs
+      .map(e => `${e.code ?? "ERROR"}: ${e.when ?? "Error response"}`)
+      .join("; ");
+    responses[status] = { description };
+  }
+
+  const operation = {
+    operationId: operationIdFor(method, urlPath),
+    summary: contract.name,
+    requestBody,
+    responses
+  };
+
+  return {
+    openapi: "3.0.3",
+    info: { title: contract.name, version: "1.0.0" },
+    paths: {
+      [urlPath]: {
+        [method]: operation
       }
     }
   };
@@ -481,7 +564,7 @@ export function normalizeBlueprintProposal(proposal) {
   const designPack = buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, null);
   const responsibilityUnits = buildResponsibilityUnits(modules, moduleContracts);
   const workItems = buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd);
-  const workItemDag = buildWorkItemDag(workItems);
+  const workItemDag = buildWorkItemDag(workItems, modules, moduleContracts);
 
   const contracts = [];
   for (const m of modules) {
