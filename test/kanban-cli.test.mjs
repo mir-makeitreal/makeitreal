@@ -106,15 +106,13 @@ test("orchestrator reconcile can advance retry time through CLI", async () => {
 test("freshly planned and approved run can enter Ready through public CLI path", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-cli-planned-"));
   try {
-    const workItemId = "wi.launchable-report";
+    const workItemId = "work.launchable-report";
     const runDir = path.join(projectRoot, ".makeitreal", "runs", "launchable-report");
     const proposal = minimalProposal({
       title: "Launchable Report Module",
-      workItemId,
-      ruId: "ru.launchable-report",
-      owner: "team.reports",
+      moduleName: "launchable-report",
       allowedPaths: ["modules/launchable-report/**"],
-      verificationCommands: [{ file: "node", args: ["-e", "console.log('report ok')"] }]
+      verifyCommand: "node -e console.log('report ok')"
     });
 
     // Claude Code produces the BlueprintProposal; the engine validates+writes it.

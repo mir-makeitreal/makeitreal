@@ -44,54 +44,35 @@ test("CLI uses wall-clock timestamps unless --now is supplied", async () => {
   try {
     const before = Date.now() - 1000;
 
-    // Create a minimal BlueprintProposal JSON for import via CLI
     const proposal = {
-      intent: {
-        title: "Timestamp Smoke Module",
-        summary: "Build a small timestamp smoke module",
-        goals: ["Deliver timestamp smoke module."],
-        userVisibleBehavior: ["Module works."],
-        acceptanceCriteria: [{ id: "AC-001", statement: "Module works." }],
-        nonGoals: ["Nothing out of scope."]
-      },
-      architecture: {
-        nodes: [{ id: "ru.timestamp-smoke", label: "Timestamp Smoke", responsibilityUnitId: "ru.timestamp-smoke" }],
-        edges: []
-      },
-      responsibilityUnits: [{
-        id: "ru.timestamp-smoke",
-        label: "Timestamp Smoke",
-        owner: "team.implementation",
-        owns: ["src/timestamp-smoke/**"],
-        mustProvideContracts: ["contract.timestamp-smoke"],
-        mayUseContracts: [],
-        publicSurfaces: [{
-          name: "timestampSmoke",
-          kind: "module",
-          contractIds: ["contract.timestamp-smoke"],
-          signature: {
-            inputs: [{ name: "input", type: "string" }],
-            outputs: [{ name: "result", type: "string" }],
-            errors: [{ code: "SMOKE_ERROR", when: "Invalid input." }]
-          }
-        }],
-        responsibility: "Timestamp smoke module."
-      }],
-      contracts: [{ contractId: "contract.timestamp-smoke", kind: "none", title: "Timestamp Smoke Contract" }],
-      workItems: [{
-        id: "wi.timestamp-smoke",
-        title: "Timestamp Smoke",
-        responsibilityUnitId: "ru.timestamp-smoke",
-        contractIds: ["contract.timestamp-smoke"],
+      title: "Timestamp Smoke Module",
+      summary: "Build a small timestamp smoke module",
+      goals: ["Deliver timestamp smoke module."],
+      nonGoals: ["Nothing out of scope."],
+      acceptanceCriteria: ["Module works."],
+      assumptions: [],
+      modules: [{
+        name: "timestamp-smoke",
+        purpose: "Timestamp smoke module.",
+        ownedPaths: ["src/timestamp-smoke/**"],
         dependsOn: [],
-        allowedPaths: ["src/timestamp-smoke/**"],
-        acceptanceCriteriaIds: ["AC-001"],
-        verificationCommands: [{ command: { file: "node", args: ["-e", "console.log('ok')"] }, purpose: "Verify" }],
-        kind: "implementation"
+        contracts: [{
+          name: "timestampSmoke",
+          type: "function",
+          inputs: [{ name: "input", type: "string", required: true }],
+          outputs: [{ name: "result", type: "string" }],
+          errors: [{ code: "SMOKE_ERROR", when: "Invalid input." }]
+        }]
       }],
-      sequences: [{
+      workItems: [{
+        module: "timestamp-smoke",
+        title: "Timestamp Smoke",
+        dependsOn: [],
+        verifyCommand: "node -e console.log('ok')",
+        complexity: "small"
+      }],
+      scenarios: [{
         title: "Timestamp smoke call",
-        participants: ["Caller", "TimestampSmoke"],
         steps: [
           { from: "Caller", to: "TimestampSmoke", action: "timestampSmoke(input)" },
           { from: "TimestampSmoke", to: "Caller", action: "returns result" }

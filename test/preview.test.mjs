@@ -676,64 +676,44 @@ test("preview renders long implementation requests as compact reference docs", a
     const plan = await importBlueprint({
       projectRoot: root,
       proposal: {
-        intent: {
-          title: "Normalize Display Name",
-          summary: "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.",
-          goals: [
-            "Implement normalizeDisplayName(input) inside src/normalize-name.mjs, test/normalize-name.test.mjs.",
-            "Expose normalizeDisplayName with the declared input, output, and error contract.",
-            "Verify the responsibility unit with npm test."
-          ],
-          userVisibleBehavior: [
-            "normalizeDisplayName(input) trims, collapses whitespace, and returns the cleaned display name or throws DISPLAY_NAME_INVALID."
-          ],
-          acceptanceCriteria: [
-            { id: "AC-001", statement: "normalizeDisplayName is the only public surface for the normalize-name responsibility unit." },
-            { id: "AC-002", statement: "Inputs are explicitly validated: input must be a non-empty string after trimming." },
-            { id: "AC-003", statement: "Successful execution returns the normalized display name string." },
-            { id: "AC-004", statement: "Invalid or out-of-contract calls fail fast through DISPLAY_NAME_INVALID." },
-            { id: "AC-005", statement: "Ready gate passes before implementation starts." }
-          ],
-          nonGoals: []
-        },
-        architecture: {
-          nodes: [{ id: "ru.normalize-name", label: "Normalize Display Name", responsibilityUnitId: "ru.normalize-name" }],
-          edges: []
-        },
-        responsibilityUnits: [{
-          id: "ru.normalize-name",
-          label: "Normalize Display Name",
-          owner: "team.implementation",
-          owns: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
-          mustProvideContracts: ["contract.normalize-name"],
-          mayUseContracts: [],
-          publicSurfaces: [{
-            name: "normalizeDisplayName",
-            kind: "module",
-            contractIds: ["contract.normalize-name"],
-            signature: {
-              inputs: [{ name: "input", type: "string" }],
-              outputs: [{ name: "normalizedName", type: "string" }],
-              errors: [{ code: "DISPLAY_NAME_INVALID", when: "Input is not a string or empty after trimming." }]
-            }
-          }],
-          responsibility: "Display name normalization with whitespace handling."
-        }],
-        contracts: [{ contractId: "contract.normalize-name", kind: "none", title: "Normalize Name Contract" }],
-        workItems: [{
-          id: "wi.normalize-name",
-          title: "Normalize Display Name",
-          responsibilityUnitId: "ru.normalize-name",
-          contractIds: ["contract.normalize-name"],
+        title: "Normalize Display Name",
+        summary: "Implement a pure JavaScript display-name normalization responsibility unit. Create src/normalize-name.mjs exporting normalizeDisplayName(input) and test/normalize-name.test.mjs. Contract: input must be a string, trim leading/trailing whitespace, collapse internal whitespace to one space, throw TypeError with code DISPLAY_NAME_INVALID for non-string or empty normalized value. Verification command is npm test.",
+        goals: [
+          "Implement normalizeDisplayName(input) inside src/normalize-name.mjs, test/normalize-name.test.mjs.",
+          "Expose normalizeDisplayName with the declared input, output, and error contract.",
+          "Verify the responsibility unit with npm test."
+        ],
+        nonGoals: [],
+        acceptanceCriteria: [
+          "normalizeDisplayName is the only public surface for the normalize-name responsibility unit.",
+          "Inputs are explicitly validated: input must be a non-empty string after trimming.",
+          "Successful execution returns the normalized display name string.",
+          "Invalid or out-of-contract calls fail fast through DISPLAY_NAME_INVALID.",
+          "Ready gate passes before implementation starts."
+        ],
+        assumptions: [],
+        modules: [{
+          name: "Normalize Display Name",
+          purpose: "Display name normalization with whitespace handling.",
+          ownedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
           dependsOn: [],
-          allowedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
-          acceptanceCriteriaIds: ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005"],
-          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-          kind: "implementation"
+          contracts: [{
+            name: "normalizeDisplayName",
+            type: "function",
+            inputs: [{ name: "input", type: "string", required: true }],
+            outputs: [{ name: "normalizedName", type: "string" }],
+            errors: [{ code: "DISPLAY_NAME_INVALID", when: "Input is not a string or empty after trimming." }]
+          }]
         }],
-        sequences: [{
+        workItems: [{
+          module: "Normalize Display Name",
+          title: "Normalize Display Name",
+          dependsOn: [],
+          verifyCommand: "npm test",
+          complexity: "small"
+        }],
+        scenarios: [{
           title: "normalizeDisplayName contract call",
-          participants: ["Caller", "NormalizeDisplayName"],
           steps: [
             { from: "Caller", to: "NormalizeDisplayName", action: "normalizeDisplayName(input)" },
             { from: "NormalizeDisplayName", to: "Caller", action: "returns normalized string" }
@@ -774,72 +754,45 @@ test("preview renders API dossiers with concise responsibility labels", async ()
     const plan = await importBlueprint({
       projectRoot: root,
       proposal: {
-        intent: {
-          title: "Orders API",
-          summary: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
-          goals: ["Deliver POST /api/v1/orders endpoint."],
-          userVisibleBehavior: ["POST /api/v1/orders creates an order and publishes OrderCreated."],
-          acceptanceCriteria: [
-            { id: "AC-001", statement: "POST /api/v1/orders returns 201 on success." },
-            { id: "AC-002", statement: "Idempotency-Key prevents duplicate orders (409)." }
-          ],
-          nonGoals: ["No GET endpoints in this scope."]
-        },
-        architecture: {
-          nodes: [
-            { id: "ru.orders-api", label: "Orders API", responsibilityUnitId: "ru.orders-api" }
-          ],
-          edges: [
-            { from: "ru.orders-api", to: "ru.orders-api", contractId: "contract.books-api" }
-          ]
-        },
-        responsibilityUnits: [{
-          id: "ru.orders-api",
-          label: "Orders API",
-          owner: "team.implementation",
-          owns: ["src/api/orders/**"],
-          mustProvideContracts: ["contract.books-api"],
-          mayUseContracts: [],
-          publicSurfaces: [{
+        title: "Orders API",
+        summary: "Build REST endpoint POST /api/v1/orders with customerId, items, shippingAddress, Idempotency-Key header, Postgres idempotency, Kafka OrderCreated, 201, 400, 409, 422",
+        goals: ["Deliver POST /api/v1/orders endpoint."],
+        nonGoals: ["No GET endpoints in this scope."],
+        acceptanceCriteria: [
+          "POST /api/v1/orders returns 201 on success.",
+          "Idempotency-Key prevents duplicate orders (409)."
+        ],
+        assumptions: [],
+        modules: [{
+          name: "Orders API",
+          purpose: "HTTP contract surface for POST /api/v1/orders.",
+          ownedPaths: ["src/api/orders/**"],
+          dependsOn: [],
+          contracts: [{
             name: "POST /api/v1/orders",
-            kind: "http",
-            contractIds: ["contract.books-api"],
-            signature: {
-              inputs: [
-                { name: "customerId", type: "string" },
-                { name: "items", type: "array" },
-                { name: "shippingAddress", type: "object" }
-              ],
-              outputs: [{ name: "order", type: "object" }],
-              errors: [
-                { code: "400", when: "Invalid request payload." },
-                { code: "409", when: "Duplicate Idempotency-Key." },
-                { code: "422", when: "Unprocessable entity." }
-              ]
-            }
-          }],
-          responsibility: "HTTP contract surface for POST /api/v1/orders."
-        }],
-        contracts: [{
-          contractId: "contract.books-api",
-          kind: "openapi",
-          title: "Orders API Contract",
-          path: "/api/v1/orders"
+            type: "http",
+            inputs: [
+              { name: "customerId", type: "string", required: true },
+              { name: "items", type: "array", required: true },
+              { name: "shippingAddress", type: "object", required: true }
+            ],
+            outputs: [{ name: "order", type: "object" }],
+            errors: [
+              { code: "400", when: "Invalid request payload." },
+              { code: "409", when: "Duplicate Idempotency-Key." },
+              { code: "422", when: "Unprocessable entity." }
+            ]
+          }]
         }],
         workItems: [{
-          id: "wi.orders-api",
+          module: "Orders API",
           title: "Orders API",
-          responsibilityUnitId: "ru.orders-api",
-          contractIds: ["contract.books-api"],
           dependsOn: [],
-          allowedPaths: ["src/api/orders/**"],
-          acceptanceCriteriaIds: ["AC-001", "AC-002"],
-          verificationCommands: [{ command: { file: "node", args: ["-e", "console.log('orders api ok')"] }, purpose: "Verify" }],
-          kind: "implementation"
+          verifyCommand: "node -e console.log('orders api ok')",
+          complexity: "medium"
         }],
-        sequences: [{
+        scenarios: [{
           title: "POST /api/v1/orders contract call",
-          participants: ["Client", "Orders API"],
           steps: [
             { from: "Client", to: "Orders API", action: "POST /api/v1/orders(customerId, items, shippingAddress)" },
             { from: "Orders API", to: "Client", action: "returns 201 with order" }
@@ -876,55 +829,37 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
     const plan = await importBlueprint({
       projectRoot: root,
       proposal: {
-        intent: {
-          title: "Match Route",
-          summary: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request).",
-          goals: ["Deliver matchRoute(request) inside src/route-match.mjs."],
-          userVisibleBehavior: ["matchRoute(request) returns a route match object or null for unmatched routes."],
-          acceptanceCriteria: [
-            { id: "AC-001", statement: "matchRoute is the only public surface." },
-            { id: "AC-002", statement: "Inputs are validated: request must have method and path strings." }
-          ],
-          nonGoals: ["No middleware integration."]
-        },
-        architecture: {
-          nodes: [{ id: "ru.route-match", label: "Match Route", responsibilityUnitId: "ru.route-match" }],
-          edges: []
-        },
-        responsibilityUnits: [{
-          id: "ru.route-match",
-          label: "Match Route",
-          owner: "team.implementation",
-          owns: ["src/route-match.mjs", "test/route-match.test.mjs"],
-          mustProvideContracts: ["contract.route-match"],
-          mayUseContracts: [],
-          publicSurfaces: [{
-            name: "matchRoute",
-            kind: "module",
-            contractIds: ["contract.route-match"],
-            signature: {
-              inputs: [{ name: "request", type: "object { method: string, path: string }" }],
-              outputs: [{ name: "matchResult", type: "object | null" }],
-              errors: [{ code: "ROUTE_REQUEST_INVALID", when: "Malformed request object." }]
-            }
-          }],
-          responsibility: "HTTP route matching with parameterized paths."
-        }],
-        contracts: [{ contractId: "contract.route-match", kind: "none", title: "Route Match Contract" }],
-        workItems: [{
-          id: "wi.route-match",
-          title: "Match Route",
-          responsibilityUnitId: "ru.route-match",
-          contractIds: ["contract.route-match"],
+        title: "Match Route",
+        summary: "Implement a pure JavaScript HTTP route matcher responsibility unit. Create src/route-match.mjs exporting matchRoute(request).",
+        goals: ["Deliver matchRoute(request) inside src/route-match.mjs."],
+        nonGoals: ["No middleware integration."],
+        acceptanceCriteria: [
+          "matchRoute is the only public surface.",
+          "Inputs are validated: request must have method and path strings."
+        ],
+        assumptions: [],
+        modules: [{
+          name: "Match Route",
+          purpose: "HTTP route matching with parameterized paths.",
+          ownedPaths: ["src/route-match.mjs", "test/route-match.test.mjs"],
           dependsOn: [],
-          allowedPaths: ["src/route-match.mjs", "test/route-match.test.mjs"],
-          acceptanceCriteriaIds: ["AC-001", "AC-002"],
-          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-          kind: "implementation"
+          contracts: [{
+            name: "matchRoute",
+            type: "function",
+            inputs: [{ name: "request", type: "object { method: string, path: string }", required: true }],
+            outputs: [{ name: "matchResult", type: "object | null" }],
+            errors: [{ code: "ROUTE_REQUEST_INVALID", when: "Malformed request object." }]
+          }]
         }],
-        sequences: [{
+        workItems: [{
+          module: "Match Route",
+          title: "Match Route",
+          dependsOn: [],
+          verifyCommand: "npm test",
+          complexity: "small"
+        }],
+        scenarios: [{
           title: "matchRoute contract call",
-          participants: ["Caller", "Match Route"],
           steps: [
             { from: "Caller", to: "Match Route", action: "matchRoute(request)" },
             { from: "Match Route", to: "Caller", action: "returns matchResult or null" }
@@ -964,62 +899,44 @@ test("preview renders request-specific SDK examples and function signatures", as
     const plan = await importBlueprint({
       projectRoot: root,
       proposal: {
-        intent: {
-          title: "Parse Bounded Int",
-          summary: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max).",
-          goals: ["Deliver parseBoundedInt(input, min, max) inside src/parse-bounded-int.mjs."],
-          userVisibleBehavior: ["parseBoundedInt(input, min, max) parses and validates an integer within an inclusive range."],
-          acceptanceCriteria: [
-            { id: "AC-001", statement: "parseBoundedInt is the only public surface." },
-            { id: "AC-002", statement: "Inputs are validated: input must be integer-representable, min <= max." }
-          ],
-          nonGoals: ["No floating-point support."]
-        },
-        architecture: {
-          nodes: [{ id: "ru.parse-bounded-int", label: "Parse Bounded Int", responsibilityUnitId: "ru.parse-bounded-int" }],
-          edges: []
-        },
-        responsibilityUnits: [{
-          id: "ru.parse-bounded-int",
-          label: "Parse Bounded Int",
-          owner: "team.implementation",
-          owns: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
-          mustProvideContracts: ["contract.parse-bounded-int"],
-          mayUseContracts: [],
-          publicSurfaces: [{
-            name: "parseBoundedInt",
-            kind: "module",
-            contractIds: ["contract.parse-bounded-int"],
-            signature: {
-              inputs: [
-                { name: "input", type: "string | number" },
-                { name: "min", type: "integer" },
-                { name: "max", type: "integer" }
-              ],
-              outputs: [{ name: "parsedResult", type: "integer" }],
-              errors: [
-                { code: "INTEGER_OUT_OF_RANGE", when: "Parsed integer is outside [min, max]." },
-                { code: "INTEGER_INVALID", when: "Input is not integer-representable or bounds are invalid." }
-              ]
-            }
-          }],
-          responsibility: "Bounded integer parsing with range validation."
-        }],
-        contracts: [{ contractId: "contract.parse-bounded-int", kind: "none", title: "Parse Bounded Int Contract" }],
-        workItems: [{
-          id: "wi.parse-bounded-int",
-          title: "Parse Bounded Int",
-          responsibilityUnitId: "ru.parse-bounded-int",
-          contractIds: ["contract.parse-bounded-int"],
+        title: "Parse Bounded Int",
+        summary: "Implement a pure JavaScript bounded integer parser responsibility unit. Create src/parse-bounded-int.mjs exporting parseBoundedInt(input, min, max).",
+        goals: ["Deliver parseBoundedInt(input, min, max) inside src/parse-bounded-int.mjs."],
+        nonGoals: ["No floating-point support."],
+        acceptanceCriteria: [
+          "parseBoundedInt is the only public surface.",
+          "Inputs are validated: input must be integer-representable, min <= max."
+        ],
+        assumptions: [],
+        modules: [{
+          name: "Parse Bounded Int",
+          purpose: "Bounded integer parsing with range validation.",
+          ownedPaths: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
           dependsOn: [],
-          allowedPaths: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
-          acceptanceCriteriaIds: ["AC-001", "AC-002"],
-          verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-          kind: "implementation"
+          contracts: [{
+            name: "parseBoundedInt",
+            type: "function",
+            inputs: [
+              { name: "input", type: "string | number", required: true },
+              { name: "min", type: "integer", required: true },
+              { name: "max", type: "integer", required: true }
+            ],
+            outputs: [{ name: "parsedResult", type: "integer" }],
+            errors: [
+              { code: "INTEGER_OUT_OF_RANGE", when: "Parsed integer is outside [min, max]." },
+              { code: "INTEGER_INVALID", when: "Input is not integer-representable or bounds are invalid." }
+            ]
+          }]
         }],
-        sequences: [{
+        workItems: [{
+          module: "Parse Bounded Int",
+          title: "Parse Bounded Int",
+          dependsOn: [],
+          verifyCommand: "npm test",
+          complexity: "small"
+        }],
+        scenarios: [{
           title: "parseBoundedInt contract call",
-          participants: ["Caller", "Parse Bounded Int"],
           steps: [
             { from: "Caller", to: "Parse Bounded Int", action: "parseBoundedInt(\"42\", 1, 100)" },
             { from: "Parse Bounded Int", to: "Caller", action: "returns 42" }
@@ -1053,137 +970,69 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
     const plan = await importBlueprint({
       projectRoot: root,
       proposal: {
-        intent: {
-          title: "Three Independent Responsibility Units",
-          summary: "Implement three independent pure JavaScript responsibility units: safeAdd, slugifyTitle, formatIsoDate.",
-          goals: [
-            "Deliver safeAdd(a, b) inside src/math/safe-add.mjs.",
-            "Deliver slugifyTitle(input) inside src/text/slugify-title.mjs.",
-            "Deliver formatIsoDate(input) inside src/date/format-iso-date.mjs."
-          ],
-          userVisibleBehavior: [
-            "safeAdd(a, b) adds two finite numbers.",
-            "slugifyTitle(input) converts a string to a URL-friendly slug.",
-            "formatIsoDate(input) formats a Date as UTC YYYY-MM-DD."
-          ],
-          acceptanceCriteria: [
-            { id: "AC-001", statement: "safeAdd is the public surface for safe-add." },
-            { id: "AC-002", statement: "slugifyTitle is the public surface for slugify-title." },
-            { id: "AC-003", statement: "formatIsoDate is the public surface for format-iso-date." }
-          ],
-          nonGoals: ["Units must not import one another."]
-        },
-        architecture: {
-          nodes: [
-            { id: "ru.safe-add", label: "Safe Add", responsibilityUnitId: "ru.safe-add" },
-            { id: "ru.slugify-title", label: "Slugify Title", responsibilityUnitId: "ru.slugify-title" },
-            { id: "ru.format-iso-date", label: "Format ISO Date", responsibilityUnitId: "ru.format-iso-date" }
-          ],
-          edges: []
-        },
-        responsibilityUnits: [
-          {
-            id: "ru.safe-add",
-            label: "Safe Add",
-            owner: "team.implementation",
-            owns: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
-            mustProvideContracts: ["contract.safe-add"],
-            mayUseContracts: [],
-            publicSurfaces: [{
-              name: "safeAdd",
-              kind: "module",
-              contractIds: ["contract.safe-add"],
-              signature: {
-                inputs: [{ name: "a", type: "number" }, { name: "b", type: "number" }],
-                outputs: [{ name: "sum", type: "number" }],
-                errors: [{ code: "SAFE_ADD_INVALID", when: "Input is not a finite number." }]
-              }
-            }],
-            responsibility: "Safe finite-number addition."
-          },
-          {
-            id: "ru.slugify-title",
-            label: "Slugify Title",
-            owner: "team.implementation",
-            owns: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
-            mustProvideContracts: ["contract.slugify-title"],
-            mayUseContracts: [],
-            publicSurfaces: [{
-              name: "slugifyTitle",
-              kind: "module",
-              contractIds: ["contract.slugify-title"],
-              signature: {
-                inputs: [{ name: "input", type: "string" }],
-                outputs: [{ name: "slug", type: "string" }],
-                errors: [{ code: "SLUGIFY_TITLE_INVALID", when: "Input is not a non-empty string." }]
-              }
-            }],
-            responsibility: "Title slugification with whitespace handling."
-          },
-          {
-            id: "ru.format-iso-date",
-            label: "Format ISO Date",
-            owner: "team.implementation",
-            owns: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
-            mustProvideContracts: ["contract.format-iso-date"],
-            mayUseContracts: [],
-            publicSurfaces: [{
-              name: "formatIsoDate",
-              kind: "module",
-              contractIds: ["contract.format-iso-date"],
-              signature: {
-                inputs: [{ name: "input", type: "Date" }],
-                outputs: [{ name: "isoDate", type: "string" }],
-                errors: [{ code: "FORMAT_ISO_DATE_INVALID", when: "Input is not a valid Date." }]
-              }
-            }],
-            responsibility: "UTC ISO date formatting."
-          }
+        title: "Three Independent Responsibility Units",
+        summary: "Implement three independent pure JavaScript responsibility units: safeAdd, slugifyTitle, formatIsoDate.",
+        goals: [
+          "Deliver safeAdd(a, b) inside src/math/safe-add.mjs.",
+          "Deliver slugifyTitle(input) inside src/text/slugify-title.mjs.",
+          "Deliver formatIsoDate(input) inside src/date/format-iso-date.mjs."
         ],
-        contracts: [
-          { contractId: "contract.safe-add", kind: "none", title: "Safe Add Contract" },
-          { contractId: "contract.slugify-title", kind: "none", title: "Slugify Title Contract" },
-          { contractId: "contract.format-iso-date", kind: "none", title: "Format ISO Date Contract" }
+        nonGoals: ["Units must not import one another."],
+        acceptanceCriteria: [
+          "safeAdd is the public surface for safe-add.",
+          "slugifyTitle is the public surface for slugify-title.",
+          "formatIsoDate is the public surface for format-iso-date."
+        ],
+        assumptions: [],
+        modules: [
+          {
+            name: "Safe Add",
+            purpose: "Safe finite-number addition.",
+            ownedPaths: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
+            dependsOn: [],
+            contracts: [{
+              name: "safeAdd",
+              type: "function",
+              inputs: [{ name: "a", type: "number", required: true }, { name: "b", type: "number", required: true }],
+              outputs: [{ name: "sum", type: "number" }],
+              errors: [{ code: "SAFE_ADD_INVALID", when: "Input is not a finite number." }]
+            }]
+          },
+          {
+            name: "Slugify Title",
+            purpose: "Title slugification with whitespace handling.",
+            ownedPaths: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
+            dependsOn: [],
+            contracts: [{
+              name: "slugifyTitle",
+              type: "function",
+              inputs: [{ name: "input", type: "string", required: true }],
+              outputs: [{ name: "slug", type: "string" }],
+              errors: [{ code: "SLUGIFY_TITLE_INVALID", when: "Input is not a non-empty string." }]
+            }]
+          },
+          {
+            name: "Format ISO Date",
+            purpose: "UTC ISO date formatting.",
+            ownedPaths: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
+            dependsOn: [],
+            contracts: [{
+              name: "formatIsoDate",
+              type: "function",
+              inputs: [{ name: "input", type: "Date", required: true }],
+              outputs: [{ name: "isoDate", type: "string" }],
+              errors: [{ code: "FORMAT_ISO_DATE_INVALID", when: "Input is not a valid Date." }]
+            }]
+          }
         ],
         workItems: [
-          {
-            id: "wi.safe-add",
-            title: "Safe Add",
-            responsibilityUnitId: "ru.safe-add",
-            contractIds: ["contract.safe-add"],
-            dependsOn: [],
-            allowedPaths: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
-            acceptanceCriteriaIds: ["AC-001"],
-            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-            kind: "implementation"
-          },
-          {
-            id: "wi.slugify-title",
-            title: "Slugify Title",
-            responsibilityUnitId: "ru.slugify-title",
-            contractIds: ["contract.slugify-title"],
-            dependsOn: [],
-            allowedPaths: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
-            acceptanceCriteriaIds: ["AC-002"],
-            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-            kind: "implementation"
-          },
-          {
-            id: "wi.format-iso-date",
-            title: "Format ISO Date",
-            responsibilityUnitId: "ru.format-iso-date",
-            contractIds: ["contract.format-iso-date"],
-            dependsOn: [],
-            allowedPaths: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
-            acceptanceCriteriaIds: ["AC-003"],
-            verificationCommands: [{ command: { file: "npm", args: ["test"] }, purpose: "Unit tests" }],
-            kind: "implementation"
-          }
+          { module: "Safe Add", title: "Safe Add", dependsOn: [], verifyCommand: "npm test", complexity: "small" },
+          { module: "Slugify Title", title: "Slugify Title", dependsOn: [], verifyCommand: "npm test", complexity: "small" },
+          { module: "Format ISO Date", title: "Format ISO Date", dependsOn: [], verifyCommand: "npm test", complexity: "small" }
         ],
-        sequences: [
+        scenarios: [
           {
             title: "safeAdd contract call",
-            participants: ["Caller", "Safe Add"],
             steps: [
               { from: "Caller", to: "Safe Add", action: "safeAdd(a, b)" },
               { from: "Safe Add", to: "Caller", action: "returns sum" }
@@ -1191,7 +1040,6 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           },
           {
             title: "slugifyTitle contract call",
-            participants: ["Caller", "Slugify Title"],
             steps: [
               { from: "Caller", to: "Slugify Title", action: "slugifyTitle(input)" },
               { from: "Slugify Title", to: "Caller", action: "returns slug" }
@@ -1199,7 +1047,6 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           },
           {
             title: "formatIsoDate contract call",
-            participants: ["Caller", "Format ISO Date"],
             steps: [
               { from: "Caller", to: "Format ISO Date", action: "formatIsoDate(input)" },
               { from: "Format ISO Date", to: "Caller", action: "returns isoDate" }

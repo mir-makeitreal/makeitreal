@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { validateBlueprintProposal } from "../../src/plan/blueprint-validator.mjs";
 import { normalizeBlueprintProposal, writeBlueprintArtifacts } from "../../src/plan/blueprint-normalizer.mjs";
@@ -9,12 +9,8 @@ import { writeCurrentRunState } from "../../src/project/run-state.mjs";
 import { runGates } from "../../src/gates/index.mjs";
 
 /**
- * Import a BlueprintProposal through the full blueprint import pipeline.
- * Replaces the deleted generatePlanRun() — no rule-based generation,
- * just validate + normalize + write + materialize + review + preview.
- *
- * Returns a result shaped similarly to the old generatePlanRun for
- * backward-compatible test assertions.
+ * Import a BlueprintProposal through the full pipeline.
+ * Returns a result shape compatible with the legacy generatePlanRun helper.
  */
 export async function importBlueprint({
   projectRoot,
@@ -40,7 +36,7 @@ export async function importBlueprint({
     };
   }
 
-  const slug = (proposal.intent?.title ?? "blueprint")
+  const slug = (proposal.title ?? "blueprint")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 
   const effectiveRunId = runId ?? slug;
@@ -62,28 +58,20 @@ export async function importBlueprint({
   const blueprintReview = await seedBlueprintReview({ runDir, now });
   const preview = await renderDesignPreview({ runDir, now });
 
-  // Update current run state
   let currentRunUpdated = false;
   let currentRun = null;
   try {
-    await writeCurrentRunState({
-      projectRoot,
-      runDir,
-      source: "makeitreal:plan",
-      now
-    });
+    await writeCurrentRunState({ projectRoot, runDir, source: "makeitreal:plan", now });
     currentRunUpdated = true;
     currentRun = { runDir };
   } catch {
     // non-fatal
   }
 
-  // Run ready gate
   const readyGate = await runGates({ runDir, target: "Ready" });
 
   const workItemId = normalized.workItems[0]?.id ?? null;
-  const contractId = normalized.workItems[0]?.contractIds?.[0] ??
-    (proposal.contracts?.[0]?.contractId ?? null);
+  const contractId = normalized.workItems[0]?.contractIds?.[0] ?? null;
 
   return {
     ok: readyGate.ok || blueprintReview.ok,
@@ -106,83 +94,49 @@ export async function importBlueprint({
 }
 
 /**
- * A minimal single-work-item BlueprintProposal. Use this as a base
- * for tests that just need a valid run dir with artifacts.
+ * A minimal single-module BlueprintProposal for tests that just need a valid run dir.
  */
 export function minimalProposal({
   title = "Test Feature",
-  workItemId = "wi.test-feature",
-  ruId = "ru.test-feature",
-  owner = "team.implementation",
+  moduleName = "test-feature",
   allowedPaths = ["src/test-feature/**"],
-  verificationCommands = [{ file: "node", args: ["-e", "console.log('ok')"] }],
+  verifyCommand = "node -e \"console.log('ok')\"",
   acceptanceCriteria = [
-    { id: "AC-001", statement: "Feature implements the declared contract." },
-    { id: "AC-002", statement: "Verification passes." }
+    "Feature implements the declared contract.",
+    "Verification passes."
   ]
 } = {}) {
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const contractId = `contract.${slug}`;
-  const surfaceName = `${slug}.execute`;
   return {
-    intent: {
-      title,
-      summary: title,
-      goals: [`Deliver ${title} inside ${allowedPaths.join(", ")}.`],
-      userVisibleBehavior: ["Feature works as specified."],
-      acceptanceCriteria,
-      nonGoals: [`Out of scope for ${title}.`]
-    },
-    architecture: {
-      nodes: [{ id: ruId, label: title, responsibilityUnitId: ruId }],
-      edges: [{ from: ruId, to: ruId, contractId }]
-    },
-    responsibilityUnits: [{
-      id: ruId,
-      label: title,
-      owner,
-      owns: allowedPaths,
-      mustProvideContracts: [contractId],
-      // A providing unit also lists its own contract in mayUseContracts so its
-      // work items may reference it without tripping the boundary gate — mirrors
-      // the contractIds = [contractId, ...deps] shape the old plan generator emitted.
-      mayUseContracts: [contractId],
-      publicSurfaces: [{
-        name: surfaceName,
-        kind: "module",
-        contractIds: [contractId],
-        signature: {
-          inputs: [{ name: "request", type: "object" }],
-          outputs: [{ name: "result", type: "object" }],
-          errors: [{ code: "BOUNDARY_CONTRACT_VIOLATION", when: "Input violates declared contract." }]
-        }
-      }],
-      responsibility: `Owns ${title}`
-    }],
-    contracts: [{
-      contractId,
-      kind: "none",
-      title: `${title} Contract`
+    title,
+    summary: title,
+    goals: [`Deliver ${title} inside ${allowedPaths.join(", ")}.`],
+    nonGoals: [`Out of scope for ${title}.`],
+    acceptanceCriteria,
+    assumptions: [],
+    modules: [{
+      name: moduleName,
+      purpose: `Owns ${title}`,
+      ownedPaths: allowedPaths,
+      dependsOn: [],
+      contracts: [{
+        name: "execute",
+        type: "function",
+        inputs: [{ name: "request", type: "object", required: true }],
+        outputs: [{ name: "result", type: "object" }],
+        errors: [{ code: "BOUNDARY_CONTRACT_VIOLATION", when: "Input violates declared contract." }]
+      }]
     }],
     workItems: [{
-      id: workItemId,
+      module: moduleName,
       title,
-      responsibilityUnitId: ruId,
-      contractIds: [contractId],
       dependsOn: [],
-      allowedPaths,
-      acceptanceCriteriaIds: acceptanceCriteria.map(ac => ac.id),
-      verificationCommands: verificationCommands.map(vc => ({
-        command: vc,
-        purpose: "Verify implementation"
-      })),
-      kind: "implementation"
+      verifyCommand,
+      complexity: "medium"
     }],
-    sequences: [{
+    scenarios: [{
       title: `${title} contract call`,
-      participants: ["Caller", title],
       steps: [
-        { from: "Caller", to: title, action: `${surfaceName}(request)` },
+        { from: "Caller", to: title, action: "execute(request)" },
         { from: title, to: "Caller", action: "returns result" }
       ]
     }]

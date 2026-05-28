@@ -644,7 +644,7 @@ async function runCommand(argv) {
     const normalized = normalizeBlueprintProposal(proposal);
     await writeBlueprintArtifacts(normalized, runDir, runId);
 
-    const slug = (proposal.intent?.title ?? "blueprint")
+    const slug = (proposal.title ?? "blueprint")
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 
     const launchBoard = await materializeLaunchBoard({

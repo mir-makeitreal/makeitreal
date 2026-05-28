@@ -9,112 +9,50 @@ const HARNESS_BIN = path.resolve(import.meta.dirname, "../bin/harness.mjs");
 
 function validProposal(overrides = {}) {
   return {
-    intent: {
-      title: "Build auth with email and password",
-      summary: "Implement email/password authentication",
-      goals: ["Users can register", "Users can log in"],
-      nonGoals: ["OAuth support"],
-      userVisibleBehavior: ["Registration form accepts email/password"],
-      acceptanceCriteria: [
-        { id: "AC-001", statement: "User can register with email and password", verifiedBy: "wi.auth-api" },
-        { id: "AC-002", statement: "User can log in", verifiedBy: "wi.auth-api" }
-      ],
-      assumptions: [
-        { assumption: "Express is used", confidence: "high", ifWrong: "Route setup differs" }
-      ]
-    },
-    architecture: {
-      style: "layered",
-      rationale: "Simple layered architecture",
-      nodes: [
-        { id: "auth-api", label: "Auth API", kind: "service", responsibilityUnitId: "ru.auth-api", description: "Handles auth" },
-        { id: "db", label: "Database", kind: "database", responsibilityUnitId: "ru.auth-api", description: "Stores users" }
-      ],
-      edges: [
-        { from: "auth-api", to: "db", contractId: "contract.auth.db", label: "queries", style: "sync" }
-      ]
-    },
-    responsibilityUnits: [
+    title: "Build auth with email and password",
+    summary: "Implement email/password authentication",
+    goals: ["Users can register", "Users can log in"],
+    nonGoals: ["OAuth support"],
+    acceptanceCriteria: [
+      "User can register with email and password",
+      "User can log in"
+    ],
+    assumptions: ["Express is used"],
+    modules: [
       {
-        id: "ru.auth-api",
-        label: "Auth API Unit",
-        moduleName: "auth-api",
-        owner: "team.backend",
-        owns: ["src/auth/**", "test/auth/**"],
-        mustProvideContracts: ["contract.auth.login"],
-        mayUseContracts: ["contract.auth.db"],
-        responsibility: "Handles authentication",
-        publicSurfaces: [
+        name: "auth",
+        purpose: "JWT authentication",
+        ownedPaths: ["src/auth/**", "test/auth/**"],
+        dependsOn: [],
+        contracts: [
           {
-            name: "login",
-            kind: "endpoint",
-            contractIds: ["contract.auth.login"],
-            signature: {
-              inputs: [{ name: "email", type: "string" }, { name: "password", type: "string" }],
-              outputs: [{ name: "token", type: "string" }],
-              errors: [{ code: 401, reason: "Invalid credentials" }]
-            }
+            name: "POST /auth/login",
+            type: "http",
+            inputs: [
+              { name: "email", type: "string", required: true },
+              { name: "password", type: "string", required: true }
+            ],
+            outputs: [{ name: "token", type: "string" }],
+            errors: [{ code: "INVALID_CREDENTIALS", when: "email/password mismatch" }]
           }
         ]
       }
     ],
-    contracts: [
-      {
-        contractId: "contract.auth.login",
-        kind: "openapi",
-        title: "Auth Login Endpoint",
-        provider: "ru.auth-api",
-        consumers: [],
-        surface: {
-          method: "POST",
-          path: "/api/auth/login",
-          requestSchema: { type: "object", properties: { email: { type: "string" }, password: { type: "string" } } },
-          responseSchema: { type: "object", properties: { token: { type: "string" } } },
-          errorCodes: [400, 401]
-        }
-      },
-      {
-        contractId: "contract.auth.db",
-        kind: "openapi",
-        title: "Auth DB Contract",
-        provider: "ru.auth-api",
-        consumers: [],
-        surface: {
-          method: "POST",
-          path: "/api/internal/find-user",
-          requestSchema: { type: "object", properties: { email: { type: "string" } } },
-          responseSchema: { type: "object", properties: { user: { type: "object" } } },
-          errorCodes: [404]
-        }
-      }
-    ],
     workItems: [
       {
-        id: "wi.auth-api",
-        title: "Implement auth API",
-        kind: "implementation",
-        responsibilityUnitId: "ru.auth-api",
-        contractIds: ["contract.auth.login", "contract.auth.db"],
+        module: "auth",
+        title: "Implement auth module",
         dependsOn: [],
-        allowedPaths: ["src/auth/**", "test/auth/**"],
-        estimatedComplexity: "medium",
-        decomposable: false,
-        verificationCommands: [
-          { command: "npm test -- --grep auth", purpose: "Run auth tests" }
-        ],
-        deliverables: ["src/auth/routes.mjs", "test/auth/routes.test.mjs"],
-        acceptanceCriteriaIds: ["AC-001", "AC-002"]
+        verifyCommand: "npm test -- --grep auth",
+        complexity: "medium"
       }
     ],
-    sequences: [
+    scenarios: [
       {
         title: "Login Flow",
-        participants: ["Client", "Auth API", "Database"],
         steps: [
-          { from: "Client", to: "Auth API", action: "POST /login", data: "email, password" },
-          { from: "Auth API", to: "Database", action: "findUserByEmail" },
-          { from: "Database", to: "Auth API", action: "return user" },
-          { from: "Auth API", to: "Client", action: "return token" }
+          { from: "Client", to: "Auth", action: "POST /auth/login" },
+          { from: "Auth", to: "Client", action: "return JWT token" }
         ]
       }
     ],
@@ -166,7 +104,6 @@ describe("blueprint import CLI command", () => {
     assert.equal(result.workItemCount, 1);
     assert.equal(result.runDir, tempDir);
 
-    // Verify artifacts exist
     const prd = JSON.parse(await readFile(path.join(tempDir, "prd.json"), "utf8"));
     assert.equal(prd.title, "Build auth with email and password");
 
@@ -179,9 +116,9 @@ describe("blueprint import CLI command", () => {
     const trustPolicy = JSON.parse(await readFile(path.join(tempDir, "trust-policy.json"), "utf8"));
     assert.equal(trustPolicy.runnerMode, "claude-code");
 
-    const workItem = JSON.parse(await readFile(path.join(tempDir, "work-items", "wi.auth-api.json"), "utf8"));
-    assert.equal(workItem.id, "wi.auth-api");
-    assert.equal(workItem.title, "Implement auth API");
+    const workItem = JSON.parse(await readFile(path.join(tempDir, "work-items", "work.auth.json"), "utf8"));
+    assert.equal(workItem.id, "work.auth");
+    assert.equal(workItem.title, "Implement auth module");
 
     await rm(tempDir, { recursive: true, force: true });
   });
@@ -199,21 +136,25 @@ describe("blueprint import CLI command", () => {
   it("rejects a proposal with validation errors (cycle)", async () => {
     tempDir = await mkdtemp(path.join(tmpdir(), "blueprint-import-test-"));
     const proposal = validProposal({
-      workItems: [
+      modules: [
         {
-          id: "wi.a",
-          title: "A",
-          responsibilityUnitId: "ru.auth-api",
-          allowedPaths: ["src/auth/**"],
-          dependsOn: ["wi.b"]
+          name: "alpha",
+          purpose: "Alpha module",
+          ownedPaths: ["src/alpha/**"],
+          dependsOn: ["beta"],
+          contracts: []
         },
         {
-          id: "wi.b",
-          title: "B",
-          responsibilityUnitId: "ru.auth-api",
-          allowedPaths: ["src/auth/**"],
-          dependsOn: ["wi.a"]
+          name: "beta",
+          purpose: "Beta module",
+          ownedPaths: ["src/beta/**"],
+          dependsOn: ["alpha"],
+          contracts: []
         }
+      ],
+      workItems: [
+        { module: "alpha", title: "Build alpha", dependsOn: [], verifyCommand: "node --test" },
+        { module: "beta", title: "Build beta", dependsOn: [], verifyCommand: "node --test" }
       ]
     });
     const { result, code } = await runBlueprintImport(tempDir, proposal);

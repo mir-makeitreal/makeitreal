@@ -1,21 +1,18 @@
 import { invalidAllowedPathPattern } from "../domain/path-policy.mjs";
-import { normalizeVerificationCommand } from "../domain/verification-command.mjs";
 
-/**
- * Validates a BlueprintProposal produced by Claude.
- * Returns { ok, errors[], warnings[] }.
- */
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNonEmptyArray(value) {
+  return Array.isArray(value) && value.length > 0;
+}
 
 function findDuplicates(arr) {
   return arr.filter((item, i) => arr.indexOf(item) !== i);
 }
 
-function detectCycle(workItems) {
-  const graph = new Map();
-  for (const wi of workItems) {
-    graph.set(wi.id, wi.dependsOn ?? []);
-  }
-
+function detectCycle(nodes, edgesByNode) {
   const visited = new Set();
   const inStack = new Set();
 
@@ -30,7 +27,7 @@ function detectCycle(workItems) {
     inStack.add(nodeId);
     path.push(nodeId);
 
-    for (const dep of (graph.get(nodeId) ?? [])) {
+    for (const dep of (edgesByNode.get(nodeId) ?? [])) {
       const cycle = dfs(dep, path);
       if (cycle) return cycle;
     }
@@ -40,147 +37,174 @@ function detectCycle(workItems) {
     return null;
   }
 
-  for (const wi of workItems) {
-    const cycle = dfs(wi.id, []);
+  for (const node of nodes) {
+    const cycle = dfs(node, []);
     if (cycle) return cycle;
   }
   return null;
 }
 
-function longestPathDepth(workItems) {
-  const depMap = new Map();
-  for (const wi of workItems) {
-    depMap.set(wi.id, wi.dependsOn ?? []);
-  }
-
-  const memo = new Map();
-  const visiting = new Set();
-
-  function depth(nodeId) {
-    if (memo.has(nodeId)) return memo.get(nodeId);
-    if (visiting.has(nodeId)) return 0; // cycle — handled by DAG_IS_ACYCLIC
-    visiting.add(nodeId);
-    const deps = depMap.get(nodeId) ?? [];
-    if (deps.length === 0) {
-      memo.set(nodeId, 0);
-      visiting.delete(nodeId);
-      return 0;
-    }
-    const d = 1 + Math.max(...deps.map(dep => depth(dep)));
-    memo.set(nodeId, d);
-    visiting.delete(nodeId);
-    return d;
-  }
-
-  let max = 0;
-  for (const wi of workItems) {
-    max = Math.max(max, depth(wi.id));
-  }
-  return max;
+function normalizePath(p) {
+  return String(p ?? "").replace(/\/\*\*$/, "").replace(/\/+$/, "");
 }
 
 function patternsOverlap(a, b) {
-  // Simple overlap detection: exact match, or one is a prefix of the other
-  const normalizeA = a.replace(/\/\*\*$/, "/");
-  const normalizeB = b.replace(/\/\*\*$/, "/");
   if (a === b) return true;
-  if (normalizeA.startsWith(normalizeB) || normalizeB.startsWith(normalizeA)) return true;
+  const na = normalizePath(a);
+  const nb = normalizePath(b);
+  if (na === nb) return true;
+  if (na.startsWith(`${nb}/`) || nb.startsWith(`${na}/`)) return true;
   return false;
 }
 
+const CONTRACT_TYPES = new Set(["http", "function", "event", "component"]);
+
 export const VALIDATION_RULES = [
   {
-    id: "UNIQUE_NODE_IDS",
+    id: "MODULES_NON_EMPTY",
     severity: "error",
     check(proposal) {
-      const ids = proposal.architecture.nodes.map(n => n.id);
-      const dupes = [...new Set(findDuplicates(ids))];
-      return dupes.length === 0 ? null : `Duplicate node IDs: ${dupes.join(", ")}`;
+      return isNonEmptyArray(proposal.modules) ? null : "modules must be a non-empty array.";
     }
   },
   {
-    id: "UNIQUE_WORK_ITEM_IDS",
+    id: "WORK_ITEMS_NON_EMPTY",
     severity: "error",
     check(proposal) {
-      const ids = proposal.workItems.map(wi => wi.id);
-      const dupes = [...new Set(findDuplicates(ids))];
-      return dupes.length === 0 ? null : `Duplicate work item IDs: ${dupes.join(", ")}`;
+      return isNonEmptyArray(proposal.workItems) ? null : "workItems must be a non-empty array.";
     }
   },
   {
-    id: "EDGES_REFERENCE_DECLARED_NODES",
+    id: "TITLE_REQUIRED",
     severity: "error",
     check(proposal) {
-      const nodeIds = new Set(proposal.architecture.nodes.map(n => n.id));
-      const bad = (proposal.architecture.edges ?? []).filter(e => !nodeIds.has(e.from) || !nodeIds.has(e.to));
-      return bad.length === 0 ? null : `Edges reference undeclared nodes: ${bad.map(e => `${e.from}->${e.to}`).join(", ")}`;
+      return isNonEmptyString(proposal.title) ? null : "title must be a non-empty string.";
     }
   },
   {
-    id: "DAG_IS_ACYCLIC",
+    id: "SUMMARY_REQUIRED",
     severity: "error",
     check(proposal) {
-      const cycle = detectCycle(proposal.workItems);
-      return cycle ? `Work item dependency cycle detected: ${cycle.join(" → ")}` : null;
+      return isNonEmptyString(proposal.summary) ? null : "summary must be a non-empty string.";
     }
   },
   {
-    id: "CONTRACTS_REFERENCED_EXIST",
+    id: "MODULE_NAMES_UNIQUE",
     severity: "error",
     check(proposal) {
-      const contractIds = new Set((proposal.contracts ?? []).map(c => c.contractId));
-      const allRefs = [
-        ...(proposal.architecture.edges ?? []).map(e => e.contractId),
-        ...(proposal.workItems ?? []).flatMap(wi => wi.contractIds ?? []),
-        ...(proposal.responsibilityUnits ?? []).flatMap(ru => [...(ru.mustProvideContracts ?? []), ...(ru.mayUseContracts ?? [])])
-      ].filter(Boolean);
-      const missing = [...new Set(allRefs.filter(id => !contractIds.has(id)))];
-      return missing.length === 0 ? null : `Undeclared contracts: ${missing.join(", ")}`;
+      const names = (proposal.modules ?? []).map(m => m.name);
+      const dupes = [...new Set(findDuplicates(names))];
+      return dupes.length === 0 ? null : `Duplicate module names: ${dupes.join(", ")}`;
     }
   },
   {
-    id: "NO_OVERLAPPING_OWNERSHIP",
+    id: "MODULE_FIELDS_REQUIRED",
     severity: "error",
     check(proposal) {
-      const units = proposal.responsibilityUnits ?? [];
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        if (!isNonEmptyString(m.name)) bad.push("a module is missing name");
+        if (!isNonEmptyString(m.purpose)) bad.push(`module ${m.name ?? "?"} missing purpose`);
+        if (!isNonEmptyArray(m.ownedPaths)) bad.push(`module ${m.name ?? "?"} missing ownedPaths`);
+      }
+      return bad.length === 0 ? null : bad.join("; ");
+    }
+  },
+  {
+    id: "CONTRACT_FIELDS_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        for (const c of (m.contracts ?? [])) {
+          const label = `${m.name}.${c.name ?? "?"}`;
+          if (!isNonEmptyString(c.name)) bad.push(`contract in ${m.name} missing name`);
+          if (!CONTRACT_TYPES.has(c.type)) bad.push(`${label} type must be one of ${[...CONTRACT_TYPES].join(", ")}`);
+          if (!Array.isArray(c.inputs)) bad.push(`${label} inputs must be an array`);
+          if (!Array.isArray(c.outputs)) bad.push(`${label} outputs must be an array`);
+        }
+      }
+      return bad.length === 0 ? null : bad.join("; ");
+    }
+  },
+  {
+    id: "WORK_ITEM_FIELDS_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      const bad = [];
+      for (const wi of (proposal.workItems ?? [])) {
+        if (!isNonEmptyString(wi.module)) bad.push("a work item is missing module");
+        if (!isNonEmptyString(wi.title)) bad.push(`work item for ${wi.module ?? "?"} missing title`);
+      }
+      return bad.length === 0 ? null : bad.join("; ");
+    }
+  },
+  {
+    id: "WORK_ITEM_MODULE_REFERENCE_VALID",
+    severity: "error",
+    check(proposal) {
+      const names = new Set((proposal.modules ?? []).map(m => m.name));
+      const bad = (proposal.workItems ?? [])
+        .filter(wi => wi.module && !names.has(wi.module))
+        .map(wi => wi.module);
+      return bad.length === 0 ? null : `Work items reference unknown modules: ${[...new Set(bad)].join(", ")}`;
+    }
+  },
+  {
+    id: "WORK_ITEM_MODULE_UNIQUE",
+    severity: "error",
+    check(proposal) {
+      const refs = (proposal.workItems ?? []).map(wi => wi.module).filter(Boolean);
+      const dupes = [...new Set(findDuplicates(refs))];
+      return dupes.length === 0 ? null : `Multiple work items target the same module: ${dupes.join(", ")}`;
+    }
+  },
+  {
+    id: "WORK_ITEM_DEPENDSON_REFERENCE_VALID",
+    severity: "error",
+    check(proposal) {
+      const names = new Set((proposal.modules ?? []).map(m => m.name));
+      const bad = [];
+      for (const wi of (proposal.workItems ?? [])) {
+        for (const dep of (wi.dependsOn ?? [])) {
+          if (!names.has(dep)) bad.push(`${wi.module ?? "?"} -> ${dep}`);
+        }
+      }
+      return bad.length === 0 ? null : `Work item dependsOn references unknown modules: ${bad.join(", ")}`;
+    }
+  },
+  {
+    id: "MODULE_DEPENDSON_REFERENCE_VALID",
+    severity: "error",
+    check(proposal) {
+      const names = new Set((proposal.modules ?? []).map(m => m.name));
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        for (const dep of (m.dependsOn ?? [])) {
+          if (!names.has(dep)) bad.push(`${m.name} -> ${dep}`);
+        }
+      }
+      return bad.length === 0 ? null : `Module dependsOn references unknown modules: ${bad.join(", ")}`;
+    }
+  },
+  {
+    id: "PATHS_NO_OVERLAP",
+    severity: "error",
+    check(proposal) {
+      const modules = proposal.modules ?? [];
       const overlaps = [];
-      for (let i = 0; i < units.length; i++) {
-        for (let j = i + 1; j < units.length; j++) {
-          for (const pathA of (units[i].owns ?? [])) {
-            for (const pathB of (units[j].owns ?? [])) {
-              if (patternsOverlap(pathA, pathB)) {
-                overlaps.push(`${units[i].id}(${pathA}) ↔ ${units[j].id}(${pathB})`);
+      for (let i = 0; i < modules.length; i++) {
+        for (let j = i + 1; j < modules.length; j++) {
+          for (const a of (modules[i].ownedPaths ?? [])) {
+            for (const b of (modules[j].ownedPaths ?? [])) {
+              if (patternsOverlap(a, b)) {
+                overlaps.push(`${modules[i].name}(${a}) ↔ ${modules[j].name}(${b})`);
               }
             }
           }
         }
       }
-      return overlaps.length === 0 ? null : `Overlapping ownership: ${overlaps.join(", ")}`;
-    }
-  },
-  {
-    id: "WORK_ITEMS_WITHIN_RU_PATHS",
-    severity: "error",
-    check(proposal) {
-      const ruPathsMap = new Map();
-      for (const ru of (proposal.responsibilityUnits ?? [])) {
-        ruPathsMap.set(ru.id, ru.owns ?? []);
-      }
-      const violations = [];
-      for (const wi of (proposal.workItems ?? [])) {
-        const ruPaths = ruPathsMap.get(wi.responsibilityUnitId);
-        if (!ruPaths) {
-          violations.push(`${wi.id} references unknown RU ${wi.responsibilityUnitId}`);
-          continue;
-        }
-        for (const wiPath of (wi.allowedPaths ?? [])) {
-          const covered = ruPaths.some(ruPath => patternsOverlap(wiPath, ruPath));
-          if (!covered) {
-            violations.push(`${wi.id} path "${wiPath}" not within RU ${wi.responsibilityUnitId} ownership`);
-          }
-        }
-      }
-      return violations.length === 0 ? null : `Work item paths outside RU ownership: ${violations.join("; ")}`;
+      return overlaps.length === 0 ? null : `Overlapping module paths: ${overlaps.join(", ")}`;
     }
   },
   {
@@ -188,102 +212,35 @@ export const VALIDATION_RULES = [
     severity: "error",
     check(proposal) {
       const invalid = [];
-      for (const ru of (proposal.responsibilityUnits ?? [])) {
-        for (const p of (ru.owns ?? [])) {
-          if (invalidAllowedPathPattern(p)) {
-            invalid.push(`RU ${ru.id}: ${p}`);
-          }
+      for (const m of (proposal.modules ?? [])) {
+        for (const p of (m.ownedPaths ?? [])) {
+          if (invalidAllowedPathPattern(p)) invalid.push(`${m.name}: ${p}`);
         }
       }
-      for (const wi of (proposal.workItems ?? [])) {
-        for (const p of (wi.allowedPaths ?? [])) {
-          if (invalidAllowedPathPattern(p)) {
-            invalid.push(`WI ${wi.id}: ${p}`);
-          }
-        }
-      }
-      return invalid.length === 0 ? null : `Invalid allowed paths: ${invalid.join(", ")}`;
+      return invalid.length === 0 ? null : `Invalid module paths: ${invalid.join(", ")}`;
     }
   },
   {
-    id: "EVERY_RU_HAS_WORK_ITEMS",
-    severity: "warning",
-    check(proposal) {
-      const coveredRUs = new Set((proposal.workItems ?? []).map(wi => wi.responsibilityUnitId));
-      const uncovered = (proposal.responsibilityUnits ?? []).filter(ru => !coveredRUs.has(ru.id));
-      return uncovered.length === 0 ? null : `RUs without work items: ${uncovered.map(ru => ru.id).join(", ")}`;
-    }
-  },
-  {
-    id: "EVERY_CONTRACT_HAS_PROVIDER_WORK_ITEM",
-    severity: "warning",
-    check(proposal) {
-      const implementedContracts = new Set(
-        (proposal.workItems ?? []).flatMap(wi => wi.contractIds ?? [])
-      );
-      const uncovered = (proposal.contracts ?? []).filter(c => !implementedContracts.has(c.contractId));
-      return uncovered.length === 0 ? null : `Contracts without work items: ${uncovered.map(c => c.contractId).join(", ")}`;
-    }
-  },
-  {
-    id: "ACCEPTANCE_CRITERIA_COVERED",
-    severity: "warning",
-    check(proposal) {
-      const covered = new Set(
-        (proposal.workItems ?? []).flatMap(wi => wi.acceptanceCriteriaIds ?? [])
-      );
-      const uncovered = (proposal.intent?.acceptanceCriteria ?? []).filter(ac => !covered.has(ac.id));
-      return uncovered.length === 0 ? null : `Uncovered AC: ${uncovered.map(ac => ac.id).join(", ")}`;
-    }
-  },
-  {
-    id: "VERIFICATION_COMMANDS_PARSE",
+    id: "DAG_IS_ACYCLIC",
     severity: "error",
     check(proposal) {
-      const invalid = [];
-      for (const wi of (proposal.workItems ?? [])) {
-        for (const vc of (wi.verificationCommands ?? [])) {
-          if (vc.command && typeof vc.command === "string") {
-            // String command — convert to structured for validation
-            continue; // String commands are handled by normalizer
-          }
-          if (vc.command && typeof vc.command === "object") {
-            const result = normalizeVerificationCommand(vc.command);
-            if (!result.ok) {
-              invalid.push(`${wi.id}: ${result.reason}`);
-            }
-          }
-        }
+      const edges = new Map();
+      const nodes = new Set();
+      for (const m of (proposal.modules ?? [])) {
+        nodes.add(m.name);
+        edges.set(m.name, [...(m.dependsOn ?? [])]);
       }
-      return invalid.length === 0 ? null : `Invalid verification commands: ${invalid.join("; ")}`;
-    }
-  },
-  {
-    id: "WORK_ITEM_COUNT_WITHIN_LIMITS",
-    severity: "error",
-    check(proposal) {
-      return (proposal.workItems ?? []).length <= 12
-        ? null
-        : `Too many work items: ${proposal.workItems.length} (max 12)`;
-    }
-  },
-  {
-    id: "DEPENDENCY_DEPTH_WITHIN_LIMITS",
-    severity: "warning",
-    check(proposal) {
-      const depth = longestPathDepth(proposal.workItems ?? []);
-      return depth <= 5
-        ? null
-        : `Dependency chain too deep: ${depth} (recommended max 5)`;
+      for (const wi of (proposal.workItems ?? [])) {
+        if (!wi.module) continue;
+        const cur = edges.get(wi.module) ?? [];
+        edges.set(wi.module, [...cur, ...(wi.dependsOn ?? [])]);
+      }
+      const cycle = detectCycle([...nodes], edges);
+      return cycle ? `Dependency cycle: ${cycle.join(" → ")}` : null;
     }
   }
 ];
 
-/**
- * Validate a BlueprintProposal.
- * @param {object} proposal - The BlueprintProposal from Claude
- * @returns {{ ok: boolean, errors: Array<{code: string, reason: string}>, warnings: Array<{code: string, reason: string}> }}
- */
 export function validateBlueprintProposal(proposal) {
   if (!proposal || typeof proposal !== "object") {
     return {
@@ -293,8 +250,7 @@ export function validateBlueprintProposal(proposal) {
     };
   }
 
-  // Check required top-level fields
-  const requiredFields = ["intent", "architecture", "responsibilityUnits", "contracts", "workItems"];
+  const requiredFields = ["title", "summary", "modules", "workItems"];
   const missingFields = requiredFields.filter(f => !proposal[f]);
   if (missingFields.length > 0) {
     return {
@@ -310,17 +266,10 @@ export function validateBlueprintProposal(proposal) {
   for (const rule of VALIDATION_RULES) {
     const reason = rule.check(proposal);
     if (reason) {
-      if (rule.severity === "error") {
-        errors.push({ code: rule.id, reason });
-      } else {
-        warnings.push({ code: rule.id, reason });
-      }
+      if (rule.severity === "error") errors.push({ code: rule.id, reason });
+      else warnings.push({ code: rule.id, reason });
     }
   }
 
-  return {
-    ok: errors.length === 0,
-    errors,
-    warnings
-  };
+  return { ok: errors.length === 0, errors, warnings };
 }
