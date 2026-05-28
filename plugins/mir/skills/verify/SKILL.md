@@ -15,7 +15,7 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 
 ## Procedure
 
-1. Inspect current run status and board state.
+1. Inspect current run status and board state. During the launch loop, `mir_launch(action="complete", workItemId=...)` runs the per-work-item verification, evidence checks, and Done-readiness transition; this skill drives the standalone diagnostic case outside that loop.
 2. Run the relevant gates, contract checks, path-boundary checks, evidence checks, and Done-readiness checks.
 3. When verification changes evidence-facing state, expect the engine to refresh the generated dashboard when `features.dashboard.refreshOnVerify` is enabled, or to return an explicit `dashboardRefresh.skipped` result when disabled.
 4. If `dashboardRefresh.dashboardUrl` is present, run `makeitreal-engine dashboard open "$RUN_DIR" --project-root "${CLAUDE_PROJECT_DIR:-$PWD}"` unless dashboard auto-open is disabled.

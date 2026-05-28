@@ -53,7 +53,11 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
   for (const commandName of [...normalSkills, ...advancedSkills]) {
     const command = await readPluginFile("commands", `${commandName}.md`);
     assert.match(command, /description:/);
-    assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+    if (commandName === "launch") {
+      assert.match(command, /mcp__make-it-real__mir_launch/, `${commandName} should bridge to the launch MCP tool`);
+    } else {
+      assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+    }
   }
 
   const planSkill = await readPluginFile("skills", "plan", "SKILL.md");
@@ -68,30 +72,35 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   for (const commandName of expectedCommands) {
     const command = await readPluginFile("commands", `${commandName}.md`);
     assert.match(command, /^---\ndescription:/);
-    assert.match(command, new RegExp(`makeitreal-engine`), `${commandName} should bridge to the plugin engine`);
+    if (commandName === "launch") {
+      assert.match(command, /mcp__make-it-real__mir_launch/, `${commandName} should bridge to the launch MCP tool`);
+    } else {
+      assert.match(command, new RegExp(`makeitreal-engine`), `${commandName} should bridge to the plugin engine`);
+    }
     assert.doesNotMatch(command, /board claim|wiki sync/, `${commandName} should not expose manual claim or wiki sync commands`);
   }
 
   const launchCommand = await readPluginFile("commands", "launch.md");
-  assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task"\]/);
-  assert.match(launchCommand, /orchestrator native start/);
-  assert.match(launchCommand, /--concurrency 6/);
+  assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task", "mcp__make-it-real__mir_launch"\]/);
+  assert.match(launchCommand, /mir_launch\(action="status"\)/);
+  assert.match(launchCommand, /mir_launch\(action="start"/);
+  assert.match(launchCommand, /mir_launch\(action="finish"/);
+  assert.match(launchCommand, /mir_launch\(action="complete"/);
   assert.match(launchCommand, /recommendedNativeTaskConcurrency/);
   assert.match(launchCommand, /unblocked modules/i);
-  assert.match(launchCommand, /orchestrator native finish/);
   assert.match(launchCommand, /nativeTasks\[\]/);
   assert.match(launchCommand, /Claude Code\s+`Task` type/);
   assert.match(launchCommand, /nativeTasks\[\]\.nativeSubagentType/);
   assert.match(launchCommand, /reviewerPrompts\[\].*nativeSubagentType/i);
   assert.match(launchCommand, /Verifying` or `Rework/);
   assert.match(launchCommand, /recover `Rework -> Verifying`/);
-  assert.match(launchCommand, /orchestrator complete/);
   assert.match(launchCommand, /Do not spawn a separate `claude --print` child process/);
   assert.doesNotMatch(launchCommand, /headless fallback|--runner-command|orchestrator tick --runner claude-code/i);
+  assert.doesNotMatch(launchCommand, /orchestrator native start|orchestrator native finish/, "launch command must not assemble user-facing Bash chains against the orchestrator CLI");
   assert.match(launchCommand, /one-command start/);
   assert.match(launchCommand, /Do not execute implementation until the\s+Blueprint is approved/);
   assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
-  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless\s+Claude Code lists them as available agents/i);
+  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless Claude Code lists them as available agents/i);
   assert.match(launchCommand, /builtin `general-purpose`[\s\S]*native-role-mapping\.json/i);
   assert.match(launchCommand, /role lives in the prompt and recorded JSON/i);
   assert.doesNotMatch(launchCommand, /oh-my-claudecode|feature-dev:code-reviewer/i);
@@ -164,14 +173,15 @@ test("Make It Real operator commands separate primary reports from diagnostics",
 
 test("Make It Real launch skill keeps low-level engine commands internal", async () => {
   const launchSkill = await readPluginFile("skills", "launch", "SKILL.md");
-  assert.match(launchSkill, /Use internal engine commands/);
+  assert.match(launchSkill, /mcp__make-it-real__mir_launch/);
+  assert.match(launchSkill, /mir_launch\(action="status"\)/);
+  assert.match(launchSkill, /mir_launch\(action="start"\)/);
+  assert.match(launchSkill, /mir_launch\(action="finish"/);
+  assert.match(launchSkill, /mir_launch\(action="complete"/);
   assert.match(launchSkill, /Do not convert internal commands/);
   assert.match(launchSkill, /board claim/);
-  assert.match(launchSkill, /orchestrator native start/);
-  assert.match(launchSkill, /--concurrency 6/);
   assert.match(launchSkill, /recommendedNativeTaskConcurrency/);
   assert.match(launchSkill, /unblocked modules/i);
-  assert.match(launchSkill, /orchestrator native finish/);
   assert.match(launchSkill, /nativeTasks\[\]/);
   assert.match(launchSkill, /parent-session native Task path/);
   assert.match(launchSkill, /existing work item in `Verifying` or `Rework`/);
@@ -182,6 +192,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /role lives in the prompt and recorded JSON/i);
   assert.doesNotMatch(launchSkill, /oh-my-claudecode|feature-dev:code-reviewer/i);
   assert.doesNotMatch(launchSkill, /retry.*general-purpose/i);
+  assert.doesNotMatch(launchSkill, /orchestrator native start|orchestrator native finish/, "launch skill must not assemble user-facing Bash chains against the orchestrator CLI");
   assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
@@ -243,7 +254,11 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
     const command = await readAliasPluginFile("commands", `${commandName}.md`);
     const skill = await readAliasPluginFile("skills", commandName, "SKILL.md");
     assert.match(command, /^---\ndescription:/);
-    assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+    if (commandName === "launch") {
+      assert.match(command, /mcp__make-it-real__mir_launch/, `${commandName} should bridge to the launch MCP tool`);
+    } else {
+      assert.match(command, /\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/makeitreal-engine/);
+    }
     assert.doesNotMatch(`${command}\n${skill}`, /\/makeitreal:/);
   }
 
@@ -281,19 +296,28 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planSkill, /Always include both `--prompt` and `--decision-json`/);
 
   const launchCommand = await readAliasPluginFile("commands", "launch.md");
+  assert.match(launchCommand, /allowed-tools: \["Bash", "Read", "Task", "mcp__make-it-real__mir_launch"\]/);
+  assert.match(launchCommand, /mir_launch\(action="status"\)/);
+  assert.match(launchCommand, /mir_launch\(action="start"/);
+  assert.match(launchCommand, /mir_launch\(action="finish"/);
+  assert.match(launchCommand, /mir_launch\(action="complete"/);
   assert.match(launchCommand, /evidence roles, not guaranteed installed Claude Code/i);
-  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless\s+Claude Code lists them as available agents/i);
+  assert.match(launchCommand, /Do not pass these labels as `subagent_type` unless Claude Code lists them as available agents/i);
   assert.match(launchCommand, /builtin `general-purpose`[\s\S]*native-role-mapping\.json/i);
   assert.match(launchCommand, /role lives in the prompt and recorded JSON/i);
   assert.doesNotMatch(launchCommand, /oh-my-claudecode|feature-dev:code-reviewer/i);
   assert.match(launchCommand, /HARNESS_NATIVE_ROLE_MAPPING_MISSING/i);
   assert.doesNotMatch(launchCommand, /retry the\s+same reviewer prompt with `general-purpose`/i);
+  assert.doesNotMatch(launchCommand, /orchestrator native start|orchestrator native finish/);
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const launchSkill = await readAliasPluginFile("skills", "launch", "SKILL.md");
+  assert.match(launchSkill, /mcp__make-it-real__mir_launch/);
+  assert.match(launchSkill, /mir_launch\(action="status"\)/);
   assert.match(launchSkill, /evidence roles, not guaranteed installed Claude Code/i);
   assert.match(launchSkill, /HARNESS_NATIVE_ROLE_MAPPING_MISSING/i);
   assert.doesNotMatch(launchSkill, /retry the same prompt with `general-purpose`/i);
+  assert.doesNotMatch(launchSkill, /orchestrator native start|orchestrator native finish/);
   assert.match(launchSkill, /Do not call a successful Done transition a hook failure/i);
 });
 
