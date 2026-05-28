@@ -25,6 +25,70 @@ const PROTOCOL_VERSION = "2025-03-26";
 const SERVER_NAME = "make-it-real";
 const SERVER_VERSION = "0.1.0";
 
+const DEBUG = process.env.MAKEITREAL_DEBUG === "1";
+
+function debugLog(event) {
+  if (!DEBUG) return;
+  try {
+    const line = JSON.stringify({
+      source: "makeitreal-mcp",
+      timestamp: new Date().toISOString(),
+      ...event
+    });
+    process.stderr.write(`${line}\n`);
+  } catch {
+    // never let logging crash the server
+  }
+}
+
+const LAUNCH_ERROR_HINTS = {
+  MISSING_RESULT:
+    "Expected { makeitrealReport: { status, ... } }. The Task subagent must return this envelope.",
+  RESULT_INVALID:
+    "Expected { makeitrealReport: { status, ... } }. The Task subagent must return this envelope.",
+  RESULT_PARSE_FAILED:
+    "Expected { makeitrealReport: { status, ... } }. The Task subagent must return this envelope.",
+  HARNESS_NATIVE_PACKET_VALIDATION_FAILED:
+    "Expected { makeitrealReport: { status, ... } }. The Task subagent must return this envelope.",
+  HARNESS_VERIFICATION_COMMAND_FAILED:
+    "Tests failed. Fix the implementation and call mir_launch(finish) again.",
+  HARNESS_VERIFICATION_NO_TESTS_EXECUTED:
+    "Tests failed. Fix the implementation and call mir_launch(finish) again.",
+  HARNESS_BLUEPRINT_REVIEW_PENDING:
+    "Blueprint not approved. Call /makeitreal:plan approve first.",
+  HARNESS_BLUEPRINT_REVIEW_MISSING:
+    "Blueprint not approved. Call /makeitreal:plan approve first.",
+  HARNESS_BLUEPRINT_REVIEW_REJECTED:
+    "Blueprint not approved. Call /makeitreal:plan approve first.",
+  HARNESS_READY_GATE_FAILED:
+    "Blueprint not approved. Call /makeitreal:plan approve first."
+};
+
+function hintForLaunchErrors({ action, errors, payload }) {
+  if (action === "start" && Array.isArray(payload?.nativeTasks) && payload.nativeTasks.length === 0
+      && (!errors || errors.length === 0)) {
+    return "All work items are either done or blocked. Check mir_launch(status) for details.";
+  }
+  if (!Array.isArray(errors) || errors.length === 0) return null;
+  for (const error of errors) {
+    const code = error?.code;
+    if (code && LAUNCH_ERROR_HINTS[code]) return LAUNCH_ERROR_HINTS[code];
+  }
+  if (action === "finish") return LAUNCH_ERROR_HINTS.MISSING_RESULT;
+  if (action === "complete") return LAUNCH_ERROR_HINTS.HARNESS_VERIFICATION_COMMAND_FAILED;
+  if (action === "status") return LAUNCH_ERROR_HINTS.HARNESS_BLUEPRINT_REVIEW_PENDING;
+  if (action === "start") return "Unable to start work. Run mir_launch(status) to inspect blockers.";
+  return null;
+}
+
+function withLlmHint(payload, hint) {
+  if (!hint) return payload;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    return { ...payload, llmHint: hint };
+  }
+  return payload;
+}
+
 function buildToolInputSchema() {
   const base = getBlueprintSchema();
   const properties = {
@@ -215,7 +279,8 @@ async function findWorkItemLane(runDir, workItemId) {
 async function handleLaunchTool(args) {
   const validation = validateLaunchCommonArgs(args);
   if (!validation.ok) {
-    return toolCallText({ ok: false, errors: validation.errors });
+    const hint = hintForLaunchErrors({ action: args?.action, errors: validation.errors });
+    return toolCallText(withLlmHint({ ok: false, errors: validation.errors }, hint));
   }
   const { projectRoot, runSlug, action, workItemId, attemptId, result } = args;
   const runDir = path.join(projectRoot, ".makeitreal", "runs", runSlug);
@@ -223,10 +288,8 @@ async function handleLaunchTool(args) {
 
   if (action === "status") {
     if (!await fileExists(runDir)) {
-      return toolCallText({
-        ok: false,
-        errors: [{ code: "RUN_DIR_MISSING", reason: `Run directory does not exist: ${runDir}` }]
-      });
+      const errors = [{ code: "RUN_DIR_MISSING", reason: `Run directory does not exist: ${runDir}` }];
+      return toolCallText(withLlmHint({ ok: false, errors }, hintForLaunchErrors({ action, errors })));
     }
     const readyGate = await runGates({ runDir, target: "Ready" });
     const boardJsonPath = path.join(runDir, "board.json");
@@ -235,7 +298,7 @@ async function handleLaunchTool(args) {
       ? await readBoardStatus({ boardDir: runDir, now, readyGate })
       : null;
     const runStatus = await readRunStatus({ projectRoot, runDir, now });
-    return toolCallText({
+    const payload = {
       ok: true,
       action: "status",
       runDir,
@@ -248,18 +311,22 @@ async function handleLaunchTool(args) {
       readyGate: readyGate ? { ok: readyGate.ok, errors: readyGate.errors ?? [] } : null,
       blueprintApproved: runStatus?.blueprint?.ok ?? false,
       errors: []
-    });
+    };
+    const gateErrors = readyGate && readyGate.ok === false ? (readyGate.errors ?? []) : [];
+    const hint = !payload.blueprintApproved || gateErrors.length > 0
+      ? hintForLaunchErrors({ action, errors: gateErrors.length > 0 ? gateErrors : [{ code: "HARNESS_BLUEPRINT_REVIEW_PENDING" }] })
+      : null;
+    return toolCallText(withLlmHint(payload, hint));
   }
 
   if (action === "start") {
     const boardJsonPath = path.join(runDir, "board.json");
     if (!await fileExists(boardJsonPath)) {
-      return toolCallText({
-        ok: false,
-        action: "start",
-        nativeTasks: [],
-        errors: [{ code: "BOARD_MISSING", reason: `board.json not found in ${runDir}` }]
-      });
+      const errors = [{ code: "BOARD_MISSING", reason: `board.json not found in ${runDir}` }];
+      return toolCallText(withLlmHint(
+        { ok: false, action: "start", nativeTasks: [], errors },
+        hintForLaunchErrors({ action, errors })
+      ));
     }
     const concurrencyArg = Number.parseInt(args.concurrency ?? "", 10);
     const concurrency = Number.isInteger(concurrencyArg) && concurrencyArg >= 1 ? concurrencyArg : 1;
@@ -283,24 +350,29 @@ async function handleLaunchTool(args) {
         reviewerPrompts: task.reviewerPrompts
       };
     });
-    return toolCallText({
+    const startPayload = {
       ok: startResult.ok,
       action: "start",
       nativeTasks: enrichedTasks,
       promotedWorkItemIds: startResult.promotedWorkItemIds ?? [],
       errors: startResult.errors ?? []
-    });
+    };
+    const startHint = hintForLaunchErrors({ action, errors: startPayload.errors, payload: startPayload });
+    return toolCallText(withLlmHint(startPayload, startHint));
   }
 
   if (action === "finish") {
     if (typeof workItemId !== "string" || !workItemId) {
-      return toolCallText({ ok: false, action: "finish", errors: [{ code: "MISSING_WORK_ITEM_ID", reason: "workItemId is required for finish." }] });
+      const errors = [{ code: "MISSING_WORK_ITEM_ID", reason: "workItemId is required for finish." }];
+      return toolCallText(withLlmHint({ ok: false, action: "finish", errors }, hintForLaunchErrors({ action, errors })));
     }
     if (typeof attemptId !== "string" || !attemptId) {
-      return toolCallText({ ok: false, action: "finish", errors: [{ code: "MISSING_ATTEMPT_ID", reason: "attemptId is required for finish." }] });
+      const errors = [{ code: "MISSING_ATTEMPT_ID", reason: "attemptId is required for finish." }];
+      return toolCallText(withLlmHint({ ok: false, action: "finish", errors }, hintForLaunchErrors({ action, errors })));
     }
     if (!result || typeof result !== "object") {
-      return toolCallText({ ok: false, action: "finish", errors: [{ code: "MISSING_RESULT", reason: "result envelope object is required for finish." }] });
+      const errors = [{ code: "MISSING_RESULT", reason: "result envelope object is required for finish." }];
+      return toolCallText(withLlmHint({ ok: false, action: "finish", errors }, hintForLaunchErrors({ action, errors })));
     }
     const finishResult = await finishNativeClaudeTask({
       boardDir: runDir,
@@ -311,7 +383,7 @@ async function handleLaunchTool(args) {
       now
     });
     const lane = await findWorkItemLane(runDir, workItemId);
-    return toolCallText({
+    const finishPayload = {
       ok: finishResult.ok,
       action: "finish",
       workItemId: finishResult.workItemId ?? workItemId,
@@ -321,12 +393,15 @@ async function handleLaunchTool(args) {
       decomposed: finishResult.decomposed ?? false,
       childWorkItemIds: finishResult.childWorkItemIds ?? [],
       errors: finishResult.errors ?? []
-    });
+    };
+    const finishHint = finishPayload.ok ? null : hintForLaunchErrors({ action, errors: finishPayload.errors });
+    return toolCallText(withLlmHint(finishPayload, finishHint));
   }
 
   if (action === "complete") {
     if (typeof workItemId !== "string" || !workItemId) {
-      return toolCallText({ ok: false, action: "complete", errors: [{ code: "MISSING_WORK_ITEM_ID", reason: "workItemId is required for complete." }] });
+      const errors = [{ code: "MISSING_WORK_ITEM_ID", reason: "workItemId is required for complete." }];
+      return toolCallText(withLlmHint({ ok: false, action: "complete", errors }, hintForLaunchErrors({ action, errors })));
     }
     const completeResult = await completeVerifiedWork({
       boardDir: runDir,
@@ -344,7 +419,7 @@ async function handleLaunchTool(args) {
     } catch {
       remainingItems = [];
     }
-    return toolCallText({
+    const completePayload = {
       ok: completeResult.ok,
       action: "complete",
       workItemId: completeResult.workItemId ?? workItemId,
@@ -356,15 +431,55 @@ async function handleLaunchTool(args) {
       },
       remainingItems,
       errors: completeResult.errors ?? []
-    });
+    };
+    const completeHint = completePayload.ok ? null : hintForLaunchErrors({ action, errors: completePayload.errors });
+    return toolCallText(withLlmHint(completePayload, completeHint));
   }
 
-  return toolCallText({ ok: false, errors: [{ code: "INVALID_ACTION", reason: `Unknown action: ${action}` }] });
+  const fallbackErrors = [{ code: "INVALID_ACTION", reason: `Unknown action: ${action}` }];
+  return toolCallText(withLlmHint({ ok: false, errors: fallbackErrors }, hintForLaunchErrors({ action, errors: fallbackErrors })));
 }
 
 async function handleRequest(message) {
   const { id, method, params } = message;
+  const startedAt = Date.now();
+  const toolName = method === "tools/call" ? (params && params.name) : null;
+  const action = toolName === "mir_launch" && params && params.arguments
+    ? params.arguments.action ?? null
+    : null;
 
+  debugLog({
+    event: "request",
+    id,
+    method,
+    tool: toolName,
+    action
+  });
+
+  let response = null;
+  let outcome = "ok";
+  try {
+    response = await handleRequestInner({ id, method, params });
+    if (response && response.error) outcome = "error";
+    if (response && response.result && response.result.isError) outcome = "error";
+    return response;
+  } catch (cause) {
+    outcome = "exception";
+    throw cause;
+  } finally {
+    debugLog({
+      event: "response",
+      id,
+      method,
+      tool: toolName,
+      action,
+      outcome,
+      durationMs: Date.now() - startedAt
+    });
+  }
+}
+
+async function handleRequestInner({ id, method, params }) {
   try {
     if (method === "initialize") {
       return jsonRpcResult(id, {
