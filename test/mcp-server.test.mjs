@@ -203,4 +203,74 @@ describe("make-it-real MCP server", () => {
     assert.equal(payload.ok, false);
     assert.ok(payload.errors.some((e) => e.code === "MISSING_PROJECT_ROOT"));
   });
+
+  it("exposes mir_launch in tools/list with the expected schema", async () => {
+    const response = await server.request("tools/list");
+    const tool = response.result.tools.find((t) => t.name === "mir_launch");
+    assert.ok(tool, "mir_launch tool must be exposed");
+    assert.equal(tool.inputSchema.type, "object");
+    assert.ok(tool.inputSchema.required.includes("projectRoot"));
+    assert.ok(tool.inputSchema.required.includes("runSlug"));
+    assert.ok(tool.inputSchema.required.includes("action"));
+    assert.deepEqual(
+      tool.inputSchema.properties.action.enum.sort(),
+      ["complete", "finish", "start", "status"]
+    );
+  });
+
+  it("mir_launch status returns structured launch state after blueprint creation", async () => {
+    const runSlug = "mcp-launch-status";
+    const blueprint = await server.request("tools/call", {
+      name: "mir_blueprint",
+      arguments: { projectRoot: tempRoot, runSlug, ...validProposal() }
+    });
+    const blueprintPayload = parseToolText(blueprint);
+    assert.equal(blueprintPayload.ok, true, `blueprint failed: ${JSON.stringify(blueprintPayload.errors)}`);
+
+    const response = await server.request("tools/call", {
+      name: "mir_launch",
+      arguments: { projectRoot: tempRoot, runSlug, action: "status" }
+    });
+    const payload = parseToolText(response);
+    assert.equal(payload.ok, true, `status failed: ${JSON.stringify(payload.errors)}`);
+    assert.equal(payload.action, "status");
+    assert.equal(typeof payload.runDir, "string");
+    assert.ok(Array.isArray(payload.launchableWorkItemIds));
+    assert.equal(typeof payload.laneCounts, "object");
+    assert.ok(Array.isArray(payload.blockers));
+    assert.equal(payload.blueprintApproved, false, "blueprint review must be pending after creation");
+    assert.ok(payload.readyGate, "readyGate must be reported");
+  });
+
+  it("mir_launch start returns a structured response when run is not yet launchable", async () => {
+    const runSlug = "mcp-launch-start";
+    const blueprint = await server.request("tools/call", {
+      name: "mir_blueprint",
+      arguments: { projectRoot: tempRoot, runSlug, ...validProposal() }
+    });
+    const blueprintPayload = parseToolText(blueprint);
+    assert.equal(blueprintPayload.ok, true);
+
+    const response = await server.request("tools/call", {
+      name: "mir_launch",
+      arguments: { projectRoot: tempRoot, runSlug, action: "start" }
+    });
+    const payload = parseToolText(response);
+    assert.equal(payload.action, "start");
+    assert.ok(Array.isArray(payload.nativeTasks));
+    assert.ok(Array.isArray(payload.errors));
+    // Blueprint is unapproved, so start should report errors and produce no native tasks.
+    assert.equal(payload.nativeTasks.length, 0);
+    assert.equal(payload.ok, false);
+  });
+
+  it("mir_launch rejects an invalid action", async () => {
+    const response = await server.request("tools/call", {
+      name: "mir_launch",
+      arguments: { projectRoot: tempRoot, runSlug: "mcp-launch-status", action: "bogus" }
+    });
+    const payload = parseToolText(response);
+    assert.equal(payload.ok, false);
+    assert.ok(payload.errors.some((e) => e.code === "INVALID_ACTION"));
+  });
 });
