@@ -31,7 +31,7 @@ and reviewer subagents in its normal UI:
 ```
 
 Use `boardStatus.recommendedNativeTaskConcurrency` from status when present.
-It is derived from unblocked responsibility units, and `launchableWorkItemIds`
+It is derived from unblocked modules, and `launchableWorkItemIds`
 shows which scoped jobs should become native Claude Code `Task` calls.
 
 If status shows a work item already in `Verifying` or `Rework`, do not start a

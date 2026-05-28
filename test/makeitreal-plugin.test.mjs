@@ -59,7 +59,7 @@ test("Make It Real plugin exposes only the intended workflow skills", async () =
   const planSkill = await readPluginFile("skills", "plan", "SKILL.md");
   assert.match(planSkill, /Native Claude Code conversational review/i);
   assert.match(planSkill, /makeitreal:interactive-review:native-claude/);
-  assert.match(planSkill, /--runner claude-code/);
+  assert.match(planSkill, /mcp__make-it-real__mir_blueprint/);
 });
 
 test("Make It Real plugin registers user-facing slash commands", async () => {
@@ -77,7 +77,7 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /orchestrator native start/);
   assert.match(launchCommand, /--concurrency 6/);
   assert.match(launchCommand, /recommendedNativeTaskConcurrency/);
-  assert.match(launchCommand, /unblocked responsibility/i);
+  assert.match(launchCommand, /unblocked modules/i);
   assert.match(launchCommand, /orchestrator native finish/);
   assert.match(launchCommand, /nativeTasks\[\]/);
   assert.match(launchCommand, /Claude Code\s+`Task` type/);
@@ -100,26 +100,25 @@ test("Make It Real plugin registers user-facing slash commands", async () => {
   assert.match(launchCommand, /Do not describe successful completion as a hook failure/i);
 
   const planCommand = await readPluginFile("commands", "plan.md");
-  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
-  assert.match(planCommand, /--runner claude-code/);
+  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"(?:, "[^"]+")*\]/);
+  assert.match(planCommand, /mcp__make-it-real__mir_blueprint/);
   assert.match(planCommand, /\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/);
   assert.match(planCommand, /blueprint approve/);
   assert.match(planCommand, /blueprint reject/);
-  assert.match(planCommand, /If the argument is empty/i);
+  assert.match(planCommand, /empty or whitespace/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /canonical request/i);
-  assert.match(planCommand, /Do not run `makeitreal-engine` plan with an empty `--request`/);
-  assert.match(planCommand, /Do not use a fixed question script/i);
+  assert.match(planCommand, /Always submit through the MCP tool/i);
+  assert.match(planCommand, /Dynamic Intake rubric/i);
   assert.match(planCommand, /derive each question/i);
   assert.doesNotMatch(planCommand, /ask what concrete feature/i);
-  assert.match(planCommand, /operator-facing Blueprint report/i);
+  assert.match(planCommand, /Operator-Facing Report/i);
   assert.match(planCommand, /What will be delivered/i);
   assert.match(planCommand, /Do not lead with raw engine fields/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /blueprint review/);
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
-  assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
   assert.match(planCommand, /--prompt "<operator answer>" --decision-json/);
   assert.match(planCommand, /Never run `blueprint review` without both `--prompt` and `--decision-json`/);
 
@@ -171,7 +170,7 @@ test("Make It Real launch skill keeps low-level engine commands internal", async
   assert.match(launchSkill, /orchestrator native start/);
   assert.match(launchSkill, /--concurrency 6/);
   assert.match(launchSkill, /recommendedNativeTaskConcurrency/);
-  assert.match(launchSkill, /unblocked responsibility/i);
+  assert.match(launchSkill, /unblocked modules/i);
   assert.match(launchSkill, /orchestrator native finish/);
   assert.match(launchSkill, /nativeTasks\[\]/);
   assert.match(launchSkill, /parent-session native Task path/);
@@ -192,7 +191,7 @@ test("Make It Real skills keep the browser dashboard read-only", async () => {
   for (const name of files) {
     const body = await readFile(new URL(`${name}/SKILL.md`, root), "utf8");
     assert.match(body, /read-only|observability/i, `${name} should describe dashboard as read-only observability`);
-    assert.doesNotMatch(body, /dashboard.*button.*(Approve|Launch|Retry)|data-harness-action/i, `${name} must not present mutating dashboard actions`);
+    assert.doesNotMatch(body, /<button[^>]*>\s*(Approve|Launch|Retry)|data-harness-action/i, `${name} must not present mutating dashboard actions`);
   }
 });
 

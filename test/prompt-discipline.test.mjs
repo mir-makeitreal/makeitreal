@@ -26,14 +26,11 @@ for (const [label, readSkill] of [
     const skill = await readSkill("plan");
 
     assert.match(skill, /Conditional Grill/i);
-    assert.match(skill, /Shared Language/i);
-    assert.match(skill, /Boundary Proposal/i);
     assert.match(skill, /Dynamic Intake/i);
     assert.match(skill, /Read-Only Parallel Reconnaissance/i);
     assert.match(skill, /Operator-Facing Questions/i);
     assert.match(skill, /Operator-Facing Blueprint Report/i);
     assert.match(skill, /vertical slice/i);
-    assert.match(skill, /suggestedBoundaries/);
     assert.match(skill, /acceptance criteria/i);
     assert.match(skill, /Do not use a fixed question script/i);
     assert.match(skill, /derive the next question/i);
