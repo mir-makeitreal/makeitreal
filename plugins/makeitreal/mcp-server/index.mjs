@@ -241,7 +241,8 @@ async function handleBlueprintTool(args) {
     ok: true,
     runDir,
     workItemCount: normalized.workItems.length,
-    previewUrl
+    previewUrl,
+    nextStep: "Review the architecture. Approve with /makeitreal:plan approve, then /makeitreal:launch."
   });
 }
 
@@ -316,6 +317,9 @@ async function handleLaunchTool(args) {
     const hint = !payload.blueprintApproved || gateErrors.length > 0
       ? hintForLaunchErrors({ action, errors: gateErrors.length > 0 ? gateErrors : [{ code: "HARNESS_BLUEPRINT_REVIEW_PENDING" }] })
       : null;
+    payload.nextStep = payload.blueprintApproved && gateErrors.length === 0
+      ? "Call mir_launch(action=\"start\") to begin implementation."
+      : "Approve the blueprint first: /makeitreal:plan approve";
     return toolCallText(withLlmHint(payload, hint));
   }
 
@@ -358,6 +362,9 @@ async function handleLaunchTool(args) {
       errors: startResult.errors ?? []
     };
     const startHint = hintForLaunchErrors({ action, errors: startPayload.errors, payload: startPayload });
+    if (startPayload.ok) {
+      startPayload.nextStep = "Dispatch Task subagents for each nativeTask, then call mir_launch(action=\"finish\") with results.";
+    }
     return toolCallText(withLlmHint(startPayload, startHint));
   }
 
@@ -395,6 +402,9 @@ async function handleLaunchTool(args) {
       errors: finishResult.errors ?? []
     };
     const finishHint = finishPayload.ok ? null : hintForLaunchErrors({ action, errors: finishPayload.errors });
+    if (finishPayload.ok) {
+      finishPayload.nextStep = "Call mir_launch(action=\"complete\") to verify and advance.";
+    }
     return toolCallText(withLlmHint(finishPayload, finishHint));
   }
 
@@ -433,6 +443,11 @@ async function handleLaunchTool(args) {
       errors: completeResult.errors ?? []
     };
     const completeHint = completePayload.ok ? null : hintForLaunchErrors({ action, errors: completePayload.errors });
+    if (completePayload.ok) {
+      completePayload.nextStep = remainingItems.length > 0
+        ? "Continue with next batch: call mir_launch(action=\"status\")."
+        : "All work items complete. The implementation is done.";
+    }
     return toolCallText(withLlmHint(completePayload, completeHint));
   }
 
