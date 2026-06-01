@@ -54,7 +54,7 @@ const LAUNCH_ERROR_HINTS = {
     "Tests failed. Fix the implementation and call mir_launch(finish) again.",
   HARNESS_VERIFICATION_NO_TESTS_EXECUTED:
     "Tests failed. Fix the implementation and call mir_launch(finish) again.",
-  HARNESS_BLUEPRINT_REVIEW_PENDING:
+  HARNESS_BLUEPRINT_APPROVAL_PENDING:
     "Blueprint not approved. Call /makeitreal:plan approve first.",
   HARNESS_BLUEPRINT_REVIEW_MISSING:
     "Blueprint not approved. Call /makeitreal:plan approve first.",
@@ -76,7 +76,7 @@ function hintForLaunchErrors({ action, errors, payload }) {
   }
   if (action === "finish") return LAUNCH_ERROR_HINTS.MISSING_RESULT;
   if (action === "complete") return LAUNCH_ERROR_HINTS.HARNESS_VERIFICATION_COMMAND_FAILED;
-  if (action === "status") return LAUNCH_ERROR_HINTS.HARNESS_BLUEPRINT_REVIEW_PENDING;
+  if (action === "status") return LAUNCH_ERROR_HINTS.HARNESS_BLUEPRINT_APPROVAL_PENDING;
   if (action === "start") return "Unable to start work. Run mir_launch(status) to inspect blockers.";
   return null;
 }
@@ -330,11 +330,18 @@ async function handleLaunchTool(args) {
     };
     const gateErrors = readyGate && readyGate.ok === false ? (readyGate.errors ?? []) : [];
     const hint = !payload.blueprintApproved || gateErrors.length > 0
-      ? hintForLaunchErrors({ action, errors: gateErrors.length > 0 ? gateErrors : [{ code: "HARNESS_BLUEPRINT_REVIEW_PENDING" }] })
+      ? hintForLaunchErrors({ action, errors: gateErrors.length > 0 ? gateErrors : [{ code: "HARNESS_BLUEPRINT_APPROVAL_PENDING" }] })
       : null;
-    payload.nextStep = payload.blueprintApproved && gateErrors.length === 0
-      ? "Call mir_launch(action=\"start\") to begin implementation."
-      : "Approve the blueprint first: /makeitreal:plan approve";
+    if (!payload.blueprintApproved) {
+      payload.nextStep = "Approve the blueprint first: /makeitreal:plan approve";
+    } else if (gateErrors.length > 0) {
+      const errorList = gateErrors
+        .map((error) => `${error.code ?? "GATE_ERROR"}: ${error.reason ?? "gate failed"}`)
+        .join("; ");
+      payload.nextStep = `Fix gate errors before starting. Errors: ${errorList}`;
+    } else {
+      payload.nextStep = "Call mir_launch(action=\"start\") to begin implementation.";
+    }
     return toolCallText(withLlmHint(payload, hint));
   }
 

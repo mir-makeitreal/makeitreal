@@ -142,12 +142,14 @@ export async function readBoardStatus({ boardDir, now = new Date(), readyGate: p
     runDir: resolved.runDir,
     blueprintBlockedWorkItemIds: approval.ok ? [] : auditWorkItems.map((workItem) => workItem.id),
     staleBlueprintWorkItemIds: approval.status === "stale" ? auditWorkItems.map((workItem) => workItem.id) : [],
-    gateFailures: approval.ok ? [] : auditWorkItems.flatMap((workItem) => approval.errors.map((error) => ({
-      workItemId: workItem.id,
+    // Approval-level errors are run-scoped, not per-work-item. Dedupe by error
+    // code so each appears once in the blockers array (the blocked work items
+    // are tracked separately via blueprintBlockedWorkItemIds).
+    gateFailures: approval.ok ? [] : [...new Map(approval.errors.map((error) => [error.code, {
       code: error.code,
       reason: error.reason,
       evidence: error.evidence ?? []
-    })))
+    }])).values()]
   };
   const readyGate = approval.ok
     ? providedReadyGate ?? await runGates({ runDir: resolved.runDir, target: "Ready" })

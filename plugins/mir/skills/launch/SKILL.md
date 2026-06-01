@@ -28,6 +28,39 @@ State changes belong to Claude Code conversation, Make It Real hooks, and intern
 6. Call `mir_launch(action="complete", workItemId=...)` for each work item the engine moved to `Verifying`. This action runs verification, syncs completed work to the live wiki, records explicit wiki-skip evidence when config disables live wiki, refreshes the generated dashboard when `features.dashboard.refreshOnLaunch` is enabled (or returns an explicit `dashboardRefresh.skipped` result when disabled), and advances the work item to `Done` only when approved reviewer evidence is present.
 7. Repeat the `status -> start -> Task(implement) -> Task(review) -> finish -> complete` loop until status reports no remaining launchable work and no items in `Verifying` or `Rework`.
 
+## Finish Result Envelope
+
+The `result` you pass to `mir_launch(action="finish", ...)` is one node report plus the array of reviewer reports you aggregated from the native Task calls. Implementation nodes use `makeitrealReport`; domain PM nodes use `makeitrealPmReport`; integration evidence nodes use `makeitrealEvidenceReport`. A concrete implementation-node envelope looks like:
+
+```json
+{
+  "makeitrealReport": {
+    "role": "implementation",
+    "status": "DONE",
+    "summary": "Implemented auth module with login/register endpoints",
+    "changedFiles": ["src/auth/router.js", "src/auth/router.test.js"],
+    "tested": true,
+    "concerns": [],
+    "needsContext": false,
+    "blockers": []
+  },
+  "makeitrealReviews": [
+    {"role": "spec-reviewer", "status": "DONE", "summary": "Contracts satisfied"},
+    {"role": "quality-reviewer", "status": "DONE_WITH_CONCERNS", "concerns": ["No input sanitization"]},
+    {"role": "verification-reviewer", "status": "DONE", "summary": "All tests pass"}
+  ]
+}
+```
+
+Valid `status` values for both the node report and each review are:
+
+- `DONE` — work or review completed with no outstanding issues.
+- `DONE_WITH_CONCERNS` — completed, but non-blocking concerns are recorded in `concerns[]`.
+- `NEEDS_CONTEXT` — the node could not finish without more context; `needsContext` is `true` and the gap is described.
+- `BLOCKED` — the node could not proceed; `blockers[]` lists the hard blockers.
+
+If a native reviewer returned `{ "makeitrealReview": {...} }`, unwrap that object into the `makeitrealReviews` array. Do not call `finish` with empty results, prose-only output, or a missing node report.
+
 ## Operator Report
 
 Lead with the public launch state: whether Blueprint approval is present,

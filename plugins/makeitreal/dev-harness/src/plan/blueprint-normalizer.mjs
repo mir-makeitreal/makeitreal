@@ -470,28 +470,42 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
   };
 }
 
+const NO_BODY_METHODS = new Set(["get", "head", "delete", "options"]);
+
 function buildOpenApiDocument(contract, contractId) {
   const { method, path: urlPath } = parseHttpEndpoint(contract.name);
   const inputs = contract.inputs ?? [];
   const outputs = contract.outputs ?? [];
   const errors = contract.errors ?? [];
   const hasInputs = inputs.length > 0;
+  const isNoBodyMethod = NO_BODY_METHODS.has(method);
 
-  const requestBody = {
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          properties: inputs.reduce((acc, input) => {
-            acc[input.name] = { type: input.type ?? "string" };
-            return acc;
-          }, {}),
-          required: inputs.filter(input => input.required).map(input => input.name)
+  let requestBody = null;
+  let parameters = null;
+  if (isNoBodyMethod) {
+    parameters = inputs.map((input) => ({
+      name: input.name,
+      in: "query",
+      required: false,
+      schema: { type: input.type ?? "string" }
+    }));
+  } else {
+    requestBody = {
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            properties: inputs.reduce((acc, input) => {
+              acc[input.name] = { type: input.type ?? "string" };
+              return acc;
+            }, {}),
+            required: inputs.filter(input => input.required).map(input => input.name)
+          }
         }
       }
-    }
-  };
-  if (hasInputs) requestBody.required = true;
+    };
+    if (hasInputs) requestBody.required = true;
+  }
 
   const errorsByStatus = new Map();
   for (const err of errors) {
@@ -526,7 +540,7 @@ function buildOpenApiDocument(contract, contractId) {
   const operation = {
     operationId: operationIdFor(method, urlPath),
     summary: contract.name,
-    requestBody,
+    ...(isNoBodyMethod ? { parameters } : { requestBody }),
     responses
   };
 

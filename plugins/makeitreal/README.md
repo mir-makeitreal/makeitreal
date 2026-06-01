@@ -2,6 +2,23 @@
 
 Make It Real is a Claude Code plugin that turns a feature request into a verified implementation through a gated plan → blueprint → launch → verify pipeline. Architecture is written as a structured Blueprint, validated and materialized into a Kanban board of work items, then dispatched to native Claude `Task` subagents under path-scoped and verification gates. The plugin exposes two MCP tools that Claude calls directly and three hooks that enforce the gates.
 
+## MCP Server
+
+The plugin ships its own MCP server (`mcp-server/index.mjs`) that exposes the `mir_blueprint` and `mir_launch` tools. The server is declared in the plugin's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "make-it-real": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/index.mjs"]
+    }
+  }
+}
+```
+
+Claude Code reads this `.mcp.json` and **auto-starts the server** when the plugin is installed — there is no separate start command. Once running, Claude calls the `mir_blueprint` and `mir_launch` tools directly; the `/mir:*` and `/makeitreal:*` slash commands drive the same tools. The MCP server wraps the internal engine so that gates, board state, orchestration, verification, and wiki sync are never invoked as user-facing Bash commands.
+
 ## MCP Tools
 
 ### `mir_blueprint`
