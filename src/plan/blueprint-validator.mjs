@@ -59,6 +59,8 @@ function patternsOverlap(a, b) {
 
 const CONTRACT_TYPES = new Set(["http", "function", "event", "component"]);
 
+const HTTP_CONTRACT_NAME_PATTERN = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+\S+/i;
+
 export const VALIDATION_RULES = [
   {
     id: "MODULES_NON_EMPTY",
@@ -86,6 +88,45 @@ export const VALIDATION_RULES = [
     severity: "error",
     check(proposal) {
       return isNonEmptyString(proposal.summary) ? null : "summary must be a non-empty string.";
+    }
+  },
+  {
+    id: "ACCEPTANCE_CRITERIA_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      return isNonEmptyArray(proposal.acceptanceCriteria)
+        ? null
+        : "Blueprint must include at least one concrete acceptance criterion.";
+    }
+  },
+  {
+    id: "VERIFY_COMMAND_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      const missing = (proposal.workItems ?? [])
+        .filter(wi => !wi.verifyCommand)
+        .map(wi => wi.title ?? wi.module ?? "?");
+      if (missing.length === 0) return null;
+      return missing
+        .map(label => `Work item ${label} is missing verifyCommand. Provide a concrete test command.`)
+        .join(" ");
+    }
+  },
+  {
+    id: "CONTRACT_NAME_INVALID",
+    severity: "error",
+    check(proposal) {
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        for (const c of (m.contracts ?? [])) {
+          if (c.type === "http" && !HTTP_CONTRACT_NAME_PATTERN.test(String(c.name ?? "").trim())) {
+            bad.push(`${m.name ?? "?"}.${c.name ?? "?"}`);
+          }
+        }
+      }
+      return bad.length === 0
+        ? null
+        : `HTTP contract name must be in format "METHOD /path" (e.g. "POST /users"): ${bad.join(", ")}`;
     }
   },
   {
@@ -125,14 +166,6 @@ export const VALIDATION_RULES = [
         }
       }
       return bad.length === 0 ? null : bad.join("; ");
-    }
-  },
-  {
-    id: "WORK_ITEMS_EXCEED_MAX",
-    severity: "error",
-    check(proposal) {
-      const count = (proposal.workItems ?? []).length;
-      return count > 12 ? `Too many work items (${count}). Maximum is 12.` : null;
     }
   },
   {

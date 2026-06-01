@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateOpenApiConformanceEvidence } from "../adapters/openapi-conformance.mjs";
 import { validateModuleSurfaceConformance } from "../adapters/module-surface-conformance.mjs";
@@ -156,51 +156,6 @@ Final Lane:
 function verificationExemptionReason(workItem) {
   const reason = workItem?.verificationExempt?.reason;
   return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : null;
-}
-
-const INTEGRATION_ENTRY_POINT_CANDIDATES = [
-  "app.js", "app.mjs", "app.ts",
-  "index.js", "index.mjs", "index.ts",
-  "server.js", "server.mjs", "server.ts",
-  "src/app.js", "src/app.mjs", "src/app.ts",
-  "src/index.js", "src/index.mjs", "src/index.ts",
-  "src/server.js", "src/server.mjs", "src/server.ts"
-];
-
-async function findIntegrationEntryPoint(projectRoot) {
-  for (const candidate of INTEGRATION_ENTRY_POINT_CANDIDATES) {
-    try {
-      await access(path.join(projectRoot, candidate));
-      return candidate;
-    } catch {
-      // not found, try next
-    }
-  }
-  return null;
-}
-
-async function validateIntegrationEntryPoint({ workItem, projectRoot }) {
-  const isIntegration = workItem.id === "work.integration" || workItem.responsibilityUnitId === "ru.integration";
-  if (!isIntegration) {
-    return { ok: true, errors: [] };
-  }
-  if (!projectRoot) {
-    return { ok: true, errors: [] };
-  }
-  const found = await findIntegrationEntryPoint(projectRoot);
-  if (!found) {
-    return {
-      ok: false,
-      errors: [createHarnessError({
-        code: "HARNESS_INTEGRATION_ENTRY_POINT_MISSING",
-        reason: `Integration work item requires an entry point file (app.js, index.js, server.js, or equivalent under src/) at the project root, but none was found. Create at least one of: ${INTEGRATION_ENTRY_POINT_CANDIDATES.slice(0, 6).join(", ")}.`,
-        ownerModule: workItem.responsibilityUnitId ?? null,
-        evidence: [`evidence/${workItem.id}.verification.json`],
-        recoverable: true
-      })]
-    };
-  }
-  return { ok: true, errors: [] };
 }
 
 export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMode = null, refreshBeforeDone = null }) {
@@ -429,10 +384,6 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   if (errors.length === 0) {
     const moduleSurfaceConformance = await validateModuleSurfaceConformance({ runDir: boardDir, projectRoot, workItem });
     errors.push(...moduleSurfaceConformance.errors);
-  }
-  if (errors.length === 0) {
-    const integrationEntryPoint = await validateIntegrationEntryPoint({ workItem, projectRoot });
-    errors.push(...integrationEntryPoint.errors);
   }
 
   if (errors.length > 0) {

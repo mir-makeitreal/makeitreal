@@ -190,7 +190,7 @@ test("demo --pretty prints a TTY-only human summary", async () => {
     assert.match(result.stdout, /\{\n  "ok": true,/);
     assert.match(result.stdout, /Blueprint generated!/);
     assert.match(result.stdout, /Template: rest-api \(medium\)/);
-    assert.match(result.stdout, /Work items: 4/); // 3 modules + 1 integration work item
+    assert.match(result.stdout, /Work items: 3/); // 3 modules, one work item each
     assert.match(result.stdout, /Run dir: .+demo-rest-api/);
     assert.match(result.stdout, /Next: node bin\/harness\.mjs blueprint approve .+demo-rest-api/);
   } finally {

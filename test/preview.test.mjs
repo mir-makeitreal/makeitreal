@@ -1064,8 +1064,8 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
 
     const previewModel = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
     const dossier = previewModel.blueprint.systemDossier;
-    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["Safe Add", "Slugify Title", "Format ISO Date", "integration"]);
-    assert.equal(dossier.systemPlacement.summary, "4 responsibility units (Safe Add, Slugify Title, Format ISO Date, integration) communicate only through 6 declared contract edges.");
+    assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["Safe Add", "Slugify Title", "Format ISO Date"]);
+    assert.equal(dossier.systemPlacement.summary, "3 responsibility units (Safe Add, Slugify Title, Format ISO Date) are declared as separate modules with no cross-module imports.");
     assert.deepEqual(dossier.scenarioIndex.map((scenario) => scenario.title), [
       "safeAdd contract call",
       "slugifyTitle contract call",
@@ -1074,7 +1074,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Three Independent/);
-    assert.match(html, /4 responsibility units: Safe Add, Slugify Title, Format ISO Date, integration/);
+    assert.match(html, /3 responsibility units: Safe Add, Slugify Title, Format ISO Date/);
     assert.match(html, /safeAdd State Flow/);
     assert.match(html, /slugifyTitle State Flow/);
     assert.match(html, /formatIsoDate State Flow/);

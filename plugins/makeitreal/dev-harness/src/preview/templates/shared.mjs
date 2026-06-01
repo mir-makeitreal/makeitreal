@@ -52,9 +52,7 @@ export function conciseTitleFromText(value, { preferFunction = true } = {}) {
 
 export function nonExternalModules(modules = []) {
   return modules.filter((moduleInterface) =>
-    moduleInterface.owner !== "external.provider" &&
-    moduleInterface.responsibilityUnitId !== "ru.integration" &&
-    moduleInterface.moduleName !== "integration"
+    moduleInterface.owner !== "external.provider"
   );
 }
 

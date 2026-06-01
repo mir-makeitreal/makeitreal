@@ -178,6 +178,7 @@ Top-level shape:
 - The dependency DAG (modules + workItems) must be acyclic.
 - Each contract must include `inputs`, `outputs`, and `errors` arrays.
 - Each `WorkItem.module` must match exactly one declared module; at most one work item per module.
+- For multi-module blueprints, include a work item with `module: "integration"` that depends on ALL other modules. This work item is responsible for creating the server entry point, mounting routers, and wiring all modules together. Without it, modules will be built but never connected. Declare the `integration` module like any other module (name, purpose, ownedPaths for the entry point, contracts, and a verify command).
 - Do NOT invent file paths that don't exist unless the work item creates them.
 - Do NOT assume frameworks or libraries not visible in the project.
 - Mark uncertain decisions in the `assumptions` array.
