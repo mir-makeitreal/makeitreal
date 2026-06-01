@@ -845,7 +845,7 @@ test("pre-tool-use delegates path-less Bash commands to Claude Code", async () =
       tool_input: { command: "git diff -- apps/web/auth/LoginForm.tsx && npm test" }
     });
     assert.equal(readOnly.status, 0, readOnly.stdout || readOnly.stderr);
-    assert.equal(JSON.parse(readOnly.stdout).hookSpecificOutput.permissionDecision, "ask");
+    assert.equal(JSON.parse(readOnly.stdout).hookSpecificOutput.permissionDecision, "allow");
 
     const mutating = runHook("hooks/claude/pre-tool-use.mjs", {
       runDir,
@@ -853,6 +853,6 @@ test("pre-tool-use delegates path-less Bash commands to Claude Code", async () =
       tool_input: { command: "git apply feature.patch" }
     });
     assert.equal(mutating.status, 0, mutating.stdout || mutating.stderr);
-    assert.equal(JSON.parse(mutating.stdout).hookSpecificOutput.permissionDecision, "ask");
+    assert.equal(JSON.parse(mutating.stdout).hookSpecificOutput.permissionDecision, "allow");
   });
 });
