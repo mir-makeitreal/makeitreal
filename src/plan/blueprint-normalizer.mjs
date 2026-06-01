@@ -223,7 +223,13 @@ function apiSpecFor(contract, contractId) {
   };
 }
 
-function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, runId) {
+const INTEGRATION_ALLOWED_PATHS = [
+  "*.js", "*.mjs", "*.ts",
+  "src/app.*", "src/index.*", "src/server.*",
+  "index.*", "server.*", "app.*"
+];
+
+function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, runId, workItems) {
   const slug = slugify(proposal.title);
   const firstModule = modules[0];
   const workItemId = workIdFor(firstModule?.name ?? "blueprint");
@@ -233,6 +239,16 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
     label: m.name,
     responsibilityUnitId: ruIdFor(m.name)
   }));
+
+  // Add integration node when there are 2+ modules
+  const hasIntegration = (workItems ?? []).some(wi => wi.id === "work.integration");
+  if (hasIntegration) {
+    nodes.push({
+      id: "ru.integration",
+      label: "Integration",
+      responsibilityUnitId: "ru.integration"
+    });
+  }
 
   const edges = [];
   for (const m of modules) {
@@ -245,6 +261,17 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
       };
       if (firstContract) edge.contractId = firstContract.contractId;
       edges.push(edge);
+    }
+  }
+
+  // Add edges from each module node to integration node
+  if (hasIntegration) {
+    for (const m of modules) {
+      edges.push({
+        from: ruIdFor(m.name),
+        to: "ru.integration",
+        kind: "integration"
+      });
     }
   }
 
@@ -306,6 +333,52 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
       responsibility: m.purpose
     };
   });
+
+  // Add integration module interface when 2+ modules
+  if (hasIntegration) {
+    const allContractIds = modules.flatMap(m =>
+      (moduleContracts.get(m.name) ?? []).map(c => c.contractId)
+    );
+    // Create a synthetic integration contract ID and add it to the design pack's API specs list
+    const integrationContractId = "contract.integration.entry-point";
+    moduleInterfaces.push({
+      responsibilityUnitId: "ru.integration",
+      moduleName: "integration",
+      owner: "team.implementation",
+      purpose: "Wire all modules. Create server entry point, mount routers, configure middleware.",
+      owns: [...INTEGRATION_ALLOWED_PATHS],
+      mustProvideContracts: [integrationContractId],
+      publicSurfaces: [{
+        name: "entry point",
+        kind: "module",
+        contractIds: [integrationContractId],
+        signature: {
+          inputs: [{ name: "request", type: "object" }],
+          outputs: [{ name: "response", type: "object" }],
+          errors: [{ code: "INTERNAL_ERROR", when: "Unexpected failure" }]
+        }
+      }],
+      imports: modules.flatMap(m =>
+        (moduleContracts.get(m.name) ?? []).map(c => ({
+          contractId: c.contractId,
+          providerResponsibilityUnitId: ruIdFor(m.name),
+          surface: c.contract.name
+        }))
+      ),
+      responsibility: "Wire all modules. Create server entry point, mount routers, configure middleware."
+    });
+    responsibilityBoundaries.push({
+      responsibilityUnitId: "ru.integration",
+      owns: [...INTEGRATION_ALLOWED_PATHS],
+      mayUseContracts: [...new Set(allContractIds)]
+    });
+    // Register the synthetic contract in apiSpecs so design-pack validation finds it
+    apiSpecs.push({
+      kind: "none",
+      contractId: integrationContractId,
+      reason: "integration (function) is a non-HTTP contract."
+    });
+  }
 
   const sequences = (proposal.scenarios ?? []).map(scenario => {
     const participants = [...new Set(
@@ -451,6 +524,8 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
     moduleByWorkId.set(workIdFor(m.name), m.name);
   }
 
+  const INTEGRATION_ID = "work.integration";
+
   return {
     schemaVersion: "1.0",
     nodes: workItems.map(wi => ({
@@ -459,8 +534,16 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
       responsibilityUnitId: wi.responsibilityUnitId,
       requiredForDone: true
     })),
-    edges: workItems.flatMap(wi =>
-      (wi.dependsOn ?? []).map(depWorkId => {
+    edges: workItems.flatMap(wi => {
+      // Integration work item depends on all module work items via coordination edges
+      if (wi.id === INTEGRATION_ID) {
+        return (wi.dependsOn ?? []).map(depWorkId => ({
+          from: depWorkId,
+          to: wi.id,
+          kind: "coordination"
+        }));
+      }
+      return (wi.dependsOn ?? []).map(depWorkId => {
         const providerModuleName = moduleByWorkId.get(depWorkId);
         const providerContracts = providerModuleName
           ? (moduleContracts.get(providerModuleName) ?? [])
@@ -475,8 +558,8 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
           edge.contractIds = providerContracts.map(c => c.contractId);
         }
         return edge;
-      })
-    )
+      });
+    })
   };
 }
 
@@ -579,6 +662,46 @@ function buildComponentDocument(contract, contractId) {
   };
 }
 
+function buildIntegrationWorkItem(allModuleWorkItems, prd, firstVerifyCommand) {
+  const allWorkIds = allModuleWorkItems.map(wi => wi.id);
+  const verifyCommand = firstVerifyCommand ?? { file: "node", args: ["--test"] };
+  return {
+    schemaVersion: "1.0",
+    id: "work.integration",
+    title: "Wire modules together and create server entry point",
+    kind: "implementation",
+    prdId: prd.id,
+    lane: "Contract Frozen",
+    responsibilityUnitId: "ru.integration",
+    contractIds: ["contract.integration.entry-point"],
+    dependencyContracts: [],
+    dependsOn: allWorkIds,
+    allowedPaths: [...INTEGRATION_ALLOWED_PATHS],
+    prdTrace: { acceptanceCriteriaIds: allModuleWorkItems[0]?.prdTrace?.acceptanceCriteriaIds ?? [] },
+    doneEvidence: [
+      { kind: "verification", path: "evidence/work.integration.verification.json" },
+      { kind: "wiki-sync", path: "evidence/work.integration.wiki-sync.json" }
+    ],
+    verificationCommands: [verifyCommand]
+  };
+}
+
+function buildIntegrationResponsibilityUnit() {
+  return {
+    id: "ru.integration",
+    label: "Integration",
+    moduleName: "integration",
+    owner: "team.implementation",
+    owns: [...INTEGRATION_ALLOWED_PATHS],
+    mustProvideContracts: ["contract.integration.entry-point"],
+    mayUseContracts: [],
+    publicSurfaces: [],
+    imports: [],
+    purpose: "Wire all modules. Create server entry point, mount routers, configure middleware.",
+    responsibility: "Wire all modules. Create server entry point, mount routers, configure middleware."
+  };
+}
+
 export function normalizeBlueprintProposal(proposal) {
   const modules = proposal.modules ?? [];
   const moduleContracts = moduleContractMaps(modules);
@@ -587,9 +710,18 @@ export function normalizeBlueprintProposal(proposal) {
   const warnings = [];
 
   const prd = buildPrd(proposal, acceptanceCriteria);
-  const designPack = buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, null);
   const responsibilityUnits = buildResponsibilityUnits(modules, moduleContracts);
   const workItems = buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd, warnings);
+
+  // When 2+ modules exist, add an integration work item to wire them all together
+  if (modules.length >= 2) {
+    const firstVerifyCommand = workItems[0]?.verificationCommands?.[0] ?? null;
+    const integrationWorkItem = buildIntegrationWorkItem(workItems, prd, firstVerifyCommand);
+    workItems.push(integrationWorkItem);
+    responsibilityUnits.units.push(buildIntegrationResponsibilityUnit());
+  }
+
+  const designPack = buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, null, workItems);
   const workItemDag = buildWorkItemDag(workItems, modules, moduleContracts);
 
   const contracts = [];

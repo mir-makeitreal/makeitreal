@@ -173,7 +173,7 @@ describe("make-it-real MCP server full plan→launch→finish→complete loop", 
     });
     const payload = parseToolText(response);
     assert.equal(payload.ok, true, `blueprint failed: ${JSON.stringify(payload.errors)}`);
-    assert.equal(payload.workItemCount, 2);
+    assert.equal(payload.workItemCount, 3); // 2 modules + 1 integration work item
   });
 
   it("mir_launch status reports gate Ready fails until approval and provides an llmHint", async () => {

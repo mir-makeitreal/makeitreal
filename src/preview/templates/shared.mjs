@@ -51,7 +51,11 @@ export function conciseTitleFromText(value, { preferFunction = true } = {}) {
 }
 
 export function nonExternalModules(modules = []) {
-  return modules.filter((moduleInterface) => moduleInterface.owner !== "external.provider");
+  return modules.filter((moduleInterface) =>
+    moduleInterface.owner !== "external.provider" &&
+    moduleInterface.responsibilityUnitId !== "ru.integration" &&
+    moduleInterface.moduleName !== "integration"
+  );
 }
 
 export function titleIntroBeforeUnitSections(value) {
@@ -76,8 +80,10 @@ export function architecturePacketTitle({ rawTitle, modules, dependencyEdges = [
     return implementationModules[0].moduleName;
   }
 
-  if (dependencyEdges.length === 0) {
-    return `${countLabel(modules.length)} Independent Responsibility Units`;
+  // Ignore integration-only edges when deciding whether modules are independent
+  const nonIntegrationEdges = dependencyEdges.filter((edge) => edge.kind !== "integration");
+  if (nonIntegrationEdges.length === 0) {
+    return `${countLabel(modules.filter((m) => m.responsibilityUnitId !== "ru.integration" && m.moduleName !== "integration").length || modules.length)} Independent Responsibility Units`;
   }
 
   const introTitle = conciseTitleFromText(titleIntroBeforeUnitSections(rawTitle), { preferFunction: false });
