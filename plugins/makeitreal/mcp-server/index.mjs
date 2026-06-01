@@ -182,22 +182,37 @@ function toolCallText(payload) {
 
 async function handleBlueprintTool(args) {
   if (!args || typeof args !== "object") {
-    return toolCallText({ ok: false, errors: [{ code: "INVALID_ARGS", reason: "Tool arguments must be an object." }] });
+    return toolCallText(withLlmHint(
+      { ok: false, errors: [{ code: "INVALID_ARGS", reason: "Tool arguments must be an object." }] },
+      "The proposal must be valid JSON matching the BlueprintProposal schema. Check for syntax errors."
+    ));
   }
   const { projectRoot, runSlug, ...proposal } = args;
   if (typeof projectRoot !== "string" || projectRoot.length === 0) {
-    return toolCallText({ ok: false, errors: [{ code: "MISSING_PROJECT_ROOT", reason: "projectRoot is required." }] });
+    return toolCallText(withLlmHint(
+      { ok: false, errors: [{ code: "MISSING_PROJECT_ROOT", reason: "projectRoot is required." }] },
+      "Provide projectRoot (absolute path to your project directory) and runSlug."
+    ));
   }
   if (typeof runSlug !== "string" || runSlug.length === 0) {
-    return toolCallText({ ok: false, errors: [{ code: "MISSING_RUN_SLUG", reason: "runSlug is required." }] });
+    return toolCallText(withLlmHint(
+      { ok: false, errors: [{ code: "MISSING_RUN_SLUG", reason: "runSlug is required." }] },
+      "Provide runSlug (a short identifier like auth-system or todo-app)."
+    ));
   }
   if (!path.isAbsolute(projectRoot)) {
-    return toolCallText({ ok: false, errors: [{ code: "PROJECT_ROOT_NOT_ABSOLUTE", reason: "projectRoot must be an absolute path." }] });
+    return toolCallText(withLlmHint(
+      { ok: false, errors: [{ code: "PROJECT_ROOT_NOT_ABSOLUTE", reason: "projectRoot must be an absolute path." }] },
+      "Provide projectRoot (absolute path to your project directory) and runSlug."
+    ));
   }
 
   const validation = validateBlueprintProposal(proposal);
   if (!validation.ok) {
-    return toolCallText({ ok: false, errors: validation.errors, warnings: validation.warnings });
+    return toolCallText(withLlmHint(
+      { ok: false, errors: validation.errors, warnings: validation.warnings },
+      "Fix the specific errors listed and call mir_blueprint again. Common issues: module names must be unique, ownedPaths must not overlap, dependsOn must reference existing modules."
+    ));
   }
 
   const normalized = normalizeBlueprintProposal(proposal);
@@ -228,13 +243,13 @@ async function handleBlueprintTool(args) {
   ];
 
   if (errors.length > 0) {
-    return toolCallText({
+    return toolCallText(withLlmHint({
       ok: false,
       runDir,
       workItemCount: normalized.workItems.length,
       previewUrl,
       errors
-    });
+    }, "Internal error saving artifacts. Try again or check file permissions."));
   }
 
   return toolCallText({
@@ -535,7 +550,10 @@ async function handleRequestInner({ id, method, params }) {
   } catch (cause) {
     const reason = cause instanceof Error ? cause.message : String(cause);
     if (method === "tools/call") {
-      return jsonRpcResult(id, toolCallText({ ok: false, errors: [{ code: "TOOL_EXCEPTION", reason }] }));
+      return jsonRpcResult(id, toolCallText(withLlmHint(
+        { ok: false, errors: [{ code: "TOOL_EXCEPTION", reason }] },
+        "Internal error saving artifacts. Try again or check file permissions."
+      )));
     }
     return jsonRpcError(id, -32603, "Internal error", { reason });
   }
