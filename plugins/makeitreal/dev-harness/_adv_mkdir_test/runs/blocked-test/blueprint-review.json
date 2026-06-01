@@ -1,0 +1,12 @@
+{
+  "blueprintFingerprint": "sha256:2a1f51c42bfaceab114f33403519706e5dee9beff1c53f9a1955c5473c6f0dbb",
+  "decisionNote": null,
+  "prdId": "prd.auth",
+  "reviewedAt": "2026-04-30T00:00:00.000Z",
+  "reviewedBy": "operator:fixture",
+  "reviewSource": "makeitreal:plan approve",
+  "runId": "feature-auth",
+  "schemaVersion": "1.0",
+  "status": "approved",
+  "workItemId": "work.feature-auth"
+}

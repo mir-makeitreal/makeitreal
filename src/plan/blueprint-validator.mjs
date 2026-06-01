@@ -128,6 +128,14 @@ export const VALIDATION_RULES = [
     }
   },
   {
+    id: "WORK_ITEMS_EXCEED_MAX",
+    severity: "error",
+    check(proposal) {
+      const count = (proposal.workItems ?? []).length;
+      return count > 12 ? `Too many work items (${count}). Maximum is 12.` : null;
+    }
+  },
+  {
     id: "WORK_ITEM_FIELDS_REQUIRED",
     severity: "error",
     check(proposal) {

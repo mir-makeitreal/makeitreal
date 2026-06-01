@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "id": "prd.auth",
+  "title": "Authentication vertical slice",
+  "goals": [
+    "Deliver a contract-gated authentication UI vertical slice."
+  ],
+  "userVisibleBehavior": [
+    "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract."
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-001",
+      "statement": "A user can submit credentials through the auth UI."
+    },
+    {
+      "id": "AC-002",
+      "statement": "The auth UI calls only the declared auth contract."
+    },
+    {
+      "id": "AC-003",
+      "statement": "Verification evidence and live wiki sync are recorded before Done."
+    }
+  ],
+  "nonGoals": ["Real credential validation", "Production auth security"]
+}

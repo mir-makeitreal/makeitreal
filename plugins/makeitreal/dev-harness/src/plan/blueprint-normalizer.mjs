@@ -380,13 +380,23 @@ function parseVerifyCommand(verifyCommand) {
   return { file: "node", args: ["--test"] };
 }
 
-function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd) {
+function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd, warnings) {
   const allCriterionIds = acceptanceCriteria.map(ac => ac.id);
   const modulesByName = new Map(modules.map(m => [m.name, m]));
 
   return (proposal.workItems ?? []).map(wi => {
     const module = modulesByName.get(wi.module);
     if (!module) return null;
+
+    if (!wi.verifyCommand) {
+      console.warn("[make-it-real] workItem missing verifyCommand, defaulting to node --test. Add verifyCommand to your blueprint for reliable verification.");
+      if (Array.isArray(warnings)) {
+        warnings.push({
+          code: "VERIFY_COMMAND_DEFAULTED",
+          reason: `Work item "${wi.title ?? wi.module}" had no verifyCommand; defaulted to "node --test".`
+        });
+      }
+    }
 
     const own = moduleContracts.get(module.name) ?? [];
     const ownIds = own.map(c => c.contractId);
@@ -574,10 +584,12 @@ export function normalizeBlueprintProposal(proposal) {
   const moduleContracts = moduleContractMaps(modules);
   const acceptanceCriteria = buildAcceptanceCriteria(proposal);
 
+  const warnings = [];
+
   const prd = buildPrd(proposal, acceptanceCriteria);
   const designPack = buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria, null);
   const responsibilityUnits = buildResponsibilityUnits(modules, moduleContracts);
-  const workItems = buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd);
+  const workItems = buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, prd, warnings);
   const workItemDag = buildWorkItemDag(workItems, modules, moduleContracts);
 
   const contracts = [];
@@ -593,7 +605,7 @@ export function normalizeBlueprintProposal(proposal) {
     }
   }
 
-  return { prd, designPack, responsibilityUnits, workItems, workItemDag, contracts };
+  return { prd, designPack, responsibilityUnits, workItems, workItemDag, contracts, warnings };
 }
 
 export async function writeBlueprintArtifacts(normalized, runDir, runId) {
