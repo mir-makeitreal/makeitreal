@@ -834,24 +834,25 @@ test("pre-tool-use validates mutating Bash paths against the active run boundary
   });
 });
 
-test("pre-tool-use blocks unstructured Bash mutations in an explicit run context", async () => {
+test("pre-tool-use delegates path-less Bash commands to Claude Code", async () => {
   await withFixture(async ({ runDir }) => {
+    // We are a path-boundary gate, not a Bash safety layer. When a command exposes
+    // no project file path to validate, the safe/dangerous classification is
+    // Claude Code's responsibility, so we delegate with permissionDecision "ask".
     const readOnly = runHook("hooks/claude/pre-tool-use.mjs", {
       runDir,
       tool_name: "Bash",
       tool_input: { command: "git diff -- apps/web/auth/LoginForm.tsx && npm test" }
     });
     assert.equal(readOnly.status, 0, readOnly.stdout || readOnly.stderr);
-    assert.equal(JSON.parse(readOnly.stdout).hookSpecificOutput.permissionDecision, "allow");
+    assert.equal(JSON.parse(readOnly.stdout).hookSpecificOutput.permissionDecision, "ask");
 
-    const blocked = runHook("hooks/claude/pre-tool-use.mjs", {
+    const mutating = runHook("hooks/claude/pre-tool-use.mjs", {
       runDir,
       tool_name: "Bash",
       tool_input: { command: "git apply feature.patch" }
     });
-    assert.equal(blocked.status, 0, blocked.stdout || blocked.stderr);
-    const output = JSON.parse(blocked.stdout);
-    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
-    assert.match(output.hookSpecificOutput.permissionDecisionReason, /HARNESS_BASH_WRITE_UNSUPPORTED/);
+    assert.equal(mutating.status, 0, mutating.stdout || mutating.stderr);
+    assert.equal(JSON.parse(mutating.stdout).hookSpecificOutput.permissionDecision, "ask");
   });
 });

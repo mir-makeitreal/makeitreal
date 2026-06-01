@@ -129,54 +129,10 @@ function bashCommand(input) {
   return typeof command === "string" ? command : null;
 }
 
-function bashLooksMutating(command) {
-  return /(^|[;&|]\s*)(touch|rm|mv|cp|mkdir|rmdir|tee)\b/.test(command)
-    || /(^|[;&|]\s*)git\s+(apply|am|checkout|cherry-pick|clean|commit|merge|rebase|reset|restore|stash|switch)\b/.test(command)
-    || /(^|[;&|]\s*)(npm|pnpm|yarn|bun)\s+(add|ci|install|i|remove|update|upgrade)\b/.test(command)
-    || /(^|[;&|]\s*)(pip|pip3|uv)\s+(add|install|remove|sync)\b/.test(command)
-    || /(^|[;&|]\s*)(sed|perl)\s+[^;&|]*\s-i\b/.test(command)
-    || /(^|\s)(?:[A-Za-z0-9._/-]+)?>{1,2}\s*(?!&\d)(?=["']?[A-Za-z0-9._/-])/.test(command)
-    || /\b(node|python3?|ruby)\s+-e\b/.test(command) && /\b(writeFile|appendFile|mkdirSync|rmSync|open\s*\()/i.test(command);
-}
-
-function splitBashSegments(command) {
-  return command
-    .split(/\s*(?:&&|\|\||;|\n)\s*/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-}
-
-function stripEnvAssignments(segment) {
-  let current = segment.trim();
-  const assignment = /^[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S+)\s+/;
-  while (assignment.test(current)) {
-    current = current.replace(assignment, "").trim();
-  }
-  return current;
-}
-
+// Plugin-specific check: Make It Real lifecycle commands run our own engine and are
+// always permitted regardless of file boundaries — they ARE the orchestration layer.
 function bashLooksHarnessControl(command) {
   return /\b(?:makeitreal-engine|harness\.mjs)\b[^;&|]*(?:\s|^)(?:setup|status|doctor|plan|blueprint|config|hooks|dashboard|gate|verify|wiki|contracts|board|orchestrator)\b/.test(command);
-}
-
-function bashSegmentLooksReadOnly(segment) {
-  const normalized = stripEnvAssignments(segment);
-  if (!normalized || /(^|\s)>{1,2}\s*(?!&\d)/.test(normalized)) {
-    return false;
-  }
-  return /^(?:pwd|date|whoami|true|false)\b/.test(normalized)
-    || /^(?:ls|cat|head|tail|wc|sort|uniq|jq|rg|grep|find|awk)\b/.test(normalized)
-    || /^sed\b(?![^;&|]*\s-i\b)/.test(normalized)
-    || /^git\s+(?:status|diff|log|show|grep|ls-files|rev-parse|branch|remote)\b/.test(normalized)
-    || /^(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+(?:test|lint|check|typecheck|build|release:check|plugin:validate)\b/.test(normalized)
-    || /^(?:pytest|go\s+test|cargo\s+test|swift\s+test|mvn\s+test|gradle\s+test)\b/.test(normalized)
-    || /^(?:node|python3?|ruby)\s+(?:--test|-m\s+pytest)\b/.test(normalized)
-    || /^cd\s+/.test(normalized);
-}
-
-function bashLooksReadOnly(command) {
-  const segments = splitBashSegments(command);
-  return segments.length > 0 && segments.every((segment) => bashSegmentLooksReadOnly(segment));
 }
 
 function collectBashPaths(command) {
@@ -222,6 +178,20 @@ function block(errors) {
       permissionDecisionReason: errors.map((error) => `${error.code}: ${error.reason}`).join("\n")
     },
     errors
+  };
+}
+
+// Delegate the decision to Claude Code's own permission system. We only enforce
+// path boundaries; we are NOT the Bash safety layer. When a Bash command exposes
+// no project file path to validate, classification (mutating vs read-only) is
+// Claude Code's responsibility, not ours.
+function ask(reason) {
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "ask",
+      permissionDecisionReason: reason
+    }
   };
 }
 
@@ -327,10 +297,13 @@ async function main() {
   const changedPaths = collectPaths(input.tool_input ?? input.toolInput ?? input);
   const command = bashCommand(input);
   const harnessControlBash = command ? bashLooksHarnessControl(command) : false;
-  const bashRequiresBoundary = command ? !harnessControlBash && (bashLooksMutating(command) || !bashLooksReadOnly(command)) : false;
-  const bashMutatingPaths = command && bashRequiresBoundary ? collectBashPaths(command) : [];
-  const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashRequiresBoundary;
-  const readScopedTool = READ_TOOLS.has(input?.tool_name) || (command && !bashRequiresBoundary && bashLooksReadOnly(command));
+  // For Bash, we never classify the command itself as safe/dangerous — we only look
+  // for file paths to check against the module boundary. Claude Code owns the rest.
+  const bashPaths = command && !harnessControlBash ? collectBashPaths(command) : [];
+  const bashHasPaths = bashPaths.length > 0;
+  const bashNeedsDelegation = Boolean(command) && !harnessControlBash && !bashHasPaths;
+  const mutatingTool = MUTATING_TOOLS.has(input?.tool_name) || bashHasPaths;
+  const readScopedTool = READ_TOOLS.has(input?.tool_name);
 
   if (explicitMakeItReal?.agentPacket?.readScope && readScopedTool) {
     const violations = readScopeViolations({
@@ -349,6 +322,10 @@ async function main() {
     }
   }
 
+  if (bashNeedsDelegation) {
+    return ask("Bash command exposes no project file path to validate; delegating safety classification to Claude Code.");
+  }
+
   if (!mutatingTool) {
     return allow("Non-mutating tool request.");
   }
@@ -360,7 +337,7 @@ async function main() {
   let workItemId = explicitMakeItReal?.workItemId ?? process.env.MAKEITREAL_WORK_ITEM_ID ?? null;
   let resolved = null;
 
-  const scopedPaths = [...changedPaths, ...bashMutatingPaths];
+  const scopedPaths = [...changedPaths, ...bashPaths];
   if (!runnerContext.active && !explicitRunDir && scopedPaths.length > 0 && !hasProjectTarget({ projectRoot, paths: scopedPaths })) {
     return allow("Mutation targets paths outside project root; Make It Real run enforcement skipped.");
   }
@@ -439,18 +416,8 @@ async function main() {
     return block(approval.errors);
   }
 
-  if (command && bashRequiresBoundary) {
-    if (bashMutatingPaths.length === 0) {
-      return block([{
-        code: "HARNESS_BASH_WRITE_UNSUPPORTED",
-        reason: "Mutating Bash commands must expose project-relative file paths for Make It Real boundary validation.",
-        contractId: null,
-        ownerModule: null,
-        evidence: ["Bash.command"],
-        recoverable: true
-      }]);
-    }
-    changedPaths.push(...bashMutatingPaths);
+  if (bashHasPaths) {
+    changedPaths.push(...bashPaths);
   }
 
   if (changedPaths.length === 0) {
