@@ -30,27 +30,27 @@ import { extractReviewReports } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
+// Infrastructure validation only. Doctrine: requiredReviewRoles is NOT declared
+// here — it comes from workItem.requiredReviewRoles. The engine validates and
+// saves; it does not decide which reviewers a work item needs.
 const COMPLETION_POLICIES = Object.freeze({
   "implementation": {
     reportRole: "implementation-worker",
     reportKeys: ["makeitrealReport", "agentReport"],
     requiresChangedFiles: true,
-    requiresVerificationCommands: true,
-    requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+    requiresVerificationCommands: true
   },
   "domain-pm": {
     reportRole: "domain-pm",
     reportKeys: ["makeitrealPmReport", "pmReport"],
     requiresChangedFiles: false,
-    requiresVerificationCommands: false,
-    requiredReviewRoles: ["spec-reviewer"]
+    requiresVerificationCommands: false
   },
   "integration-evidence": {
     reportRole: "integration-evidence",
     reportKeys: ["makeitrealEvidenceReport", "evidenceReport"],
     requiresChangedFiles: false,
-    requiresVerificationCommands: true,
-    requiredReviewRoles: ["verification-reviewer"]
+    requiresVerificationCommands: true
   }
 });
 
@@ -74,13 +74,13 @@ function interpolateRuntimeValues(template, { boardDir, projectRoot, attemptId, 
 
 // Doctrine: the blueprint (LLM) decides which review roles a work item needs.
 // The engine only validates and saves. When a work item omits the declaration,
-// fall back to the engine default but make the omission explicit.
-function resolveRequiredReviewRoles({ workItem, policy }) {
+// require no reviewers — the LLM must declare requiredReviewRoles explicitly.
+function resolveRequiredReviewRoles({ workItem }) {
   if (Array.isArray(workItem?.requiredReviewRoles)) {
     return workItem.requiredReviewRoles;
   }
-  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — using engine default.\n");
-  return policy.requiredReviewRoles;
+  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — no reviewers required. Declare requiredReviewRoles in your blueprint.\n");
+  return [];
 }
 
 function mappingForEvidenceRole(mapping, role) {
@@ -211,7 +211,7 @@ function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, 
     }));
   }
 
-  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem, policy });
+  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem });
   const latestByRole = new Map(reviewReports.map((report) => [report.role, report]));
   const missing = requiredReviewRoles.filter((role) => !latestByRole.has(role));
   if (missing.length > 0) {
@@ -507,155 +507,16 @@ function renderNativeTaskPrompt({ boardDir, workItem, attemptId, projectRoot, no
   }
   process.stderr.write("[make-it-real] workItem missing implementationPrompt — falling back to engine-generated prompt. Declare implementationPrompt in your blueprint.\n");
 
-  if (nodeKind === "domain-pm") {
-    return `You are a Make It Real domain PM running inside the parent Claude Code session.
+  return `Work item: ${workItem.id}
+Run directory: ${boardDir}
+Project root: ${projectRoot ?? "(unknown)"}
 
-Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
+NOTE: implementationPrompt not declared in blueprint. Declare it for proper guidance.
 
-Run directory:
-- ${boardDir}
-
-Project root:
-- ${projectRoot ?? "(unknown)"}
-
-Work item:
-- ${workItem.id}
-
-Responsibility unit:
-- ${workItem.responsibilityUnitId ?? "(missing)"}
-
-Contracts under PM coordination:
-${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
-
-Rules:
-- Read PRD, design-pack, board, work-item-dag, responsibility-units, blueprint-review, and contract files from the run directory.
-- Do not edit production code. This node coordinates the approved split and confirms child work packets are zero-context executable.
-- Verify child implementation nodes have one owner, declared contracts, allowed paths, dependency order, and sufficient verification commands.
-- Do not add fallback behavior outside declared contracts.
-- If the approved Blueprint is insufficient or the split is unsafe, report NEEDS_CONTEXT or BLOCKED instead of guessing.
-- The parent session will run a spec-reviewer Task subagent after your PM turn.
-- Emit JSON directly using this shape:
-\`\`\`json
-{
-  "makeitrealPmReport": {
-    "role": "domain-pm",
-    "status": "DONE",
-    "summary": "PM review of the responsibility split.",
-    "childWorkProposal": null,
-    "concerns": [],
-    "needsContext": [],
-    "blockers": [],
-    "workItemId": "${workItem.id}",
-    "attemptId": "${attemptId}"
-  }
-}
-\`\`\`
-`;
-  }
-
-  if (nodeKind === "integration-evidence") {
-    return `You are a Make It Real integration evidence worker running inside the parent Claude Code session.
-
-Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
-
-Run directory:
-- ${boardDir}
-
-Project root:
-- ${projectRoot ?? "(unknown)"}
-
-Work item:
-- ${workItem.id}
-
-Responsibility unit:
-- ${workItem.responsibilityUnitId ?? "(missing)"}
-
-Contracts under integration review:
-${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
-
-Verification commands:
-${(workItem.verificationCommands ?? []).map((item) => `- ${JSON.stringify(item)}`).join("\n")}
-
-Rules:
-- Read PRD, design-pack, board, work-item-dag, responsibility-units, blueprint-review, and contract files from the run directory.
-- Do not edit production code. This node verifies that completed responsibility units integrate through declared contracts.
-- You may inspect implementation and tests only to confirm the declared scenario is covered.
-- Do not add fallback behavior outside declared contracts.
-- If integration cannot be proven from declared verification, report NEEDS_CONTEXT or BLOCKED instead of guessing.
-- The parent session will run a verification-reviewer Task subagent after your evidence turn.
-- Emit JSON directly using this shape:
-\`\`\`json
-{
-  "makeitrealEvidenceReport": {
-    "role": "integration-evidence",
-    "status": "DONE",
-    "summary": "Integration evidence is ready for engine-owned verification.",
-    "tested": [],
-    "concerns": [],
-    "needsContext": [],
-    "blockers": [],
-    "workItemId": "${workItem.id}",
-    "attemptId": "${attemptId}"
-  }
-}
-\`\`\`
-`;
-  }
-
-  return `You are a Make It Real scoped implementation worker running inside the parent Claude Code session.
-
-Use Claude Code native tools in this session. Do not spawn a separate claude CLI process.
-
-Run directory:
-- ${boardDir}
-
-Project root:
-- ${projectRoot ?? "(unknown)"}
-
-Work item:
-- ${workItem.id}
-
-Responsibility unit:
-- ${workItem.responsibilityUnitId ?? "(missing)"}
-
-Allowed edit paths:
-${(workItem.allowedPaths ?? []).map((item) => `- ${item}`).join("\n")}
-
-Contracts:
-${(workItem.contractIds ?? []).map((item) => `- ${item}`).join("\n")}
-
-Dependency contracts:
-${(workItem.dependencyContracts ?? []).length > 0
-    ? workItem.dependencyContracts.map((item) => `- ${item.contractId}: ${item.surface} (${item.allowedUse})`).join("\n")
-    : "- none"}
-
-Verification commands:
-${(workItem.verificationCommands ?? []).map((item) => `- ${JSON.stringify(item)}`).join("\n")}
-
-Rules:
-- Read PRD, design-pack, board, responsibility-units, blueprint-review, and contract files from the run directory before editing.
-- Edit only files covered by the allowed edit paths.
-- Do not add fallback behavior outside declared contracts.
-- If the approved Blueprint is insufficient or the contract is wrong, stop and report NEEDS_CONTEXT or BLOCKED instead of guessing.
-- The parent session will run spec-reviewer, quality-reviewer, and verification-reviewer Task subagents after your implementation turn.
-- Your final response must be only the JSON object below. Do not return prose-only output, markdown fences, or a summary without this report.
-- The parent session records this exact JSON with orchestrator native finish. Missing JSON is a protocol error and will not advance board state.
-\`\`\`json
-{
-  "makeitrealReport": {
-    "role": "implementation-worker",
-    "status": "DONE",
-    "summary": "What changed and why.",
-    "changedFiles": [],
-    "tested": [],
-    "concerns": [],
-    "needsContext": [],
-    "blockers": [],
-    "workItemId": "${workItem.id}",
-    "attemptId": "${attemptId}"
-  }
-}
-\`\`\`
+Allowed paths: ${(workItem.allowedPaths ?? []).join(", ")}
+Contracts: ${(workItem.contractIds ?? []).join(", ")}
+Verification: ${JSON.stringify(workItem.verificationCommands ?? [])}
+Attempt: ${attemptId}
 `;
 }
 
@@ -683,49 +544,9 @@ function renderNativeReviewerPrompt({
   }
   process.stderr.write(`[make-it-real] workItem missing reviewerPrompts.${role} — falling back to engine-generated reviewer prompt. Declare reviewerPrompts in your blueprint.\n`);
 
-  const focus = {
-    "spec-reviewer": "Verify the implementation satisfies the PRD, Blueprint, declared contracts, and responsibility boundary.",
-    "quality-reviewer": "Review code quality, maintainability, naming, unnecessary fallback behavior, and clean-code fit.",
-    "verification-reviewer": "Review verification evidence and whether the declared verification commands prove the work item."
-  }[role];
-  const nodeScope = {
-    "domain-pm": "Review only the PM coordination evidence and the approved child work split. Do not require changed files.",
-    "integration-evidence": "Review only the integration evidence and declared verification coverage. Do not require production code changes.",
-    "implementation": "Review only this implementation work item."
-  }[nodeKind] ?? "Review only this work item.";
-  return `You are the Make It Real ${role} for a parent-session native Claude Code launch.
-
-${focus}
-
-Run directory:
-- ${boardDir}
-
-Project root:
-- ${projectRoot ?? "(unknown)"}
-
-Work item:
-- ${workItem.id}
-
-Allowed edit paths:
-${(workItem.allowedPaths ?? []).map((item) => `- ${item}`).join("\n")}
-
-${nodeScope} Do not edit files. Return JSON:
-\`\`\`json
-{
-  "makeitrealReview": {
-    "role": "${role}",
-    "evidenceRole": "${role}",
-    "nativeSubagentType": "${nativeSubagentType}",
-    "mappingSource": "${mappingSource}",
-    "status": "APPROVED | APPROVED_WITH_NOTES | CHANGES_REQUESTED | REJECTED | NEEDS_CONTEXT | BLOCKED",
-    "summary": "Review result.",
-    "findings": [],
-    "evidence": [],
-    "workItemId": "${workItem.id}",
-    "attemptId": "${attemptId}"
-  }
-}
-\`\`\`
+  return `Reviewer role: ${role}
+Work item: ${workItem.id}
+NOTE: reviewerPrompts[${role}] not declared in blueprint. Declare it for proper guidance.
 `;
 }
 
@@ -804,7 +625,6 @@ async function startNativeClaudeTaskInner({ boardDir, workerId = "claude-code.pa
     const activeWorkItem = claimedBoard.workItems.find((item) => item.id === workItem.id);
     const attempt = await createRunAttempt({ boardDir, workItem: activeWorkItem, workerId, now });
     const nodeKind = await nodeKindForWorkItem({ runDir: boardDir, workItemId: activeWorkItem.id });
-    const completionPolicy = COMPLETION_POLICIES[nodeKind] ?? COMPLETION_POLICIES.implementation;
     const implementationPrompt = renderNativeTaskPrompt({
       boardDir,
       workItem: activeWorkItem,
@@ -812,7 +632,7 @@ async function startNativeClaudeTaskInner({ boardDir, workerId = "claude-code.pa
       projectRoot,
       nodeKind
     });
-    const reviewerPrompts = resolveRequiredReviewRoles({ workItem: activeWorkItem, policy: completionPolicy }).map((role) => {
+    const reviewerPrompts = resolveRequiredReviewRoles({ workItem: activeWorkItem }).map((role) => {
       const roleEntry = mappingForEvidenceRole(roleMapping.mapping, role);
       return {
         role,

@@ -285,7 +285,7 @@ describe("make-it-real MCP server full plan→launch→finish→complete loop", 
     assert.equal(firstTask.workItemId, "work.auth");
     assert.equal(typeof firstTask.attemptId, "string");
     assert.equal(typeof firstTask.implementationPrompt, "string");
-    assert.ok(firstTask.implementationPrompt.includes("makeitrealReport"));
+    assert.ok(firstTask.implementationPrompt.trim().length > 0);
   });
 
   it("mir_launch finish records an implementation result envelope", async () => {

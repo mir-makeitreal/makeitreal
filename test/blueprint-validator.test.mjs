@@ -364,12 +364,12 @@ describe("claude-blueprint", () => {
     assert.equal(parsed.constraints.maxWorkItems, 5);
   });
 
-  it("buildUserPrompt uses defaults when context/constraints omitted", () => {
+  it("buildUserPrompt uses no engine-imposed limits when context/constraints omitted", () => {
     const prompt = buildUserPrompt("build feature");
     const parsed = JSON.parse(prompt);
     assert.equal(parsed.userRequest, "build feature");
-    assert.equal(parsed.constraints.maxWorkItems, 8);
-    assert.equal(parsed.constraints.maxDepth, 2);
+    assert.equal(parsed.constraints.maxWorkItems, undefined);
+    assert.equal(parsed.constraints.maxDepth, undefined);
   });
 
   it("re-exports validator and normalizer", async () => {

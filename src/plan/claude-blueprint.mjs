@@ -195,11 +195,7 @@ export function buildUserPrompt(request, projectContext, constraints) {
   const prompt = {
     userRequest: request,
     projectContext: projectContext ?? {},
-    constraints: {
-      maxWorkItems: 8,
-      maxDepth: 2,
-      ...(constraints ?? {})
-    }
+    constraints: { ...(constraints ?? {}) }
   };
   return JSON.stringify(prompt, null, 2);
 }

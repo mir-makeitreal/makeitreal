@@ -2,7 +2,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { readVerificationEvidence } from "../domain/evidence.mjs";
 import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
-import { buildSystemDossier } from "../domain/system-dossier.mjs";
 import { formatVerificationCommand } from "../domain/verification-command.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
@@ -14,221 +13,18 @@ function asList(values = [], formatter = (value) => value) {
   return values.map((value) => `- ${formatter(value)}`).join("\n");
 }
 
-function asCodeList(values = []) {
-  if (!values || values.length === 0) {
-    return "None declared";
-  }
-  return values.map((value) => `\`${value}\``).join(", ");
-}
-
-function tableCell(value) {
-  return String(value ?? "")
-    .replace(/\|/g, "\\|")
-    .replace(/\r?\n/g, "<br>");
-}
-
-function renderTable(headers, rows) {
-  if (!rows || rows.length === 0) {
-    return "None recorded";
-  }
-  return [
-    `| ${headers.map(tableCell).join(" | ")} |`,
-    `| ${headers.map(() => "---").join(" | ")} |`,
-    ...rows.map((row) => `| ${row.map(tableCell).join(" | ")} |`)
-  ].join("\n");
-}
-
-function matchingModuleInterfaces({ artifacts, workItem }) {
-  const direct = artifacts.designPack.moduleInterfaces ?? [];
-  const owned = direct.filter((moduleInterface) => moduleInterface.responsibilityUnitId === workItem.responsibilityUnitId);
-  return owned.length > 0 ? owned : direct;
-}
-
-function renderSignatureTable(items = [], columns) {
-  return renderTable(columns.map((column) => column.label), items.map((item) => columns.map((column) => {
-    if (column.key === "required") {
-      return item.required === true ? "required" : "optional";
-    }
-    if (column.key === "name") {
-      return `\`${item.name ?? item.code ?? "item"}\``;
-    }
-    return item[column.key] ?? "";
-  })));
-}
-
-function renderPublicSurfaces({ artifacts, workItem }) {
-  const interfaces = matchingModuleInterfaces({ artifacts, workItem });
-  if (interfaces.length === 0) {
-    return "No module interfaces were declared.";
-  }
-  return `## Public Surfaces
-
-${interfaces.map((moduleInterface) => {
-    const surfaces = (moduleInterface.publicSurfaces ?? []).map((surface) => `#### ${surface.name}
-
-${renderTable(["Field", "Value"], [
-      ["Kind", `\`${surface.kind ?? "surface"}\``],
-      ["Contracts", asCodeList(surface.contractIds ?? [])],
-      ["Consumers", (surface.consumers ?? []).join(", ") || "None declared"],
-      ["Description", surface.description ?? "None recorded"]
-    ])}
-
-Inputs:
-
-${renderSignatureTable(surface.signature?.inputs ?? [], [
-      { key: "name", label: "Name" },
-      { key: "type", label: "Type" },
-      { key: "required", label: "Required" },
-      { key: "description", label: "Description" }
-    ])}
-
-Outputs:
-
-${renderSignatureTable(surface.signature?.outputs ?? [], [
-      { key: "name", label: "Name" },
-      { key: "type", label: "Type" },
-      { key: "description", label: "Description" }
-    ])}
-
-Error contract:
-
-${renderSignatureTable(surface.signature?.errors ?? [], [
-      { key: "name", label: "Code" },
-      { key: "when", label: "When" },
-      { key: "handling", label: "Handling" }
-    ])}
-`).join("\n");
-    return `### Module: ${moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId}
-
-${renderTable(["Field", "Value"], [
-      ["Responsibility unit", `\`${moduleInterface.responsibilityUnitId}\``],
-      ["Owner", moduleInterface.owner ?? "None recorded"],
-      ["Purpose", moduleInterface.purpose ?? "None recorded"],
-      ["Owns", asCodeList(moduleInterface.owns ?? [])]
-    ])}
-
-${surfaces || "No public surfaces declared."}`;
-  }).join("\n\n")}`;
-}
-
-function renderSystemMap(dossier) {
-  const modules = dossier.modules ?? [];
-  return `## System Map
-
-${renderTable(["Module", "Responsibility Unit", "Owner", "Owns", "Public Surfaces"], modules.map((moduleInterface) => [
-    moduleInterface.moduleName ?? moduleInterface.responsibilityUnitId,
-    `\`${moduleInterface.responsibilityUnitId}\``,
-    moduleInterface.owner ?? "None recorded",
-    asCodeList(moduleInterface.owns ?? []),
-    asCodeList((moduleInterface.publicSurfaces ?? []).map((surface) => surface.name))
-  ]))}
-`;
-}
-
-function renderDependencyGraph(dossier) {
-  return `## Dependency Graph
-
-${renderTable(["From", "To", "Contract", "Allowed Use"], (dossier.dependencyEdges ?? []).map((edge) => [
-    edge.fromLabel ?? edge.from,
-    edge.toLabel ?? edge.to,
-    edge.contractId ? `\`${edge.contractId}\`` : "None declared",
-    edge.allowedUse ?? "Declared dependency"
-  ]))}
-`;
-}
-
-function renderContractMatrix(dossier) {
-  return `## Contract Matrix
-
-${renderTable(["Contract", "Kind", "Providers", "Consumers", "Path"], (dossier.contractMatrix ?? []).map((contract) => [
-    `\`${contract.contractId}\``,
-    contract.kind ?? "contract",
-    (contract.providers ?? []).join(", ") || "None declared",
-    (contract.consumers ?? []).join(", ") || "None declared",
-    contract.path ?? "Boundary declaration"
-  ]))}
-`;
-}
-
-function renderCallStacks(dossier) {
-  const stacks = dossier.callStacks ?? [];
-  return `## Call Stack
-
-${stacks.length === 0 ? "None recorded" : stacks.map((stack) => `### \`${stack.entrypoint}\`
-
-${asList(stack.calls ?? [])}`).join("\n\n")}
-`;
-}
-
-function renderAcceptanceCriteria(prd) {
-  return asList(prd.acceptanceCriteria ?? [], (criterion) => `\`${criterion.id ?? "AC"}\` ${criterion.statement ?? criterion}`);
-}
-
 function renderVerificationEvidence(evidence) {
   return asList(evidence.commands ?? [], (command) => `\`${formatVerificationCommand(command.command)}\` -> exit ${command.exitCode}`);
 }
 
 export function renderWikiPage({ artifacts, evidence }) {
-  const dossier = buildSystemDossier({
-    prd: artifacts.prd,
-    designPack: artifacts.designPack,
-    responsibilityUnits: artifacts.responsibilityUnits
-  });
   const workItem = findPrimaryWorkItem(artifacts);
   // Doctrine: LLM decides. If wikiContent is declared on the workItem, use it verbatim.
   if (typeof workItem.wikiContent === "string" && workItem.wikiContent.trim().length > 0) {
     return workItem.wikiContent;
   }
-  const boundary = (artifacts.designPack.responsibilityBoundaries ?? [])
-    .find((candidate) => candidate.responsibilityUnitId === workItem.responsibilityUnitId);
-  const contracts = workItem.contractIds ?? [];
-  const primaryInterface = matchingModuleInterfaces({ artifacts, workItem })[0];
-  const referenceName = primaryInterface?.moduleName ?? workItem.id;
-  return `# Contract Reference: ${referenceName}
-
-## Public Outcome
-
-PRD \`${workItem.prdId}\` defines this responsibility boundary.
-
-${asList(artifacts.prd.userVisibleBehavior ?? artifacts.prd.goals ?? [])}
-
-## Responsibility Boundary
-
-${renderTable(["Field", "Value"], [
-    ["Owner unit", `\`${workItem.responsibilityUnitId}\``],
-    ["Owned paths", asCodeList(boundary?.owns ?? workItem.allowedPaths ?? [])],
-    ["May use contracts", asCodeList(boundary?.mayUseContracts ?? contracts)]
-  ])}
-
-${renderSystemMap(dossier)}
-
-${renderDependencyGraph(dossier)}
-
-${renderContractMatrix(dossier)}
-
-${renderCallStacks(dossier)}
-
-## Contracts
-
-${asList(contracts, (contractId) => `\`${contractId}\``)}
-
-${renderPublicSurfaces({ artifacts, workItem })}
-
-## Acceptance Evidence
-
-${renderAcceptanceCriteria(artifacts.prd)}
-
-## Completion Evidence
-
-${renderVerificationEvidence(evidence)}
-
-- Blueprint preview: preview/index.html
-
-## Audit Trail
-
-- Work item: \`${workItem.id}\`
-- Wiki sync evidence is required before Done unless live wiki is disabled by config.
-`;
+  // Fallback: MINIMAL stub. LLM declares wikiContent; engine does not fabricate rich content.
+  return `# ${workItem.id}\n\n> Wiki content not declared in blueprint. Declare workItem.wikiContent.\n\nLane: ${workItem.lane ?? "unknown"}\nResponsibility unit: ${workItem.responsibilityUnitId ?? "unknown"}`;
 }
 
 export async function syncLiveWiki({ runDir, wikiRoot, projectRoot = null, env = process.env }) {

@@ -15,24 +15,24 @@ import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-s
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
 
+// Infrastructure validation only. Doctrine: requiredReviewRoles is NOT declared
+// here — it comes from workItem.requiredReviewRoles. The engine validates and
+// saves; it does not decide which reviewers a work item needs.
 const COMPLETION_POLICIES = Object.freeze({
   "implementation": {
     reportRole: "implementation-worker",
     requiresChangedFiles: true,
-    requiresVerificationCommands: true,
-    requiredReviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+    requiresVerificationCommands: true
   },
   "domain-pm": {
     reportRole: "domain-pm",
     requiresChangedFiles: false,
-    requiresVerificationCommands: false,
-    requiredReviewRoles: ["spec-reviewer"]
+    requiresVerificationCommands: false
   },
   "integration-evidence": {
     reportRole: "integration-evidence",
     requiresChangedFiles: false,
-    requiresVerificationCommands: true,
-    requiredReviewRoles: ["verification-reviewer"]
+    requiresVerificationCommands: true
   }
 });
 
@@ -40,13 +40,13 @@ const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 
 // Doctrine: the blueprint (LLM) decides which review roles a work item needs.
 // The engine only validates and saves. When a work item omits the declaration,
-// fall back to the engine default but make the omission explicit.
-function resolveRequiredReviewRoles({ workItem, policy }) {
+// return [] — the LLM must declare requiredReviewRoles explicitly.
+function resolveRequiredReviewRoles({ workItem }) {
   if (Array.isArray(workItem?.requiredReviewRoles)) {
     return workItem.requiredReviewRoles;
   }
-  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — using engine default.\n");
-  return policy.requiredReviewRoles;
+  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — no reviewers required. Declare requiredReviewRoles in your blueprint.\n");
+  return [];
 }
 
 function transitionWorkItem(workItem, to, context) {
@@ -73,7 +73,7 @@ function validateCompletionReviewsForNode({ attempt, workItem, nodeKind }) {
     }
   }
 
-  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem, policy });
+  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem });
   const missing = requiredReviewRoles.filter((role) => !latestByRole.has(role));
   if (missing.length > 0) {
     return {
@@ -152,22 +152,8 @@ function renderBoardWiki({ board, workItem, evidence }) {
   if (typeof workItem.wikiContent === "string" && workItem.wikiContent.trim().length > 0) {
     return workItem.wikiContent;
   }
-  // Fallback: engine generates minimal structural wiki.
-  return `# ${workItem.id}
-
-Board: ${board.boardId}
-
-Responsibility Unit: ${workItem.responsibilityUnitId}
-
-Contracts:
-${workItem.contractIds.map((contractId) => `- ${contractId}`).join("\n")}
-
-Verification Evidence:
-${evidence.commands.map((command) => `- ${formatVerificationCommand(command.command)} -> exit ${command.exitCode}`).join("\n")}
-
-Final Lane:
-- Verifying -> Human Review -> Done is owned by the orchestrator completion gate.
-`;
+  // Fallback: MINIMAL stub. LLM declares wikiContent; engine does not fabricate rich content.
+  return `# ${workItem.id}\n\n> Wiki content not declared in blueprint.\n\nWork item: ${workItem.id}\nLane: ${workItem.lane}`;
 }
 
 function verificationExemptionReason(workItem) {

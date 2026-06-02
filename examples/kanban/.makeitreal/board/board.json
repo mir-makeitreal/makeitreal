@@ -78,7 +78,14 @@
       ],
       "dependsOn": ["work.auth-contract"],
       "allowedPaths": ["apps/web/auth/**"],
-      "verificationCommands": [{"file":"node","args":["-e","console.log('login ui ok')"]}]
+      "verificationCommands": [{"file":"node","args":["-e","console.log('login ui ok')"]}],
+      "implementationPrompt": "Implement work item {{workItemId}} for run {{boardDir}} in project {{projectRoot}} (attempt {{attemptId}}). Work only within the declared allowed paths and against the frozen contracts. Do not spawn a separate claude CLI process — perform the work directly in this native Task. When finished, emit a makeitrealReport JSON envelope describing your changedFiles and tested commands.",
+      "requiredReviewRoles": ["spec-reviewer", "quality-reviewer", "verification-reviewer"],
+      "reviewerPrompts": {
+        "spec-reviewer": "Review work item {{workItemId}} against its frozen contracts and acceptance criteria. Emit a makeitrealReview envelope.",
+        "quality-reviewer": "Review work item {{workItemId}} for code quality, maintainability, and anti-patterns. Emit a makeitrealReview envelope.",
+        "verification-reviewer": "Review work item {{workItemId}} verification evidence and confirm the declared commands prove the work. Emit a makeitrealReview envelope."
+      }
     },
     {
       "id": "work.audit-log",
@@ -88,7 +95,14 @@
       "contractIds": ["contract.audit.write"],
       "dependsOn": ["work.login-ui"],
       "allowedPaths": ["services/audit/**"],
-      "verificationCommands": [{"file":"node","args":["-e","console.log('audit ok')"]}]
+      "verificationCommands": [{"file":"node","args":["-e","console.log('audit ok')"]}],
+      "implementationPrompt": "Implement work item {{workItemId}} for run {{boardDir}} in project {{projectRoot}} (attempt {{attemptId}}). Work only within the declared allowed paths and against the frozen contracts. Do not spawn a separate claude CLI process — perform the work directly in this native Task. When finished, emit a makeitrealReport JSON envelope describing your changedFiles and tested commands.",
+      "requiredReviewRoles": ["spec-reviewer", "quality-reviewer", "verification-reviewer"],
+      "reviewerPrompts": {
+        "spec-reviewer": "Review work item {{workItemId}} against its frozen contracts and acceptance criteria. Emit a makeitrealReview envelope.",
+        "quality-reviewer": "Review work item {{workItemId}} for code quality, maintainability, and anti-patterns. Emit a makeitrealReview envelope.",
+        "verification-reviewer": "Review work item {{workItemId}} verification evidence and confirm the declared commands prove the work. Emit a makeitrealReview envelope."
+      }
     }
   ]
 }

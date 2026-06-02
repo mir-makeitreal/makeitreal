@@ -489,7 +489,7 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
     assert.equal(dossier.deliveryScope.ownedPaths.includes("web/src/auth/**"), true);
     assert.equal(dossier.deliveryScope.ownedPaths.includes("api/src/auth/**"), true);
     assert.equal(dossier.systemPlacement.title, "Authentication vertical slice");
-    assert.equal(dossier.systemPlacement.summary, "2 responsibility units (Auth UI, Auth Service) communicate only through 2 declared contract edges.");
+    assert.equal(dossier.systemPlacement.summary, "A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.");
     assert.deepEqual(dossier.systemPlacement.modules.map((module) => module.moduleName), ["Auth UI", "Auth Service"]);
     assert.equal(dossier.scenarioIndex[0].title, "Login session creation");
     assert.equal(dossier.scenarioIndex[0].visualizationKind, "mermaid");
@@ -1134,7 +1134,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
     const previewModel = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
     const dossier = previewModel.blueprint.systemDossier;
     assert.deepEqual(dossier.modules.map((module) => module.moduleName), ["Safe Add", "Slugify Title", "Format ISO Date"]);
-    assert.equal(dossier.systemPlacement.summary, "3 responsibility units (Safe Add, Slugify Title, Format ISO Date) are declared as separate modules with no cross-module imports.");
+    assert.equal(dossier.systemPlacement.summary, "Deliver safeAdd(a, b) inside src/math/safe-add.mjs.");
     assert.deepEqual(dossier.scenarioIndex.map((scenario) => scenario.title), [
       "safeAdd contract call",
       "slugifyTitle contract call",

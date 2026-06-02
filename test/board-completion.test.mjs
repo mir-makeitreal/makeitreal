@@ -115,6 +115,11 @@ test("domain PM node completes from pm report without changed files", async () =
         dependsOn: [],
         allowedPaths: [],
         verificationCommands: [],
+        implementationPrompt: "Coordinate the responsibility split for {{workItemId}}. Emit a makeitrealPmReport envelope describing whether a child work proposal is required.",
+        requiredReviewRoles: ["spec-reviewer"],
+        reviewerPrompts: {
+          "spec-reviewer": "Review the PM split for {{workItemId}} against the Blueprint. Emit a makeitrealReview envelope."
+        },
         verificationExempt: {
           reason: "Domain PM coordination is proven by PM report and spec review."
         },
@@ -199,6 +204,11 @@ test("integration evidence node completes with verification reviewer and no chan
         dependsOn: [],
         allowedPaths: ["evidence/**"],
         verificationCommands: [{ file: "node", args: ["-e", "console.log('integration evidence ok')"] }],
+        implementationPrompt: "Record integration evidence for {{workItemId}}. Emit a makeitrealEvidenceReport envelope listing the verification commands you ran.",
+        requiredReviewRoles: ["verification-reviewer"],
+        reviewerPrompts: {
+          "verification-reviewer": "Confirm the integration evidence for {{workItemId}} is sufficient. Emit a makeitrealReview envelope."
+        },
         doneEvidence: [
           { kind: "verification", path: "evidence/work.auth-integration-evidence.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.auth-integration-evidence.wiki-sync.json" }
@@ -1096,6 +1106,15 @@ test("orchestrator completion requires approved dynamic reviewer evidence for cl
     });
     assert.equal(dispatched.ok, true);
 
+    // Doctrine: the blueprint declares which review roles the work item needs.
+    const reviewBoard = await loadBoard(boardDir);
+    reviewBoard.workItems.find((item) => item.id === "work.login-ui").requiredReviewRoles = [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ];
+    await saveBoard(boardDir, reviewBoard);
+
     const latestAttempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
     const attemptPath = path.join(boardDir, "attempts", `${latestAttempt.attemptId}.json`);
     const attempt = await readJsonFile(attemptPath);
@@ -1126,6 +1145,15 @@ test("orchestrator completion rejects failed dynamic reviewer evidence for claud
       now: new Date("2026-04-30T00:00:00.000Z")
     });
     assert.equal(dispatched.ok, true);
+
+    // Doctrine: the blueprint declares which review roles the work item needs.
+    const reviewBoard = await loadBoard(boardDir);
+    reviewBoard.workItems.find((item) => item.id === "work.login-ui").requiredReviewRoles = [
+      "spec-reviewer",
+      "quality-reviewer",
+      "verification-reviewer"
+    ];
+    await saveBoard(boardDir, reviewBoard);
 
     const latestAttempt = await latestSuccessfulRunAttempt({ boardDir, workItemId: "work.login-ui" });
     const attemptPath = path.join(boardDir, "attempts", `${latestAttempt.attemptId}.json`);

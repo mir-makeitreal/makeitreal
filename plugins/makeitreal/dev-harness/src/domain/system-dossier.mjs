@@ -280,24 +280,27 @@ function modelTaskDag({ workItemDag, workItems, moduleInterfaces }) {
   };
 }
 
-function evidenceRoleForNodeKind(kind) {
-  if (kind === "domain-pm") {
-    return "domain-pm";
-  }
-  if (kind === "integration-evidence") {
-    return "integration-evidence-reviewer";
-  }
-  return "implementation-worker";
+function evidenceRoleForNodeKind(node, workItem) {
+  // Doctrine: the LLM may declare an explicit evidenceRole on the work item.
+  // The engine only supplies a default mapping when nothing is declared.
+  const defaultMapping = node?.kind === "domain-pm"
+    ? "domain-pm"
+    : node?.kind === "integration-evidence"
+    ? "integration-evidence-reviewer"
+    : "implementation-worker";
+  return workItem?.evidenceRole ?? defaultMapping;
 }
 
-function modelWorkerTopology({ taskDag, moduleInterfaces }) {
+function modelWorkerTopology({ taskDag, moduleInterfaces, workItems = [] }) {
   const modulesByResponsibilityUnit = moduleInterfaceIndex(moduleInterfaces);
+  const workItemsById = new Map(workItems.map((item) => [item.id, item]));
   return {
     assignments: taskDag.nodes.map((node) => {
       const moduleInterface = modulesByResponsibilityUnit.get(node.responsibilityUnitId);
+      const workItem = workItemsById.get(node.id);
       return {
         workItemId: node.id,
-        evidenceRole: evidenceRoleForNodeKind(node.kind),
+        evidenceRole: evidenceRoleForNodeKind(node, workItem),
         responsibilityUnitId: node.responsibilityUnitId,
         moduleName: node.moduleName,
         owner: node.owner ?? moduleInterface?.owner ?? null,
@@ -306,20 +309,14 @@ function modelWorkerTopology({ taskDag, moduleInterfaces }) {
         handoff: "Native Claude Code Task receives this work item packet and may edit only the authorized paths."
       };
     }),
-    reviewRoles: ["spec-reviewer", "quality-reviewer", "verification-reviewer"]
+    // Doctrine: review roles come from the LLM's per-work-item declarations,
+    // not from a hardcoded engine policy.
+    reviewRoles: [...new Set(workItems.flatMap((item) => item?.requiredReviewRoles ?? []))]
   };
 }
 
 function modelSystemPlacement({ prd, moduleInterfaces, dependencyEdges }) {
-  const moduleNames = uniqueText(moduleInterfaces.map((moduleInterface) => moduleInterface.moduleName));
-  let summary = (prd.userVisibleBehavior ?? [])[0] ?? "";
-  if (moduleInterfaces.length > 1 && dependencyEdges.length === 0) {
-    summary = `${moduleInterfaces.length} responsibility units (${moduleNames.join(", ")}) are declared as separate modules with no cross-module imports.`;
-  }
-  if (moduleInterfaces.length > 1 && dependencyEdges.length > 0) {
-    const edgeLabel = dependencyEdges.length === 1 ? "declared contract edge" : "declared contract edges";
-    summary = `${moduleInterfaces.length} responsibility units (${moduleNames.join(", ")}) communicate only through ${dependencyEdges.length} ${edgeLabel}.`;
-  }
+  const summary = (prd.userVisibleBehavior ?? [])[0] ?? null;
 
   return {
     title: prd.title,
@@ -525,7 +522,7 @@ export function buildSystemDossier({
     })),
     approvalScope: modelApprovalScope({ workItemDag, workItems, blueprintFingerprint }),
     taskDag,
-    workerTopology: modelWorkerTopology({ taskDag, moduleInterfaces }),
+    workerTopology: modelWorkerTopology({ taskDag, moduleInterfaces, workItems }),
     dependencyEdges,
     contractMatrix: modelContractMatrix({ designPack, contracts, moduleInterfaces }),
     contractSurfaces: modelContractSurfaces({ moduleInterfaces }),

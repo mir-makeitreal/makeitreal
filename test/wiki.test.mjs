@@ -14,32 +14,9 @@ test("syncs verified work to live wiki and writes evidence", async () => {
     assert.equal(result.ok, true);
 
     const markdown = await readFile(path.join(runDir, ".makeitreal", "wiki", "live", "work.feature-auth.md"), "utf8");
-    assert.match(markdown, /# Contract Reference: Auth UI/);
-    assert.match(markdown, /## Public Outcome/);
-    assert.match(markdown, /PRD `prd.auth` defines this responsibility boundary/);
-    assert.match(markdown, /## Responsibility Boundary/);
-    assert.match(markdown, /Owner unit/);
-    assert.match(markdown, /`ru.frontend`/);
-    assert.match(markdown, /## System Map/);
-    assert.match(markdown, /Auth UI/);
-    assert.match(markdown, /Auth Service/);
-    assert.match(markdown, /## Dependency Graph/);
-    assert.match(markdown, /Submit credential payload/);
-    assert.match(markdown, /## Contract Matrix/);
-    assert.match(markdown, /Auth Service \| Auth UI/);
-    assert.match(markdown, /## Call Stack/);
-    assert.match(markdown, /LoginForm.submit/);
-    assert.match(markdown, /## Public Surfaces/);
-    assert.match(markdown, /LoginForm.submit/);
-    assert.match(markdown, /credentials.email/);
-    assert.match(markdown, /sessionResult/);
-    assert.match(markdown, /AUTH_LOGIN_REJECTED/);
-    assert.match(markdown, /## Acceptance Evidence/);
-    assert.match(markdown, /AC-001/);
-    assert.match(markdown, /## Completion Evidence/);
-    assert.match(markdown, /contract.auth.login/);
-    assert.match(markdown, /Blueprint preview: preview\/index.html/);
-    assert.match(markdown, /## Audit Trail/);
+    // Minimal stub — LLM declares wikiContent, engine does not fabricate rich content.
+    assert.match(markdown, /# work\.feature-auth/);
+    assert.match(markdown, /Wiki content not declared in blueprint/);
 
     const evidence = await readJsonFile(path.join(runDir, "evidence", "wiki-sync.json"));
     assert.equal(evidence.kind, "wiki-sync");

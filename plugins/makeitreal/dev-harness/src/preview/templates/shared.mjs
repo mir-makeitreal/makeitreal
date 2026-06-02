@@ -151,32 +151,9 @@ export function relativeImportPath(ownedPath) {
 }
 
 export function sampleValueForType(type) {
-  const normalized = String(type ?? "").toLowerCase();
-  if (normalized.includes("object") && normalized.includes("method") && normalized.includes("path")) {
-    return '{ method: "GET", path: "/health" }';
-  }
-  if (normalized.includes("object")) {
-    return "{}";
-  }
-  if (normalized.includes("integer")) {
-    return "42";
-  }
-  if (normalized.includes("string | number") || normalized.includes("number | string")) {
-    return '"42"';
-  }
-  if (normalized.includes("string")) {
-    return '"value"';
-  }
-  if (normalized.includes("number")) {
-    return "42";
-  }
-  if (normalized.includes("boolean")) {
-    return "true";
-  }
-  if (normalized.includes("array")) {
-    return "[]";
-  }
-  return "input";
+  const typeName = String(type ?? "unknown").trim() || "unknown";
+  // Return a placeholder — LLM declares real values; engine does not fabricate them.
+  return `<${typeName}>`;
 }
 
 export function sampleValueForInput(input) {
