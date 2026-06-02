@@ -6,19 +6,26 @@ import { fileExists } from "../io/json.mjs";
 
 const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"]);
 
-function isTestPath(relativePath) {
+const DEFAULT_TEST_PATTERNS = [
+  /^test\//,
+  /\/test\//,
+  /\/__tests__\//,
+  /[._-](test|spec)\.[cm]?[jt]sx?$/
+];
+
+function isTestPath(relativePath, patterns = DEFAULT_TEST_PATTERNS) {
   const normalized = relativePath.split(path.sep).join("/");
-  return normalized.startsWith("test/")
-    || normalized.includes("/test/")
-    || normalized.includes("/__tests__/")
-    || /[._-](test|spec)\.[cm]?[jt]sx?$/.test(normalized);
+  return patterns.some((pattern) =>
+    typeof pattern === "string" ? normalized.includes(pattern) : pattern.test(normalized)
+  );
 }
 
-function isExactSourcePath(relativePath) {
+function isExactSourcePath(relativePath, extensions = SOURCE_EXTENSIONS) {
   if (relativePath.includes("*")) {
     return false;
   }
-  return SOURCE_EXTENSIONS.has(path.extname(relativePath));
+  const ext = extensions instanceof Set ? extensions.has(path.extname(relativePath)) : extensions.includes(path.extname(relativePath));
+  return ext;
 }
 
 function stripBlockComments(source) {
@@ -227,10 +234,14 @@ function moduleInterfacesForWorkItem({ artifacts, workItem }) {
     .filter((moduleInterface) => moduleInterface.publicSurfaces.some((surface) => surface.kind === "module"));
 }
 
-function sourcePathsFor({ moduleInterface, workItem }) {
+function sourcePathsFor({ moduleInterface, workItem, projectConfig }) {
+  const extensions = projectConfig?.sourceExtensions
+    ? new Set(projectConfig.sourceExtensions)
+    : SOURCE_EXTENSIONS;
+  const patterns = projectConfig?.testPathPatterns ?? DEFAULT_TEST_PATTERNS;
   return [...new Set([...moduleInterface.owns, ...workItem.allowedPaths])]
-    .filter(isExactSourcePath)
-    .filter((relativePath) => !isTestPath(relativePath))
+    .filter((p) => isExactSourcePath(p, extensions))
+    .filter((relativePath) => !isTestPath(relativePath, patterns))
     .sort();
 }
 
@@ -243,7 +254,7 @@ function resolveProjectFile({ projectRoot, relativePath }) {
   return null;
 }
 
-export async function validateModuleSurfaceConformance({ runDir, projectRoot, workItem }) {
+export async function validateModuleSurfaceConformance({ runDir, projectRoot, workItem, projectConfig = null }) {
   const artifacts = await loadRunArtifacts(runDir);
   const moduleInterfaces = moduleInterfacesForWorkItem({ artifacts, workItem });
   const errors = [];
@@ -253,7 +264,7 @@ export async function validateModuleSurfaceConformance({ runDir, projectRoot, wo
       .filter((surface) => surface.kind === "module")
       .map((surface) => surface.name)
       .filter(Boolean));
-    const sourcePaths = sourcePathsFor({ moduleInterface, workItem });
+    const sourcePaths = sourcePathsFor({ moduleInterface, workItem, projectConfig });
     if (sourcePaths.length === 0) {
       continue;
     }

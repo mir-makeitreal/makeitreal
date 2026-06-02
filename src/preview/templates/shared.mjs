@@ -77,22 +77,10 @@ export function countLabel(count) {
 }
 
 export function architecturePacketTitle({ rawTitle, modules, dependencyEdges = [] }) {
-  const implementationModules = nonExternalModules(modules);
-  if (implementationModules.length === 1 && modules.length > 1) {
-    return implementationModules[0].moduleName;
+  if (rawTitle) {
+    return rawTitle;
   }
-
-  // Ignore integration-only edges when deciding whether modules are independent
-  const nonIntegrationEdges = dependencyEdges.filter((edge) => edge.kind !== "integration");
-  if (nonIntegrationEdges.length === 0) {
-    return `${countLabel(modules.filter((m) => m.responsibilityUnitId !== "ru.integration" && m.moduleName !== "integration").length || modules.length)} Independent Responsibility Units`;
-  }
-
-  const introTitle = conciseTitleFromText(titleIntroBeforeUnitSections(rawTitle), { preferFunction: false });
-  if (introTitle) {
-    return introTitle;
-  }
-  return `${modules.length} Responsibility Units`;
+  return "Architecture Packet";
 }
 
 export function httpSurface(surface) {
@@ -135,13 +123,6 @@ export function referenceTitle(model) {
 }
 
 export function referenceSummary({ blueprint, dossier }) {
-  const modules = dossier.modules ?? [];
-  if (modules.length > 1) {
-    const moduleNames = modules.map((moduleInterface) => moduleInterface.moduleName).filter(Boolean).join(", ");
-    const contractCount = new Set((dossier.contractSurfaces ?? []).flatMap((surface) => surface.contractIds ?? [])).size;
-    const contractLabel = contractCount === 1 ? "1 contract" : `${contractCount} contracts`;
-    return `${modules.length} responsibility units: ${moduleNames}. Review module placement, public signatures, ${contractLabel}, and Done evidence as one architecture packet.`;
-  }
   return (blueprint.summary ?? [])[0] ?? "No user-visible behavior recorded.";
 }
 
@@ -199,26 +180,7 @@ export function sampleValueForType(type) {
 }
 
 export function sampleValueForInput(input) {
-  const name = String(input?.name ?? "").toLowerCase();
-  if (name.includes("email")) {
-    return '"user@example.com"';
-  }
-  if (name.includes("password")) {
-    return '"correct horse battery staple"';
-  }
-  if (name === "min" || name.endsWith("min")) {
-    return "1";
-  }
-  if (name === "max" || name.endsWith("max")) {
-    return "100";
-  }
-  if (name.includes("count") || name.includes("size") || name.includes("index") || name.includes("offset")) {
-    return "42";
-  }
-  if (name === "input" && String(input?.type ?? "").toLowerCase().includes("string | number")) {
-    return '"42"';
-  }
-  return sampleValueForType(input?.type);
+  return `<${String(input?.name ?? "value")}>`;
 }
 
 export function safeIdentifier(value, fallback = "result") {

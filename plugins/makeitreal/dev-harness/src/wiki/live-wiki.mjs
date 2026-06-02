@@ -175,6 +175,10 @@ export function renderWikiPage({ artifacts, evidence }) {
     responsibilityUnits: artifacts.responsibilityUnits
   });
   const workItem = findPrimaryWorkItem(artifacts);
+  // Doctrine: LLM decides. If wikiContent is declared on the workItem, use it verbatim.
+  if (typeof workItem.wikiContent === "string" && workItem.wikiContent.trim().length > 0) {
+    return workItem.wikiContent;
+  }
   const boundary = (artifacts.designPack.responsibilityBoundaries ?? [])
     .find((candidate) => candidate.responsibilityUnitId === workItem.responsibilityUnitId);
   const contracts = workItem.contractIds ?? [];

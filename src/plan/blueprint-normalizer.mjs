@@ -37,13 +37,6 @@ function operationIdFor(method, urlPath) {
   return pathSlug ? `${method}-${pathSlug}` : method;
 }
 
-const SURFACE_KIND_BY_TYPE = {
-  http: "http",
-  function: "module",
-  event: "event",
-  component: "component"
-};
-
 function ruIdFor(moduleName) {
   return `ru.${slugify(moduleName)}`;
 }
@@ -107,7 +100,7 @@ function buildPrd(proposal, acceptanceCriteria) {
   const slug = slugify(proposal.title);
   // No fabricated goals/nonGoals. Use what the LLM provided, or empty arrays.
   const goals = proposal.goals ?? [];
-  const userVisibleBehavior = goals;
+  const userVisibleBehavior = proposal.userVisibleBehavior ?? goals;
   const nonGoals = proposal.nonGoals ?? [];
 
   return {
@@ -135,7 +128,7 @@ function buildResponsibilityUnits(modules, moduleContracts) {
 
     const publicSurfaces = own.map(({ contract, contractId }) => ({
       name: contract.name,
-      kind: SURFACE_KIND_BY_TYPE[contract.type] ?? "module",
+      kind: contract.surfaceKind ?? contract.type,
       contractIds: [contractId],
       signature: defaultSignature(contract)
     }));
@@ -250,7 +243,7 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
       mustProvideContracts: own.map(c => c.contractId),
       publicSurfaces: own.map(({ contract, contractId }) => ({
         name: contract.name,
-        kind: SURFACE_KIND_BY_TYPE[contract.type] ?? "module",
+        kind: contract.surfaceKind ?? contract.type,
         contractIds: [contractId],
         signature: defaultSignature(contract)
       })),
@@ -340,7 +333,7 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
         contractId: c.contractId,
         providerResponsibilityUnitId: ruIdFor(dep),
         surface: c.contract.name,
-        allowedUse: "consume"
+        allowedUse: dep.allowedUse ?? "consume"
       }));
     });
     const depIds = dependencyContracts.map(d => d.contractId);
@@ -349,16 +342,23 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
     const verifyCommand = parseVerifyCommand(wi.verifyCommand);
     const verificationCommands = verifyCommand ? [verifyCommand] : [];
 
+    const rawDepsOn = wi.dependsOn ?? [];
     return {
       schemaVersion: "1.0",
       id: workIdFor(module.name),
       title: wi.title,
       prdId: prd.id,
-      lane: "Contract Frozen",
+      lane: wi.lane ?? "Contract Frozen",
+      kind: wi.kind ?? "implementation",
       responsibilityUnitId: ruIdFor(module.name),
       contractIds,
       dependencyContracts,
-      dependsOn: (wi.dependsOn ?? []).map(workIdFor),
+      dependsOn: rawDepsOn.map(d => workIdFor(typeof d === "string" ? d : (d.module ?? d.name ?? d))),
+      dependsOnEdgeKinds: Object.fromEntries(rawDepsOn.map(d => {
+        const depId = workIdFor(typeof d === "string" ? d : (d.module ?? d.name ?? d));
+        const kind = typeof d === "object" ? (d.edgeKind ?? d.kind ?? "contract-dependency") : "contract-dependency";
+        return [depId, kind];
+      })),
       allowedPaths: [...(module.ownedPaths ?? [])],
       prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
       doneEvidence: (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path })),
@@ -377,7 +377,7 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
     schemaVersion: "1.0",
     nodes: workItems.map(wi => ({
       id: wi.id,
-      kind: "implementation",
+      kind: wi.kind ?? "implementation",
       responsibilityUnitId: wi.responsibilityUnitId,
       requiredForDone: true
     })),
@@ -390,7 +390,7 @@ function buildWorkItemDag(workItems, modules, moduleContracts) {
         const edge = {
           from: depWorkId,
           to: wi.id,
-          kind: "contract-dependency"
+          kind: (wi.dependsOnEdgeKinds ?? {})[depWorkId] ?? "contract-dependency"
         };
         if (providerContracts.length > 0) {
           edge.contractId = providerContracts[0].contractId;

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css?v=1780377056443">
+  <title>Make It Real Architecture Dossier - Authentication vertical slice</title>
+  <link rel="stylesheet" href="./preview.css?v=1780379525598">
 </head>
 <body>
   <main class="architecture-shell">
@@ -30,8 +30,8 @@
           <span class="status-pill" data-live-blueprint-status>approved</span>
         </div>
         <p class="reference-label">Architecture Dossier</p>
-        <h1>Authentication Vertical Slice</h1>
-        <p class="summary-line">2 responsibility units: Auth UI, Auth Service. Review module placement, public signatures, 1 contract, and Done evidence as one architecture packet.</p>
+        <h1>Authentication vertical slice</h1>
+        <p class="summary-line">A user can submit credentials through the auth UI and receive a session result from the declared auth login contract.</p>
         <details class="request-disclosure">
           <summary>Original request</summary>
           <p>Authentication vertical slice</p>
@@ -466,7 +466,7 @@
           </div>
           <pre class="code-block" data-language="js"><code>// LoginForm.submit is the declared public surface owned by Auth UI.
 // Call it only through the Blueprint contract; do not read implementation internals.
-const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;correct horse battery staple&quot;);</code></pre>
+const sessionResult = LoginForm.submit(&lt;credentials.email&gt;, &lt;credentials.password&gt;);</code></pre>
         </section>
       </section>
 
@@ -587,8 +587,8 @@ const sessionResult = LoginForm.submit(&quot;user@example.com&quot;, &quot;corre
             <strong>Call only through the declared contract surface</strong>
           </div>
           <pre class="code-block" data-language="js"><code>const requestBody = {
-  email: &quot;user@example.com&quot;,
-  password: &quot;correct horse battery staple&quot;
+  email: &lt;email&gt;,
+  password: &lt;password&gt;
 };
 
 const httpResponse = await fetch(&quot;/auth/login&quot;, {
@@ -750,7 +750,7 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js?v=1780377056445"></script>
+  <script src="./preview.js?v=1780379525601"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
   <script>
     if (typeof mermaid !== "undefined") {

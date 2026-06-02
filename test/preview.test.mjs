@@ -381,8 +381,8 @@ test("renders canonical architecture preview", async () => {
     assert.doesNotMatch(html, /<h2>Kanban Board<\/h2>/);
     assert.doesNotMatch(html, /<div class="reference-grid"/);
     assert.doesNotMatch(html, /<aside class="runtime-rail/);
-    assert.match(html, /email: &quot;user@example\.com&quot;/);
-    assert.match(html, /password: &quot;correct horse battery staple&quot;/);
+    assert.match(html, /email: &lt;email&gt;/);
+    assert.match(html, /password: &lt;password&gt;/);
     assert.match(html, /body: JSON\.stringify\(requestBody\)/);
     assert.match(html, /const session = await httpResponse\.json\(\);/);
     assert.doesNotMatch(html, /const 200\.session/);
@@ -1013,7 +1013,7 @@ test("preview renders request-specific SDK examples and function signatures", as
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Parse Bounded Int<\/h1>/);
     assert.match(html, /parseBoundedInt\(input, min, max\): integer/);
-    assert.match(html, /const parsedResult = parseBoundedInt\(&quot;42&quot;, 1, 100\);/);
+    assert.match(html, /const parsedResult = parseBoundedInt\(&lt;input&gt;, &lt;min&gt;, &lt;max&gt;\);/);
     assert.match(html, /INTEGER_OUT_OF_RANGE/);
     assert.match(html, /INTEGER_INVALID/);
     assert.doesNotMatch(html, /Ada\s+Lovelace/);
@@ -1143,7 +1143,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Three Independent/);
-    assert.match(html, /3 responsibility units: Safe Add, Slugify Title, Format ISO Date/);
+    assert.doesNotMatch(html, /3 responsibility units: Safe Add, Slugify Title, Format ISO Date/);
     // Doctrine: the engine no longer fabricates per-surface state machines.
     // None are declared here, so the section shows an empty state instead.
     assert.doesNotMatch(html, /safeAdd State Flow/);

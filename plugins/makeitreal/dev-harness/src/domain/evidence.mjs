@@ -5,9 +5,16 @@ import { fileExists, readJsonFile } from "../io/json.mjs";
 
 function evidencePlanPath(workItem, kind, fallbackPath) {
   const planned = (workItem?.doneEvidence ?? []).find((evidence) => evidence.kind === kind);
-  return typeof planned?.path === "string" && planned.path.trim().length > 0
-    ? planned.path
-    : fallbackPath;
+  if (typeof planned?.path === "string" && planned.path.trim().length > 0) {
+    return planned.path;
+  }
+  // If workItem is provided but does not declare this evidence path, return null.
+  // Callers must not silently use a hardcoded default — they emit a clear error instead.
+  if (workItem != null) {
+    return null;
+  }
+  // No workItem context (e.g. read-only validation calls): use the supplied fallback default.
+  return fallbackPath ?? null;
 }
 
 function resolveRunPath(runDir, relativePath) {
@@ -26,6 +33,17 @@ function resolveRunPath(runDir, relativePath) {
 
 export async function readVerificationEvidence(runDir, { workItem = null } = {}) {
   const relativePath = evidencePlanPath(workItem, "verification", "evidence/verification.json");
+  if (relativePath === null) {
+    return {
+      ok: false,
+      evidence: null,
+      errors: [createHarnessError({
+        code: "HARNESS_EVIDENCE_PATH_UNDECLARED",
+        reason: "Done verification evidence path is not declared in workItem.doneEvidence. Add an entry with kind \"verification\" and a path.",
+        evidence: ["work-items"]
+      })]
+    };
+  }
   const evidencePath = resolveRunPath(runDir, relativePath);
   if (!evidencePath) {
     return {
@@ -104,6 +122,17 @@ export async function readVerificationEvidence(runDir, { workItem = null } = {})
 
 export async function readWikiSyncEvidence(runDir, { workItem = null } = {}) {
   const relativePath = evidencePlanPath(workItem, "wiki-sync", "evidence/wiki-sync.json");
+  if (relativePath === null) {
+    return {
+      ok: false,
+      evidence: null,
+      errors: [createHarnessError({
+        code: "HARNESS_WIKI_SYNC_PATH_UNDECLARED",
+        reason: "Done wiki sync evidence path is not declared in workItem.doneEvidence. Add an entry with kind \"wiki-sync\" and a path.",
+        evidence: ["work-items"]
+      })]
+    };
+  }
   const evidencePath = resolveRunPath(runDir, relativePath);
   if (!evidencePath) {
     return {

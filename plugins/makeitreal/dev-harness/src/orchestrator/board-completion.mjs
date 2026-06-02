@@ -148,6 +148,11 @@ function validateCompletionReviewsForNode({ attempt, workItem, nodeKind }) {
 }
 
 function renderBoardWiki({ board, workItem, evidence }) {
+  // Doctrine: LLM decides. If wikiContent is declared, use it verbatim.
+  if (typeof workItem.wikiContent === "string" && workItem.wikiContent.trim().length > 0) {
+    return workItem.wikiContent;
+  }
+  // Fallback: engine generates minimal structural wiki.
   return `# ${workItem.id}
 
 Board: ${board.boardId}
