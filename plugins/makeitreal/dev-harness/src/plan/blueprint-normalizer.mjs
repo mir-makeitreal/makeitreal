@@ -361,7 +361,13 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
       })),
       allowedPaths: [...(module.ownedPaths ?? [])],
       prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
-      doneEvidence: (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path })),
+      doneEvidence: (() => {
+        const mapped = (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path }));
+        if (mapped.length === 0) {
+          mapped.push({ kind: 'verification', path: `evidence/${workIdFor(module.name)}.verification.json` });
+        }
+        return mapped;
+      })(),
       verificationCommands,
       implementationPrompt: wi.implementationPrompt ?? null,
       requiredReviewRoles: wi.requiredReviewRoles ?? null,
