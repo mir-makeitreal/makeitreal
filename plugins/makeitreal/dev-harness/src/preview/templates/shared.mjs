@@ -647,14 +647,7 @@ export function surfaceAnchor(module, surface, moduleIndex, surfaceIndex) {
 }
 
 export function harnessSequence(sequence = {}) {
-  const text = [
-    ...(sequence.participants ?? []),
-    ...(sequence.messages ?? []).flatMap((message) => [message.from, message.to, message.label])
-  ].join(" ").toLowerCase();
-  return text.includes("make it real")
-    || text.includes("implementation responsibility unit")
-    || text.includes("request planned work")
-    || text.includes("assign work.");
+  return sequence.kind === "harness" || sequence.internal === true;
 }
 
 export function sequenceMermaid(sequences = []) {

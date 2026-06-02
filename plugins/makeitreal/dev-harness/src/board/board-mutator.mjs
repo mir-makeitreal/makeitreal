@@ -7,8 +7,8 @@ import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { readJsonFile, writeJsonFile, fileExists } from "../io/json.mjs";
 import { canTransition } from "../kanban/state-engine.mjs";
 
-const MAX_DECOMPOSITION_DEPTH = 2;
-const MAX_CHILDREN_PER_PROPOSAL = 8;
+const DEFAULT_MAX_DECOMPOSITION_DEPTH = 2;
+const DEFAULT_MAX_CHILDREN_PER_PROPOSAL = 8;
 
 /**
  * Validate a childWorkProposal against existing board state.
@@ -31,11 +31,23 @@ export function validateChildWorkProposal({ proposal, parentWorkItem, board, art
       "childWorkProposal must be a non-null object.")] };
   }
 
+  // Limits are LLM-declared via board config; engine only validates against them.
+  let maxDepth = board?.config?.maxDecompositionDepth;
+  if (maxDepth === undefined || maxDepth === null) {
+    console.warn("[make-it-real] maxDecompositionDepth not declared — using default 2.");
+    maxDepth = DEFAULT_MAX_DECOMPOSITION_DEPTH;
+  }
+  let maxChildren = board?.config?.maxChildrenPerProposal;
+  if (maxChildren === undefined || maxChildren === null) {
+    console.warn("[make-it-real] maxChildrenPerProposal not declared — using default 8.");
+    maxChildren = DEFAULT_MAX_CHILDREN_PER_PROPOSAL;
+  }
+
   // 2. Depth limit
   const effectiveDepth = (depth ?? parentWorkItem.decompositionDepth ?? 0) + 1;
-  if (effectiveDepth > MAX_DECOMPOSITION_DEPTH) {
+  if (effectiveDepth > maxDepth) {
     errors.push(createError("HARNESS_DECOMPOSE_DEPTH_EXCEEDED",
-      `Decomposition depth ${effectiveDepth} exceeds maximum ${MAX_DECOMPOSITION_DEPTH}.`));
+      `Decomposition depth ${effectiveDepth} exceeds maximum ${maxDepth}.`));
   }
 
   // 3. Children array
@@ -45,9 +57,9 @@ export function validateChildWorkProposal({ proposal, parentWorkItem, board, art
       "childWorkProposal.children must be a non-empty array."));
     return { ok: false, errors };
   }
-  if (children.length > MAX_CHILDREN_PER_PROPOSAL) {
+  if (children.length > maxChildren) {
     errors.push(createError("HARNESS_DECOMPOSE_CHILDREN_EXCEEDED",
-      `childWorkProposal has ${children.length} children, max is ${MAX_CHILDREN_PER_PROPOSAL}.`));
+      `childWorkProposal has ${children.length} children, max is ${maxChildren}.`));
   }
 
   // 4. Unique child IDs
@@ -125,12 +137,13 @@ export function validateChildWorkProposal({ proposal, parentWorkItem, board, art
     }
   }
 
-  // 9. Done evidence plan
+  // 9. Done evidence plan — the LLM decides which evidence kinds are required.
+  // The engine only enforces that some done-evidence plan exists.
   for (const child of children) {
-    const kinds = new Set((child.doneEvidence ?? []).map(e => e.kind));
-    if (!kinds.has("verification") || !kinds.has("wiki-sync")) {
+    const doneEvidence = child.doneEvidence ?? [];
+    if (!Array.isArray(doneEvidence) || doneEvidence.length === 0) {
       errors.push(createError("HARNESS_DECOMPOSE_EVIDENCE_MISSING",
-        `Child ${child.id} must plan verification and wiki-sync done evidence.`));
+        `Child ${child.id} must plan at least one done evidence item.`));
     }
   }
 

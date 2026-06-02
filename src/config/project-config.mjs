@@ -197,6 +197,7 @@ export function normalizeProjectConfig(config = {}) {
 export async function readProjectConfig({ projectRoot }) {
   const configPath = projectConfigPath(projectRoot);
   if (!await fileExists(configPath)) {
+    console.warn("[make-it-real] No project config found — using defaults. Run /makeitreal:setup to configure.");
     return {
       ok: true,
       command: "config get",

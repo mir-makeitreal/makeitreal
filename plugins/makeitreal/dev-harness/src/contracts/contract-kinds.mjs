@@ -121,13 +121,10 @@ export function detectContractKind(contract) {
   if (!contract || typeof contract !== "object") {
     return null;
   }
-  // Explicit kind field takes precedence
+  // The LLM must declare the kind explicitly. The engine does not guess
+  // from shape — an absent or unrecognized kind returns null.
   if (typeof contract.kind === "string" && CONTRACT_KINDS.has(contract.kind)) {
     return contract.kind;
-  }
-  // Detect OpenAPI by shape (has openapi + paths)
-  if (typeof contract.openapi === "string" && contract.paths) {
-    return "openapi";
   }
   return null;
 }

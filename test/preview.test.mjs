@@ -1144,9 +1144,12 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
     assert.match(html, /<h1>Three Independent/);
     assert.match(html, /3 responsibility units: Safe Add, Slugify Title, Format ISO Date/);
-    assert.match(html, /safeAdd State Flow/);
-    assert.match(html, /slugifyTitle State Flow/);
-    assert.match(html, /formatIsoDate State Flow/);
+    // Doctrine: the engine no longer fabricates per-surface state machines.
+    // None are declared here, so the section shows an empty state instead.
+    assert.doesNotMatch(html, /safeAdd State Flow/);
+    assert.doesNotMatch(html, /slugifyTitle State Flow/);
+    assert.doesNotMatch(html, /formatIsoDate State Flow/);
+    assert.match(html, /No surface state flows declared\./);
     assert.doesNotMatch(html, /<h1>Safe Add<\/h1>/);
   } finally {
     await rm(root, { recursive: true, force: true });

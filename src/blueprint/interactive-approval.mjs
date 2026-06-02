@@ -44,10 +44,13 @@ export function buildInteractiveRevisionContext({ runDir, feedback }) {
 }
 
 export function buildNoopUserPromptSubmitOutput({ reason = "No Make It Real interactive approval action." } = {}) {
+  // Silent passthrough. When there is nothing for the operator to act on, the
+  // hook must not surface a systemMessage — that would pollute every Claude Code
+  // conversation with Make It Real noise. A systemMessage is only emitted when
+  // there is genuinely a pending Blueprint review to communicate.
   return {
     continue: true,
     suppressOutput: true,
-    systemMessage: reason,
     makeitreal: {
       action: "noop",
       reason

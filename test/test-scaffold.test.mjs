@@ -23,8 +23,14 @@ test("detectContractKind recognizes explicit kind field", () => {
   assert.strictEqual(detectContractKind({ kind: "event" }), "event");
 });
 
-test("detectContractKind recognizes openapi by shape", () => {
-  assert.strictEqual(detectContractKind({ openapi: "3.0.0", paths: {} }), "openapi");
+test("detectContractKind returns null without an explicit kind (no shape inference)", () => {
+  // Doctrine: the engine does not guess the kind from shape. The LLM must
+  // declare `kind` explicitly; an OpenAPI-shaped object without it is null.
+  assert.strictEqual(detectContractKind({ openapi: "3.0.0", paths: {} }), null);
+});
+
+test("detectContractKind recognizes explicit openapi kind", () => {
+  assert.strictEqual(detectContractKind({ kind: "openapi", openapi: "3.0.0", paths: {} }), "openapi");
 });
 
 test("detectContractKind returns null for unknown kind string", () => {
@@ -41,6 +47,7 @@ test("validateContract returns error for unknown kind", () => {
 
 test("validateContract validates openapi contract", () => {
   const valid = validateContract({
+    kind: "openapi",
     openapi: "3.0.3",
     info: { title: "Test API", version: "1.0.0" },
     paths: { "/test": { get: {} } }
@@ -52,6 +59,7 @@ test("validateContract validates openapi contract", () => {
 
 test("validateContract rejects openapi contract with empty paths", () => {
   const result = validateContract({
+    kind: "openapi",
     openapi: "3.0.3",
     info: { title: "Test API", version: "1.0.0" },
     paths: {}

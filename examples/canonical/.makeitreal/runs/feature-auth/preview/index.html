@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css?v=1780374973790">
+  <link rel="stylesheet" href="./preview.css?v=1780377056443">
 </head>
 <body>
   <main class="architecture-shell">
@@ -187,55 +187,7 @@
     <section>
       <h3>Surface State Flow</h3>
       <div class="diagram-grid">
-        <article class="diagram-card">
-    <header>
-      <strong>LoginForm.submit State Flow</strong>
-      <span>Declared execution states for Auth UI: LoginForm.submit.</span>
-    </header>
-    <pre class="mermaid">stateDiagram-v2
-  [*] --&gt; InputReceived
-  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
-  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
-  SurfaceExecuted --&gt; OutputReturned: sessionResult
-  OutputReturned --&gt; [*]
-  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
-  DeclaredError --&gt; [*]</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
-  [*] --&gt; InputReceived
-  InputReceived --&gt; ContractValid: validate credentials.email, credentials.password
-  ContractValid --&gt; SurfaceExecuted: LoginForm.submit
-  SurfaceExecuted --&gt; OutputReturned: sessionResult
-  OutputReturned --&gt; [*]
-  ContractValid --&gt; DeclaredError: AUTH_LOGIN_REJECTED
-  DeclaredError --&gt; [*]</code></pre>
-    </details>
-  </article><article class="diagram-card">
-    <header>
-      <strong>POST /auth/login State Flow</strong>
-      <span>Declared execution states for Auth Service: POST /auth/login.</span>
-    </header>
-    <pre class="mermaid">stateDiagram-v2
-  [*] --&gt; InputReceived
-  InputReceived --&gt; ContractValid: validate request.body.email, request.body.password
-  ContractValid --&gt; SurfaceExecuted: POST /auth/login
-  SurfaceExecuted --&gt; OutputReturned: 200.session
-  OutputReturned --&gt; [*]
-  ContractValid --&gt; DeclaredError: 401.INVALID_CREDENTIALS
-  DeclaredError --&gt; [*]</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>stateDiagram-v2
-  [*] --&gt; InputReceived
-  InputReceived --&gt; ContractValid: validate request.body.email, request.body.password
-  ContractValid --&gt; SurfaceExecuted: POST /auth/login
-  SurfaceExecuted --&gt; OutputReturned: 200.session
-  OutputReturned --&gt; [*]
-  ContractValid --&gt; DeclaredError: 401.INVALID_CREDENTIALS
-  DeclaredError --&gt; [*]</code></pre>
-    </details>
-  </article>
+        <p class="empty">No surface state flows declared.</p>
       </div>
     </section>
   </div>
@@ -305,33 +257,22 @@
     <pre class="mermaid">flowchart TB
   task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
   class task_0 ready
-  ru_uncovered_0[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;potential parallel task&quot;]:::potential
-  task_0 -.-|&quot;parallel opportunity&quot;| ru_uncovered_0
   classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef potential fill:#1c1c2e,stroke:#8e95f5,stroke-width:1px,stroke-dasharray:5 5,color:#c9c9d1,rx:10,ry:10</pre>
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</pre>
     <details class="mermaid-source">
       <summary>Mermaid source</summary>
       <pre class="code-block" data-language="mermaid"><code>flowchart TB
   task_0[&quot;&lt;b&gt;work.feature-auth&lt;/b&gt;&lt;br/&gt;Auth UI&lt;br/&gt;implementation · Contract Frozen&quot;]
   class task_0 ready
-  ru_uncovered_0[&quot;&lt;b&gt;Auth Service&lt;/b&gt;&lt;br/&gt;ru.auth-service&lt;br/&gt;potential parallel task&quot;]:::potential
-  task_0 -.-|&quot;parallel opportunity&quot;| ru_uncovered_0
   classDef ready fill:#0f1d2e,stroke:#58a6ff,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef running fill:#2a210e,stroke:#d29922,stroke-width:1px,color:#e6edf3,rx:10,ry:10
   classDef done fill:#0f2417,stroke:#3fb950,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10
-  classDef potential fill:#1c1c2e,stroke:#8e95f5,stroke-width:1px,stroke-dasharray:5 5,color:#c9c9d1,rx:10,ry:10</code></pre>
+  classDef blocked fill:#2a0f17,stroke:#f85149,stroke-width:1px,color:#e6edf3,rx:10,ry:10</code></pre>
     </details>
   </article>
-    <p class="section-note"><strong>Maximum parallelism: 2 concurrent agents</strong></p>
-    <div style="padding:10px 14px;border:1px solid var(--accent-border);border-radius:var(--radius-sm);background:var(--accent-soft);margin-bottom:16px;">
-      <strong style="color:var(--accent-strong);font-size:13px;">Parallel Execution Opportunity</strong>
-      <p style="margin:4px 0 0;font-size:13px;color:var(--ink-2);">This architecture has <strong>2 responsibility units</strong> but only <strong>1 work item</strong>. The following modules could run as parallel tasks:</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><span style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--ok);background:rgba(59,185,80,0.08);font-size:12px;font-weight:500;"><code>Auth UI</code> (active)</span><span style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--accent-border);background:var(--accent-soft);font-size:12px;font-weight:500;"><code>Auth Service</code> (available)</span></div>
-    </div>
+    
     <div class="task-dag-table" role="table" aria-label="Task DAG">
       <div class="task-dag-row header" role="row">
         <div role="columnheader">Work Item</div>
@@ -809,7 +750,7 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js?v=1780374973794"></script>
+  <script src="./preview.js?v=1780377056445"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
   <script>
     if (typeof mermaid !== "undefined") {

@@ -2,6 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import { applyInteractiveBlueprintApproval } from "../../src/blueprint/interactive-approval.mjs";
+import { resolveCurrentRunDir } from "../../src/project/run-state.mjs";
 
 async function readHookInput() {
   let raw = "";
@@ -43,10 +44,23 @@ async function readLastAssistantMessage(transcriptPath) {
 
 async function main() {
   const input = await readHookInput();
+  const projectRoot = input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const runDir = input.runDir ?? input.makeitreal?.runDir ?? null;
+
+  // The UserPromptSubmit hook fires on EVERY user message in this Claude Code
+  // session, including conversations that have nothing to do with Make It Real.
+  // When there is no active run (no .makeitreal/current-run.json), return a
+  // completely silent passthrough so we never inject Make It Real output into
+  // unrelated conversations.
+  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, env: process.env });
+  if (!resolved.ok) {
+    return { continue: true };
+  }
+
   const approvalContext = input.last_assistant_message ?? await readLastAssistantMessage(input.transcript_path);
   return applyInteractiveBlueprintApproval({
-    projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.makeitreal?.runDir ?? null,
+    projectRoot,
+    runDir,
     prompt: input.prompt ?? input.user_prompt ?? "",
     approvalContext,
     sessionId: input.session_id ?? null,

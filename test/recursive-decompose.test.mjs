@@ -151,7 +151,9 @@ describe("validateChildWorkProposal", () => {
 
   test("rejects child missing done evidence", () => {
     const child = validChild("c1", ["src/auth/a/**"]);
-    child.doneEvidence = [{ kind: "verification", path: "a" }]; // missing wiki-sync
+    // Doctrine: the LLM decides which evidence kinds are required; the engine
+    // only enforces that *some* done-evidence plan exists. An empty plan fails.
+    child.doneEvidence = [];
     const result = validateChildWorkProposal({
       proposal: { reason: "Split needed for evidence check", children: [child] },
       parentWorkItem: baseParent, board: baseBoard, artifacts: baseArtifacts, depth: 0

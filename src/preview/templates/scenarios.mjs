@@ -5,104 +5,25 @@ import {
   escapeHtml,
   mermaidDiagramCard,
   mermaidLabel,
-  moduleSurfaces,
-  surfaceDisplayName,
-  signatureInputs,
-  signatureOutputs,
-  signatureErrors,
-  findSurfaceByImport,
   anchorSlug,
   harnessSequence,
   sequenceMermaid,
   renderScenarioVisualization,
 } from "./shared.mjs";
 
-export function derivedSoftwareSequenceMermaid(dossier = {}) {
-  const surfaces = moduleSurfaces(dossier);
-  if (surfaces.length === 0) {
-    return null;
-  }
-
-  const importMessages = surfaces.flatMap((entry) =>
-    (entry.moduleInterface.imports ?? []).map((dependency) => {
-      const provider = findSurfaceByImport({ dossier, dependency });
-      return provider ? { entry, dependency, provider } : null;
-    }).filter(Boolean)
-  );
-  if (importMessages.length > 0) {
-    const participants = [...new Set(importMessages.flatMap(({ entry, provider }) => [
-      entry.moduleInterface.moduleName,
-      provider.moduleInterface.moduleName
-    ]))];
-    const ids = new Map(participants.map((label, index) => [label, `p${index}`]));
-    return [
-      "sequenceDiagram",
-      ...participants.map((label) => `  participant ${ids.get(label)} as ${label}`),
-      ...importMessages.flatMap(({ entry, dependency, provider }) => [
-        `  ${ids.get(entry.moduleInterface.moduleName)}->>${ids.get(provider.moduleInterface.moduleName)}: ${mermaidLabel(dependency.contractId ?? dependency.surface)}`,
-        `  ${ids.get(provider.moduleInterface.moduleName)}-->>${ids.get(entry.moduleInterface.moduleName)}: declared output or error`
-      ])
-    ].join("\n");
-  }
-
-  return [
-    "sequenceDiagram",
-    "  participant caller as Caller",
-    ...surfaces.map((entry) => `  participant ${entry.id} as ${mermaidLabel(surfaceDisplayName(entry))}`),
-    ...surfaces.flatMap((entry) => {
-      const inputLabel = signatureInputs(entry.surface).map((input) => input.name).join(", ") || "input";
-      const outputLabel = signatureOutputs(entry.surface).map((output) => output.name).join(", ") || "output";
-      const errorLabel = signatureErrors(entry.surface).map((error) => error.code).join(" | ") || "declared error";
-      return [
-        `  caller->>${entry.id}: ${mermaidLabel(inputLabel)}`,
-        `  ${entry.id}->>${entry.id}: validate ${mermaidLabel(entry.surface.name)} contract`,
-        "  alt valid contract",
-        `    ${entry.id}-->>caller: ${mermaidLabel(outputLabel)}`,
-        "  else declared failure",
-        `    ${entry.id}--x caller: ${mermaidLabel(errorLabel)}`,
-        "  end"
-      ];
-    })
-  ].join("\n");
-}
-
+// Doctrine: the engine does not fabricate sequence diagrams. It renders only
+// the sequences the LLM declared in the design pack (dossier.signalFlows).
+// If none are declared, return null and let the section show an empty state.
 export function softwareSequenceMermaid(dossier = {}) {
   const realSequences = (dossier.signalFlows ?? []).filter((sequence) => !harnessSequence(sequence));
-  return sequenceMermaid(realSequences) ?? derivedSoftwareSequenceMermaid(dossier);
+  return sequenceMermaid(realSequences);
 }
 
-export function stateMermaidForSurface(entry = {}) {
-  if (!entry.surface) {
-    return null;
-  }
-  const inputLabel = signatureInputs(entry.surface).map((input) => input.name).join(", ") || "input";
-  const outputLabel = signatureOutputs(entry.surface).map((output) => output.name).join(", ") || "output";
-  const errorLabel = signatureErrors(entry.surface).map((error) => error.code).join(" | ");
-  const lines = [
-    "stateDiagram-v2",
-    "  [*] --> InputReceived",
-    `  InputReceived --> ContractValid: validate ${mermaidLabel(inputLabel)}`,
-    `  ContractValid --> SurfaceExecuted: ${mermaidLabel(entry.surface.name)}`,
-    `  SurfaceExecuted --> OutputReturned: ${mermaidLabel(outputLabel)}`,
-    "  OutputReturned --> [*]"
-  ];
-  if (errorLabel) {
-    lines.push(`  ContractValid --> DeclaredError: ${mermaidLabel(errorLabel)}`);
-    lines.push("  DeclaredError --> [*]");
-  }
-  return lines.join("\n");
-}
-
-export function stateDiagramCards(dossier = {}) {
-  const surfaces = moduleSurfaces(dossier);
-  if (surfaces.length === 0) {
-    return [];
-  }
-  return surfaces.map((entry) => mermaidDiagramCard({
-    title: `${entry.surface.name} State Flow`,
-    description: `Declared execution states for ${surfaceDisplayName(entry)}.`,
-    diagram: stateMermaidForSurface(entry)
-  })).filter(Boolean);
+// Doctrine: the engine does not fabricate per-surface state machines. State
+// flows must be declared by the LLM. Until a declared schema exists, render
+// nothing and let the section show an empty state.
+export function stateDiagramCards() {
+  return [];
 }
 
 export function callStackMermaid(callStacks = []) {
