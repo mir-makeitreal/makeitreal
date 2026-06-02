@@ -38,7 +38,10 @@ WorkItem:
   "title": string,
   "dependsOn": [string],                // module names this work waits on
   "verifyCommand": string,              // e.g. "npm test -- --grep auth"
-  "complexity": "trivial" | "small" | "medium" | "large"
+  "complexity": "trivial" | "small" | "medium" | "large",
+  "implementationPrompt"?: string,      // OPTIONAL — used verbatim as the worker's brief; placeholders {{boardDir}}, {{projectRoot}}, {{attemptId}}, {{workItemId}} are interpolated by the engine
+  "requiredReviewRoles"?: [string],     // OPTIONAL — exact review roles the engine must collect before completion
+  "reviewerPrompts"?: { [role: string]: string } // OPTIONAL — per-role reviewer brief, used verbatim; same placeholders interpolated
 }
 
 Scenario (optional sequence diagram):
@@ -141,7 +144,21 @@ export function getBlueprintSchema() {
             title: { type: "string" },
             dependsOn: { type: "array", items: { type: "string" } },
             verifyCommand: { type: "string" },
-            complexity: { type: "string", enum: ["trivial", "small", "medium", "large"] }
+            complexity: { type: "string", enum: ["trivial", "small", "medium", "large"] },
+            implementationPrompt: {
+              type: "string",
+              description: "If provided, used verbatim as the implementation prompt. Otherwise engine generates a default. Runtime placeholders {{boardDir}}, {{projectRoot}}, {{attemptId}}, {{workItemId}} are interpolated by the engine."
+            },
+            requiredReviewRoles: {
+              type: "array",
+              items: { type: "string" },
+              description: "If provided, the exact review roles the engine must collect before completion. Otherwise the engine falls back to the node-kind default."
+            },
+            reviewerPrompts: {
+              type: "object",
+              additionalProperties: { type: "string" },
+              description: "If provided, maps a review role to its prompt, used verbatim per role. Otherwise engine generates a default. Same runtime placeholders as implementationPrompt are interpolated."
+            }
           }
         }
       },

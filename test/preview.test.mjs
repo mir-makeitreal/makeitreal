@@ -629,6 +629,16 @@ test("preview projects approved launch board state without mutating control-plan
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
+
+    // The status surface only treats Ready-lane items as launchable, so move the
+    // work item to Ready to project a genuine launch-ready board before preview.
+    const boardPath = path.join(plan.runDir, "board.json");
+    const launchBoard = await readJsonFile(boardPath);
+    for (const item of launchBoard.workItems) {
+      item.lane = "Ready";
+    }
+    await writeJsonFile(boardPath, launchBoard);
+
     const approval = await decideBlueprintReview({
       runDir: plan.runDir,
       status: "approved",
@@ -666,7 +676,7 @@ test("preview projects approved launch board state without mutating control-plan
     assert.doesNotMatch(html, />gate</);
 
     const model = await readJsonFile(path.join(plan.runDir, "preview", "preview-model.json"));
-    assert.equal(model.board.lanes.find((lane) => lane.name === "Contract Frozen").workItems[0].id, plan.workItemId);
+    assert.equal(model.board.lanes.find((lane) => lane.name === "Ready").workItems[0].id, plan.workItemId);
   });
 });
 

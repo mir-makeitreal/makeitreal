@@ -33,11 +33,9 @@
     "laneCounts": {
       "Contract Frozen": 1
     },
-    "launchableWorkItemIds": [
-      "work.feature-auth"
-    ],
-    "nextActionCode": "launch",
-    "nextCommand": "/makeitreal:launch",
+    "launchableWorkItemIds": [],
+    "nextActionCode": "status",
+    "nextCommand": "/makeitreal:status",
     "ok": true,
     "operatorSummary": {
       "blockers": [],
@@ -55,21 +53,17 @@
           "workItemId": "work.feature-auth"
         }
       ],
-      "launchableWorkItemIds": [
-        "work.feature-auth"
-      ],
-      "nextActionCode": "launch",
-      "phase": "launch-ready",
-      "responsibilityUnitCount": 1
+      "nextActionCode": "status",
+      "phase": "blocked"
     },
-    "phase": "launch-ready",
+    "phase": "blocked",
     "readyGate": {
       "command": "gate",
       "errors": [],
       "ok": true,
       "target": "Ready"
     },
-    "recommendedNativeTaskConcurrency": 1,
+    "recommendedNativeTaskConcurrency": 0,
     "retryReady": [],
     "rework": [],
     "runtimeState": null
@@ -131,11 +125,9 @@
       "laneCounts": {
         "Contract Frozen": 1
       },
-      "launchableWorkItemIds": [
-        "work.feature-auth"
-      ],
-      "nextActionCode": "launch",
-      "nextCommand": "/makeitreal:launch",
+      "launchableWorkItemIds": [],
+      "nextActionCode": "status",
+      "nextCommand": "/makeitreal:status",
       "ok": true,
       "operatorSummary": {
         "blockers": [],
@@ -153,21 +145,17 @@
             "workItemId": "work.feature-auth"
           }
         ],
-        "launchableWorkItemIds": [
-          "work.feature-auth"
-        ],
-        "nextActionCode": "launch",
-        "phase": "launch-ready",
-        "responsibilityUnitCount": 1
+        "nextActionCode": "status",
+        "phase": "blocked"
       },
-      "phase": "launch-ready",
+      "phase": "blocked",
       "readyGate": {
         "command": "gate",
         "errors": [],
         "ok": true,
         "target": "Ready"
       },
-      "recommendedNativeTaskConcurrency": 1,
+      "recommendedNativeTaskConcurrency": 0,
       "retryReady": [],
       "rework": [],
       "runtimeState": null
@@ -207,8 +195,8 @@
       "target": "Ready"
     },
     "generatedAt": "2026-04-30T00:00:00.000Z",
-    "nextActionCode": "launch",
-    "nextCommand": "/makeitreal:launch",
+    "nextActionCode": "status",
+    "nextCommand": "/makeitreal:status",
     "ok": true,
     "operatorSummary": {
       "blockers": [],
@@ -227,14 +215,10 @@
           "workItemId": "work.feature-auth"
         }
       ],
-      "launchableWorkItemIds": [
-        "work.feature-auth"
-      ],
-      "nextActionCode": "launch",
-      "phase": "launch-ready",
-      "responsibilityUnitCount": 1
+      "nextActionCode": "status",
+      "phase": "blocked"
     },
-    "phase": "launch-ready",
+    "phase": "blocked",
     "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs",
     "runDir": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs/feature-auth"
   }

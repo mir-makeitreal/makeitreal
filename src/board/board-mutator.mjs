@@ -290,21 +290,26 @@ export async function materializeChildWorkItems({ boardDir, parentWorkItemId, pr
 }
 
 /**
- * Check if all children of a parent are Done, and if so transition parent.
+ * Observe whether all children of a parent are Done.
+ *
+ * Doctrine: the engine does NOT autonomously transition the parent. It only
+ * detects the condition and emits a "children_complete" board event so the LLM
+ * can observe it and explicitly decide whether to move the parent (e.g. to
+ * "Verifying"). The parent stays in its current lane until the LLM acts.
  *
  * @param {{ boardDir: string, parentWorkItemId: string, now: Date }} options
- * @returns {Promise<{ ok: boolean, transitioned: boolean, errors: object[] }>}
+ * @returns {Promise<{ ok: boolean, transitioned: boolean, childrenComplete: boolean, parentWorkItemId: string, errors: object[] }>}
  */
 export async function completeParentWhenChildrenDone({ boardDir, parentWorkItemId, now }) {
   const board = await loadBoard(boardDir);
   const parent = board.workItems.find(w => w.id === parentWorkItemId);
   if (!parent || parent.lane !== "Decomposing") {
-    return { ok: true, transitioned: false, errors: [] };
+    return { ok: true, transitioned: false, childrenComplete: false, parentWorkItemId, errors: [] };
   }
 
   const childIds = parent.childWorkItemIds ?? [];
   if (childIds.length === 0) {
-    return { ok: true, transitioned: false, errors: [] };
+    return { ok: true, transitioned: false, childrenComplete: false, parentWorkItemId, errors: [] };
   }
 
   const allDone = childIds.every(id => {
@@ -313,19 +318,11 @@ export async function completeParentWhenChildrenDone({ boardDir, parentWorkItemI
   });
 
   if (!allDone) {
-    return { ok: true, transitioned: false, errors: [] };
+    return { ok: true, transitioned: false, childrenComplete: false, parentWorkItemId, errors: [] };
   }
 
-  const verifying = canTransition({
-    from: parent.lane,
-    to: "Verifying",
-    context: { gates: { childrenComplete: true } }
-  });
-  if (!verifying.ok) {
-    return { ok: false, transitioned: false, errors: verifying.errors };
-  }
-  parent.lane = "Verifying";
-  await saveBoard(boardDir, board);
+  // Children are complete. Emit an event for the LLM to observe — do NOT move
+  // the parent. The LLM must explicitly trigger any lane transition.
   await appendBoardEvent(boardDir, {
     event: "children_complete",
     timestamp: now.toISOString(),
@@ -333,7 +330,7 @@ export async function completeParentWhenChildrenDone({ boardDir, parentWorkItemI
     payload: { source: "children_complete" }
   });
 
-  return { ok: true, transitioned: true, errors: [] };
+  return { ok: true, transitioned: false, childrenComplete: true, parentWorkItemId, errors: [] };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────

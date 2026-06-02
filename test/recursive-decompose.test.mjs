@@ -403,7 +403,7 @@ describe("materializeChildWorkItems", () => {
 });
 
 describe("completeParentWhenChildrenDone", () => {
-  test("transitions parent to Verifying when all children Done", async () => {
+  test("signals childrenComplete without transitioning the parent", async () => {
     await withBoardFixture(async ({ boardDir }) => {
       await addParentWorkItem(boardDir, { lane: "Running" });
       const now = new Date("2026-05-19T12:00:00Z");
@@ -432,11 +432,14 @@ describe("completeParentWhenChildrenDone", () => {
       });
 
       assert.ok(result.ok);
-      assert.ok(result.transitioned);
+      // Doctrine: the engine only observes the condition and emits an event; it
+      // does NOT autonomously move the parent. The LLM owns the transition.
+      assert.equal(result.transitioned, false);
+      assert.equal(result.childrenComplete, true);
 
       const updatedBoard = await loadBoard(boardDir);
       const parent = updatedBoard.workItems.find(w => w.id === "work.decompose-parent");
-      assert.equal(parent.lane, "Verifying");
+      assert.equal(parent.lane, "Decomposing");
     });
   });
 

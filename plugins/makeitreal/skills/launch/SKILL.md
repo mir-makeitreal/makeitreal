@@ -88,6 +88,16 @@ Do not require pre-created Claude agent files for scoped work. Launch should inj
 
 For Claude-code attempts, task success alone is not Done evidence. Completion requires the reviewer evidence declared by that node kind in the latest attempt provenance; missing or rejected review evidence routes the work item to Rework instead of Done.
 
+## Blueprint-Authored Prompts and Review Roles
+
+Doctrine: the blueprint (LLM) decides what a worker's job is and which reviewers are required. The engine validates and saves; it does not author intent. Each work item may therefore declare:
+
+- `implementationPrompt` (optional string) — used verbatim as the worker's brief. The engine interpolates only runtime values via the `{{boardDir}}`, `{{projectRoot}}`, `{{attemptId}}`, and `{{workItemId}}` placeholders. When absent, the engine falls back to a generated default and logs a deprecation warning to stderr.
+- `reviewerPrompts` (optional object) — maps a review role (e.g. `spec-reviewer`) to that reviewer's brief, used verbatim with the same placeholder interpolation. When a role's prompt is absent, the engine falls back to a generated default and logs a deprecation warning.
+- `requiredReviewRoles` (optional array) — the exact review roles the engine must collect before completion. When absent, the engine falls back to the node-kind default (`implementation` → spec/quality/verification, `domain-pm` → spec, `integration-evidence` → verification) and logs a deprecation warning.
+
+Declaring these in the blueprint keeps prompt authorship and review policy with the LLM. The fallbacks exist only for backward compatibility; a deprecation warning on stderr signals a work item that should declare them.
+
 ## Internal Runner Selection
 
 - Use the scripted simulator only for fixture tests or explicit dry runs.

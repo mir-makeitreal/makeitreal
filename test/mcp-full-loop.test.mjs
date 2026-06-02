@@ -206,8 +206,10 @@ describe("make-it-real MCP server full plan→launch→finish→complete loop", 
     assert.equal(payload.ok, true);
     assert.equal(payload.blueprintApproved, true);
     assert.equal(payload.readyGate.ok, true, `readyGate errors: ${JSON.stringify(payload.readyGate.errors)}`);
-    assert.ok(payload.launchableWorkItemIds.includes("work.auth"));
-    // todos depends on auth, must not be launchable yet
+    // Read-only status no longer auto-promotes Contract Frozen items; both work
+    // items stay in Contract Frozen until mir_launch(start) runs the Ready gate
+    // promotion flow. So nothing is launchable from the status surface yet.
+    assert.deepEqual(payload.launchableWorkItemIds, []);
     assert.ok(!payload.launchableWorkItemIds.includes("work.todos"));
   });
 

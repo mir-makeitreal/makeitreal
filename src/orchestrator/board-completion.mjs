@@ -38,6 +38,17 @@ const COMPLETION_POLICIES = Object.freeze({
 
 const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 
+// Doctrine: the blueprint (LLM) decides which review roles a work item needs.
+// The engine only validates and saves. When a work item omits the declaration,
+// fall back to the engine default but make the omission explicit.
+function resolveRequiredReviewRoles({ workItem, policy }) {
+  if (Array.isArray(workItem?.requiredReviewRoles)) {
+    return workItem.requiredReviewRoles;
+  }
+  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — using engine default.\n");
+  return policy.requiredReviewRoles;
+}
+
 function transitionWorkItem(workItem, to, context) {
   const transition = canTransition({ from: workItem.lane, to, context });
   if (!transition.ok) {
@@ -62,7 +73,8 @@ function validateCompletionReviewsForNode({ attempt, workItem, nodeKind }) {
     }
   }
 
-  const missing = policy.requiredReviewRoles.filter((role) => !latestByRole.has(role));
+  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem, policy });
+  const missing = requiredReviewRoles.filter((role) => !latestByRole.has(role));
   if (missing.length > 0) {
     return {
       ok: false,
@@ -76,7 +88,7 @@ function validateCompletionReviewsForNode({ attempt, workItem, nodeKind }) {
     };
   }
 
-  const rejected = policy.requiredReviewRoles
+  const rejected = requiredReviewRoles
     .map((role) => latestByRole.get(role))
     .find((report) => !APPROVED_REVIEW_STATUSES.has(report.status));
   if (rejected) {

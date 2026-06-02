@@ -56,6 +56,33 @@ const COMPLETION_POLICIES = Object.freeze({
 
 const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 
+// Runtime values the engine is allowed to interpolate into an LLM-authored
+// prompt. The blueprint owns the prompt text; the engine only substitutes
+// these placeholders ({{boardDir}}, {{projectRoot}}, {{attemptId}}, {{workItemId}}).
+function interpolateRuntimeValues(template, { boardDir, projectRoot, attemptId, workItemId }) {
+  const values = {
+    boardDir: boardDir ?? "",
+    projectRoot: projectRoot ?? "(unknown)",
+    attemptId: attemptId ?? "",
+    workItemId: workItemId ?? ""
+  };
+  return template.replace(
+    /\{\{\s*(boardDir|projectRoot|attemptId|workItemId)\s*\}\}/g,
+    (_match, key) => values[key]
+  );
+}
+
+// Doctrine: the blueprint (LLM) decides which review roles a work item needs.
+// The engine only validates and saves. When a work item omits the declaration,
+// fall back to the engine default but make the omission explicit.
+function resolveRequiredReviewRoles({ workItem, policy }) {
+  if (Array.isArray(workItem?.requiredReviewRoles)) {
+    return workItem.requiredReviewRoles;
+  }
+  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — using engine default.\n");
+  return policy.requiredReviewRoles;
+}
+
 function mappingForEvidenceRole(mapping, role) {
   return (mapping?.mappings ?? []).find((entry) => entry.evidenceRole === role) ?? null;
 }
@@ -184,8 +211,9 @@ function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, 
     }));
   }
 
+  const requiredReviewRoles = resolveRequiredReviewRoles({ workItem, policy });
   const latestByRole = new Map(reviewReports.map((report) => [report.role, report]));
-  const missing = policy.requiredReviewRoles.filter((role) => !latestByRole.has(role));
+  const missing = requiredReviewRoles.filter((role) => !latestByRole.has(role));
   if (missing.length > 0) {
     errors.push(createHarnessError({
       code: "HARNESS_REVIEW_EVIDENCE_MISSING",
@@ -196,7 +224,7 @@ function validateNativeCompletionPolicy({ nodeKind, policyReport, agentReports, 
     }));
   }
 
-  const rejected = policy.requiredReviewRoles
+  const rejected = requiredReviewRoles
     .map((role) => latestByRole.get(role))
     .find((report) => report && !APPROVED_REVIEW_STATUSES.has(report.status));
   if (rejected) {
@@ -466,6 +494,19 @@ async function orchestratorTickInner({ boardDir, workerId, concurrency, now, run
 }
 
 function renderNativeTaskPrompt({ boardDir, workItem, attemptId, projectRoot, nodeKind = "implementation" }) {
+  // Doctrine: the LLM (blueprint) authors what the worker believes its job is.
+  // If the work item declares its own implementation prompt, use it verbatim and
+  // only interpolate engine-owned runtime values.
+  if (typeof workItem.implementationPrompt === "string" && workItem.implementationPrompt.trim().length > 0) {
+    return interpolateRuntimeValues(workItem.implementationPrompt, {
+      boardDir,
+      projectRoot,
+      attemptId,
+      workItemId: workItem.id
+    });
+  }
+  process.stderr.write("[make-it-real] workItem missing implementationPrompt — falling back to engine-generated prompt. Declare implementationPrompt in your blueprint.\n");
+
   if (nodeKind === "domain-pm") {
     return `You are a Make It Real domain PM running inside the parent Claude Code session.
 
@@ -628,6 +669,20 @@ function renderNativeReviewerPrompt({
   nativeSubagentType = "general-purpose",
   mappingSource = "builtin-default"
 }) {
+  // Doctrine: the LLM (blueprint) authors the reviewer's brief. If the work item
+  // declares a prompt for this reviewer role, use it verbatim and only interpolate
+  // engine-owned runtime values.
+  const declaredReviewerPrompt = workItem.reviewerPrompts?.[role];
+  if (typeof declaredReviewerPrompt === "string" && declaredReviewerPrompt.trim().length > 0) {
+    return interpolateRuntimeValues(declaredReviewerPrompt, {
+      boardDir,
+      projectRoot,
+      attemptId,
+      workItemId: workItem.id
+    });
+  }
+  process.stderr.write(`[make-it-real] workItem missing reviewerPrompts.${role} — falling back to engine-generated reviewer prompt. Declare reviewerPrompts in your blueprint.\n`);
+
   const focus = {
     "spec-reviewer": "Verify the implementation satisfies the PRD, Blueprint, declared contracts, and responsibility boundary.",
     "quality-reviewer": "Review code quality, maintainability, naming, unnecessary fallback behavior, and clean-code fit.",
@@ -757,7 +812,7 @@ async function startNativeClaudeTaskInner({ boardDir, workerId = "claude-code.pa
       projectRoot,
       nodeKind
     });
-    const reviewerPrompts = completionPolicy.requiredReviewRoles.map((role) => {
+    const reviewerPrompts = resolveRequiredReviewRoles({ workItem: activeWorkItem, policy: completionPolicy }).map((role) => {
       const roleEntry = mappingForEvidenceRole(roleMapping.mapping, role);
       return {
         role,

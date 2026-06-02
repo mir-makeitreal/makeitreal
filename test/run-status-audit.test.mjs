@@ -152,6 +152,15 @@ test("status reports stale approval separately from missing approval", async () 
     await renderDesignPreview({ runDir });
     await writeCurrentRunState({ projectRoot: root, runDir, now: new Date("2026-05-06T00:00:00.000Z") });
 
+    // The status surface only treats Ready-lane items as launchable; move the
+    // fixture work item to Ready so the approved board projects launch-ready.
+    const boardPath = path.join(runDir, "board.json");
+    const board = JSON.parse(await readFile(boardPath, "utf8"));
+    for (const item of board.workItems) {
+      item.lane = "Ready";
+    }
+    await writeJsonFile(boardPath, board);
+
     let result = runHarness(["status", root]);
     assert.equal(result.status, 0, result.stdout || result.stderr);
     let output = JSON.parse(result.stdout);
@@ -224,12 +233,14 @@ test("status projects board recovery phases through the public current-run surfa
     });
     assert.equal(approval.ok, true);
 
+    // The read-only status surface no longer auto-promotes Contract Frozen
+    // items. They remain non-launchable until the orchestrator's Ready gate
+    // flow promotes them, so the pre-launch projection is "blocked".
     let status = runHarness(["status", projectRoot]);
     assert.equal(status.status, 0, status.stdout || status.stderr);
-    assert.equal(JSON.parse(status.stdout).phase, "launch-ready");
-    assert.deepEqual(JSON.parse(status.stdout).boardStatus.launchableWorkItemIds, [plan.workItemId]);
-    assert.equal(JSON.parse(status.stdout).boardStatus.recommendedNativeTaskConcurrency, 1);
-    assert.deepEqual(JSON.parse(status.stdout).operatorSummary.launchableWorkItemIds, [plan.workItemId]);
+    assert.equal(JSON.parse(status.stdout).phase, "blocked");
+    assert.deepEqual(JSON.parse(status.stdout).boardStatus.launchableWorkItemIds, []);
+    assert.equal(JSON.parse(status.stdout).boardStatus.recommendedNativeTaskConcurrency, 0);
 
     const failed = await orchestratorTick({
       boardDir: plan.runDir,

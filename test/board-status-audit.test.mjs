@@ -62,6 +62,14 @@ test("board status exposes launch batch only after approved Ready gate", async (
       now: new Date("2026-05-06T00:00:00.000Z")
     });
     assert.equal(plan.ok, true);
+
+    // Engine no longer auto-promotes Contract Frozen items; only items the
+    // orchestrator has explicitly moved to Ready are launchable.
+    const boardPath = path.join(plan.runDir, "board.json");
+    const board = await readJsonFile(boardPath);
+    board.workItems.find((item) => item.id === plan.workItemId).lane = "Ready";
+    await writeJsonFile(boardPath, board);
+
     const approval = await decideBlueprintReview({
       runDir: plan.runDir,
       status: "approved",
@@ -105,6 +113,9 @@ test("board status recommends one native task per responsibility unit", async ()
     const boardPath = path.join(plan.runDir, "board.json");
     const board = await readJsonFile(boardPath);
     const primary = board.workItems.find((item) => item.id === plan.workItemId);
+    // Engine no longer auto-promotes Contract Frozen items; move the primary to
+    // Ready so it is launchable alongside the docs item.
+    primary.lane = "Ready";
     board.workItems.push({
       ...primary,
       id: "work.display-name-docs",
@@ -124,7 +135,7 @@ test("board status recommends one native task per responsibility unit", async ()
 
     const result = await readBoardStatus({ boardDir: plan.runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.readyGate.ok, true);
-    assert.deepEqual(result.launchableWorkItemIds, ["work.display-name-docs", plan.workItemId]);
+    assert.deepEqual(result.launchableWorkItemIds, [plan.workItemId, "work.display-name-docs"]);
     assert.equal(result.recommendedNativeTaskConcurrency, 1);
     assert.equal(result.operatorSummary.responsibilityUnitCount, 1);
   } finally {

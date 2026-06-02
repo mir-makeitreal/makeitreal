@@ -2,7 +2,6 @@ import { loadBoard } from "../board/board-store.mjs";
 import { listClaims } from "../board/claim-store.mjs";
 import { boardSchemaError, getBlockedWorkItems, getReadyWorkItems, isBoardSchemaValid } from "../board/dependency-graph.mjs";
 import { validateBlueprintApproval, resolveBlueprintRunDir } from "../blueprint/review.mjs";
-import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { runGates } from "../gates/index.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
 import { commandForActionCode, readEvidenceSummary, summarizeBoardOperator } from "./operator-summary.mjs";
@@ -34,23 +33,11 @@ function launchBatch(workItems) {
   };
 }
 
-function dependenciesComplete(board, workItem) {
-  const itemsById = new Map((board.workItems ?? []).map((item) => [item.id, item]));
-  return (workItem.dependsOn ?? []).every((dependencyId) => itemsById.get(dependencyId)?.lane === "Done");
-}
-
-async function getNativeStartLaunchableWorkItems({ board, runDir }) {
-  const ready = getReadyWorkItems(board);
-  const readyIds = new Set(ready.map((item) => item.id));
-  const artifacts = await loadRunArtifacts(runDir);
-  const graphNodeIds = new Set((artifacts.workItemDag.nodes ?? []).map((node) => node.id));
-  const promotable = (board.workItems ?? []).filter((item) =>
-    graphNodeIds.has(item.id)
-    && item.lane === "Contract Frozen"
-    && !readyIds.has(item.id)
-    && dependenciesComplete(board, item)
-  );
-  return [...ready, ...promotable];
+function getNativeStartLaunchableWorkItems({ board }) {
+  // Items must be explicitly moved to Ready by the orchestrator gate flow —
+  // engine does not auto-promote. Contract Frozen items are NOT promoted here;
+  // only items already in the Ready lane are launchable.
+  return getReadyWorkItems(board);
 }
 
 function hasRuntimePriorityLane(board) {
@@ -158,7 +145,7 @@ export async function readBoardStatus({ boardDir, now = new Date(), readyGate: p
     ? { ...audit, ok: false, gateFailures: readyGate.errors, gateFailureAuthority: "ready-gate" }
     : audit;
   const launchableWorkItems = approval.ok && readyGate?.ok
-    ? await getNativeStartLaunchableWorkItems({ board, runDir: resolved.runDir })
+    ? getNativeStartLaunchableWorkItems({ board })
     : [];
   const visibleLaunchBatch = launchBatch(launchableWorkItems);
   const operatorSummary = summarizeBoardOperator({
