@@ -1185,6 +1185,13 @@ test("native finish treats changes-requested reviewer status as review rejection
       reviewStatus: "CHANGES_REQUESTED"
     });
 
+    // Doctrine: declare requiredReviewRoles so the engine checks reviewer evidence.
+    const reviewBoard = await loadBoard(boardDir);
+    reviewBoard.workItems.find((item) => item.id === "work.login-ui").requiredReviewRoles = [
+      "spec-reviewer"
+    ];
+    await saveBoard(boardDir, reviewBoard);
+
     assert.equal(dispatched.ok, false);
     assert.equal(dispatched.errors[0].code, "HARNESS_REVIEW_REJECTED");
     assert.match(dispatched.errors[0].reason, /CHANGES_REQUESTED/);
