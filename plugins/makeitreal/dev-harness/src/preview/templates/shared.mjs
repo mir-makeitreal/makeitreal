@@ -1,6 +1,10 @@
 // Shared utilities for Architecture Dossier section templates.
 // Pure refactor — extracted from render-dashboard-html.mjs.
 
+import { commandForActionCode } from "../../status/operator-summary.mjs";
+
+export { commandForActionCode };
+
 export function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -149,7 +153,7 @@ export function verificationLabel(status = {}) {
   if (verification?.ok === true) {
     return "Verification passed";
   }
-  return status.nextAction ?? "Pending review";
+  return "Pending review";
 }
 
 export function verificationTileLabel(status = {}) {

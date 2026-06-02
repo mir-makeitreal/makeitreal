@@ -5,7 +5,7 @@ import { validateBlueprintApproval, resolveBlueprintRunDir } from "../blueprint/
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { runGates } from "../gates/index.mjs";
 import { fileExists, readJsonFile } from "../io/json.mjs";
-import { readEvidenceSummary, summarizeBoardOperator } from "./operator-summary.mjs";
+import { commandForActionCode, readEvidenceSummary, summarizeBoardOperator } from "./operator-summary.mjs";
 import path from "node:path";
 
 function countLanes(board) {
@@ -121,9 +121,9 @@ export async function readBoardStatus({ boardDir, now = new Date(), readyGate: p
       ...base,
       ...visibleLaunchBatch,
       phase: operatorSummary.phase,
-      headline: operatorSummary.headline,
       blockers: operatorSummary.blockers,
-      nextAction: operatorSummary.nextAction,
+      nextActionCode: operatorSummary.nextActionCode,
+      nextCommand: commandForActionCode(operatorSummary.nextActionCode),
       evidenceSummary: [],
       operatorSummary,
       audit,
@@ -178,9 +178,9 @@ export async function readBoardStatus({ boardDir, now = new Date(), readyGate: p
     ...base,
     ...visibleLaunchBatch,
     phase: operatorSummary.phase,
-    headline: operatorSummary.headline,
     blockers: operatorSummary.blockers,
-    nextAction: operatorSummary.nextAction,
+    nextActionCode: operatorSummary.nextActionCode,
+    nextCommand: commandForActionCode(operatorSummary.nextActionCode),
     evidenceSummary,
     operatorSummary,
     runtimeState,

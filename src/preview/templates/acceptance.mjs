@@ -7,6 +7,7 @@ import {
   renderTestResults,
   renderSourcesList,
   conciseTitleFromText,
+  commandForActionCode,
 } from "./shared.mjs";
 
 function relativeRunDir(runDir) {
@@ -59,7 +60,7 @@ function renderBlockers(blockers = []) {
   return `<div class="rail-list">${blockers.map((blocker) => `<div>
     <strong>${escapeHtml(blocker.code)}</strong>
     <p>${escapeHtml(blocker.message)}</p>
-    ${blocker.nextAction ? `<code>${escapeHtml(blocker.nextAction)}</code>` : ""}
+    ${blocker.nextActionCode ? `<code>${escapeHtml(commandForActionCode(blocker.nextActionCode))}</code>` : ""}
   </div>`).join("")}</div>`;
 }
 
@@ -169,11 +170,10 @@ function renderOperatorCockpit(cockpit, board, status) {
       <section>
         <p class="rail-label">Current Run</p>
         <h2 data-live-phase>${escapeHtml(status.phase ?? "unknown")}</h2>
-        <p><strong data-live-headline>${escapeHtml(status.headline ?? "Status unavailable.")}</strong></p>
         <p class="muted">Read-only dashboard. State changes stay in Claude Code.</p>
         <div class="command-copy">
-          <code data-live-next-command>${escapeHtml(status.nextCommand ?? status.nextAction ?? "none")}</code>
-          <button type="button" class="copy-command" data-live-copy-command data-copy="${escapeHtml(status.nextCommand ?? status.nextAction ?? "")}">Copy</button>
+          <code data-live-next-command>${escapeHtml(status.nextCommand ?? "none")}</code>
+          <button type="button" class="copy-command" data-live-copy-command data-copy="${escapeHtml(status.nextCommand ?? "")}">Copy</button>
         </div>
       </section>
 

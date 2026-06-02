@@ -252,8 +252,7 @@ test("operator cockpit maps phases to a read-only first-run guide", () => {
     status: {
       phase: "approval-required",
       blueprintStatus: "pending",
-      headline: "Blueprint review is pending.",
-      nextAction: "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+      nextActionCode: "approve",
       nextCommand: "/makeitreal:plan approve",
       evidenceSummary: [
         {
@@ -502,7 +501,9 @@ test("preview renders a multi-module system Blueprint dossier", async () => {
       && trace.scenarios.includes("Login session creation")
     ), true);
     assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("Blueprint review is approved")), true);
-    assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("Auth UI")), true);
+    // Doctrine: engine no longer fabricates per-module review prose; only the declared review summary remains.
+    assert.equal(dossier.reviewDecisions.length, 1);
+    assert.equal(dossier.reviewDecisions.some((decision) => decision.includes("owns")), false);
     assert.equal(dossier.sources.some((source) => source.path === "design-pack.json"), true);
     assert.equal(dossier.modules[0].ownedFileTree.name, "web");
     assert.equal(dossier.contractSurfaces.some((surface) => surface.name === "POST /auth/login"), true);
@@ -602,7 +603,7 @@ test("preview cockpit copies replan command for rejected Blueprint", async () =>
 
     const previewDir = path.join(runDir, "preview");
     const model = await readJsonFile(path.join(previewDir, "preview-model.json"));
-    assert.equal(model.status.nextAction, "/makeitreal:plan <request>");
+    assert.equal(model.status.nextActionCode, "plan");
     assert.equal(model.status.nextCommand, "/makeitreal:plan <request>");
     assert.equal(model.operatorCockpit.nextCommand, "/makeitreal:plan <request>");
 
@@ -655,7 +656,6 @@ test("preview projects approved launch board state without mutating control-plan
     assert.deepEqual(await snapshot(watched), before);
 
     const html = await readFile(path.join(plan.runDir, "preview", "index.html"), "utf8");
-    assert.match(html, /Board has work ready for launch/);
     assert.match(html, /class="kanban-lane"/);
     assert.match(html, /data-lane="Planned"/);
     assert.doesNotMatch(html, /data-lane="Contract Frozen"/);

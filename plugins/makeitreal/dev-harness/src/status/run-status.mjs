@@ -4,20 +4,7 @@ import { validateBlueprintApproval } from "../blueprint/review.mjs";
 import { fileExists } from "../io/json.mjs";
 import path from "node:path";
 import { readBoardStatus } from "./board-status.mjs";
-import { readEvidenceSummary, summarizeRunOperator } from "./operator-summary.mjs";
-
-function nextCommandFor(blueprint) {
-  if (blueprint.ok) {
-    return "/makeitreal:launch";
-  }
-  if (blueprint.status === "rejected") {
-    return "/makeitreal:plan <request>";
-  }
-  if (blueprint.status === "stale") {
-    return "/makeitreal:plan approve";
-  }
-  return "/makeitreal:plan approve";
-}
+import { commandForActionCode, readEvidenceSummary, summarizeRunOperator } from "./operator-summary.mjs";
 
 export async function readRunStatus({ projectRoot, runDir = null, now = new Date() }) {
   const resolved = runDir
@@ -32,9 +19,9 @@ export async function readRunStatus({ projectRoot, runDir = null, now = new Date
       runDir: null,
       phase: operatorSummary.phase,
       blueprintStatus: operatorSummary.blueprintStatus,
-      headline: operatorSummary.headline,
       blockers: operatorSummary.blockers,
-      nextAction: operatorSummary.nextAction,
+      nextActionCode: operatorSummary.nextActionCode,
+      nextCommand: commandForActionCode(operatorSummary.nextActionCode),
       evidenceSummary: operatorSummary.evidenceSummary,
       operatorSummary,
       errors: resolved.errors
@@ -84,10 +71,9 @@ export async function readRunStatus({ projectRoot, runDir = null, now = new Date
     },
     phase: operatorSummary.phase,
     blueprintStatus: operatorSummary.blueprintStatus,
-    headline: operatorSummary.headline,
     blockers: operatorSummary.blockers,
-    nextAction: operatorSummary.nextAction,
-    nextCommand: blueprint.ok ? operatorSummary.nextAction : nextCommandFor(blueprint),
+    nextActionCode: operatorSummary.nextActionCode,
+    nextCommand: commandForActionCode(operatorSummary.nextActionCode),
     evidenceSummary: operatorSummary.evidenceSummary,
     boardStatus,
     operatorSummary,

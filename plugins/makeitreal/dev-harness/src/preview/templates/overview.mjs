@@ -203,8 +203,8 @@ export function renderOverviewSection(model, dossier, blueprint) {
         </details>
         <div class="overview-brief">
           <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>
-          <p><strong>Current phase:</strong> <span data-live-phase>${escapeHtml(model.status.phase ?? "unknown")}</span>. <span data-live-headline>${escapeHtml(model.status.headline ?? "Status unavailable.")}</span></p>
-          <p><strong>Next Claude Code action:</strong> <code data-live-next-command>${escapeHtml(model.status.nextCommand ?? model.status.nextAction ?? "none")}</code></p>
+          <p><strong>Current phase:</strong> <span data-live-phase>${escapeHtml(model.status.phase ?? "unknown")}</span></p>
+          <p><strong>Next Claude Code action:</strong> <code data-live-next-command>${escapeHtml(model.status.nextCommand ?? "none")}</code></p>
         </div>
 
         <div class="doc-table approval-scope-table" style="margin-top:20px;">

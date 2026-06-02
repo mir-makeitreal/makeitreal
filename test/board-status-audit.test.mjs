@@ -74,12 +74,12 @@ test("board status exposes launch batch only after approved Ready gate", async (
     assert.equal(result.audit.ok, true);
     assert.equal(result.readyGate.ok, true);
     assert.equal(result.phase, "launch-ready");
-    assert.equal(result.nextAction, "/makeitreal:launch");
+    assert.equal(result.nextActionCode, "launch");
     assert.deepEqual(result.launchableWorkItemIds, [plan.workItemId]);
     assert.equal(result.recommendedNativeTaskConcurrency, 1);
     assert.equal(Object.hasOwn(result, "launchableWork"), false);
     assert.deepEqual(result.operatorSummary.launchableWorkItemIds, [plan.workItemId]);
-    assert.equal(result.operatorSummary.recommendedNativeTaskConcurrency, 1);
+    assert.equal(result.operatorSummary.responsibilityUnitCount, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -126,7 +126,7 @@ test("board status recommends one native task per responsibility unit", async ()
     assert.equal(result.readyGate.ok, true);
     assert.deepEqual(result.launchableWorkItemIds, ["work.display-name-docs", plan.workItemId]);
     assert.equal(result.recommendedNativeTaskConcurrency, 1);
-    assert.equal(result.operatorSummary.recommendedNativeTaskConcurrency, 1);
+    assert.equal(result.operatorSummary.responsibilityUnitCount, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -157,7 +157,7 @@ test("board status reports stale Blueprint work and is no-write", async () => {
     assert.equal(result.audit.staleBlueprintWorkItemIds.includes("work.login-ui"), true);
     assert.equal(result.audit.gateFailures[0].code, "HARNESS_BLUEPRINT_APPROVAL_STALE");
     assert.equal(result.phase, "approval-required");
-    assert.equal(result.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
+    assert.equal(result.blockers[0].nextActionCode, "approve");
     assert.deepEqual(await snapshot(watched), before);
   });
 });
@@ -185,7 +185,7 @@ test("board status blocks Contract Frozen planned work until Blueprint approval"
     assert.deepEqual(result.audit.blueprintBlockedWorkItemIds, [plan.workItemId]);
     assert.deepEqual(result.launchableWorkItemIds, []);
     assert.equal(result.recommendedNativeTaskConcurrency, 0);
-    assert.equal(result.nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
+    assert.equal(result.nextActionCode, "approve");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -235,7 +235,7 @@ test("board status explains Failed Fast retry and Rework without writing state",
 
     let result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:00.000Z") });
     assert.equal(result.phase, "failed-fast");
-    assert.equal(result.nextAction, "/makeitreal:doctor");
+    assert.equal(result.nextActionCode, "status");
     assert.equal(result.blockers[0].code, "HARNESS_CLAUDE_HOOK_FAILED");
     assert.deepEqual(result.failedFast[0], {
       id: "work.login-ui",
@@ -250,7 +250,7 @@ test("board status explains Failed Fast retry and Rework without writing state",
 
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:02.000Z") });
     assert.equal(result.phase, "failed-fast");
-    assert.equal(result.nextAction, "/makeitreal:doctor");
+    assert.equal(result.nextActionCode, "launch");
 
     const timeoutBoard = await readJsonFile(boardPath);
     const timeoutItem = timeoutBoard.workItems.find((item) => item.id === "work.login-ui");
@@ -264,13 +264,13 @@ test("board status explains Failed Fast retry and Rework without writing state",
 
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:02.000Z") });
     assert.equal(result.phase, "failed-fast");
-    assert.equal(result.nextAction, "/makeitreal:status");
-    assert.equal(result.blockers[0].nextAction, "/makeitreal:status");
+    assert.equal(result.nextActionCode, "status");
+    assert.equal(result.blockers[0].nextActionCode, "status");
     assert.deepEqual(await snapshot(watched), timeoutBefore);
 
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:06.000Z") });
     assert.equal(result.phase, "failed-fast");
-    assert.equal(result.nextAction, "/makeitreal:launch");
+    assert.equal(result.nextActionCode, "launch");
 
     const reworkBoard = await readJsonFile(boardPath);
     const reworkItem = reworkBoard.workItems.find((item) => item.id === "work.login-ui");
@@ -283,7 +283,7 @@ test("board status explains Failed Fast retry and Rework without writing state",
     result = await readBoardStatus({ boardDir, now: new Date("2026-05-06T00:00:02.000Z") });
     assert.equal(result.phase, "rework-required");
     assert.equal(result.blockers[0].code, "HARNESS_VERIFICATION_FAILED");
-    assert.equal(result.nextAction, "/makeitreal:launch");
+    assert.equal(result.nextActionCode, "launch");
     assert.deepEqual(await snapshot(watched), reworkBefore);
   });
 });

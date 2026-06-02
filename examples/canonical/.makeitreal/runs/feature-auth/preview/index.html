@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Make It Real Architecture Dossier - Authentication Vertical Slice</title>
-  <link rel="stylesheet" href="./preview.css?v=1780357613840">
+  <link rel="stylesheet" href="./preview.css?v=1780366609738">
 </head>
 <body>
   <main class="architecture-shell">
@@ -38,7 +38,7 @@
         </details>
         <div class="overview-brief">
           <p><strong>Review focus:</strong> module placement, public interfaces, contract IO, scenario flow, and acceptance evidence.</p>
-          <p><strong>Current phase:</strong> <span data-live-phase>launch-ready</span>. <span data-live-headline>Board has work ready for launch.</span></p>
+          <p><strong>Current phase:</strong> <span data-live-phase>launch-ready</span></p>
           <p><strong>Next Claude Code action:</strong> <code data-live-next-command>/makeitreal:launch</code></p>
         </div>
 
@@ -113,115 +113,7 @@
     </details>
   </article>
 
-        <section id="design-patterns" class="architecture-section">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Architecture</p>
-        <h2>Design Patterns</h2>
-      </div>
-    </div>
-    <div class="design-patterns-list">
-      <article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Client-Server (Request-Reply)</strong>
-        <p class="muted" style="margin:4px 0 0;">1 consumer-to-provider edge: clients call servers through declared contracts only.</p>
-        <article class="diagram-card">
-    <header>
-      <strong>Client-Server (Request-Reply)</strong>
-      <span>1 consumer-to-provider edge: clients call servers through declared contracts only.</span>
-    </header>
-    <pre class="mermaid">sequenceDiagram
-  participant Auth UI
-  participant Auth Service
-  Auth UI-&gt;&gt;+Auth Service: contract.auth.login
-  Auth Service--&gt;&gt;-Auth UI: response</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>sequenceDiagram
-  participant Auth UI
-  participant Auth Service
-  Auth UI-&gt;&gt;+Auth Service: contract.auth.login
-  Auth Service--&gt;&gt;-Auth UI: response</code></pre>
-    </details>
-  </article>
-      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Observer / Event-Driven</strong>
-        <p class="muted" style="margin:4px 0 0;">1 async or event-driven surface decouple producers from consumers via declared events.</p>
-        <article class="diagram-card">
-    <header>
-      <strong>Observer / Event-Driven</strong>
-      <span>1 async or event-driven surface decouple producers from consumers via declared events.</span>
-    </header>
-    <pre class="mermaid">flowchart LR
-  pub_0[&quot;Auth UI&quot;]
-  sub_0_0[&quot;Auth page composition&quot;]
-  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_0
-  sub_0_1[&quot;browser interaction tests&quot;]
-  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_1</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>flowchart LR
-  pub_0[&quot;Auth UI&quot;]
-  sub_0_0[&quot;Auth page composition&quot;]
-  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_0
-  sub_0_1[&quot;browser interaction tests&quot;]
-  pub_0 -.-&gt;|&quot;LoginForm.submit&quot;| sub_0_1</code></pre>
-    </details>
-  </article>
-      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Contract-First Design</strong>
-        <p class="muted" style="margin:4px 0 0;">1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse.</p>
-        <article class="diagram-card">
-    <header>
-      <strong>Contract-First Design</strong>
-      <span>1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse.</span>
-    </header>
-    <pre class="mermaid">flowchart TB
-  contract_0{{&quot;contract.auth.login&quot;}}
-  cprov_0_0[&quot;Auth Service&quot;] --&gt; contract_0
-  contract_0 --&gt; ccons_0_0[&quot;Auth UI&quot;]</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>flowchart TB
-  contract_0{{&quot;contract.auth.login&quot;}}
-  cprov_0_0[&quot;Auth Service&quot;] --&gt; contract_0
-  contract_0 --&gt; ccons_0_0[&quot;Auth UI&quot;]</code></pre>
-    </details>
-  </article>
-      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Bounded Context (Domain-Driven Design)</strong>
-        <p class="muted" style="margin:4px 0 0;">2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract.</p>
-        <article class="diagram-card">
-    <header>
-      <strong>Bounded Context (Domain-Driven Design)</strong>
-      <span>2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract.</span>
-    </header>
-    <pre class="mermaid">flowchart TB
-  subgraph bc_0[&quot;Auth UI&quot;]
-    bc_0_paths[&quot;apps/web/auth/**&quot;]
-  end
-  subgraph bc_1[&quot;Auth Service&quot;]
-    bc_1_paths[&quot;services/auth/**, contracts/auth-login.openapi.json&quot;]
-  end
-  bc_0 --&gt;|&quot;contract.auth.login&quot;| bc_1</pre>
-    <details class="mermaid-source">
-      <summary>Mermaid source</summary>
-      <pre class="code-block" data-language="mermaid"><code>flowchart TB
-  subgraph bc_0[&quot;Auth UI&quot;]
-    bc_0_paths[&quot;apps/web/auth/**&quot;]
-  end
-  subgraph bc_1[&quot;Auth Service&quot;]
-    bc_1_paths[&quot;services/auth/**, contracts/auth-login.openapi.json&quot;]
-  end
-  bc_0 --&gt;|&quot;contract.auth.login&quot;| bc_1</code></pre>
-    </details>
-  </article>
-      </article><article class="design-pattern-card" style="padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <strong>Fail-Fast Contract Mismatch</strong>
-        <p class="muted" style="margin:4px 0 0;">Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation.</p>
         
-      </article>
-    </div>
-  </section>
       </header>
       <section id="scenarios" class="architecture-section">
     <div class="section-heading">
@@ -809,17 +701,17 @@ const session = await httpResponse.json();</code></pre>
   </div></div>
 
     <h3 style="margin-top:20px;">Review Decisions</h3>
-    <ol class="review-decisions"><li>Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z.</li><li>Auth UI owns apps/web/auth/** and exposes LoginForm.submit.</li><li>Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.</li><li>Auth UI may call Auth Service only through contract.auth.login.</li><li>contract.auth.login is reviewed from contracts/auth-login.openapi.json.</li></ol>
+    <ol class="review-decisions"><li>Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z.</li></ol>
 
     <h3 style="margin-top:20px;">Verification Evidence</h3>
     <div class="test-results">
     <article class="passed">
       <strong>verification</strong>
-      <p>verification recorded</p>
+      <p>Evidence recorded.</p>
       <code>evidence/verification.json</code>
     </article><article class="passed">
       <strong>wiki-sync</strong>
-      <p>wiki-sync recorded</p>
+      <p>Evidence recorded.</p>
       <code>evidence/wiki-sync.json</code>
     </article>
   </div>
@@ -917,7 +809,7 @@ const session = await httpResponse.json();</code></pre>
   </section>
     </article>
   </main>
-  <script src="./preview.js?v=1780357613843"></script>
+  <script src="./preview.js?v=1780366609740"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" onerror="document.querySelectorAll('details.mermaid-source').forEach(function(el){el.open=true});document.querySelectorAll('pre.mermaid').forEach(function(el){el.style.display='none'})"></script>
   <script>
     if (typeof mermaid !== "undefined") {

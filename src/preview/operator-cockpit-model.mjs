@@ -50,8 +50,7 @@ export function buildOperatorCockpitModel({ status }) {
     controlSurface: "claude-code",
     phase: status.phase ?? "unknown",
     blueprintStatus: status.blueprintStatus ?? "unknown",
-    headline: status.headline ?? "Status unavailable.",
-    nextAction: status.nextAction ?? "Run /makeitreal:status in Claude Code.",
+    nextActionCode: status.nextActionCode ?? null,
     nextCommand: status.nextCommand ?? "/makeitreal:status",
     firstRunChecklist: checklistForPhase(status.phase),
     evidenceLinks: evidenceLinks(status.evidenceSummary)

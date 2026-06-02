@@ -121,9 +121,8 @@ export async function buildPreviewModel({ runDir, now = new Date() }) {
   const statusModel = {
     phase: runStatus.phase,
     blueprintStatus: runStatus.blueprintStatus,
-    headline: runStatus.headline,
     blockers: runStatus.blockers ?? [],
-    nextAction: runStatus.nextAction,
+    nextActionCode: runStatus.nextActionCode,
     nextCommand: runStatus.nextCommand,
     evidenceSummary: runStatus.evidenceSummary ?? []
   };

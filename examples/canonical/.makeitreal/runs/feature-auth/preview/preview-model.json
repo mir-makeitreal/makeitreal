@@ -399,32 +399,7 @@
           "toLabel": "Auth Service"
         }
       ],
-      "designPatterns": [
-        {
-          "mermaid": "sequenceDiagram\n  participant Auth UI\n  participant Auth Service\n  Auth UI->>+Auth Service: contract.auth.login\n  Auth Service-->>-Auth UI: response",
-          "name": "Client-Server (Request-Reply)",
-          "rationale": "1 consumer-to-provider edge: clients call servers through declared contracts only."
-        },
-        {
-          "mermaid": "flowchart LR\n  pub_0[\"Auth UI\"]\n  sub_0_0[\"Auth page composition\"]\n  pub_0 -.->|\"LoginForm.submit\"| sub_0_0\n  sub_0_1[\"browser interaction tests\"]\n  pub_0 -.->|\"LoginForm.submit\"| sub_0_1",
-          "name": "Observer / Event-Driven",
-          "rationale": "1 async or event-driven surface decouple producers from consumers via declared events."
-        },
-        {
-          "mermaid": "flowchart TB\n  contract_0{{\"contract.auth.login\"}}\n  cprov_0_0[\"Auth Service\"] --> contract_0\n  contract_0 --> ccons_0_0[\"Auth UI\"]",
-          "name": "Contract-First Design",
-          "rationale": "1 declared contract (contract.auth.login) govern module boundaries — implementation must conform to the contract, not the reverse."
-        },
-        {
-          "mermaid": "flowchart TB\n  subgraph bc_0[\"Auth UI\"]\n    bc_0_paths[\"apps/web/auth/**\"]\n  end\n  subgraph bc_1[\"Auth Service\"]\n    bc_1_paths[\"services/auth/**, contracts/auth-login.openapi.json\"]\n  end\n  bc_0 -->|\"contract.auth.login\"| bc_1",
-          "name": "Bounded Context (Domain-Driven Design)",
-          "rationale": "2 modules enforce strict file ownership boundaries — cross-context access requires a declared contract."
-        },
-        {
-          "name": "Fail-Fast Contract Mismatch",
-          "rationale": "Undeclared IO, imports, or fallback behavior must revise the Blueprint instead of being hidden in implementation."
-        }
-      ],
+      "designPatterns": [],
       "goals": [
         "Deliver a contract-gated authentication UI vertical slice."
       ],
@@ -603,11 +578,7 @@
         }
       ],
       "reviewDecisions": [
-        "Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z.",
-        "Auth UI owns apps/web/auth/** and exposes LoginForm.submit.",
-        "Auth Service owns services/auth/**, contracts/auth-login.openapi.json and exposes POST /auth/login.",
-        "Auth UI may call Auth Service only through contract.auth.login.",
-        "contract.auth.login is reviewed from contracts/auth-login.openapi.json."
+        "Blueprint review is approved by operator:fixture at 2026-04-30T00:00:00.000Z."
       ],
       "scenarioDetails": [
         {
@@ -1008,13 +979,13 @@
         "href": "../evidence/verification.json",
         "kind": "verification",
         "path": "evidence/verification.json",
-        "summary": "verification recorded"
+        "summary": ""
       },
       {
         "href": "../evidence/wiki-sync.json",
         "kind": "wiki-sync",
         "path": "evidence/wiki-sync.json",
-        "summary": "wiki-sync recorded"
+        "summary": ""
       }
     ],
     "firstRunChecklist": [
@@ -1055,8 +1026,7 @@
         "status": "pending"
       }
     ],
-    "headline": "Board has work ready for launch.",
-    "nextAction": "/makeitreal:launch",
+    "nextActionCode": "launch",
     "nextCommand": "/makeitreal:launch",
     "phase": "launch-ready",
     "readOnly": true
@@ -1076,19 +1046,16 @@
         "kind": "verification",
         "ok": true,
         "path": "evidence/verification.json",
-        "summary": "verification recorded",
         "workItemId": "work.feature-auth"
       },
       {
         "kind": "wiki-sync",
         "ok": true,
         "path": "evidence/wiki-sync.json",
-        "summary": "wiki-sync recorded",
         "workItemId": "work.feature-auth"
       }
     ],
-    "headline": "Board has work ready for launch.",
-    "nextAction": "/makeitreal:launch",
+    "nextActionCode": "launch",
     "nextCommand": "/makeitreal:launch",
     "phase": "launch-ready"
   }

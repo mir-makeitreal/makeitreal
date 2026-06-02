@@ -51,10 +51,10 @@ test("status reports pending approval and exits zero for readable blocked runs",
     assert.equal(output.phase, "approval-required");
     assert.equal(output.blueprintStatus, "pending");
     assert.equal(output.blockers[0].code, "HARNESS_BLUEPRINT_APPROVAL_PENDING");
-    assert.equal(output.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
+    assert.equal(output.blockers[0].nextActionCode, "approve");
     assert.equal(output.gateAudit.ok, false);
     assert.equal(output.nextCommand, "/makeitreal:plan approve");
-    assert.equal(output.nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
+    assert.equal(output.nextActionCode, "approve");
     assert.equal(output.dashboardRefresh.attempted, true);
     assert.equal(output.dashboardRefresh.skipped, false);
     assert.deepEqual(await snapshot(watched), before);
@@ -91,7 +91,6 @@ test("status marks stale generic verification failure as superseded after work-i
     const generic = summary.find((item) => item.path === "evidence/verification.json");
     assert.equal(generic.superseded, true);
     assert.equal(generic.ok, null);
-    assert.match(generic.summary, /superseded/);
   });
 });
 
@@ -142,9 +141,9 @@ test("status reports rejected Blueprint with replan command", async () => {
     assert.equal(output.blueprint.status, "rejected");
     assert.equal(output.phase, "blocked");
     assert.equal(output.blueprintStatus, "rejected");
-    assert.equal(output.nextAction, "/makeitreal:plan <request>");
+    assert.equal(output.nextActionCode, "plan");
     assert.equal(output.nextCommand, "/makeitreal:plan <request>");
-    assert.equal(output.blockers[0].nextAction, "/makeitreal:plan <request>");
+    assert.equal(output.blockers[0].nextActionCode, "plan");
   });
 });
 
@@ -159,7 +158,7 @@ test("status reports stale approval separately from missing approval", async () 
     assert.equal(output.blueprint.status, "approved");
     assert.equal(output.phase, "launch-ready");
     assert.equal(output.blueprintStatus, "approved");
-    assert.equal(output.nextAction, "/makeitreal:launch");
+    assert.equal(output.nextActionCode, "launch");
 
     const designPackPath = path.join(runDir, "design-pack.json");
     const designPack = JSON.parse(await readFile(designPackPath, "utf8"));
@@ -173,7 +172,7 @@ test("status reports stale approval separately from missing approval", async () 
     assert.equal(output.blueprint.status, "stale");
     assert.equal(output.phase, "blocked");
     assert.equal(output.blueprintStatus, "stale");
-    assert.equal(output.blockers[0].nextAction, "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.");
+    assert.equal(output.blockers[0].nextActionCode, "approve");
 
     await rm(path.join(runDir, "blueprint-review.json"), { force: true });
     result = runHarness(["status", root]);
@@ -193,7 +192,7 @@ test("status reports current-run missing without failing the operator command", 
     assert.equal(output.ok, false);
     assert.equal(output.errors[0].code, "HARNESS_CURRENT_RUN_MISSING");
     assert.equal(output.phase, "planning-required");
-    assert.equal(output.nextAction, "/makeitreal:plan <request>");
+    assert.equal(output.nextActionCode, "plan");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -247,7 +246,7 @@ test("status projects board recovery phases through the public current-run surfa
     assert.equal(status.status, 0, status.stdout || status.stderr);
     let output = JSON.parse(status.stdout);
     assert.equal(output.phase, "failed-fast");
-    assert.equal(output.nextAction, "/makeitreal:status");
+    assert.equal(output.nextActionCode, "status");
     assert.equal(output.boardStatus.failedFast[0].id, plan.workItemId);
     assert.equal(output.boardStatus.failedFast[0].errorCode, "HARNESS_RUNNER_FAILED");
     assert.equal(output.boardStatus.failedFast[0].errorCategory, null);
@@ -263,9 +262,9 @@ test("status projects board recovery phases through the public current-run surfa
     assert.equal(status.status, 0, status.stdout || status.stderr);
     output = JSON.parse(status.stdout);
     assert.equal(output.phase, "launch-ready");
-    assert.equal(output.nextAction, "/makeitreal:launch");
+    assert.equal(output.nextActionCode, "launch");
     assert.deepEqual(output.boardStatus.launchableWorkItemIds, [plan.workItemId]);
-    assert.equal(output.operatorSummary.recommendedNativeTaskConcurrency, 1);
+    assert.equal(output.operatorSummary.responsibilityUnitCount, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

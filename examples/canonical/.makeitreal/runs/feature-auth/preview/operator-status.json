@@ -19,27 +19,25 @@
         "kind": "verification",
         "ok": true,
         "path": "evidence/verification.json",
-        "summary": "verification recorded",
         "workItemId": "work.feature-auth"
       },
       {
         "kind": "wiki-sync",
         "ok": true,
         "path": "evidence/wiki-sync.json",
-        "summary": "wiki-sync recorded",
         "workItemId": "work.feature-auth"
       }
     ],
     "failedFast": [],
     "generatedAt": "2026-04-30T00:00:00.000Z",
-    "headline": "Board has work ready for launch.",
     "laneCounts": {
       "Contract Frozen": 1
     },
     "launchableWorkItemIds": [
       "work.feature-auth"
     ],
-    "nextAction": "/makeitreal:launch",
+    "nextActionCode": "launch",
+    "nextCommand": "/makeitreal:launch",
     "ok": true,
     "operatorSummary": {
       "blockers": [],
@@ -48,24 +46,21 @@
           "kind": "verification",
           "ok": true,
           "path": "evidence/verification.json",
-          "summary": "verification recorded",
           "workItemId": "work.feature-auth"
         },
         {
           "kind": "wiki-sync",
           "ok": true,
           "path": "evidence/wiki-sync.json",
-          "summary": "wiki-sync recorded",
           "workItemId": "work.feature-auth"
         }
       ],
-      "headline": "Board has work ready for launch.",
       "launchableWorkItemIds": [
         "work.feature-auth"
       ],
-      "nextAction": "/makeitreal:launch",
+      "nextActionCode": "launch",
       "phase": "launch-ready",
-      "recommendedNativeTaskConcurrency": 1
+      "responsibilityUnitCount": 1
     },
     "phase": "launch-ready",
     "readyGate": {
@@ -122,27 +117,25 @@
           "kind": "verification",
           "ok": true,
           "path": "evidence/verification.json",
-          "summary": "verification recorded",
           "workItemId": "work.feature-auth"
         },
         {
           "kind": "wiki-sync",
           "ok": true,
           "path": "evidence/wiki-sync.json",
-          "summary": "wiki-sync recorded",
           "workItemId": "work.feature-auth"
         }
       ],
       "failedFast": [],
       "generatedAt": "2026-04-30T00:00:00.000Z",
-      "headline": "Board has work ready for launch.",
       "laneCounts": {
         "Contract Frozen": 1
       },
       "launchableWorkItemIds": [
         "work.feature-auth"
       ],
-      "nextAction": "/makeitreal:launch",
+      "nextActionCode": "launch",
+      "nextCommand": "/makeitreal:launch",
       "ok": true,
       "operatorSummary": {
         "blockers": [],
@@ -151,24 +144,21 @@
             "kind": "verification",
             "ok": true,
             "path": "evidence/verification.json",
-            "summary": "verification recorded",
             "workItemId": "work.feature-auth"
           },
           {
             "kind": "wiki-sync",
             "ok": true,
             "path": "evidence/wiki-sync.json",
-            "summary": "wiki-sync recorded",
             "workItemId": "work.feature-auth"
           }
         ],
-        "headline": "Board has work ready for launch.",
         "launchableWorkItemIds": [
           "work.feature-auth"
         ],
-        "nextAction": "/makeitreal:launch",
+        "nextActionCode": "launch",
         "phase": "launch-ready",
-        "recommendedNativeTaskConcurrency": 1
+        "responsibilityUnitCount": 1
       },
       "phase": "launch-ready",
       "readyGate": {
@@ -196,14 +186,12 @@
         "kind": "verification",
         "ok": true,
         "path": "evidence/verification.json",
-        "summary": "verification recorded",
         "workItemId": "work.feature-auth"
       },
       {
         "kind": "wiki-sync",
         "ok": true,
         "path": "evidence/wiki-sync.json",
-        "summary": "wiki-sync recorded",
         "workItemId": "work.feature-auth"
       }
     ],
@@ -219,8 +207,7 @@
       "target": "Ready"
     },
     "generatedAt": "2026-04-30T00:00:00.000Z",
-    "headline": "Board has work ready for launch.",
-    "nextAction": "/makeitreal:launch",
+    "nextActionCode": "launch",
     "nextCommand": "/makeitreal:launch",
     "ok": true,
     "operatorSummary": {
@@ -231,24 +218,21 @@
           "kind": "verification",
           "ok": true,
           "path": "evidence/verification.json",
-          "summary": "verification recorded",
           "workItemId": "work.feature-auth"
         },
         {
           "kind": "wiki-sync",
           "ok": true,
           "path": "evidence/wiki-sync.json",
-          "summary": "wiki-sync recorded",
           "workItemId": "work.feature-auth"
         }
       ],
-      "headline": "Board has work ready for launch.",
       "launchableWorkItemIds": [
         "work.feature-auth"
       ],
-      "nextAction": "/makeitreal:launch",
+      "nextActionCode": "launch",
       "phase": "launch-ready",
-      "recommendedNativeTaskConcurrency": 1
+      "responsibilityUnitCount": 1
     },
     "phase": "launch-ready",
     "projectRoot": "/Users/eugene/Workspace/52g-tools/dev-harness/examples/canonical/.makeitreal/runs",

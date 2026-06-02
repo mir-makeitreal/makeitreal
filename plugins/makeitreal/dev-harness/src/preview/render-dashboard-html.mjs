@@ -1962,6 +1962,20 @@ export function renderDashboardJs() {
     }
   }
 
+  const ACTION_COMMANDS = {
+    plan: "/makeitreal:plan <request>",
+    approve: "/makeitreal:plan approve",
+    launch: "/makeitreal:launch",
+    status: "/makeitreal:status",
+    verify: "/makeitreal:verify",
+    doctor: "/makeitreal:doctor",
+    setup: "/makeitreal:setup"
+  };
+
+  function commandForActionCode(code) {
+    return ACTION_COMMANDS[code] ?? "/makeitreal:status";
+  }
+
   function verificationLabel(status = {}) {
     if (status.phase === "done") {
       return "Verified and synced";
@@ -1970,7 +1984,7 @@ export function renderDashboardJs() {
     if (verification?.ok === true) {
       return "Verification passed";
     }
-    return status.nextAction ?? "Pending review";
+    return "Pending review";
   }
 
   function verificationTileLabel(status = {}) {
@@ -1985,7 +1999,7 @@ export function renderDashboardJs() {
   }
 
   function renderBlockers(blockers = []) {
-    return renderRailList(blockers, "No active blockers.", (blocker) => '<div><strong>' + escapeHtml(blocker.code) + '</strong><p>' + escapeHtml(blocker.message) + '</p>' + (blocker.nextAction ? '<code>' + escapeHtml(blocker.nextAction) + '</code>' : "") + '</div>');
+    return renderRailList(blockers, "No active blockers.", (blocker) => '<div><strong>' + escapeHtml(blocker.code) + '</strong><p>' + escapeHtml(blocker.message) + '</p>' + (blocker.nextActionCode ? '<code>' + escapeHtml(commandForActionCode(blocker.nextActionCode)) + '</code>' : "") + '</div>');
   }
 
   function renderEvidenceLinks(links = []) {
@@ -2044,11 +2058,10 @@ export function renderDashboardJs() {
 
   function updateRuntime(model) {
     const status = model.status ?? {};
-    const nextCommand = status.nextCommand ?? status.nextAction ?? "";
+    const nextCommand = status.nextCommand ?? "";
 
     setTextAll("[data-live-blueprint-status]", status.blueprintStatus ?? "unknown");
     setTextAll("[data-live-phase]", status.phase ?? "unknown");
-    setTextAll("[data-live-headline]", status.headline ?? "Status unavailable.");
     setTextAll("[data-live-next-command]", nextCommand || "none");
 
     const copyButton = document.querySelector("[data-live-copy-command]");

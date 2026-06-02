@@ -1,27 +1,42 @@
 import path from "node:path";
 import { listJsonFiles, readJsonFile } from "../io/json.mjs";
 
-const ACTIONS = {
-  setup: "/makeitreal:setup",
-  approve: "Answer the Blueprint review question, or reply in chat with approval, requested changes, or rejection.",
+export const ACTION_CODES = {
+  PLAN: "plan",
+  APPROVE: "approve",
+  LAUNCH: "launch",
+  STATUS: "status",
+  SETUP: "setup"
+};
+
+// Deterministic action-code -> Claude Code slash command mapping. This is not
+// engine prose: each code resolves to exactly one operator command. Consumers
+// render the surface text; this only resolves the canonical command to copy.
+const ACTION_COMMANDS = {
   plan: "/makeitreal:plan <request>",
+  approve: "/makeitreal:plan approve",
   launch: "/makeitreal:launch",
   status: "/makeitreal:status",
   verify: "/makeitreal:verify",
-  doctor: "/makeitreal:doctor"
+  doctor: "/makeitreal:doctor",
+  setup: "/makeitreal:setup"
 };
 
-export function actionForErrorCode(code) {
+export function commandForActionCode(code) {
+  return ACTION_COMMANDS[code] ?? "/makeitreal:status";
+}
+
+export function actionCodeForError(code) {
   switch (code) {
     case "HARNESS_CURRENT_RUN_MISSING":
-      return ACTIONS.plan;
+      return ACTION_CODES.PLAN;
     case "HARNESS_BLUEPRINT_APPROVAL_MISSING":
     case "HARNESS_BLUEPRINT_APPROVAL_PENDING":
     case "HARNESS_BLUEPRINT_APPROVAL_STALE":
     case "HARNESS_BLUEPRINT_APPROVAL_DRIFT":
-      return ACTIONS.approve;
+      return ACTION_CODES.APPROVE;
     case "HARNESS_BLUEPRINT_APPROVAL_REJECTED":
-      return ACTIONS.plan;
+      return ACTION_CODES.PLAN;
     case "HARNESS_DAG_INVALID":
     case "HARNESS_DAG_NODE_INVALID":
     case "HARNESS_DAG_NODE_KIND_INVALID":
@@ -30,26 +45,28 @@ export function actionForErrorCode(code) {
     case "HARNESS_DAG_DEPENDENCY_DRIFT":
     case "HARNESS_DAG_CYCLE":
     case "HARNESS_DAG_PATH_OVERLAP":
-      return ACTIONS.plan;
+      return ACTION_CODES.PLAN;
     case "HARNESS_VERIFICATION_PLAN_MISSING":
     case "HARNESS_VERIFICATION_FAILED":
     case "HARNESS_DONE_EVIDENCE_MISSING":
-      return ACTIONS.verify;
+      // structured action code outside the primary set; LLM decides the surface text
+      return "verify";
     case "HARNESS_CLAUDE_RUNNER_STARTUP_FAILED":
     case "HARNESS_CLAUDE_RUNNER_COMMAND_REJECTED":
     case "HARNESS_CLAUDE_HOOK_FAILED":
     case "HARNESS_RUNNER_OUTPUT_INVALID":
-      return ACTIONS.doctor;
+      // structured action code outside the primary set; LLM decides the surface text
+      return "doctor";
     default:
-      return ACTIONS.status;
+      return ACTION_CODES.STATUS;
   }
 }
 
-export function blockerFromError(error, { nextAction = null, authority = "engine" } = {}) {
+export function blockerFromError(error, { nextActionCode = null, authority = "engine" } = {}) {
   return {
     code: error.code,
-    message: error.reason,
-    nextAction: nextAction ?? actionForErrorCode(error.code),
+    data: { reason: error.reason ?? null },
+    nextActionCode: nextActionCode ?? actionCodeForError(error.code),
     authority
   };
 }
@@ -70,15 +87,14 @@ export function blueprintStatusFrom(blueprint) {
 export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
   if (!resolved?.ok) {
     const blockers = (resolved?.errors ?? []).map((error) => blockerFromError(error, {
-      nextAction: ACTIONS.plan,
+      nextActionCode: ACTION_CODES.PLAN,
       authority: "current-run"
     }));
     return {
       phase: "planning-required",
       blueprintStatus: "missing",
-      headline: "No active Make It Real run is selected yet.",
       blockers,
-      nextAction: ACTIONS.plan,
+      nextActionCode: ACTION_CODES.PLAN,
       evidenceSummary: []
     };
   }
@@ -86,7 +102,7 @@ export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
   const blueprintStatus = blueprintStatusFrom(blueprint);
   if (!blueprint?.ok) {
     const blockers = (blueprint?.errors ?? []).map((error) => blockerFromError(error, {
-      nextAction: error.code === "HARNESS_BLUEPRINT_APPROVAL_REJECTED" ? ACTIONS.plan : ACTIONS.approve,
+      nextActionCode: error.code === "HARNESS_BLUEPRINT_APPROVAL_REJECTED" ? ACTION_CODES.PLAN : ACTION_CODES.APPROVE,
       authority: "blueprint-review"
     }));
     const rejected = blueprintStatus === "rejected";
@@ -94,13 +110,8 @@ export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
     return {
       phase: rejected || stale ? "blocked" : "approval-required",
       blueprintStatus,
-      headline: rejected
-        ? "Blueprint was rejected and must be revised or approved."
-        : stale
-          ? "Blueprint approval is stale because source artifacts changed."
-          : "Blueprint review is waiting for approval.",
       blockers,
-      nextAction: rejected ? ACTIONS.plan : ACTIONS.approve,
+      nextActionCode: rejected ? ACTION_CODES.PLAN : ACTION_CODES.APPROVE,
       evidenceSummary: []
     };
   }
@@ -110,9 +121,8 @@ export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
     return {
       phase: "blocked",
       blueprintStatus,
-      headline: "Launch is blocked by Ready gate failures.",
       blockers,
-      nextAction: blockers[0]?.nextAction ?? ACTIONS.status,
+      nextActionCode: blockers[0]?.nextActionCode ?? ACTION_CODES.STATUS,
       evidenceSummary: []
     };
   }
@@ -120,9 +130,8 @@ export function summarizeRunOperator({ resolved, blueprint, readyGate }) {
   return {
     phase: "launch-ready",
     blueprintStatus,
-    headline: "Blueprint is approved and ready to launch.",
     blockers: [],
-    nextAction: ACTIONS.launch,
+    nextActionCode: ACTION_CODES.LAUNCH,
     evidenceSummary: []
   };
 }
@@ -131,19 +140,12 @@ function firstByLane(board, lanes) {
   return (board.workItems ?? []).find((item) => lanes.includes(item.lane));
 }
 
-function failedFastNextAction(failedFast, canRetry) {
-  if (!canRetry && failedFast.errorNextAction === ACTIONS.launch) {
-    return ACTIONS.status;
-  }
-  return failedFast.errorNextAction ?? (canRetry ? ACTIONS.launch : ACTIONS.status);
-}
-
 function launchBatchSummary(launchableWork) {
   const work = launchableWork ?? [];
   const responsibilityUnits = new Set(work.map((item) => item.responsibilityUnitId ?? item.id));
   return {
     launchableWorkItemIds: work.map((item) => item.id),
-    recommendedNativeTaskConcurrency: responsibilityUnits.size
+    responsibilityUnitCount: responsibilityUnits.size
   };
 }
 
@@ -161,25 +163,21 @@ export function summarizeBoardOperator({
     const authority = audit?.gateFailureAuthority ?? "blueprint-review";
     const blueprintBlocked = authority === "blueprint-review";
     const blockers = errors.map((error) => blockerFromError(error, {
-      nextAction: blueprintBlocked ? ACTIONS.approve : null,
+      nextActionCode: blueprintBlocked ? ACTION_CODES.APPROVE : null,
       authority
     }));
     return {
       phase: blueprintBlocked ? "approval-required" : "blocked",
-      headline: blueprintBlocked
-        ? "Board has work blocked by Blueprint approval."
-        : "Board has work blocked by Ready gate failures.",
       blockers,
-      nextAction: blockers[0]?.nextAction ?? (blueprintBlocked ? ACTIONS.approve : ACTIONS.status)
+      nextActionCode: blockers[0]?.nextActionCode ?? (blueprintBlocked ? ACTION_CODES.APPROVE : ACTION_CODES.STATUS)
     };
   }
 
   if ((board.workItems ?? []).length > 0 && board.workItems.every((item) => item.lane === "Done")) {
     return {
       phase: "done",
-      headline: "All required evidence is complete.",
       blockers: [],
-      nextAction: null
+      nextActionCode: null
     };
   }
 
@@ -187,21 +185,21 @@ export function summarizeBoardOperator({
   if (failedFast) {
     const retryReadyIds = new Set(retryReady.map((item) => item.id));
     const canRetry = retryReadyIds.has(failedFast.id) || !failedFast.nextRetryAt || new Date(failedFast.nextRetryAt).getTime() <= now.getTime();
-    const retryDetail = canRetry
-      ? `${failedFast.id} is ready to retry.`
-      : `${failedFast.id} can retry after ${failedFast.nextRetryAt}.`;
-    const reasonDetail = failedFast.errorReason ? ` ${failedFast.errorReason}` : "";
-    const nextAction = failedFastNextAction(failedFast, canRetry);
+    const nextActionCode = canRetry ? ACTION_CODES.LAUNCH : ACTION_CODES.STATUS;
     return {
       phase: "failed-fast",
-      headline: canRetry ? "Runner failed fast and can be retried." : "Runner failed fast and is waiting for retry time.",
       blockers: [{
         code: failedFast.errorCode ?? "HARNESS_RUNNER_FAILED",
-        message: `${retryDetail}${reasonDetail}`,
-        nextAction,
+        data: {
+          workItemId: failedFast.id,
+          canRetry,
+          nextRetryAt: failedFast.nextRetryAt ?? null,
+          errorReason: failedFast.errorReason ?? null
+        },
+        nextActionCode,
         authority: "orchestrator"
       }],
-      nextAction
+      nextActionCode
     };
   }
 
@@ -209,52 +207,49 @@ export function summarizeBoardOperator({
   if (rework) {
     return {
       phase: "rework-required",
-      headline: "Verification failed; implementation must be revised before Done.",
       blockers: [{
         code: rework.errorCode ?? "HARNESS_VERIFICATION_FAILED",
-        message: `${rework.id} requires implementation fix or replanning before completion.`,
-        nextAction: ACTIONS.launch,
+        data: { workItemId: rework.id },
+        nextActionCode: ACTION_CODES.LAUNCH,
         authority: "verification"
       }],
-      nextAction: ACTIONS.launch
+      nextActionCode: ACTION_CODES.LAUNCH
     };
   }
 
   if (firstByLane(board, ["Claimed", "Running"])) {
-    return { phase: "running", headline: "Work is running under Make It Real boundaries.", blockers: [], nextAction: ACTIONS.status };
+    return { phase: "running", blockers: [], nextActionCode: ACTION_CODES.STATUS };
   }
   if (firstByLane(board, ["Verifying"])) {
-    return { phase: "verifying", headline: "Implementation is waiting for engine-owned verification.", blockers: [], nextAction: ACTIONS.status };
+    return { phase: "verifying", blockers: [], nextActionCode: ACTION_CODES.STATUS };
   }
   if (firstByLane(board, ["Human Review"])) {
-    return { phase: "human-review", headline: "Verification passed; human review/wiki completion is pending.", blockers: [], nextAction: ACTIONS.launch };
+    return { phase: "human-review", blockers: [], nextActionCode: ACTION_CODES.LAUNCH };
   }
   if (launchableWork.length > 0) {
     return {
       phase: "launch-ready",
-      headline: "Board has work ready for launch.",
       blockers: [],
-      nextAction: ACTIONS.launch,
+      nextActionCode: ACTION_CODES.LAUNCH,
       ...launchBatchSummary(launchableWork)
     };
   }
   if (blockedWork.length > 0) {
     return {
       phase: "blocked",
-      headline: "Some Ready work is blocked by unfinished dependencies.",
       blockers: blockedWork.map((item) => ({
         code: "HARNESS_WORK_BLOCKED",
-        message: `${item.id} is waiting for dependencies.`,
-        nextAction: ACTIONS.status,
+        data: { workItemId: item.id },
+        nextActionCode: ACTION_CODES.STATUS,
         authority: "dependency-graph"
       })),
-      nextAction: ACTIONS.status
+      nextActionCode: ACTION_CODES.STATUS
     };
   }
   if (activeClaims.length > 0) {
-    return { phase: "running", headline: "Work is claimed and awaiting runner progress.", blockers: [], nextAction: ACTIONS.status };
+    return { phase: "running", blockers: [], nextActionCode: ACTION_CODES.STATUS };
   }
-  return { phase: "blocked", headline: "No launchable work is currently available.", blockers: [], nextAction: ACTIONS.status };
+  return { phase: "blocked", blockers: [], nextActionCode: ACTION_CODES.STATUS };
 }
 
 export async function readEvidenceSummary(runDir) {
@@ -272,16 +267,14 @@ export async function readEvidenceSummary(runDir) {
         kind: evidence.kind ?? path.basename(filePath, ".json"),
         workItemId: evidence.workItemId ?? null,
         ok: evidence.ok ?? true,
-        path: path.relative(runDir, filePath),
-        summary: `${evidence.kind ?? "evidence"} ${evidence.ok === false ? "failed" : "recorded"}`
+        path: path.relative(runDir, filePath)
       });
     } catch {
       summaries.push({
         kind: path.basename(filePath, ".json"),
         workItemId: null,
         ok: false,
-        path: path.relative(runDir, filePath),
-        summary: "Evidence file could not be read."
+        path: path.relative(runDir, filePath)
       });
     }
   }
@@ -294,8 +287,7 @@ export async function readEvidenceSummary(runDir) {
         return {
           ...summary,
           ok: null,
-          superseded: true,
-          summary: "Previous ad hoc verification failure superseded by current work-item evidence"
+          superseded: true
         };
       }
       return summary;
