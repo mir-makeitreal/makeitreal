@@ -438,7 +438,8 @@ export async function runDemo({
     slug,
     workItems: normalized.workItems,
     workItemDag: normalized.workItemDag,
-    runnerMode: "scripted-simulator"
+    runnerMode: "scripted-simulator",
+    availableLanes: normalized.designPack?.stateFlow?.lanes ?? []
   });
 
   const blueprintReview = await seedBlueprintReview({ runDir, now });

@@ -362,7 +362,10 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
       allowedPaths: [...(module.ownedPaths ?? [])],
       prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
       doneEvidence: (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path })),
-      verificationCommands
+      verificationCommands,
+      implementationPrompt: wi.implementationPrompt ?? null,
+      requiredReviewRoles: wi.requiredReviewRoles ?? null,
+      reviewerPrompts: wi.reviewerPrompts ?? null
     };
   }).filter(Boolean);
 }
