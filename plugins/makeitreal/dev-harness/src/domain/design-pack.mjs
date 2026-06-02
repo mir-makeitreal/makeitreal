@@ -111,8 +111,12 @@ export function validateDesignPack(designPack) {
         continue;
       }
       for (const key of ["inputs", "outputs", "errors"]) {
-        if (!hasNonEmptyArray(surface.signature[key])) {
-          errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: `${surfaceLabel}.signature.${key} must be a non-empty array.`, evidence: ["design-pack.json"] }));
+        // Only HTTP surfaces require non-empty inputs/outputs/errors
+        const isHttp = surface.kind === "http";
+        if (isHttp && !hasNonEmptyArray(surface.signature[key])) {
+          errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: `${surfaceLabel}.signature.${key} must be a non-empty array for HTTP contracts.`, evidence: ["design-pack.json"] }));
+        } else if (!isHttp && !Array.isArray(surface.signature[key])) {
+          errors.push(createHarnessError({ code: "HARNESS_DESIGN_PACK_INVALID", reason: `${surfaceLabel}.signature.${key} must be an array.`, evidence: ["design-pack.json"] }));
         }
       }
     }

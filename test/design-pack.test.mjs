@@ -39,6 +39,7 @@ test("module interfaces require public IO signatures", async () => {
         publicSurfaces: [
           {
             ...designPack.moduleInterfaces[0].publicSurfaces[0],
+            kind: "http",  // HTTP surfaces require non-empty inputs/outputs/errors
             signature: {
               inputs: [],
               outputs: [],
