@@ -7,6 +7,23 @@ import { seedBlueprintReview } from "../../src/blueprint/review.mjs";
 import { renderDesignPreview } from "../../src/preview/render-preview.mjs";
 import { writeCurrentRunState } from "../../src/project/run-state.mjs";
 import { runGates } from "../../src/gates/index.mjs";
+import { writeJsonFile } from "../../src/io/json.mjs";
+
+// Doctrine: the engine emits only runnerMode/realAgentLaunch in trust-policy.json;
+// the runner security posture (command execution + fail-fast policies) must be
+// declared by the blueprint author. Tests stand in for that author by writing the
+// operator-declared trust policy the orchestrator runner contract requires.
+function declaredTrustPolicy({ runnerMode, runId }) {
+  return {
+    schemaVersion: "1.0",
+    runnerMode,
+    runId: runId ?? null,
+    realAgentLaunch: runnerMode === "claude-code" ? "enabled" : "disabled",
+    commandExecution: runnerMode === "claude-code" ? "structured-command-only" : "trusted-fixture-only",
+    userInputRequired: "fail-fast",
+    unsupportedToolCall: "fail-fast"
+  };
+}
 
 /**
  * Import a BlueprintProposal through the full pipeline.
@@ -52,8 +69,14 @@ export async function importBlueprint({
     slug: slug || "blueprint",
     workItems: normalized.workItems,
     workItemDag: normalized.workItemDag,
-    runnerMode
+    runnerMode,
+    // Lane vocabulary is declared by the blueprint (its stateFlow), not invented
+    // by the engine. Project it onto the launch board.
+    board: { availableLanes: proposal.stateFlow?.lanes ?? [] }
   });
+
+  // Write the operator-declared trust policy the orchestrator runner contract needs.
+  await writeJsonFile(path.join(runDir, "trust-policy.json"), declaredTrustPolicy({ runnerMode, runId: effectiveRunId }));
 
   const blueprintReview = await seedBlueprintReview({ runDir, now });
   const preview = await renderDesignPreview({ runDir, now });
@@ -93,12 +116,40 @@ export async function importBlueprint({
   };
 }
 
+// Canonical workflow state machine. Under the doctrine "LLM decides everything",
+// the engine no longer fabricates lanes/transitions — the blueprint author (here,
+// the test proposal) must declare them. These mirror the values the engine used
+// to inject so existing gate expectations continue to hold.
+export const CANONICAL_STATE_FLOW = {
+  lanes: [
+    "Intake", "Discovery", "Scoped", "Blueprint Bound",
+    "Contract Frozen", "Ready", "Claimed", "Running",
+    "Verifying", "Human Review", "Done"
+  ],
+  transitions: [
+    { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+    { from: "Human Review", to: "Done", gate: "wiki" }
+  ]
+};
+
+// Mirrors the engine's former doneEvidence path convention: evidence/<workId>.<kind>.json
+export function canonicalDoneEvidence(moduleName) {
+  const slug = String(moduleName ?? "blueprint")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "blueprint";
+  const workId = `work.${slug}`;
+  return [
+    { kind: "verification", path: `evidence/${workId}.verification.json` },
+    { kind: "wiki-sync", path: `evidence/${workId}.wiki-sync.json` }
+  ];
+}
+
 /**
  * A minimal single-module BlueprintProposal for tests that just need a valid run dir.
  */
 export function minimalProposal({
   title = "Test Feature",
   moduleName = "test-feature",
+  owner = "team.implementation",
   allowedPaths = ["src/test-feature/**"],
   verifyCommand = "node -e \"console.log('ok')\"",
   acceptanceCriteria = [
@@ -113,9 +164,11 @@ export function minimalProposal({
     nonGoals: [`Out of scope for ${title}.`],
     acceptanceCriteria,
     assumptions: [],
+    stateFlow: CANONICAL_STATE_FLOW,
     modules: [{
       name: moduleName,
       purpose: `Owns ${title}`,
+      owner,
       ownedPaths: allowedPaths,
       dependsOn: [],
       contracts: [{
@@ -131,7 +184,8 @@ export function minimalProposal({
       title,
       dependsOn: [],
       verifyCommand,
-      complexity: "medium"
+      complexity: "medium",
+      doneEvidence: canonicalDoneEvidence(moduleName)
     }],
     scenarios: [{
       title: `${title} contract call`,

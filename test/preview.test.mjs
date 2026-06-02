@@ -702,9 +702,17 @@ test("preview renders long implementation requests as compact reference docs", a
           "Ready gate passes before implementation starts."
         ],
         assumptions: [],
+        stateFlow: {
+          lanes: ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+          transitions: [
+            { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+            { from: "Human Review", to: "Done", gate: "wiki" }
+          ]
+        },
         modules: [{
           name: "Normalize Display Name",
           purpose: "Display name normalization with whitespace handling.",
+          owner: "team.implementation",
           ownedPaths: ["src/normalize-name.mjs", "test/normalize-name.test.mjs"],
           dependsOn: [],
           contracts: [{
@@ -720,7 +728,11 @@ test("preview renders long implementation requests as compact reference docs", a
           title: "Normalize Display Name",
           dependsOn: [],
           verifyCommand: "npm test",
-          complexity: "small"
+          complexity: "small",
+          doneEvidence: [
+            { kind: "verification", path: "evidence/work.normalize-display-name.verification.json" },
+            { kind: "wiki-sync", path: "evidence/work.normalize-display-name.wiki-sync.json" }
+          ]
         }],
         scenarios: [{
           title: "normalizeDisplayName contract call",
@@ -773,9 +785,17 @@ test("preview renders API dossiers with concise responsibility labels", async ()
           "Idempotency-Key prevents duplicate orders (409)."
         ],
         assumptions: [],
+        stateFlow: {
+          lanes: ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+          transitions: [
+            { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+            { from: "Human Review", to: "Done", gate: "wiki" }
+          ]
+        },
         modules: [{
           name: "Orders API",
           purpose: "HTTP contract surface for POST /api/v1/orders.",
+          owner: "team.implementation",
           ownedPaths: ["src/api/orders/**"],
           dependsOn: [],
           contracts: [{
@@ -799,7 +819,12 @@ test("preview renders API dossiers with concise responsibility labels", async ()
           title: "Orders API",
           dependsOn: [],
           verifyCommand: "node -e console.log('orders api ok')",
-          complexity: "medium"
+          complexity: "medium",
+          doneEvidence: [
+            { kind: "verification", path: "evidence/work.orders-api.verification.json" },
+            { kind: "wiki-sync", path: "evidence/work.orders-api.wiki-sync.json" },
+            { kind: "openapi-conformance", path: "evidence/work.orders-api.openapi-conformance.json" }
+          ]
         }],
         scenarios: [{
           title: "POST /api/v1/orders contract call",
@@ -848,9 +873,17 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
           "Inputs are validated: request must have method and path strings."
         ],
         assumptions: [],
+        stateFlow: {
+          lanes: ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+          transitions: [
+            { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+            { from: "Human Review", to: "Done", gate: "wiki" }
+          ]
+        },
         modules: [{
           name: "Match Route",
           purpose: "HTTP route matching with parameterized paths.",
+          owner: "team.implementation",
           ownedPaths: ["src/route-match.mjs", "test/route-match.test.mjs"],
           dependsOn: [],
           contracts: [{
@@ -866,7 +899,11 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
           title: "Match Route",
           dependsOn: [],
           verifyCommand: "npm test",
-          complexity: "small"
+          complexity: "small",
+          doneEvidence: [
+            { kind: "verification", path: "evidence/work.match-route.verification.json" },
+            { kind: "wiki-sync", path: "evidence/work.match-route.wiki-sync.json" }
+          ]
         }],
         scenarios: [{
           title: "matchRoute contract call",
@@ -918,9 +955,17 @@ test("preview renders request-specific SDK examples and function signatures", as
           "Inputs are validated: input must be integer-representable, min <= max."
         ],
         assumptions: [],
+        stateFlow: {
+          lanes: ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+          transitions: [
+            { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+            { from: "Human Review", to: "Done", gate: "wiki" }
+          ]
+        },
         modules: [{
           name: "Parse Bounded Int",
           purpose: "Bounded integer parsing with range validation.",
+          owner: "team.implementation",
           ownedPaths: ["src/parse-bounded-int.mjs", "test/parse-bounded-int.test.mjs"],
           dependsOn: [],
           contracts: [{
@@ -943,7 +988,11 @@ test("preview renders request-specific SDK examples and function signatures", as
           title: "Parse Bounded Int",
           dependsOn: [],
           verifyCommand: "npm test",
-          complexity: "small"
+          complexity: "small",
+          doneEvidence: [
+            { kind: "verification", path: "evidence/work.parse-bounded-int.verification.json" },
+            { kind: "wiki-sync", path: "evidence/work.parse-bounded-int.wiki-sync.json" }
+          ]
         }],
         scenarios: [{
           title: "parseBoundedInt contract call",
@@ -994,10 +1043,18 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           "formatIsoDate is the public surface for format-iso-date."
         ],
         assumptions: [],
+        stateFlow: {
+          lanes: ["Intake", "Discovery", "Scoped", "Blueprint Bound", "Contract Frozen", "Ready", "Claimed", "Running", "Verifying", "Human Review", "Done"],
+          transitions: [
+            { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+            { from: "Human Review", to: "Done", gate: "wiki" }
+          ]
+        },
         modules: [
           {
             name: "Safe Add",
             purpose: "Safe finite-number addition.",
+            owner: "team.implementation",
             ownedPaths: ["src/math/safe-add.mjs", "test/math/safe-add.test.mjs"],
             dependsOn: [],
             contracts: [{
@@ -1011,6 +1068,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           {
             name: "Slugify Title",
             purpose: "Title slugification with whitespace handling.",
+            owner: "team.implementation",
             ownedPaths: ["src/text/slugify-title.mjs", "test/text/slugify-title.test.mjs"],
             dependsOn: [],
             contracts: [{
@@ -1024,6 +1082,7 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           {
             name: "Format ISO Date",
             purpose: "UTC ISO date formatting.",
+            owner: "team.implementation",
             ownedPaths: ["src/date/format-iso-date.mjs", "test/date/format-iso-date.test.mjs"],
             dependsOn: [],
             contracts: [{
@@ -1036,9 +1095,9 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           }
         ],
         workItems: [
-          { module: "Safe Add", title: "Safe Add", dependsOn: [], verifyCommand: "npm test", complexity: "small" },
-          { module: "Slugify Title", title: "Slugify Title", dependsOn: [], verifyCommand: "npm test", complexity: "small" },
-          { module: "Format ISO Date", title: "Format ISO Date", dependsOn: [], verifyCommand: "npm test", complexity: "small" }
+          { module: "Safe Add", title: "Safe Add", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.safe-add.verification.json" }, { kind: "wiki-sync", path: "evidence/work.safe-add.wiki-sync.json" }] },
+          { module: "Slugify Title", title: "Slugify Title", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.slugify-title.verification.json" }, { kind: "wiki-sync", path: "evidence/work.slugify-title.wiki-sync.json" }] },
+          { module: "Format ISO Date", title: "Format ISO Date", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.format-iso-date.verification.json" }, { kind: "wiki-sync", path: "evidence/work.format-iso-date.wiki-sync.json" }] }
         ],
         scenarios: [
           {

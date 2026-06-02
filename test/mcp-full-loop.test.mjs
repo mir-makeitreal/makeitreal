@@ -2,7 +2,7 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { tmpdir } from "node:os";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
@@ -20,10 +20,22 @@ function twoModuleProposal() {
     nonGoals: ["Real database"],
     acceptanceCriteria: ["Auth module exposes login", "Todos module consumes auth"],
     assumptions: ["Run in tmp project root"],
+    stateFlow: {
+      lanes: [
+        "Intake", "Discovery", "Scoped", "Blueprint Bound",
+        "Contract Frozen", "Ready", "Claimed", "Running",
+        "Verifying", "Human Review", "Done"
+      ],
+      transitions: [
+        { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+        { from: "Human Review", to: "Done", gate: "wiki" }
+      ]
+    },
     modules: [
       {
         name: "auth",
         purpose: "Authenticate users and expose a login contract.",
+        owner: "team.implementation",
         ownedPaths: ["src/auth/**", "test/auth/**"],
         dependsOn: [],
         contracts: [
@@ -39,6 +51,7 @@ function twoModuleProposal() {
       {
         name: "todos",
         purpose: "Manage todo items for an authenticated user.",
+        owner: "team.implementation",
         ownedPaths: ["src/todos/**", "test/todos/**"],
         dependsOn: ["auth"],
         contracts: [
@@ -58,14 +71,31 @@ function twoModuleProposal() {
         title: "Implement auth module",
         dependsOn: [],
         verifyCommand: "node -e process.exit(0)",
-        complexity: "small"
+        complexity: "small",
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.auth.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.auth.wiki-sync.json" }
+        ]
       },
       {
         module: "todos",
         title: "Implement todos module",
         dependsOn: ["auth"],
         verifyCommand: "node -e process.exit(0)",
-        complexity: "small"
+        complexity: "small",
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.todos.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.todos.wiki-sync.json" }
+        ]
+      }
+    ],
+    scenarios: [
+      {
+        title: "Authenticated todo listing",
+        steps: [
+          { from: "Caller", to: "auth", action: "login(credentials)" },
+          { from: "auth", to: "todos", action: "listTodos(userId)" }
+        ]
       }
     ]
   };
@@ -195,6 +225,23 @@ describe("make-it-real MCP server full plan→launch→finish→complete loop", 
       encoding: "utf8"
     });
     assert.equal(result.status, 0, `approve failed: stdout=${result.stdout} stderr=${result.stderr}`);
+  });
+
+  it("declares the blueprint security trust policy for the claude-code runner", async () => {
+    // Doctrine: the engine provides only runnerMode/realAgentLaunch; the security
+    // posture (command execution, fail-fast policies) must be declared by the
+    // blueprint author. Write the operator-declared trust policy the orchestrator
+    // runner contract requires before launch.
+    const runDir = path.join(tempRoot, ".makeitreal", "runs", runSlug);
+    await writeFile(path.join(runDir, "trust-policy.json"), `${JSON.stringify({
+      schemaVersion: "1.0",
+      runnerMode: "claude-code",
+      runId: runSlug,
+      realAgentLaunch: "enabled",
+      commandExecution: "structured-command-only",
+      userInputRequired: "fail-fast",
+      unsupportedToolCall: "fail-fast"
+    }, null, 2)}\n`);
   });
 
   it("mir_launch status reports gate Ready passes after approval", async () => {

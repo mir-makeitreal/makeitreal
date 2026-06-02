@@ -19,10 +19,22 @@ function validProposal(overrides = {}) {
       "User can log in"
     ],
     assumptions: ["Express is used"],
+    stateFlow: {
+      lanes: [
+        "Intake", "Discovery", "Scoped", "Blueprint Bound",
+        "Contract Frozen", "Ready", "Claimed", "Running",
+        "Verifying", "Human Review", "Done"
+      ],
+      transitions: [
+        { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+        { from: "Human Review", to: "Done", gate: "wiki" }
+      ]
+    },
     modules: [
       {
         name: "auth",
         purpose: "JWT authentication module",
+        owner: "team.implementation",
         ownedPaths: ["src/auth/**", "test/auth/**"],
         dependsOn: [],
         contracts: [
@@ -45,7 +57,11 @@ function validProposal(overrides = {}) {
         title: "Implement auth module",
         dependsOn: [],
         verifyCommand: "npm test -- --grep auth",
-        complexity: "medium"
+        complexity: "medium",
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.auth.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.auth.wiki-sync.json" }
+        ]
       }
     ],
     scenarios: [

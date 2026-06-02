@@ -169,6 +169,49 @@ export const VALIDATION_RULES = [
     }
   },
   {
+    id: "CONTRACT_SIGNATURE_FIELDS_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        for (const c of (m.contracts ?? [])) {
+          const label = `${m.name}.${c.name ?? "?"}`;
+          (Array.isArray(c.inputs) ? c.inputs : []).forEach((input, i) => {
+            if (!isNonEmptyString(input.name)) bad.push(`${label} input[${i}] missing name`);
+            if (!isNonEmptyString(input.type)) bad.push(`${label} input[${i}] missing type`);
+          });
+          (Array.isArray(c.outputs) ? c.outputs : []).forEach((output, i) => {
+            if (!isNonEmptyString(output.name)) bad.push(`${label} output[${i}] missing name`);
+            if (!isNonEmptyString(output.type)) bad.push(`${label} output[${i}] missing type`);
+          });
+          (Array.isArray(c.errors) ? c.errors : []).forEach((err, i) => {
+            if (!isNonEmptyString(err.code)) bad.push(`${label} error[${i}] missing code`);
+            if (!isNonEmptyString(err.when)) bad.push(`${label} error[${i}] missing when`);
+          });
+        }
+      }
+      return bad.length === 0 ? null : bad.join("; ");
+    }
+  },
+  {
+    id: "CONTRACT_ERROR_HTTP_STATUS_VALID",
+    severity: "error",
+    check(proposal) {
+      const bad = [];
+      for (const m of (proposal.modules ?? [])) {
+        for (const c of (m.contracts ?? [])) {
+          const label = `${m.name}.${c.name ?? "?"}`;
+          for (const err of (Array.isArray(c.errors) ? c.errors : [])) {
+            if (err.httpStatus !== undefined && !/^[1-5]\d\d$/.test(String(err.httpStatus))) {
+              bad.push(`${label} error ${err.code ?? "?"} has invalid httpStatus "${err.httpStatus}" (must match /^[1-5]\\d\\d$/)`);
+            }
+          }
+        }
+      }
+      return bad.length === 0 ? null : bad.join("; ");
+    }
+  },
+  {
     id: "WORK_ITEM_FIELDS_REQUIRED",
     severity: "error",
     check(proposal) {

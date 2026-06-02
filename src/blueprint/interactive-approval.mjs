@@ -29,44 +29,25 @@ function reviewedByFrom({ sessionId }) {
   return sessionId ? `operator:${sessionId}` : "operator:interactive";
 }
 
-export function buildInteractiveApprovalContext({ result, launchRequested }) {
-  const nextAction = launchRequested ? "native Make It Real launch flow" : "/makeitreal:status";
-  const launchLine = launchRequested
-    ? "The user also asked to start execution. Execute the Make It Real launch flow in this same Claude Code session now: read the launch skill/command, run orchestrator native start, use native Task subagents, record native finish, then run orchestrator complete. Do not ask the user to type /makeitreal:launch or /makeitreal:plan approve."
-    : "The run is now launch-ready. Report that the Blueprint is approved and the next action is /makeitreal:launch.";
-
-  return [
-    "Make It Real interactive approval:",
-    `Blueprint approval has been recorded at ${result.reviewPath}.`,
-    `Approval source: ${result.review.reviewSource}.`,
-    `Next public action: ${nextAction}.`,
-    launchLine
-  ].join("\n");
+// Structured data emitters. The engine reports WHAT happened; the skill files
+// own HOW the LLM should reason about it. No prose instructions live here.
+export function buildInteractiveApprovalContext({ runDir, launchRequested }) {
+  return { action: "approved", launchRequested, runDir };
 }
 
-export function buildInteractiveRejectionContext({ result }) {
-  return [
-    "Make It Real interactive review:",
-    `Blueprint review was recorded as rejected at ${result.reviewPath}.`,
-    `Review source: ${result.review.reviewSource}.`,
-    "Do not launch implementation. Revise the Blueprint or report the requested changes before asking for review again."
-  ].join("\n");
+export function buildInteractiveRejectionContext({ runDir }) {
+  return { action: "rejected", runDir };
 }
 
-export function buildInteractiveRevisionContext({ result }) {
-  return [
-    "Make It Real interactive review:",
-    `Blueprint revision request has been recorded at ${result.reviewPath}.`,
-    `Review source: ${result.review.reviewSource}.`,
-    "Keep the Blueprint in pending review. Do not launch implementation.",
-    "Revise the Blueprint from the operator feedback, then ask for review again."
-  ].join("\n");
+export function buildInteractiveRevisionContext({ runDir, feedback }) {
+  return { action: "revision_requested", feedback, runDir };
 }
 
 export function buildNoopUserPromptSubmitOutput({ reason = "No Make It Real interactive approval action." } = {}) {
   return {
     continue: true,
     suppressOutput: true,
+    systemMessage: reason,
     makeitreal: {
       action: "noop",
       reason
@@ -74,18 +55,9 @@ export function buildNoopUserPromptSubmitOutput({ reason = "No Make It Real inte
   };
 }
 
-function enginePathFromEnv(env = process.env) {
-  return env.CLAUDE_PLUGIN_ROOT
-    ? `${env.CLAUDE_PLUGIN_ROOT}/bin/makeitreal-engine`
-    : "makeitreal-engine";
-}
-
-function previewContext(value) {
-  const text = String(value ?? "").trim();
-  if (!text) {
-    return "(none)";
-  }
-  return text.length > 4000 ? `${text.slice(0, 4000)}\n[truncated]` : text;
+function decisionNoteFrom(judgment) {
+  const confidenceText = judgment.confidence ? `, ${judgment.confidence} confidence` : "";
+  return `Native Claude Code Blueprint review decision (${judgment.decision}${confidenceText}): ${judgment.reason}`;
 }
 
 function normalizeNativeDecisionPayload(payload) {
@@ -102,9 +74,12 @@ function normalizeNativeDecisionPayload(payload) {
     throw new Error("Native Blueprint review decision requires boolean launchRequested.");
   }
   const confidence = normalizeNativeConfidence(payload.confidence);
-  const reason = typeof payload.reason === "string" && payload.reason.trim()
-    ? payload.reason.trim()
-    : "Native Claude Code judgment recorded from the current Blueprint review interaction.";
+  const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
+  // A recorded decision (approved/rejected/revision_requested) must carry the
+  // LLM's own reason. The engine never fabricates one. "none" records nothing.
+  if (payload.decision !== "none" && !reason) {
+    throw new Error("Blueprint review decision must include a non-empty reason.");
+  }
   if (reason.length > 1000) {
     throw new Error("Native Blueprint review decision reason must be 1000 characters or fewer.");
   }
@@ -112,58 +87,30 @@ function normalizeNativeDecisionPayload(payload) {
     decision: payload.decision,
     launchRequested: payload.launchRequested,
     confidence,
-    reason
+    reason: reason || null
   };
 }
 
 function normalizeNativeConfidence(value) {
   if (value == null) {
-    return "medium";
+    return null;
   }
   const normalized = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (CONFIDENCE.has(normalized)) {
     return normalized;
   }
-  return CONFIDENCE_ALIASES.get(normalized) ?? "medium";
+  const alias = CONFIDENCE_ALIASES.get(normalized);
+  if (alias) {
+    return alias;
+  }
+  throw new Error(`Invalid confidence value: ${value}. Must be high, medium, or low.`);
 }
 
-export function buildNativeReviewDelegationContext({
-  runDir,
-  projectRoot,
-  sessionId,
-  prompt,
-  approvalContext = "",
-  env = process.env
-}) {
-  const enginePath = enginePathFromEnv(env);
-  const session = sessionId || "interactive";
-  return [
-    "Make It Real pending Blueprint review:",
-    `Blueprint review is pending for ${runDir}.`,
-    "Judge the latest user message yourself in this same Claude Code session.",
-    "Do not use keyword heuristics. Do not spawn `claude --print`, `claude --json-schema`, or another Claude process.",
-    "Classify only the user's intent toward the pending Blueprint, not whether the Blueprint is technically good.",
-    "Decision contract:",
-    "- approved: the user intentionally approves the current Blueprint",
-    "- rejected: the user explicitly rejects the current Blueprint",
-    "- revision_requested: the user asks for changes, more review, or blocks approval until changes are made",
-    "- none: unrelated or ambiguous; do not write review evidence",
-    "If the decision is approved, rejected, or revision_requested, record your native Claude Code judgment with:",
-    "```bash",
-    `"${enginePath}" blueprint review "${runDir}" --prompt '<operator answer>' --decision-json '<JSON>' --session "${session}" --project-root "${projectRoot}"`,
-    "```",
-    "The JSON must be valid JSON with this shape. `decision` and `launchRequested` are required; `confidence` and `reason` are recommended and default to medium confidence with a generic reason if omitted.",
-    "Example when the user approves and asks to start now:",
-    "{\"decision\":\"approved\",\"launchRequested\":true,\"confidence\":\"high\",\"reason\":\"short native Claude Code judgment\"}",
-    "Example when the user approves but does not ask to start now:",
-    "{\"decision\":\"approved\",\"launchRequested\":false,\"confidence\":\"high\",\"reason\":\"short native Claude Code judgment\"}",
-    "If decision is none, continue the conversation normally and do not record approval.",
-    "If decision is approved and launchRequested is true, execute the Make It Real launch flow in this same Claude Code session after the review command succeeds. Do not ask the user to type `/makeitreal:launch`; read the launch skill/command and perform its native Task sequence yourself.",
-    "Latest user message:",
-    previewContext(prompt),
-    "Previous assistant Blueprint context:",
-    previewContext(approvalContext)
-  ].join("\n");
+export function buildNativeReviewDelegationContext({ runDir, blueprintStatus, reviewPath }) {
+  // Structured signal only. The decision contract, the rules against keyword
+  // heuristics or child Claude processes, and the launch follow-through all
+  // live in the skill files — not in engine-generated prose.
+  return { runDir, blueprintStatus, reviewPath, pendingDecision: true };
 }
 
 export async function applyNativeBlueprintReviewDecision({
@@ -240,7 +187,7 @@ export async function applyNativeBlueprintReviewDecision({
     const result = await recordBlueprintRevisionRequest({
       runDir: resolved.runDir,
       requestedBy: reviewedByFrom({ sessionId }),
-      decisionNote: `Native Claude Code Blueprint review decision (${judgment.decision}, ${judgment.confidence} confidence): ${judgment.reason}`,
+      decisionNote: decisionNoteFrom(judgment),
       reviewSource: NATIVE_REVIEW_SOURCE,
       env,
       now
@@ -265,7 +212,10 @@ export async function applyNativeBlueprintReviewDecision({
     return {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
-        additionalContext: buildInteractiveRevisionContext({ result })
+        additionalContext: JSON.stringify(buildInteractiveRevisionContext({
+          runDir: resolved.runDir,
+          feedback: judgment.reason
+        }))
       },
       makeitreal: {
         action: "revision-requested",
@@ -283,7 +233,7 @@ export async function applyNativeBlueprintReviewDecision({
     runDir: resolved.runDir,
     status,
     reviewedBy: reviewedByFrom({ sessionId }),
-    decisionNote: `Native Claude Code Blueprint review decision (${judgment.decision}, ${judgment.confidence} confidence): ${judgment.reason}`,
+    decisionNote: decisionNoteFrom(judgment),
     reviewSource: NATIVE_REVIEW_SOURCE,
     env,
     now
@@ -309,7 +259,7 @@ export async function applyNativeBlueprintReviewDecision({
     return {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
-        additionalContext: buildInteractiveRejectionContext({ result })
+        additionalContext: JSON.stringify(buildInteractiveRejectionContext({ runDir: resolved.runDir }))
       },
       makeitreal: {
         action: "rejected",
@@ -325,10 +275,10 @@ export async function applyNativeBlueprintReviewDecision({
   return {
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: buildInteractiveApprovalContext({
-        result,
+      additionalContext: JSON.stringify(buildInteractiveApprovalContext({
+        runDir: resolved.runDir,
         launchRequested: judgment.launchRequested
-      })
+      }))
     },
     makeitreal: {
       action: "approved",
@@ -366,15 +316,11 @@ export async function applyInteractiveBlueprintApproval({
   return {
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: buildNativeReviewDelegationContext({
+      additionalContext: JSON.stringify(buildNativeReviewDelegationContext({
         runDir: resolved.runDir,
-        projectRoot,
-        sessionId,
-        prompt,
-        approvalContext,
-        env,
-        now
-      })
+        blueprintStatus: currentReview.review.status,
+        reviewPath: currentReview.reviewPath
+      }))
     },
     makeitreal: {
       action: "native-review-delegated",

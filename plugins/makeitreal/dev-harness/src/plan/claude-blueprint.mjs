@@ -21,6 +21,7 @@ Module:
 {
   "name": string,                       // unique within the proposal — the only identifier
   "purpose": string,
+  "owner": string,                      // OPTIONAL — owning team, e.g. "team.auth", "team.frontend"
   "ownedPaths": [string],               // non-empty, glob patterns
   "dependsOn": [string],                // other module names
   "contracts": [{
@@ -28,7 +29,7 @@ Module:
     "type": "http" | "function" | "event" | "component",
     "inputs":  [{ "name": string, "type": string, "required"?: boolean }],
     "outputs": [{ "name": string, "type": string }],
-    "errors":  [{ "code": string, "when": string }]
+    "errors":  [{ "code": string, "when": string, "httpStatus"?: string }]  // httpStatus OPTIONAL, e.g. "401", "404"
   }]
 }
 
@@ -83,6 +84,7 @@ export function getBlueprintSchema() {
           properties: {
             name: { type: "string" },
             purpose: { type: "string" },
+            owner: { type: "string" },
             ownedPaths: { type: "array", items: { type: "string" }, minItems: 1 },
             dependsOn: { type: "array", items: { type: "string" } },
             contracts: {
@@ -123,7 +125,8 @@ export function getBlueprintSchema() {
                       required: ["code", "when"],
                       properties: {
                         code: { type: "string" },
-                        when: { type: "string" }
+                        when: { type: "string" },
+                        httpStatus: { type: "string" }
                       }
                     }
                   }

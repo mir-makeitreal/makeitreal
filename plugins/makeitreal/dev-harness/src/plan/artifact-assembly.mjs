@@ -1,7 +1,6 @@
 import path from "node:path";
 import { projectBoardDag } from "../domain/work-item-dag.mjs";
 import { writeJsonFile } from "../io/json.mjs";
-import { LANES } from "../kanban/lanes.mjs";
 import { loadRuntimeState } from "../orchestrator/runtime-state.mjs";
 
 // Rule-based generators (acceptanceCriteriaFor, prdGoalsFor, userVisibleBehaviorFor)
@@ -10,45 +9,25 @@ import { loadRuntimeState } from "../orchestrator/runtime-state.mjs";
 // The engine only validates and saves.
 
 export function trustPolicyFor({ runnerMode, runId }) {
-  if (runnerMode === "claude-code") {
-    return {
-      schemaVersion: "1.0",
-      runnerMode: "claude-code",
-      realAgentLaunch: "enabled",
-      approvalPolicy: "never",
-      sandbox: "workspace-only",
-      commandExecution: "structured-command-only",
-      userInputRequired: "fail-fast",
-      unsupportedToolCall: "fail-fast",
-      source: "makeitreal:plan",
-      runId
-    };
-  }
-
   return {
     schemaVersion: "1.0",
-    runnerMode: "scripted-simulator",
-    realAgentLaunch: "disabled",
-    approvalPolicy: "never",
-    sandbox: "workspace-only",
-    commandExecution: "trusted-fixture-only",
-    userInputRequired: "fail-fast",
-    unsupportedToolCall: "fail-fast",
-    source: "makeitreal:plan",
-    runId
+    runnerMode,
+    runId: runId ?? null,
+    realAgentLaunch: runnerMode === "claude-code" ? "enabled" : "disabled",
+    // Security policies must be declared in blueprint — engine provides only runnerMode
   };
 }
 
-export async function materializeLaunchBoard({ runDir, runId, slug, workItems, workItemDag, runnerMode }) {
-  const board = {
+export async function materializeLaunchBoard({ runDir, runId, slug, workItems, workItemDag, runnerMode, board }) {
+  const launchBoard = {
     schemaVersion: "1.0",
     boardId: `board.${slug}`,
     blueprintRunDir: ".",
-    lanes: LANES,
+    lanes: board?.availableLanes ?? [],
     workItemDAG: projectBoardDag(workItemDag),
     workItems
   };
-  await writeJsonFile(path.join(runDir, "board.json"), board);
+  await writeJsonFile(path.join(runDir, "board.json"), launchBoard);
   await writeJsonFile(path.join(runDir, "trust-policy.json"), trustPolicyFor({ runnerMode, runId }));
   const runtimeState = await loadRuntimeState(runDir);
   return {

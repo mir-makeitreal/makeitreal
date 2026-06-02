@@ -352,10 +352,13 @@ test("user-prompt-submit delegates pending Blueprint review to the native Claude
 
     const output = JSON.parse(result.stdout);
     assert.equal(output.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-    assert.match(output.hookSpecificOutput.additionalContext, /Judge the latest user message yourself in this same Claude Code session/);
-    assert.match(output.hookSpecificOutput.additionalContext, /--decision-json/);
-    assert.match(output.hookSpecificOutput.additionalContext, /Do not use keyword heuristics/);
-    assert.match(output.hookSpecificOutput.additionalContext, /Do not spawn `claude --print`/);
+    const context = JSON.parse(output.hookSpecificOutput.additionalContext);
+    assert.equal(context.pendingDecision, true);
+    assert.equal(context.runDir, runDir);
+    assert.equal(context.blueprintStatus, "pending");
+    assert.equal(typeof context.reviewPath, "string");
+    // Engine emits structured signal only; the decision contract lives in the skill files.
+    assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /Judge the latest user message/);
     assert.equal(output.makeitreal.action, "native-review-delegated");
     assert.equal(output.makeitreal.launchRequested, false);
 
@@ -448,8 +451,10 @@ test("user-prompt-submit delegates revision-looking replies without mutating rev
 
     const output = JSON.parse(result.stdout);
     assert.equal(output.makeitreal.action, "native-review-delegated");
-    assert.match(output.hookSpecificOutput.additionalContext, /revision_requested/);
-    assert.match(output.hookSpecificOutput.additionalContext, /do not write review evidence/i);
+    const context = JSON.parse(output.hookSpecificOutput.additionalContext);
+    assert.equal(context.pendingDecision, true);
+    assert.equal(context.blueprintStatus, "pending");
+    assert.equal(context.runDir, runDir);
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
@@ -488,8 +493,12 @@ test("user-prompt-submit passes short replies and assistant context to native re
 
     const output = JSON.parse(result.stdout);
     assert.equal(output.makeitreal.action, "native-review-delegated");
-    assert.match(output.hookSpecificOutput.additionalContext, /Latest user message:\n네/);
-    assert.match(output.hookSpecificOutput.additionalContext, /Blueprint preview is ready/);
+    // The native session already holds the user message and assistant context;
+    // the engine emits only a structured pending-decision signal, not the prose.
+    const context = JSON.parse(output.hookSpecificOutput.additionalContext);
+    assert.equal(context.pendingDecision, true);
+    assert.equal(context.runDir, runDir);
+    assert.equal(context.blueprintStatus, "pending");
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");
@@ -516,7 +525,9 @@ test("user-prompt-submit remains native even for ambiguous short replies", async
     assert.equal(result.status, 0, result.stdout || result.stderr);
     const output = JSON.parse(result.stdout);
     assert.equal(output.makeitreal.action, "native-review-delegated");
-    assert.match(output.hookSpecificOutput.additionalContext, /If decision is none, continue the conversation normally/);
+    const context = JSON.parse(output.hookSpecificOutput.additionalContext);
+    assert.equal(context.pendingDecision, true);
+    assert.equal(context.runDir, runDir);
 
     const review = await readBlueprintReview({ runDir });
     assert.equal(review.review.status, "pending");

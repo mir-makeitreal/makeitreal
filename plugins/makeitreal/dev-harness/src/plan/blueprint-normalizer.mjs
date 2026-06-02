@@ -28,22 +28,6 @@ function parseHttpEndpoint(contractName) {
   throw new Error(`HTTP contract name must be in format "METHOD /path": ${JSON.stringify(contractName)}`);
 }
 
-const ERROR_STATUS_RULES = [
-  { pattern: /^(UNAUTHORIZED|INVALID_CREDENTIALS|INVALID_TOKEN)$/i, status: "401" },
-  { pattern: /^(FORBIDDEN|ACCESS_DENIED)$/i, status: "403" },
-  { pattern: /^NOT_FOUND$/i, status: "404" },
-  { pattern: /^(ALREADY_EXISTS|EMAIL_TAKEN|DUPLICATE)$/i, status: "409" },
-  { pattern: /^(VALIDATION_ERROR|INVALID_INPUT)$/i, status: "422" }
-];
-
-function statusForErrorCode(code) {
-  const c = String(code ?? "");
-  for (const { pattern, status } of ERROR_STATUS_RULES) {
-    if (pattern.test(c)) return status;
-  }
-  return "400";
-}
-
 function operationIdFor(method, urlPath) {
   const pathSlug = String(urlPath)
     .replace(/[{}]/g, "")
@@ -52,17 +36,6 @@ function operationIdFor(method, urlPath) {
     .replace(/^-+|-+$/g, "");
   return pathSlug ? `${method}-${pathSlug}` : method;
 }
-
-const CANONICAL_LANES = [
-  "Intake", "Discovery", "Scoped", "Blueprint Bound",
-  "Contract Frozen", "Ready", "Claimed", "Running",
-  "Verifying", "Human Review", "Done"
-];
-
-const CANONICAL_TRANSITIONS = [
-  { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
-  { from: "Human Review", to: "Done", gate: "wiki" }
-];
 
 const SURFACE_KIND_BY_TYPE = {
   http: "http",
@@ -85,17 +58,17 @@ function workIdFor(moduleName) {
 
 function defaultSignature(contract) {
   const inputs = (contract.inputs ?? []).map(input => ({
-    name: input.name ?? "input",
-    type: input.type ?? "object",
+    name: input.name,
+    type: input.type,
     ...(input.required !== undefined ? { required: input.required } : {})
   }));
   const outputs = (contract.outputs ?? []).map(output => ({
-    name: output.name ?? "result",
-    type: output.type ?? "object"
+    name: output.name,
+    type: output.type
   }));
   const errors = (contract.errors ?? []).map(err => ({
-    code: err.code ?? "INTERNAL_ERROR",
-    when: err.when ?? "Unexpected failure"
+    code: err.code,
+    when: err.when
   }));
 
   // No fabricated signature. An opaque contract with no inputs/outputs is valid.
@@ -180,7 +153,7 @@ function buildResponsibilityUnits(modules, moduleContracts) {
       id: ruIdFor(m.name),
       label: m.name,
       moduleName: m.name,
-      owner: "team.implementation",
+      owner: m.owner ?? null,
       owns: [...(m.ownedPaths ?? [])],
       mustProvideContracts: mustProvide,
       mayUseContracts: [...new Set(mayUse)],
@@ -271,7 +244,7 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
     return {
       responsibilityUnitId: ruIdFor(m.name),
       moduleName: m.name,
-      owner: "team.implementation",
+      owner: m.owner ?? null,
       purpose: m.purpose,
       owns: [...(m.ownedPaths ?? [])],
       mustProvideContracts: own.map(c => c.contractId),
@@ -319,30 +292,13 @@ function buildDesignPack(proposal, modules, moduleContracts, acceptanceCriteria,
     }))
   }));
 
-  if (callStacks.length === 0) {
-    callStacks.push({
-      entrypoint: proposal.title,
-      calls: modules.map(m => `Caller -> ${m.name}: invoke`),
-      label: proposal.title,
-      frames: modules.map(m => ({ callee: m.name, caller: "Caller", action: "invoke" }))
-    });
-  }
-
-  if (sequences.length === 0) {
-    sequences.push({
-      title: `${proposal.title} flow`,
-      participants: ["Caller", ...modules.map(m => m.name)],
-      messages: modules.map(m => ({ from: "Caller", to: m.name, label: "invoke" }))
-    });
-  }
-
   return {
     schemaVersion: "1.0",
     runId: runId ?? null,
     workItemId,
     prdId: `prd.${slug}`,
     architecture: { nodes, edges },
-    stateFlow: { lanes: CANONICAL_LANES, transitions: CANONICAL_TRANSITIONS },
+    stateFlow: proposal.stateFlow ?? null,
     apiSpecs,
     componentContracts,
     responsibilityBoundaries,
@@ -393,18 +349,6 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
     const verifyCommand = parseVerifyCommand(wi.verifyCommand);
     const verificationCommands = verifyCommand ? [verifyCommand] : [];
 
-    const moduleHasHttp = own.some(({ contract }) => contract.type === "http");
-    const doneEvidence = [
-      { kind: "verification", path: `evidence/${workIdFor(module.name)}.verification.json` },
-      { kind: "wiki-sync", path: `evidence/${workIdFor(module.name)}.wiki-sync.json` }
-    ];
-    if (moduleHasHttp) {
-      doneEvidence.push({
-        kind: "openapi-conformance",
-        path: `evidence/${workIdFor(module.name)}.openapi-conformance.json`
-      });
-    }
-
     return {
       schemaVersion: "1.0",
       id: workIdFor(module.name),
@@ -417,7 +361,7 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
       dependsOn: (wi.dependsOn ?? []).map(workIdFor),
       allowedPaths: [...(module.ownedPaths ?? [])],
       prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
-      doneEvidence,
+      doneEvidence: (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path })),
       verificationCommands
     };
   }).filter(Boolean);
@@ -497,7 +441,7 @@ function buildOpenApiDocument(contract, contractId) {
 
   const errorsByStatus = new Map();
   for (const err of errors) {
-    const status = statusForErrorCode(err.code);
+    const status = err.httpStatus ?? "400";
     if (!errorsByStatus.has(status)) errorsByStatus.set(status, []);
     errorsByStatus.get(status).push(err);
   }

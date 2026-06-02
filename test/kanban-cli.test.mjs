@@ -146,6 +146,18 @@ test("freshly planned and approved run can enter Ready through public CLI path",
     const readyGate = runHarness(["gate", runDir, "--target", "Ready"]);
     assert.equal(readyGate.status, 0, readyGate.stdout || readyGate.stderr);
 
+    // Doctrine: the engine emits only runnerMode/realAgentLaunch; the operator/blueprint
+    // declares the runner security posture the public `orchestrator tick` requires.
+    await writeJsonFile(path.join(runDir, "trust-policy.json"), {
+      schemaVersion: "1.0",
+      runnerMode: "scripted-simulator",
+      runId: "launchable-report",
+      realAgentLaunch: "disabled",
+      commandExecution: "trusted-fixture-only",
+      userInputRequired: "fail-fast",
+      unsupportedToolCall: "fail-fast"
+    });
+
     const tick = runHarness(["orchestrator", "tick", runDir, "--concurrency", "1"]);
     assert.equal(tick.status, 0, tick.stdout || tick.stderr);
     assert.deepEqual(JSON.parse(tick.stdout).promotedWorkItemIds, [workItemId]);

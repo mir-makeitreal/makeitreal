@@ -51,9 +51,21 @@ test("CLI uses wall-clock timestamps unless --now is supplied", async () => {
       nonGoals: ["Nothing out of scope."],
       acceptanceCriteria: ["Module works."],
       assumptions: [],
+      stateFlow: {
+        lanes: [
+          "Intake", "Discovery", "Scoped", "Blueprint Bound",
+          "Contract Frozen", "Ready", "Claimed", "Running",
+          "Verifying", "Human Review", "Done"
+        ],
+        transitions: [
+          { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+          { from: "Human Review", to: "Done", gate: "wiki" }
+        ]
+      },
       modules: [{
         name: "timestamp-smoke",
         purpose: "Timestamp smoke module.",
+        owner: "team.implementation",
         ownedPaths: ["src/timestamp-smoke/**"],
         dependsOn: [],
         contracts: [{
@@ -69,7 +81,11 @@ test("CLI uses wall-clock timestamps unless --now is supplied", async () => {
         title: "Timestamp Smoke",
         dependsOn: [],
         verifyCommand: "node -e console.log('ok')",
-        complexity: "small"
+        complexity: "small",
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.timestamp-smoke.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.timestamp-smoke.wiki-sync.json" }
+        ]
       }],
       scenarios: [{
         title: "Timestamp smoke call",

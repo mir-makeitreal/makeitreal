@@ -95,7 +95,10 @@ test("blueprint review records native Claude Code decision JSON", async () => {
     assert.equal(output.command, "blueprint review");
     assert.equal(output.action, "approved");
     assert.equal(output.launchRequested, true);
-    assert.match(output.additionalContext, /Blueprint approval has been recorded/);
+    const context = JSON.parse(output.additionalContext);
+    assert.equal(context.action, "approved");
+    assert.equal(context.launchRequested, true);
+    assert.equal(context.runDir, runDir);
 
     const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
     assert.equal(review.status, "approved");
@@ -141,12 +144,13 @@ test("blueprint review accepts --run for native Claude command recovery", async 
   });
 });
 
-test("blueprint review accepts native decisions with optional metadata defaults", async () => {
+test("blueprint review treats confidence as optional but records no fabricated value", async () => {
   await withFixture(async ({ root, runDir }) => {
     await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
     const decision = {
       decision: "approved",
-      launchRequested: true
+      launchRequested: true,
+      reason: "The operator approved the Blueprint from the review question UI."
     };
 
     const reviewed = runHarness([
@@ -170,8 +174,40 @@ test("blueprint review accepts native decisions with optional metadata defaults"
 
     const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
     assert.equal(review.status, "approved");
-    assert.match(review.decisionNote, /medium confidence/);
-    assert.match(review.decisionNote, /current Blueprint review interaction/);
+    // No confidence supplied: the engine must not invent "medium" or a generic reason.
+    assert.doesNotMatch(review.decisionNote, /\b\w+ confidence\b/);
+    assert.match(review.decisionNote, /operator approved the Blueprint from the review question UI/);
+  });
+});
+
+test("blueprint review refuses decisions that omit the required reason", async () => {
+  await withFixture(async ({ root, runDir }) => {
+    await seedBlueprintReview({ runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    const before = await readFile(path.join(runDir, "blueprint-review.json"), "utf8");
+    const decision = {
+      decision: "approved",
+      launchRequested: true
+    };
+
+    const reviewed = runHarness([
+      "blueprint",
+      "review",
+      runDir,
+      "--decision-json",
+      JSON.stringify(decision),
+      "--session",
+      "question-ui",
+      "--now",
+      "2026-05-06T00:01:00.000Z"
+    ], {
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root }
+    });
+    assert.equal(reviewed.status, 1);
+
+    const output = JSON.parse(reviewed.stdout);
+    assert.equal(output.ok, false);
+    assert.match(output.errors[0].reason, /must include a non-empty reason/);
+    assert.equal(await readFile(path.join(runDir, "blueprint-review.json"), "utf8"), before);
   });
 });
 
@@ -261,7 +297,10 @@ test("blueprint review keeps revision requests pending for rework instead of rej
     assert.equal(output.ok, true);
     assert.equal(output.action, "revision-requested");
     assert.equal(output.launchRequested, false);
-    assert.match(output.additionalContext, /Blueprint revision request has been recorded/);
+    const context = JSON.parse(output.additionalContext);
+    assert.equal(context.action, "revision_requested");
+    assert.equal(context.feedback, "The operator wants narrower frontend/backend boundaries before approval.");
+    assert.equal(context.runDir, runDir);
 
     const review = await readJsonFile(path.join(runDir, "blueprint-review.json"));
     assert.equal(review.status, "pending");

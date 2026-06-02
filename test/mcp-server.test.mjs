@@ -19,10 +19,22 @@ function validProposal(overrides = {}) {
     nonGoals: ["Network access"],
     acceptanceCriteria: ["Server writes prd.json"],
     assumptions: ["Run inside the dev-harness workspace"],
+    stateFlow: {
+      lanes: [
+        "Intake", "Discovery", "Scoped", "Blueprint Bound",
+        "Contract Frozen", "Ready", "Claimed", "Running",
+        "Verifying", "Human Review", "Done"
+      ],
+      transitions: [
+        { from: "Contract Frozen", to: "Ready", gate: "design-pack" },
+        { from: "Human Review", to: "Done", gate: "wiki" }
+      ]
+    },
     modules: [
       {
         name: "alpha",
         purpose: "Primary module for the MCP test.",
+        owner: "team.implementation",
         ownedPaths: ["src/alpha/**", "test/alpha/**"],
         dependsOn: [],
         contracts: [
@@ -42,7 +54,17 @@ function validProposal(overrides = {}) {
         title: "Implement alpha module",
         dependsOn: [],
         verifyCommand: "node --test",
-        complexity: "small"
+        complexity: "small",
+        doneEvidence: [
+          { kind: "verification", path: "evidence/work.alpha.verification.json" },
+          { kind: "wiki-sync", path: "evidence/work.alpha.wiki-sync.json" }
+        ]
+      }
+    ],
+    scenarios: [
+      {
+        title: "Alpha invocation flow",
+        steps: [{ from: "Caller", to: "alpha", action: "invoke alphaCall" }]
       }
     ],
     ...overrides
