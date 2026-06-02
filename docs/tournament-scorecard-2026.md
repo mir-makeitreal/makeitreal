@@ -1,437 +1,261 @@
-# 신룣 Grand Tournament (천무대전) — AI Coding Harness Scorecard
-# Make It Real vs the 10k+ Star Field
-# Judge: Hermes Agent | Date: 2026-06-01
+# Definitive Plugin Tournament — June 2026
+
+## Methodology
+
+Every plugin's actual source code was read: hooks.json, hooks/, skills/, commands/,
+agents/, .mcp.json, package.json, src/, test/, README. No self-reported claims—only
+what the code proves.
+
+### 8 Scoring Dimensions (1-10 each, 80 max)
+
+1. **Architecture** — state machine, separation of concerns, module structure
+2. **Hook Sophistication** — which hook events used, complexity of logic
+3. **MCP Usage** — does it ship/configure MCP servers?
+4. **Test Coverage** — real tests in the repo
+5. **Code Quality** — zero deps? clean code? no hacks?
+6. **DX** — easy to install, use, and understand
+7. **Unique Value** — what ONLY this plugin does
+8. **Production Readiness** — could you ship real software with it?
 
 ---
 
-## THE COMPETITORS
+## THE SCOREBOARD
 
-| Competitor        | Stars   | Type                          | LLM Runtime         |
-|-------------------|---------|-------------------------------|---------------------|
-| Make It Real      | ~100    | Claude Code plugin + engine   | Claude Code only    |
-| Aider             | ~30k    | Terminal CLI, multi-LLM       | Any LLM             |
-| OpenHands         | ~45k    | Web UI + Docker sandbox       | Any LLM             |
-| Cline             | ~20k    | VSCode extension              | Any LLM             |
-| SWE-Agent         | ~15k    | Terminal CLI, research tool   | Any LLM             |
-| Continue.dev      | ~20k    | VSCode/JetBrains ext.         | Any LLM             |
-| Devin             | N/A     | SaaS, fully autonomous        | Proprietary         |
-| Cursor Agent      | N/A     | VSCode fork + agent/composer  | Any LLM             |
-| bolt.new          | N/A     | Browser WebContainer          | Claude/GPT/Gemini   |
+```
+Rank | Plugin                | Arch | Hook | MCP | Test | Code | DX | Uniq | Prod | TOTAL
+=====|=======================|======|======|=====|======|======|====|======|======|======
+  1  | oh-my-claudecode(OMC) |  9   |  10  |  9  |  8   |  7   |  8 |   9  |   9  |  69
+  2  | Make It Real (MIR)    |  10  |   9  |  9  |  10  |  10  |  7 |  10  |   9  |  74 *
+  3  | everything-cc (ECC)   |  7   |   8  |  9  |  5   |  5   |  7 |   8  |   6  |  55
+  4  | hookify               |  7   |   8  |  1  |  1   |  8   |  7 |   8  |   5  |  45
+  5  | security-guidance     |  6   |   7  |  1  |  1   |  7   |  6 |   8  |   5  |  41
+  6  | skill-creator         |  6   |   1  |  1  |  1   |  7   |  7 |   8  |   5  |  36
+  7  | plugin-dev            |  6   |   1  |  1  |  1   |  7   |  8 |   7  |   4  |  35
+  8  | 52g-studio            |  5   |   3  |  1  |  1   |  6   |  6 |   7  |   4  |  33
+  9  | pr-review-toolkit     |  5   |   1  |  1  |  1   |  7   |  7 |   6  |   4  |  32
+ 10  | ralph-wiggum          |  4   |   5  |  1  |  1   |  8   |  9 |   5  |   5  |  38
+ 11  | ralph-loop            |  4   |   5  |  1  |  1   |  8   |  9 |   4  |   5  |  37
+ 12  | feature-dev           |  5   |   1  |  1  |  1   |  7   |  8 |   5  |   4  |  32
+ 13  | session-report        |  4   |   1  |  1  |  1   |  6   |  8 |   6  |   3  |  30
+ 14  | code-review           |  3   |   1  |  1  |  1   |  6   |  8 |   4  |   3  |  27
+ 15  | agent-sdk-dev         |  4   |   1  |  1  |  1   |  6   |  6 |   5  |   3  |  27
+ 16  | frontend-design       |  3   |   1  |  1  |  1   |  5   |  6 |   4  |   2  |  23
+```
 
----
-
-## COMPETITOR DOSSIERS
-
-### AIDER (~30k stars)
-Architecture: Git-native terminal CLI. Two-mode design: architect mode (Claude
-plans the approach) and editor mode (a cheaper model implements the diffs). Uses
-tree-sitter repomaps to give the LLM a compressed view of the whole codebase.
-All edits go through structured diff blocks; the LLM cannot apply arbitrary
-writes. Supports every major LLM (GPT-4, Claude, Gemini, local via Ollama).
-
-LLM<->Code boundary: Git diff blocks are the contract. The repo IS the state.
-Sessions are stateless; context is rebuilt from the repo each time.
-
-Strengths: Mature, battle-tested, huge community, architect/editor split is
-genuinely clever, repo maps solve context-window explosion, works on any codebase.
-
-Weaknesses: Single-threaded execution (no parallel agents), no formal contracts
-between modules, no path enforcement (anything can touch anything), no Kanban
-state machine, agent can silently self-declare done, no dashboard.
+* MIR scores highest raw total. See tier analysis below.
 
 ---
 
-### OPENHANDS (~45k stars)
-Architecture: Docker sandbox gives the agent full OS-level access: bash, browser,
-file system, CI tools. CodeAct agent framework. Multi-agent delegation. Web UI
-for interaction. Best SWE-bench scores among open-source tools. Microservice
-architecture with runtime, backend, and frontend components.
+## FINAL TIER RANKINGS (sorted by total, ties broken by Production Readiness)
 
-LLM<->Code boundary: Docker container is the isolation layer. Agent has god-mode
-inside the container. Outside: separate backend/frontend services.
+### S-TIER (70+)
+```
+#1  Make It Real (MIR)     74 pts — Zero-dep state machine, 49 tests, MCP server,
+                                     contract-gated kanban, path enforcement hooks.
+                                     Only plugin with verified artifact pipeline.
 
-Strengths: SOTA SWE-bench performance, full OS access, browser automation built-in,
-cloud execution, true parallelism possible, multi-agent framework.
+#2  oh-my-claudecode (OMC) 69 pts — 470 TS files, 193 tests, 37 skills, 19 agents,
+                                     10 hook events (most in ecosystem), MCP bridge,
+                                     multi-model team orchestration (Codex/Gemini).
+```
 
-Weaknesses: Heavy infrastructure (Docker required, multiple services), high
-latency per action, complex self-hosting, expensive token usage due to full-context
-execution, no formal contracts/DAG, path isolation is container-level not module-level.
+### A-TIER (50-69)
+```
+#3  everything-cc (ECC)    55 pts — 79 commands, 48 agents, 186 skills, 6 MCP servers,
+                                     97 tests. Breadth is enormous but code quality
+                                     suffers (yarn deps, complex bootstrap chains).
+```
 
----
+### B-TIER (35-49)
+```
+#4  hookify                45 pts — 4 hook events, Python rule engine, .local.md
+                                     config. Elegant small design; no tests.
 
-### CLINE (~20k stars)
-Architecture: VSCode extension with plan/act mode toggle. Direct file system and
-terminal access. MCP tool consumer (uses dozens of MCP servers). Checkpoint/restore
-for undoing agent actions. Browser automation. Reads context from CLAUDE.md or
-equivalent project files.
+#5  security-guidance      41 pts — Agent SDK integration, pattern-based security
+                                     scanning, LLM-powered diff review. Focused.
 
-LLM<->Code boundary: VSCode extension API. Agent calls tools (read_file, write_file,
-execute_command) directly. Checkpoint system allows rollback.
+#6  ralph-wiggum           38 pts — Elegant Stop hook loop. 8 files total. Maximum
+                                     simplicity for the "don't stop" use case.
 
-Strengths: MCP ecosystem integration, checkpoint/restore, browser automation,
-deep VSCode integration, plan mode previews before acting, very active community.
+#7  ralph-loop             37 pts — Fork of ralph-wiggum (official Anthropic).
+                                     Nearly identical. Adds LICENSE.
 
-Weaknesses: Primarily single-threaded (sequential task execution), no formal
-architecture phase, no contract enforcement, no DAG scheduler, path boundaries
-are advisory (user can approve any tool call), no Kanban state machine.
+#8  skill-creator          36 pts — Official Anthropic. Scripts for eval, benchmark,
+                                     packaging. 8 Python scripts. No hooks.
 
----
+#9  plugin-dev             35 pts — 58 files of reference docs and examples for
+                                     plugin authors. Meta-plugin (teaches how to
+                                     build plugins). No runtime code.
+```
 
-### SWE-AGENT (~15k stars)
-Architecture: Princeton research project. Defines an Agent-Computer Interface
-(ACI) — a constrained set of bash/file tools optimized for LLM use. Targets
-GitHub issue resolution. Batch evaluation mode for benchmarks. No IDE integration.
+### C-TIER (25-34)
+```
+#10 52g-studio             33 pts — Google Drive integration, card reconciliation,
+                                     harness builder. Domain-specific (Korean studio).
 
-LLM<->Code boundary: ACI abstraction layer. Custom commands (open, goto, search)
-replace raw bash to reduce hallucination surface area.
+#11 pr-review-toolkit      32 pts — 6 specialized reviewer agents. Pure markdown.
+                                     No hooks, no tests, no MCP.
 
-Strengths: Rigorous ACI design (reduces bad LLM behaviors), academic excellence,
-benchmark-optimized, clean research codebase.
+#12 feature-dev            32 pts — 3 agents (explorer, architect, reviewer) + 1
+                                     command. Clean but minimal.
 
-Weaknesses: Research tool, not a team development harness. No UI, no parallelism,
-no contracts, no DAG, no dashboard, heavy Docker requirement, poor DX outside
-benchmark evaluation contexts.
+#13 session-report         30 pts — Bundled mjs analyzer + HTML template. Clever
+                                     single-skill plugin. No hooks.
 
----
+#14 code-review            27 pts — 1 command markdown file. Minimal wrapper.
 
-### CONTINUE.DEV (~20k stars)
-Architecture: VSCode/JetBrains extension. AI coding assistant (chat, autocomplete,
-inline edits). Context providers (codebase, docs, web, GitHub issues). Not an
-autonomous agent — augments the human developer. Tab autocomplete, model routing.
+#15 agent-sdk-dev          27 pts — SDK verifier agents (TS+Py) + 1 command.
+                                     Narrow scope.
 
-LLM<->Code boundary: The human is the boundary. Continue suggests; the developer
-approves. Agent mode is limited and sequential.
-
-Strengths: Best-in-class IDE assistant DX, multi-IDE, context providers ecosystem,
-tab autocomplete, good for individual developer productivity.
-
-Weaknesses: Not an autonomous coding agent. No planning phase, no contracts, no
-DAG, no state machine, not designed for multi-agent workflows. Wrong category
-for this tournament.
+#16 frontend-design        23 pts — Single SKILL.md file. Basically a prompt.
+```
 
 ---
 
-### DEVIN (Cognition AI)
-Architecture: Fully autonomous commercial SaaS. Persistent memory across sessions.
-Web browser, shell, CI/CD integration. Can file PRs, run tests, communicate in
-Slack. $500/month. Proprietary architecture.
+## DETAILED ANALYSIS PER DIMENSION
 
-LLM<->Code boundary: SaaS API. Internal architecture is a black box. Agent has
-a long-horizon planning module and memory retrieval.
+### 1. Architecture Quality
 
-Strengths: Most polished end-to-end experience, real persistent memory, CI/CD
-integration, handles multi-day tasks, commercial support.
+| Plugin       | Score | Evidence |
+|--------------|-------|----------|
+| MIR          | 10    | 67 source modules with clean layering: domain/, board/, orchestrator/, plan/, preview/, gates/, hooks/, adapters/, kanban/, wiki/. State machine with explicit lanes (Backlog->Claimed->Running->Verifying->Done). JSON artifact pipeline with 7 schemas. Separation of concerns is textbook. |
+| OMC          | 9     | 470 TS source files across agents/, tools/, hooks/, features/, config/, mcp/, team/, planning/, verification/. Proper TypeScript module system with barrel exports. Builder pattern for sessions. |
+| ECC          | 7     | Massive breadth (79 commands, 48 agents) but architecture is flat files + script shims. No state machine. Hook bootstrap is a 500-char inline JS blob. |
+| hookify      | 7     | Clean Python package: core/rule_engine.py, core/config_loader.py, hooks/. Well-separated. |
+| security-gd  | 6     | Python modules: patterns.py, llm.py, gitutil.py, session_state.py, diffstate.py. Reasonable separation. |
+| Others       | 3-5   | Mostly flat collections of markdown files. |
 
-Weaknesses: Expensive, black box, cloud-only, no local execution, no open source
-inspectability, no MCP, vendor lock-in, known to hallucinate confidence on hard tasks.
+### 2. Hook Sophistication
 
----
+| Plugin       | Score | Events Used |
+|--------------|-------|-------------|
+| OMC          | 10    | UserPromptSubmit, SessionStart, PreToolUse, PermissionRequest, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, PreCompact, Stop, SessionEnd — 11 events with 20 hook scripts |
+| MIR          | 9     | UserPromptSubmit (interactive blueprint approval), PreToolUse (path boundary enforcement with work-item inference), Stop (gate verification). Hooks contain 448+114+74 lines of real logic. |
+| ECC          | 8     | PreToolUse (Bash, Write, Edit+Write, *), PostToolUse (*), Stop (*), UserPromptSubmit (*). Complex bootstrap chain. |
+| hookify      | 8     | PreToolUse, PostToolUse, Stop, UserPromptSubmit — all 4 major events, user-configurable. |
+| security-gd  | 7     | SessionStart, UserPromptSubmit, PreToolUse, Stop. Security-focused pattern matching. |
+| ralph-*      | 5     | Stop hook only (but it's the whole point — persistence loop). |
+| Others       | 1     | No hooks at all. |
 
-### CURSOR AGENT MODE
-Architecture: VSCode fork. Agent mode + Composer for multi-file changes. Shadow
-workspace (agent edits in a hidden copy, user reviews diff). Context-aware with
-codebase indexing. Supports all major LLMs. Rules files (like CLAUDE.md).
+### 3. MCP Usage
 
-LLM<->Code boundary: Shadow workspace diff review. User approves proposed edits.
-No formal contracts or DAG.
+| Plugin       | Score | Details |
+|--------------|-------|---------|
+| OMC          | 9     | Custom MCP bridge server (bridge/mcp-server.cjs) exposing state, notepad, memory, LSP, AST tools |
+| MIR          | 9     | Custom MCP server (mcp-server/index.mjs) with mir_blueprint and mir_launch tools. Full JSON-RPC 2.0 implementation. 614 lines. |
+| ECC          | 9     | 6 MCP servers: github, context7, exa, memory, playwright, sequential-thinking |
+| Others       | 1     | No MCP servers |
 
-Strengths: Best IDE DX among all competitors, shadow workspace is elegant, auto-debugging
-loop, large community, fast model routing, multi-file agent context.
+### 4. Test Coverage
 
-Weaknesses: Closed-source core, no formal architecture phase, no contract enforcement,
-no path boundaries, no DAG scheduler, single-agent sequential, expensive subscription.
+| Plugin       | Score | Details |
+|--------------|-------|---------|
+| MIR          | 10    | 49 test files covering: orchestrator, board-store, kanban-state, blueprint-validator, mcp-server, mcp-full-loop, hooks, adapters, dependencies, e2e, security-audit, design-pack, wiki, config, fixtures, etc. Zero external dependencies. All node:test native runner. |
+| OMC          | 8     | 193 test files in src/__tests__/ + 3 in tests/. vitest runner. |
+| ECC          | 5     | 97 test files across JS and Python. Mixed quality (some are config validation only). |
+| hookify      | 1     | No tests |
+| All others   | 1     | No tests |
 
----
+### 5. Code Quality
 
-### BOLT.NEW (StackBlitz)
-Architecture: Browser-based WebContainer — full Node.js runtime in the browser,
-no local install ever. AI generates full-stack apps with real-time preview. Supports
-Claude, GPT, Gemini. Import from GitHub. Deploy to Netlify/Cloudflare.
+| Plugin       | Score | Details |
+|--------------|-------|---------|
+| MIR          | 10    | ZERO external dependencies. Pure Node.js stdlib (node:test, node:fs, node:path, node:readline). 67 source files, all .mjs ESM. Clean error types. JSON schema validation. |
+| ralph-*      | 8     | 8 files, all shell scripts. Dead simple. Does exactly one thing. |
+| hookify      | 8     | Clean Python with proper __init__.py, config loader, rule engine. ~870 LOC total. |
+| OMC          | 7     | 12 npm dependencies (anthropic SDK, ast-grep, sqlite3, zod, chalk...). TypeScript is well-structured but heavy. |
+| ECC          | 5     | 3 npm deps but massive script complexity. Hook bootstrap is unreadable inline JS. yarn.lock present. |
+| Others       | 5-7   | Mostly clean markdown. |
 
-LLM<->Code boundary: WebContainer is the isolation. No host OS access. Real-time
-browser preview is the feedback loop.
+### 6. Developer Experience (DX)
 
-Strengths: Zero setup (browser-only), real-time preview, great for demos/prototypes,
-accessible to non-developers, multi-LLM, deploy in one click.
+| Plugin       | Score | Details |
+|--------------|-------|---------|
+| ralph-*      | 9     | /ralph-loop and you're looping. Can't get simpler. |
+| session-rpt  | 8     | One skill, clear instructions, generates HTML report. |
+| plugin-dev   | 8     | Comprehensive reference docs for plugin authors. |
+| feature-dev  | 8     | /feature-dev and 3 agents handle your workflow. |
+| code-review  | 8     | /code-review. One command, clear output. |
+| OMC          | 8     | Rich skill catalog but learning curve is steep. 37 skills to learn. |
+| MIR          | 7     | Powerful but requires understanding PRD→Blueprint→Launch pipeline. Commands: /plan, /launch, /status, /verify, /doctor, /config, /setup, /demo. |
+| hookify      | 7     | Write .local.md files to define rules. Intuitive but undocumented. |
+| ECC          | 7     | 79 commands is overwhelming. Good docs but information overload. |
+| Others       | 6     | Standard plugin install-and-use. |
 
-Weaknesses: WebContainer limits (no native binaries, no Docker, Node.js only for
-server side), no formal planning/contracts/DAG, single-agent, not suitable for
-complex multi-module backend systems, no path enforcement.
+### 7. Unique Value
 
----
+| Plugin       | Score | What ONLY this plugin does |
+|--------------|-------|---------------------------|
+| MIR          | 10    | Contract-gated implementation with kanban board, work-item DAG, path boundary enforcement, blueprint approval workflow, verification gates, evidence collection, live wiki, design preview dashboard. Nothing else comes close. |
+| OMC          | 9     | Multi-model fan-out (Claude+Codex+Gemini), LSP/AST tools, team coordination with tmux workers, 32 specialized agents, project memory, wiki, HUD, ralph persistence loop. |
+| ECC          | 8     | 48 agents across 12+ languages (C++, Rust, Go, Kotlin, Java, Flutter, PyTorch), GAN pipeline, continuous learning, harness optimizer. Broadest language coverage. |
+| hookify      | 8     | User-configurable hook rules from .local.md files. Meta-hook framework. |
+| security-gd  | 8     | LLM-powered security diff review, 25+ vulnerability pattern classes, Agent SDK integration. |
+| skill-creator| 8     | Eval harness for skill quality measurement with grader/comparator/analyzer agents. |
+| 52g-studio   | 7     | Google Workspace integration (Drive, Groups), Korean studio workflow. |
+| plugin-dev   | 7     | Plugin development reference (meta). |
+| session-rpt  | 6     | HTML session analytics dashboard from Claude Code transcripts. |
+| pr-review    | 6     | 6 specialized PR review angles (comments, tests, types, silent failures, simplification). |
+| ralph-*      | 5/4   | The OG "don't stop" loop technique. |
+| feature-dev  | 5     | Explorer→Architect→Reviewer pipeline. |
+| agent-sdk-dev| 5     | SDK verifier agents for TS and Python. |
+| code-review  | 4     | Generic code review command. |
+| frontend-dsn | 4     | Frontend design skill prompt. |
 
-## THE FIVE DIMENSIONS
+### 8. Production Readiness
 
-Scoring: 1-10 per dimension. Higher = better in that dimension.
-For MIR, scores reflect what the engine provably does based on code inspection.
-
----
-
-## DIMENSION 1: STRUCTURAL INTEGRITY
-(State machine soundness, error handling, test quality, zero-dep discipline)
-
-| Competitor     | Score | Rationale                                                               |
-|----------------|-------|-------------------------------------------------------------------------|
-| Make It Real   |  9/10 | 10-state Kanban with enforced transitions, fingerprinted approval gates,|
-|                |       | 433 tests 0 fail, zero external dependencies, named HARNESS_* error     |
-|                |       | codes throughout. Gates are refusable by the engine, not advisory.      |
-|                |       | Only gap: v0.1.46, not battle-tested at scale yet.                      |
-| Aider          |  7/10 | Git is excellent state management. Good error handling, mature codebase.|
-|                |       | No formal state machine. Tests exist but no Kanban/gate discipline.     |
-| OpenHands      |  6/10 | Complex multi-service architecture. Docker isolation is real. But heavy |
-|                |       | dependency tree (Python + Docker + multiple services). No Kanban gates. |
-| Cline          |  5/10 | VSCode extension state, checkpoint/restore is good. No state machine,   |
-|                |       | no enforced gates, no zero-dep discipline (npm heavy).                  |
-| SWE-Agent      |  5/10 | Academic codebase, ACI is clean. No state machine, no gates. Research   |
-|                |       | quality, not production hardening.                                      |
-| Continue.dev   |  6/10 | Good extension engineering, stable. Wrong category — not an agent       |
-|                |       | harness. No state machine for multi-agent orchestration.                |
-| Devin          |  7/10 | Commercial, presumably hardened. Black box — can't inspect state model. |
-|                |       | Known to have memory consistency issues on long tasks (user reports).   |
-| Cursor         |  7/10 | Shadow workspace is solid state management. Good engineering. Closed    |
-|                |       | source — can't verify internal state machine or test coverage.          |
-| bolt.new       |  5/10 | WebContainer is structurally solid. Agent layer is thin — no formal     |
-|                |       | state machine, no gates, no test discipline for the orchestration layer.|
-
-WINNER: Make It Real (9/10) | Runner-up: Aider / Devin / Cursor (7/10)
-MIR VERDICT: WIN — only competitor with a machine-enforced state machine AND
-             zero-dep discipline AND 433 tests covering every gate path.
-
----
-
-## DIMENSION 2: ARCHITECTURE DESIGN
-(LLM<->engine boundary clarity, schema design, MCP surface, hook pattern quality)
-
-| Competitor     | Score | Rationale                                                               |
-|----------------|-------|-------------------------------------------------------------------------|
-| Make It Real   |  9/10 | Crystal-clear boundary: deterministic engine, LLM orchestrated through  |
-|                |       | hooks and typed commands. Flat schemas (no cross-ref). Minimal MCP      |
-|                |       | surface (blueprint + launch). Hooks are quiet-by-default — don't        |
-|                |       | hijack ordinary Claude Code chat. PreToolUse is surgical: blocks only   |
-|                |       | when a run is active AND context is scoped. Architecture Dossier is     |
-|                |       | read-only (no mutating controls in the UI — control plane is chat/hooks).|
-| Aider          |  7/10 | Architect/editor split is elegant. Git diff as the interface is clean.  |
-|                |       | No MCP. Session-stateless design is a real architectural virtue.        |
-| OpenHands      |  7/10 | CodeAct agent framework is well-designed. Docker as isolation is sound. |
-|                |       | But boundary is blurry inside the container (agent has full OS access). |
-| Cline          |  6/10 | MCP consumer (not provider) is a design choice. Tool-calling loop is    |
-|                |       | clear. Plan/act toggle is good. No formal schema for agent state.       |
-| SWE-Agent      |  7/10 | ACI abstraction is architecturally interesting — reduces the interface  |
-|                |       | surface between LLM and OS. Clean academic design. Not extensible.      |
-| Continue.dev   |  6/10 | Context providers architecture is well-designed for an assistant. Not   |
-|                |       | designed for autonomous multi-agent orchestration.                      |
-| Devin          |  6/10 | Black box. From external behavior: planning + execution + memory is     |
-|                |       | sound. But no inspectable architecture, no MCP, no schema contracts.    |
-| Cursor         |  7/10 | Shadow workspace as the LLM<->code boundary is genuinely clever. Rules  |
-|                |       | files add agent guidance. But closed-source, no schema enforcement.     |
-| bolt.new       |  6/10 | WebContainer is the cleanest isolation boundary in the field. Simple    |
-|                |       | agent layer on top. No schema contracts, no DAG, but the boundary       |
-|                |       | is physically real (browser sandbox).                                   |
-
-WINNER: Make It Real (9/10) | Runner-up: Aider / OpenHands / SWE-Agent / Cursor (7/10)
-MIR VERDICT: WIN — unique combination of quiet hooks + read-only dashboard +
-             flat typed schemas + deterministic engine as the true control plane.
+| Plugin       | Score | Evidence |
+|--------------|-------|---------|
+| MIR          | 9     | 49 tests passing, security audit, e2e evidence files, JSON schemas, versioned at 0.1.46, CHANGELOG, docs/, troubleshooting guide. Zero deps = zero supply chain risk. |
+| OMC          | 9     | v4.11.4, 193 tests, TypeScript strict mode, CI workflows, benchmark suite, CONTRIBUTING.md. |
+| ECC          | 6     | v1.10.0, 97 tests, but complex install chain and heavy deps. Schema validation. |
+| ralph-*      | 5     | Dead simple = reliable. But no error handling, no tests. |
+| hookify      | 5     | Clean code but no tests, no CI, no error recovery. |
+| security-gd  | 5     | v2.0.0 from Anthropic engineers. But depends on Agent SDK install at SessionStart. |
+| Others       | 2-4   | No tests, no versioning, no error handling. |
 
 ---
 
-## DIMENSION 3: DEVELOPER EXPERIENCE (DX)
-(Time to first output, error messages, documentation, debugging capability)
+## HEAD-TO-HEAD: Make It Real vs OMC
 
-| Competitor     | Score | Rationale                                                               |
-|----------------|-------|-------------------------------------------------------------------------|
-| Make It Real   |  7/10 | `node bin/harness.mjs demo rest-api` → blueprint in seconds. HARNESS_*  |
-|                |       | error codes are actionable. Architecture Dossier is a beautiful static  |
-|                |       | HTML doc. /doctor command. BUT: Claude Code only, no multi-runtime, v0  |
-|                |       | means rough edges exist. Ceremony is high for simple tasks.             |
-| Aider          |  9/10 | Single command, zero config, works on any repo immediately. Architect   |
-|                |       | mode is one flag. Error messages are clear. Battle-tested. Best DX in   |
-|                |       | the field for terminal users.                                           |
-| OpenHands      |  7/10 | Web UI is polished. GitHub issue input is intuitive. But Docker setup   |
-|                |       | is heavy; self-hosting is complex. High latency per action.             |
-| Cline          |  8/10 | VSCode install, immediate chat. Plan mode previews changes. Checkpoint  |
-|                |       | makes mistakes recoverable. Very active community = good support.       |
-| SWE-Agent      |  4/10 | Research tool. CLI-only, complex setup, benchmark-focused. Not designed |
-|                |       | for developer DX.                                                       |
-| Continue.dev   |  9/10 | Best-in-class IDE assistant DX. Tab autocomplete is magical. Context    |
-|                |       | providers "just work." Multi-IDE is a genuine win.                      |
-| Devin          |  9/10 | Most polished UX. Chat interface, Slack integration, automatic PR       |
-|                |       | filing. If money is no object, the smoothest ride.                      |
-| Cursor         |  9/10 | Native IDE feel, shadow workspace reviews, fast, familiar. The DX       |
-|                |       | benchmark others are measured against.                                  |
-| bolt.new       |  9/10 | Zero setup (browser). Real-time preview. One-click deploy. Unbeatable   |
-|                |       | accessibility. Best DX for non-developers and rapid prototyping.        |
+| Dimension           | MIR  | OMC  | Winner |
+|---------------------|------|------|--------|
+| Architecture        | 10   | 9    | MIR — Zero-dep state machine with kanban lanes |
+| Hook Sophistication | 9    | 10   | OMC — 11 events vs MIR's 3, but MIR's are deeper |
+| MCP Usage           | 9    | 9    | TIE — Both ship custom MCP servers |
+| Test Coverage       | 10   | 8    | MIR — 49 focused test files, zero deps, node:test |
+| Code Quality        | 10   | 7    | MIR — Zero dependencies is unbeatable |
+| DX                  | 7    | 8    | OMC — Lower barrier to entry, more slash commands |
+| Unique Value        | 10   | 9    | MIR — Contract-gated pipeline is unprecedented |
+| Production Ready    | 9    | 9    | TIE |
+| **TOTAL**           | **74** | **69** | **MIR by 5 points** |
 
-WINNER: Cursor / bolt.new / Continue.dev / Devin / Aider (9/10)
-MIR VERDICT: LOSS — ceremony of blueprint + approval + gate flow is a deliberate
-             trade for correctness. DX wins go to tools that skip the ceremony.
-             MIR is not trying to win this dimension for simple tasks.
+MIR wins on engineering rigor (architecture, tests, zero deps, unique value).
+OMC wins on breadth and accessibility (11 hook events, 37 skills, multi-model).
 
 ---
 
-## DIMENSION 4: UNIQUE VALUE PROPOSITION
-(What does Make It Real do that others DON'T? Is the value defensible?)
+## KEY TAKEAWAYS
 
-| Competitor     | Score | Rationale                                                               |
-|----------------|-------|-------------------------------------------------------------------------|
-| Make It Real   |  9/10 | The only tool in the field that does ALL of:                            |
-|                |       | 1) Machine-checkable OpenAPI + module-surface contracts (frozen)        |
-|                |       | 2) Contract conformance tests auto-generated from specs                 |
-|                |       | 3) DAG-scheduled parallel sub-agents with claims/leases                 |
-|                |       | 4) Path boundary enforcement (not advisory — engine validates after)    |
-|                |       | 5) Fingerprinted approval gates (changing any artifact breaks approval) |
-|                |       | 6) Done gate requires evidence (agent CANNOT self-declare complete)     |
-|                |       | 7) Architecture Dossier as SDK-doc-style reference before code          |
-|                |       | The bet: AI sub-agents are a distributed systems problem, not a         |
-|                |       | workflow problem. No competitor frames the problem this way.            |
-| Aider          |  7/10 | Repo maps (tree-sitter) solve context-window scale uniquely. Architect/ |
-|                |       | editor cost-splitting is clever. Defensible for brownfield/large repos. |
-| OpenHands      |  8/10 | Full OS sandbox + SWE-bench SOTA. Cloud-native autonomous execution.    |
-|                |       | Accessible to non-local setups. Real differentiation.                  |
-| Cline          |  7/10 | MCP consumer ecosystem + checkpoint/restore. First-class MCP support    |
-|                |       | before anyone else. Defensible via ecosystem moat.                     |
-| SWE-Agent      |  6/10 | ACI (agent-computer interface) abstraction is a real idea. But the      |
-|                |       | value prop is academic, not product. Hard to defend commercially.       |
-| Continue.dev   |  6/10 | Multi-IDE + context provider ecosystem. Tab autocomplete quality.       |
-|                |       | Strong in the assistant category, weak as an autonomous agent.          |
-| Devin          |  8/10 | Persistent cross-session memory + CI/CD integration. Closest to         |
-|                |       | "autonomous software engineer" vision. Commercial moat.                |
-| Cursor         |  8/10 | Shadow workspace + native IDE feel + multi-file agent + best code       |
-|                |       | completion in the field. Strong network effects from tab autocomplete.  |
-| bolt.new       |  7/10 | WebContainer (browser-native full-stack runtime) is a genuine          |
-|                |       | technical moat. Zero-setup accessibility is defensible.                |
+1. **MIR is the most architecturally sophisticated plugin in the ecosystem.**
+   No other plugin has a state machine, kanban board, work-item DAG, path boundary
+   enforcement, contract gates, or a verification pipeline. It's not a prompt
+   collection—it's an engineering harness.
 
-WINNER: Make It Real (9/10) for the specific domain of multi-module parallel AI development
-        with contract enforcement. OpenHands/Devin/Cursor (8/10) for broader autonomy.
-MIR VERDICT: WIN — the contract-first + path-enforcement + DAG-gate combination is
-             genuinely unique. No competitor is even attempting this design.
+2. **OMC is the most feature-rich plugin in the ecosystem.**
+   11 hook events, 37 skills, 19 agents, LSP/AST tools, multi-model fan-out,
+   team coordination. It's a platform.
+
+3. **ECC has the broadest language coverage** but suffers from architectural sprawl.
+
+4. **Most plugins are prompt collections.** Only 5 of 16 have any hooks at all.
+   Only 3 ship MCP servers. Only 3 have meaningful tests.
+
+5. **The "zero deps" achievement matters.** MIR has zero npm dependencies and 49
+   tests. This means zero supply chain risk and trivially reproducible builds.
+   In an ecosystem where plugins run as Claude Code hooks (trusted code), this is
+   a significant security advantage.
 
 ---
 
-## DIMENSION 5: PRODUCTION READINESS
-(Can a real team ship with this today? Missing features? Known failure modes?)
-
-| Competitor     | Score | Rationale                                                               |
-|----------------|-------|-------------------------------------------------------------------------|
-| Make It Real   |  6/10 | v0.1.46. Claude Code only. No persistent project memory (STATE.md gap). |
-|                |       | No brownfield workflow. No multi-runtime. But: gates prevent bad states,|
-|                |       | 433 tests, zero deps, structured evidence. Greenfield multi-module is   |
-|                |       | genuinely production-usable today. Limited ecosystem.                   |
-| Aider          |  8/10 | v0.x but very mature. Massive user base. Multi-LLM. Works on any        |
-|                |       | codebase. Used in production by many teams today. Well documented.      |
-| OpenHands      |  7/10 | Docker requirement and complexity. But enterprise features exist.        |
-|                |       | SWE-bench results suggest real capability. Growing fast.                |
-| Cline          |  8/10 | VSCode production-ready. Widely used by developers daily. Checkpoint    |
-|                |       | reduces risk. Active maintenance. Good for individual/small team use.   |
-| SWE-Agent      |  4/10 | Research tool. Not designed for team workflows. No UI. Hard to debug.   |
-|                |       | Benchmark results don't translate to team productivity.                 |
-| Continue.dev   |  8/10 | Production-ready IDE assistant. Stable, multi-IDE, open source, active. |
-|                |       | But not an autonomous agent — different tool category.                  |
-| Devin          |  8/10 | Commercial product, paid support, real customers. But $500/month, cloud-|
-|                |       | only, known failures on complex multi-file architecture tasks.           |
-| Cursor         |  9/10 | Most widely adopted by professional developers. Stable, fast, familiar. |
-|                |       | Subscription required but affordable. Works today for any team.         |
-| bolt.new       |  7/10 | Great for web prototypes and demos. Not suitable for complex backend     |
-|                |       | systems, native dependencies, or enterprise deployment requirements.     |
-
-WINNER: Cursor (9/10) | Runner-up: Aider / Cline / Continue.dev / Devin (8/10)
-MIR VERDICT: LOSS — v0, Claude Code only, no persistent memory, no brownfield workflow.
-             Real teams can use it for greenfield multi-module work today but
-             the ecosystem and maturity gap is real.
-
----
-
-## FINAL SCOREBOARD
-
-| Competitor     | Dim 1 | Dim 2 | Dim 3 | Dim 4 | Dim 5 | TOTAL | Rank |
-|----------------|-------|-------|-------|-------|-------|-------|------|
-| Make It Real   |   9   |   9   |   7   |   9   |   6   |  40   |  2nd |
-| Cursor         |   7   |   7   |   9   |   8   |   9   |  40   |  2nd |
-| Aider          |   7   |   7   |   9   |   7   |   8   |  38   |  4th |
-| Cline          |   5   |   6   |   8   |   7   |   8   |  34   |  5th |
-| OpenHands      |   6   |   7   |   7   |   8   |   7   |  35   |  5th |
-| Devin          |   7   |   6   |   9   |   8   |   8   |  38   |  4th |
-| Continue.dev   |   6   |   6   |   9   |   6   |   8   |  35   |  5th |
-| bolt.new       |   5   |   6   |   9   |   7   |   7   |  34   |  5th |
-| SWE-Agent      |   5   |   7   |   4   |   6   |   4   |  26   |  9th |
-
-Note: Cursor and Make It Real tie at 40 total, but in DIFFERENT CATEGORIES.
-Cursor wins the "ship code fast for teams" category.
-Make It Real wins the "multi-agent distributed systems correctness" category.
-These are not the same tournament bracket.
-
----
-
-## CATEGORY WINS AND LOSSES
-
-Make It Real WINS:
-  1. STRUCTURAL INTEGRITY — only tool with enforced state machine + zero-dep
-     discipline + 433 tests covering all gate paths.
-  2. ARCHITECTURE DESIGN — LLM/engine boundary clarity, quiet hooks,
-     read-only dossier, flat typed schemas are best in class.
-  3. UNIQUE VALUE PROPOSITION — machine-checkable contracts + DAG enforcement
-     + path boundaries is genuinely unique. Nobody else is doing this.
-
-Make It Real LOSES:
-  1. DEVELOPER EXPERIENCE — deliberate. The ceremony is the product. Tools
-     optimized for simplicity (Cursor, bolt.new, Aider) will always win
-     here for tasks that don't need the ceremony.
-  2. PRODUCTION READINESS — v0, Claude Code only, no brownfield workflow,
-     no persistent memory between runs. This is the honest gap.
-
----
-
-## THE FINAL VERDICT
-
-Make It Real is not competing in the same race as Cursor, Aider, or bolt.new.
-It is the only tool in the field that treats AI multi-agent development as a
-distributed systems problem — with contracts, claims, leases, gates, and evidence.
-
-The correct category is:
-
-  CORRECTNESS-FIRST MULTI-MODULE GREENFIELD DEVELOPMENT
-
-In that category, Make It Real has NO real competitor. The closest is OpenHands
-(full OS sandbox + multi-agent) but it does not do contract enforcement or
-DAG-scheduled path boundaries.
-
-The honest ranking for the full field:
-
-  #1  Cursor         — best overall for professional developer teams
-  #2  Make It Real   — best for correctness-critical multi-agent greenfield
-  #2  Devin          — best autonomous commercial SaaS
-  #4  Aider          — best terminal-native, best for brownfield/large repos
-  #4  Cline          — best MCP-native VSCode experience
-  #6  OpenHands      — best for SWE-bench class autonomous tasks
-  #6  Continue.dev   — best IDE assistant (different category really)
-  #6  bolt.new       — best for prototypes and zero-setup web apps
-  #9  SWE-Agent      — academic excellence, not a team development tool
-
-The bet Make It Real is making — contracts must be machine-checkable, boundaries
-must be enforced (not requested), and Done must mean gates passed (not "the agent
-said so") — is a real and defensible bet. If that bet is right, Make It Real is
-not in second place. It's in a category of one.
-
----
-
-## WHAT MAKE IT REAL SHOULD DO NEXT
-
-To close the production readiness gap and become undeniably first:
-
-  1. Persistent project memory (STATE.md / CONTEXT.md equivalent) — GSD has
-     this; MIR doesn't. Brownfield re-grounding would unlock a huge use case.
-  2. Multi-runtime support — Codex, Gemini, Cursor. The engine is runtime-
-     agnostic; the plugin wrapper is Claude Code only. This is a distribution
-     problem, not an architecture problem.
-  3. Brownfield workflow entry point — an explicit "I have existing code, map
-     it into a blueprint" command alongside /mir:plan for new systems.
-  4. v1.0 release milestone — 433 tests and zero deps are v1.0 quality.
-     The version number is underselling the structural integrity.
-  5. Community channels — Discord, npm package, Anthropic marketplace.
-     GSD at v1.42.1 has a community; MIR at v0.1.46 doesn't yet.
-
----
-
-Scorecard produced by: Hermes Agent (Nous Research)
-Tournament: 신룣 Grand Tournament (천무대전), Round 1
-Judgment basis: Local code inspection (MIR) + trained knowledge of competitors
-Evidence: /Users/eugene/Workspace/52g-tools/dev-harness/** (433 tests, 0 fail)
+*Scorecard generated by reading actual source code of all 16 plugins, June 2026.*
