@@ -41,11 +41,11 @@ test("OpenAPI adapter validates declared contract documents", async () => {
   });
 });
 
-test("OpenAPI adapter requires implementation-grade operation contracts", async () => {
+test("OpenAPI adapter validates a declared requestBody is internally consistent", async () => {
   await withFixture(async ({ runDir }) => {
     const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
     const spec = await readJsonFile(specPath);
-    delete spec.paths["/auth/login"].post.requestBody;
+    spec.paths["/auth/login"].post.requestBody.required = false;
     delete spec.paths["/auth/login"].post.responses["401"];
     await writeJsonFile(specPath, spec);
 
@@ -53,7 +53,21 @@ test("OpenAPI adapter requires implementation-grade operation contracts", async 
     const codes = result.errors.map((error) => error.code);
     assert.equal(result.ok, false);
     assert.equal(codes.includes("HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING"), true);
-    assert.equal(codes.includes("HARNESS_OPENAPI_ERROR_RESPONSE_MISSING"), true);
+    // The LLM owns whether an operation declares error responses; the engine no longer requires them.
+    assert.equal(codes.includes("HARNESS_OPENAPI_ERROR_RESPONSE_MISSING"), false);
+  });
+});
+
+test("OpenAPI adapter accepts an operation with no requestBody", async () => {
+  await withFixture(async ({ runDir }) => {
+    const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
+    const spec = await readJsonFile(specPath);
+    delete spec.paths["/auth/login"].post.requestBody;
+    await writeJsonFile(specPath, spec);
+
+    const result = await validateOpenApiContracts({ runDir });
+    const codes = result.errors.map((error) => error.code);
+    assert.equal(codes.includes("HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING"), false);
   });
 });
 

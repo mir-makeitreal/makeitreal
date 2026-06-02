@@ -45,11 +45,7 @@ export function buildDynamicRoleHandoff({ workItem, verificationCommand = null }
         blockers: ["optional blocker"]
       }
     },
-    reviewLoop: {
-      afterDone: ["spec-reviewer", "quality-reviewer", "verification-reviewer"],
-      sameImplementerFixesReviewFindings: true,
-      nonDoneStatusCreatesReviewDebt: true
-    },
+    reviewLoop: workItem.reviewLoop ?? null,
     assignment: {
       workItemId: workItem.id,
       responsibilityUnitId: workItem.responsibilityUnitId ?? null,

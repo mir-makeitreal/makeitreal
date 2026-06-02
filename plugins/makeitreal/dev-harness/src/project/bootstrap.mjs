@@ -90,7 +90,7 @@ export async function initializeProject({ projectRoot, runDir = null, source = "
     currentRunUpdated: currentRun?.ok ?? false,
     config,
     gitignore,
-    nextAction: currentRun?.ok ? "/makeitreal:status" : "/makeitreal:plan <request>",
+    nextActionCode: currentRun?.ok ? "status" : "plan",
     errors
   };
 }

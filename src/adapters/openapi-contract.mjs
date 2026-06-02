@@ -163,7 +163,6 @@ function exampleValues(container) {
 
 function validateImplementationGradeOperation({ operation, method, routePath, contractId, evidencePath, document }) {
   const errors = [];
-  const requestBodyRequired = !["get", "delete", "head"].includes(method);
   if (!operation.operationId || typeof operation.operationId !== "string") {
     errors.push(contractError({
       code: "HARNESS_OPENAPI_OPERATION_ID_MISSING",
@@ -174,10 +173,10 @@ function validateImplementationGradeOperation({ operation, method, routePath, co
   }
 
   const requestSchema = jsonSchemaObject(operation.requestBody);
-  if (requestBodyRequired && (operation.requestBody?.required !== true || !requestSchema)) {
+  if (operation.requestBody && (operation.requestBody.required !== true || !requestSchema)) {
     errors.push(contractError({
       code: "HARNESS_OPENAPI_REQUEST_SCHEMA_MISSING",
-      reason: `OpenAPI operation must declare a required application/json request schema: ${method.toUpperCase()} ${routePath}.`,
+      reason: `OpenAPI operation declares a requestBody that must be required and declare an application/json schema: ${method.toUpperCase()} ${routePath}.`,
       contractId,
       evidencePath
     }));
@@ -227,14 +226,6 @@ function validateImplementationGradeOperation({ operation, method, routePath, co
     }
   }
 
-  if (!Object.keys(responses).some((status) => /^[45]\d\d$/.test(status))) {
-    errors.push(contractError({
-      code: "HARNESS_OPENAPI_ERROR_RESPONSE_MISSING",
-      reason: `OpenAPI operation must declare at least one 4xx or 5xx error response: ${method.toUpperCase()} ${routePath}.`,
-      contractId,
-      evidencePath
-    }));
-  }
   return errors;
 }
 

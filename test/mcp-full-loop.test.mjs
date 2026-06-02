@@ -242,6 +242,17 @@ describe("make-it-real MCP server full plan→launch→finish→complete loop", 
       userInputRequired: "fail-fast",
       unsupportedToolCall: "fail-fast"
     }, null, 2)}\n`);
+    // Doctrine: the engine never fabricates a role mapping; the run must declare
+    // native-role-mapping.json before native dispatch.
+    await writeFile(path.join(runDir, "native-role-mapping.json"), `${JSON.stringify({
+      schemaVersion: "1.0",
+      mappings: [
+        { evidenceRole: "implementation-worker", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "spec-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "quality-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "verification-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" }
+      ]
+    }, null, 2)}\n`);
   });
 
   it("mir_launch status reports gate Ready passes after approval", async () => {

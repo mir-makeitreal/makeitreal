@@ -33,67 +33,41 @@ export const FAILURE_EVENTS = new Set([
   "malformed"
 ]);
 
+// Engine failure taxonomy: code + reason are engine signals only. The operator
+// command (nextAction) is NOT decided here — it is left to the LLM/operator
+// summary, which owns user-facing prose and routing.
 const FAILURE_CLASSES = Object.freeze({
   startup: {
     category: "startup",
     code: "HARNESS_CLAUDE_RUNNER_STARTUP_FAILED",
-    reason: "Claude Code runner failed to start.",
-    nextAction: "/makeitreal:doctor"
-  },
-  timeout: {
-    category: "timeout",
-    code: "HARNESS_CLAUDE_RUNNER_TIMEOUT",
-    reason: "Claude Code runner timed out.",
-    nextAction: "/makeitreal:launch"
-  },
-  quota: {
-    category: "quota",
-    code: "HARNESS_CLAUDE_RUNNER_QUOTA",
-    reason: "Claude Code runner hit a quota or rate-limit response.",
-    nextAction: "/makeitreal:status"
-  },
-  commandRejection: {
-    category: "command-rejection",
-    code: "HARNESS_CLAUDE_RUNNER_COMMAND_REJECTED",
-    reason: "Claude Code runner rejected the command or tool call.",
-    nextAction: "/makeitreal:doctor"
+    reason: "Claude Code runner failed to start."
   },
   hookFailure: {
     category: "hook-failure",
     code: "HARNESS_CLAUDE_HOOK_FAILED",
-    reason: "Claude Code hook execution failed.",
-    nextAction: "/makeitreal:doctor"
+    reason: "Claude Code hook execution failed."
   },
   workspaceBoundary: {
     category: "workspace-boundary",
     code: "HARNESS_WORKSPACE_BOUNDARY_FAILED",
-    reason: "Runner changed files outside the declared responsibility boundary.",
-    nextAction: "/makeitreal:status"
+    reason: "Runner changed files outside the declared responsibility boundary."
   },
   agentStatus: {
     category: "agent-status",
     code: "HARNESS_AGENT_STATUS_FAILED",
-    reason: "Implementation worker did not report a clean DONE status.",
-    nextAction: "/makeitreal:status"
+    reason: "Implementation worker did not report a clean DONE status."
   },
   output: {
     category: "output",
     code: "HARNESS_RUNNER_OUTPUT_INVALID",
-    reason: "Claude Code runner did not produce valid structured runtime output.",
-    nextAction: "/makeitreal:doctor"
+    reason: "Claude Code runner did not produce valid structured runtime output."
   },
   generic: {
     category: "generic",
     code: "HARNESS_CLAUDE_RUNNER_FAILED",
-    reason: "Claude Code runner failed.",
-    nextAction: "/makeitreal:status"
+    reason: "Claude Code runner failed."
   }
 });
-
-function textIncludes(patterns, value) {
-  const haystack = String(value ?? "").toLowerCase();
-  return patterns.some((pattern) => haystack.includes(pattern));
-}
 
 function firstClassifiedBoundaryError(errors) {
   return (errors ?? []).find((error) =>
@@ -160,32 +134,16 @@ export function classifyRunnerFailure({
     };
   }
 
+  // failedToStart is a structured boolean signal, not NLP. The engine does not
+  // inspect stdout/stderr text to classify the failure — the runner is expected
+  // to emit structured failure events. When it does not, the engine returns a
+  // generic failure carrying the raw output pointers as evidence and lets the
+  // LLM/operator summary decide what to do next.
   if (failedToStart) {
     return {
-      ...FAILURE_CLASSES.startup,
-      reason: error instanceof Error ? `Claude Code runner failed to start: ${error.message}` : FAILURE_CLASSES.startup.reason,
+      ...FAILURE_CLASSES.hookFailure,
       evidence: evidence.length > 0 ? evidence : ["runner.error"]
     };
-  }
-
-  const combined = `${stdout}\n${stderr}\n${error instanceof Error ? error.message : error ?? ""}`;
-  if (textIncludes(["hook failed", "stop hook", "pretooluse", "userpromptsubmit", "hook_run_id"], combined)) {
-    return { ...FAILURE_CLASSES.hookFailure, evidence };
-  }
-  if (textIncludes(["timed out", "timeout", "etimedout", "sigterm"], combined)) {
-    return { ...FAILURE_CLASSES.timeout, evidence };
-  }
-  if (
-    textIncludes(["api_error_status\":429", "api_error_status:429", " 429", "rate limit", "quota", "usage limit", "too many requests"], combined)
-  ) {
-    return { ...FAILURE_CLASSES.quota, evidence };
-  }
-  if (
-    events.includes("unsupported_tool_call")
-    || events.includes("turn_input_required")
-    || textIncludes(["unsupported tool", "unsupported_tool", "permission denied", "not allowed", "command rejected"], combined)
-  ) {
-    return { ...FAILURE_CLASSES.commandRejection, evidence };
   }
 
   const failureEvent = events.find((event) => FAILURE_EVENTS.has(event));

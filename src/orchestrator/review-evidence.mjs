@@ -1,11 +1,5 @@
 import { createHarnessError } from "../domain/errors.mjs";
 
-export const REVIEW_ROLES = Object.freeze([
-  "spec-reviewer",
-  "quality-reviewer",
-  "verification-reviewer"
-]);
-
 export const REVIEW_STATUSES = Object.freeze([
   "APPROVED",
   "APPROVED_WITH_NOTES",
@@ -15,8 +9,10 @@ export const REVIEW_STATUSES = Object.freeze([
   "BLOCKED"
 ]);
 
-const REQUIRED_REVIEW_ROLES = new Set(REVIEW_ROLES);
-const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
+// The LLM must use these exact status strings to signal approval, so the engine
+// keeps them as a named constant. It does NOT define which review roles a run
+// requires — that comes from the work item / completion policy.
+export const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 const VALID_REVIEW_STATUSES = new Set(REVIEW_STATUSES);
 
 function reportArray(value) {
@@ -170,13 +166,13 @@ function extractSingleReviewReport({ candidate, workItem, workerId, attemptId, n
 
   const role = String(candidate.role ?? "");
   const status = String(candidate.status ?? "");
-  if (!REQUIRED_REVIEW_ROLES.has(role)) {
+  if (!role) {
     return {
       ok: false,
       report: null,
       errors: [createHarnessError({
         code: "HARNESS_REVIEW_ROLE_INVALID",
-        reason: `Review report role must be one of ${REVIEW_ROLES.join(", ")}.`,
+        reason: "Review report must declare a non-empty role.",
         ownerModule: workItem.responsibilityUnitId ?? null,
         evidence: ["runner.stdout"],
         recoverable: true
@@ -219,7 +215,7 @@ function extractSingleReviewReport({ candidate, workItem, workerId, attemptId, n
   };
 }
 
-export function validateCompletionReviews({ attempt, workItem }) {
+export function validateCompletionReviews({ attempt, workItem, requiredRoles = [] }) {
   const reports = attempt?.runner?.reviewReports ?? [];
   const latestByRole = new Map();
   for (const report of reports) {
@@ -228,7 +224,8 @@ export function validateCompletionReviews({ attempt, workItem }) {
     }
   }
 
-  const missing = REVIEW_ROLES.filter((role) => !latestByRole.has(role));
+  const required = Array.isArray(requiredRoles) ? requiredRoles : [];
+  const missing = required.filter((role) => !latestByRole.has(role));
   if (missing.length > 0) {
     return {
       ok: false,
@@ -242,8 +239,8 @@ export function validateCompletionReviews({ attempt, workItem }) {
     };
   }
 
-  const rejected = REVIEW_ROLES.map((role) => latestByRole.get(role))
-    .find((report) => !APPROVED_REVIEW_STATUSES.has(report.status));
+  const rejected = required.map((role) => latestByRole.get(role))
+    .find((report) => report && !APPROVED_REVIEW_STATUSES.has(report.status));
   if (rejected) {
     return {
       ok: false,

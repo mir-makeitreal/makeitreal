@@ -26,7 +26,7 @@ test("setup without a run initializes local harness state and gitignore", async 
     assert.equal(output.ok, true);
     assert.equal(output.command, "setup");
     assert.equal(output.currentRunUpdated, false);
-    assert.equal(output.nextAction, "/makeitreal:plan <request>");
+    assert.equal(output.nextActionCode, "plan");
 
     const gitignore = await readFile(path.join(projectRoot, ".gitignore"), "utf8");
     assert.match(gitignore, /^\/\.makeitreal\/$/m);

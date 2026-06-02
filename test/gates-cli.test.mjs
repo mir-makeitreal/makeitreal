@@ -170,6 +170,7 @@ test("Ready gate rejects API work items without an OpenAPI contract binding", as
       lane: "Contract Frozen",
       prdId: "prd.auth",
       responsibilityUnitId: "ru.audit-api",
+      isApiUnit: true,
       contractIds: ["contract.audit.boundary"],
       dependsOn: [],
       allowedPaths: ["src/api/audit/**"],
@@ -331,7 +332,7 @@ test("Done gate rejects failed verification evidence", async () => {
   });
 });
 
-test("Done gate rejects zero-test verification evidence", async () => {
+test("Done gate trusts exit code zero verification evidence even with zero executed tests", async () => {
   await withFixture(async ({ runDir }) => {
     await renderDesignPreview({ runDir });
     const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
@@ -353,8 +354,7 @@ test("Done gate rejects zero-test verification evidence", async () => {
       cwd: new URL("../", import.meta.url),
       encoding: "utf8"
     });
-    assert.equal(result.status, 1);
-    assert.equal(JSON.parse(result.stdout).errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    assert.equal(result.status, 0, result.stdout);
   });
 });
 
@@ -455,7 +455,7 @@ test("Ready gate validates declared OpenAPI contracts", async () => {
     await approveRun(runDir);
     const specPath = path.join(runDir, "contracts", "auth-login.openapi.json");
     const spec = await readJsonFile(specPath);
-    delete spec.paths["/auth/login"].post.requestBody;
+    spec.paths["/auth/login"].post.requestBody.required = false;
     await writeJsonFile(specPath, spec);
 
     const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {

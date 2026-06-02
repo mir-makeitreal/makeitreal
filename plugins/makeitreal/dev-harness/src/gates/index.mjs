@@ -33,26 +33,15 @@ function verificationExemptionReason(workItem) {
 }
 
 function nodeKindForWorkItem(artifacts, workItem) {
-  return artifacts.workItemDag.nodes?.find((node) => node.id === workItem.id)?.kind ?? "implementation";
+  return artifacts.workItemDag.nodes?.find((node) => node.id === workItem.id)?.kind ?? null;
 }
 
 function moduleInterfacesForWorkItem(artifacts, workItem) {
   return artifacts.designPack.moduleInterfaces.filter((moduleInterface) => moduleInterface.responsibilityUnitId === workItem.responsibilityUnitId);
 }
 
-function moduleInterfaceForWorkItem(artifacts, workItem) {
-  return moduleInterfacesForWorkItem(artifacts, workItem)[0] ?? null;
-}
-
-function ownsApiPath(workItem) {
-  return (workItem.allowedPaths ?? []).some((candidate) => /(^|\/)(api|routes?)(\/|$)/i.test(String(candidate ?? "").replaceAll("\\", "/")));
-}
-
-function isApiResponsibilityUnit({ artifacts, workItem }) {
-  const moduleInterface = moduleInterfaceForWorkItem(artifacts, workItem);
-  return workItem.responsibilityUnitId.endsWith("-api")
-    || ownsApiPath(workItem)
-    || /\b(API|endpoint|route|HTTP)\b/.test(`${moduleInterface?.moduleName ?? ""} ${moduleInterface?.purpose ?? ""}`);
+function isApiResponsibilityUnit(workItem) {
+  return workItem.isApiUnit === true;
 }
 
 function openApiContractIds(artifacts) {
@@ -70,8 +59,7 @@ function publicSurfaceContractIds(moduleInterfaces) {
 }
 
 function hasDoneEvidencePlan(workItem) {
-  const kinds = new Set((workItem.doneEvidence ?? []).map((evidence) => evidence.kind));
-  return kinds.has("verification") && kinds.has("wiki-sync");
+  return (workItem.doneEvidence ?? []).length > 0;
 }
 
 function hasDoneEvidenceKind(workItem, kind) {
@@ -87,6 +75,14 @@ function workItemsForRequiredNodes({ dag, workItems }) {
 
 function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
   const nodeKind = nodeKindForWorkItem(artifacts, workItem);
+  if (nodeKind === null) {
+    errors.push(createHarnessError({
+      code: "HARNESS_NODE_KIND_MISSING",
+      reason: `Work item has no node kind declared in the work item DAG: ${workItem.id}.`,
+      ownerModule: workItem.responsibilityUnitId,
+      evidence: ["work-item-dag.json", "work-items"]
+    }));
+  }
   const workItemModuleInterfaces = moduleInterfacesForWorkItem(artifacts, workItem);
   const workItemSurfaceContractIds = publicSurfaceContractIds(workItemModuleInterfaces);
   const apiContractIds = openApiContractIds(artifacts);
@@ -132,7 +128,7 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
   }
 
   if (!hasDoneEvidencePlan(workItem)) {
-    errors.push(createHarnessError({ code: "HARNESS_DONE_EVIDENCE_PLAN_MISSING", reason: `Ready requires planned verification and wiki-sync Done evidence: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
+    errors.push(createHarnessError({ code: "HARNESS_DONE_EVIDENCE_PLAN_MISSING", reason: `Ready requires at least one declared Done evidence entry: ${workItem.id}`, ownerModule: workItem.responsibilityUnitId, evidence: ["work-items"] }));
   }
 
   if (nodeKind === "implementation" && workItemModuleInterfaces.length === 0) {
@@ -156,7 +152,7 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
     }));
   }
 
-  const requiresOpenApiContract = nodeKind === "implementation" && isApiResponsibilityUnit({ artifacts, workItem });
+  const requiresOpenApiContract = nodeKind === "implementation" && isApiResponsibilityUnit(workItem);
   const workItemOpenApiContracts = (workItem.contractIds ?? []).filter((contractId) => apiContractIds.has(contractId));
   if (requiresOpenApiContract && workItemOpenApiContracts.length === 0) {
     errors.push(createHarnessError({

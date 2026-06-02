@@ -158,6 +158,15 @@ export function parseBoundedInt(value, min, max) {
       userInputRequired: "fail-fast",
       unsupportedToolCall: "fail-fast"
     });
+    await writeJsonFile(path.join(runDir, "native-role-mapping.json"), {
+      schemaVersion: "1.0",
+      mappings: [
+        { evidenceRole: "implementation-worker", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "spec-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "quality-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" },
+        { evidenceRole: "verification-reviewer", nativeSubagentType: "general-purpose", mappingSource: "run-declared" }
+      ]
+    });
 
     const render = runHarness(["design", "render", runDir]);
     assert.equal(render.status, 0, render.stdout || render.stderr);

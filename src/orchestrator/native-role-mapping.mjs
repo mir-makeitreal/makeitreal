@@ -1,16 +1,5 @@
 import { createHarnessError } from "../domain/errors.mjs";
 
-const ROLES = Object.freeze([
-  "implementation-worker",
-  "spec-reviewer",
-  "quality-reviewer",
-  "verification-reviewer"
-]);
-
-export function requiredEvidenceRoles() {
-  return [...ROLES];
-}
-
 function mappingError(code, reason) {
   return createHarnessError({
     code,
@@ -20,30 +9,37 @@ function mappingError(code, reason) {
   });
 }
 
+// Doctrine: the engine does not own a role taxonomy. Validation only checks that
+// each declared mapping entry carries the fields the engine needs to dispatch it
+// (evidenceRole + nativeSubagentType). Which roles a given run requires is decided
+// by the work item / completion policy, not by an engine-defined list.
 export function validateNativeRoleMapping(mapping) {
   const errors = [];
   const entries = mapping?.mappings ?? [];
-  for (const role of ROLES) {
-    const entry = entries.find((candidate) => candidate.evidenceRole === role);
-    if (!entry) {
-      errors.push(mappingError("HARNESS_NATIVE_ROLE_MAPPING_MISSING", `Missing native role mapping for ${role}.`));
-      continue;
-    }
-    if (!entry.nativeSubagentType || !entry.mappingSource) {
-      errors.push(mappingError("HARNESS_NATIVE_ROLE_MAPPING_INVALID", `${role} mapping requires nativeSubagentType and mappingSource.`));
+  if (!Array.isArray(entries) || entries.length === 0) {
+    errors.push(mappingError(
+      "HARNESS_NATIVE_ROLE_MAPPING_MISSING",
+      "native-role-mapping.json must declare at least one role mapping."
+    ));
+    return { ok: false, errors };
+  }
+  for (const entry of entries) {
+    if (!entry?.evidenceRole || !entry?.nativeSubagentType) {
+      errors.push(mappingError(
+        "HARNESS_NATIVE_ROLE_MAPPING_INVALID",
+        "Each native role mapping entry requires evidenceRole and nativeSubagentType."
+      ));
     }
   }
   return { ok: errors.length === 0, errors };
 }
 
+// Doctrine: the engine never fabricates a role mapping. If native-role-mapping.json
+// is absent the run must fail fast instead of falling back to a built-in default.
 export function defaultNativeRoleMapping() {
-  return {
-    schemaVersion: "1.0",
-    mappings: [
-      { evidenceRole: "implementation-worker", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
-      { evidenceRole: "spec-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
-      { evidenceRole: "quality-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" },
-      { evidenceRole: "verification-reviewer", nativeSubagentType: "general-purpose", mappingSource: "builtin-default" }
-    ]
-  };
+  const error = mappingError(
+    "HARNESS_NATIVE_ROLE_MAPPING_MISSING",
+    "native-role-mapping.json must be declared in the run."
+  );
+  throw Object.assign(new Error(error.reason), { harnessError: error });
 }

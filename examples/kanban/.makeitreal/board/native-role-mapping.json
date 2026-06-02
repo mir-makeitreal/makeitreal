@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "mappings": [
+    { "evidenceRole": "implementation-worker", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" },
+    { "evidenceRole": "spec-reviewer", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" },
+    { "evidenceRole": "quality-reviewer", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" },
+    { "evidenceRole": "verification-reviewer", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" },
+    { "evidenceRole": "domain-pm", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" },
+    { "evidenceRole": "integration-evidence", "nativeSubagentType": "general-purpose", "mappingSource": "run-declared" }
+  ]
+}

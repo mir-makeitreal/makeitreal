@@ -542,9 +542,9 @@ test("parent-session native Claude task reaches completion without spawning chil
       "general-purpose"
     ]);
     assert.deepEqual(attempt.runner.reviewReports.map((report) => report.mappingSource), [
-      "builtin-default",
-      "builtin-default",
-      "builtin-default"
+      "run-declared",
+      "run-declared",
+      "run-declared"
     ]);
     assert.equal(attempt.runner.executable, undefined);
 
@@ -839,6 +839,9 @@ test("native finish can record valid siblings while malformed sibling remains ru
 test("native start exposes configured subagent mapping as dispatch evidence", async () => {
   await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);
+    // This test exercises project-level mapping resolution, so ensure the run
+    // declares no board-level mapping that would otherwise take precedence.
+    await rm(path.join(boardDir, "native-role-mapping.json"), { force: true });
     await writeJsonFile(path.join(projectRoot, ".makeitreal", "native-role-mapping.json"), {
       schemaVersion: "1.0",
       mappings: [
@@ -1200,7 +1203,7 @@ test("orchestrator completion verifies native Claude task output in the real pro
   });
 });
 
-test("orchestrator completion sends work to Rework when Node test output executes zero tests", async () => {
+test("orchestrator completion trusts exit code zero even when Node test output executes zero tests", async () => {
   await withProjectBoard(async ({ projectRoot, boardDir }) => {
     await enableClaudeRunner(boardDir);
     await mkdir(path.join(projectRoot, "apps", "web", "auth"), { recursive: true });
@@ -1235,14 +1238,12 @@ test("orchestrator completion sends work to Rework when Node test output execute
       now: new Date("2026-04-30T00:00:01.000Z")
     });
 
-    assert.equal(result.ok, false);
-    assert.equal(result.errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
     const completed = await loadBoard(boardDir);
     const completedItem = completed.workItems.find((item) => item.id === "work.login-ui");
-    assert.equal(completedItem.lane, "Rework");
-    assert.equal(completedItem.errorCode, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    assert.equal(completedItem.lane, "Done");
     const evidence = await readJsonFile(path.join(boardDir, "evidence", "work.login-ui.verification.json"));
-    assert.equal(evidence.ok, false);
+    assert.equal(evidence.ok, true);
     assert.match(evidence.commands[0].stdout, /tests 0/);
   });
 });

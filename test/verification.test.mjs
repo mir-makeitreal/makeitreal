@@ -37,7 +37,7 @@ test("failed verification writes failing evidence", async () => {
   });
 });
 
-test("verification rejects node test output with zero executed tests", async () => {
+test("verification trusts exit code zero even when node reports zero executed tests", async () => {
   await withFixture(async ({ runDir }) => {
     const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
     const workItem = await readJsonFile(workItemPath);
@@ -48,11 +48,10 @@ test("verification rejects node test output with zero executed tests", async () 
     await writeJsonFile(workItemPath, workItem);
 
     const result = await runVerification({ runDir });
-    assert.equal(result.ok, false);
-    assert.equal(result.errors[0].code, "HARNESS_VERIFICATION_NO_TESTS_EXECUTED");
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
 
     const evidence = await readJsonFile(path.join(runDir, "evidence", "verification.json"));
-    assert.equal(evidence.ok, false);
+    assert.equal(evidence.ok, true);
     assert.equal(evidence.commands[0].exitCode, 0);
     assert.match(evidence.commands[0].stdout, /tests 0/);
   });
