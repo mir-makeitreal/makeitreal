@@ -59,7 +59,7 @@ async function ensureProjectConfig({ projectRoot }) {
   return { ...written, created: written.ok };
 }
 
-export async function initializeProject({ projectRoot, runDir = null, source = "makeitreal:setup", now = new Date() }) {
+export async function initializeProject({ projectRoot, runDir = null, sessionId = null, source = "makeitreal:setup", now = new Date() }) {
   const resolvedProjectRoot = path.resolve(projectRoot);
   await mkdir(path.join(resolvedProjectRoot, ".makeitreal"), { recursive: true });
 
@@ -69,6 +69,7 @@ export async function initializeProject({ projectRoot, runDir = null, source = "
     ? await writeCurrentRunState({
         projectRoot: resolvedProjectRoot,
         runDir,
+        sessionId,
         source,
         now
       })
@@ -86,6 +87,7 @@ export async function initializeProject({ projectRoot, runDir = null, source = "
     projectRoot: resolvedProjectRoot,
     runDir: currentRun?.runDir ?? null,
     statePath: currentRun?.statePath ?? path.join(resolvedProjectRoot, ".makeitreal", "current-run.json"),
+    sessionStatePath: currentRun?.sessionStatePath ?? null,
     currentRun,
     currentRunUpdated: currentRun?.ok ?? false,
     config,

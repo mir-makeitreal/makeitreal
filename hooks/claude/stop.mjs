@@ -64,9 +64,11 @@ async function hasActiveExecution({ runDir }) {
 
 async function main() {
   const input = await readHookInput();
+  const sessionId = input.session_id ?? null;
   const resolved = await resolveCurrentRunDir({
     projectRoot: input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
-    runDir: input.runDir ?? input.makeitreal?.runDir ?? null
+    runDir: input.runDir ?? input.makeitreal?.runDir ?? null,
+    sessionId
   });
   if (!resolved.ok) {
     return passThrough();

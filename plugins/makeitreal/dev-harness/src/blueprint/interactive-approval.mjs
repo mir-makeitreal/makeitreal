@@ -151,7 +151,7 @@ export async function applyNativeBlueprintReviewDecision({
     });
   }
 
-  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, env });
+  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, sessionId, env });
   if (!resolved.ok) {
     return {
       hookSpecificOutput: {
@@ -303,7 +303,7 @@ export async function applyInteractiveBlueprintApproval({
   env = process.env,
   now = new Date()
 }) {
-  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, env });
+  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, sessionId, env });
   if (!resolved.ok) {
     return buildNoopUserPromptSubmitOutput({ reason: "No active Make It Real run was available for review." });
   }

@@ -324,6 +324,7 @@ async function main() {
   }
 
   const projectRoot = input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const sessionId = input.session_id ?? null;
   const explicitRunDir = explicitMakeItReal?.runDir ?? input.runDir ?? null;
   const runnerContext = runnerContextState(process.env);
   const runnerRunDir = process.env.MAKEITREAL_BOARD_DIR ?? null;
@@ -352,7 +353,7 @@ async function main() {
       runDir: runnerRunDir ?? explicitRunDir
     });
   } else {
-    resolved = await resolveCurrentRunDir({ projectRoot });
+    resolved = await resolveCurrentRunDir({ projectRoot, sessionId });
     if (!resolved.ok) {
       return allow("No active Make It Real enforcement context.");
     }
@@ -399,7 +400,7 @@ async function main() {
       reason: "Active Make It Real run context is required before file edits.",
       contractId: null,
       ownerModule: null,
-      evidence: ["CLAUDE_PROJECT_DIR", ".makeitreal/current-run.json"],
+      evidence: ["CLAUDE_PROJECT_DIR", ".makeitreal/current-run.json", ".makeitreal/current-runs/{session_id}.json"],
       recoverable: true
     }]);
   }

@@ -149,7 +149,16 @@ const TOOL_DEFINITIONS = [
     name: "mir_blueprint",
     description:
       "Submit an architecture blueprint for validation and storage. Claude generates the proposal, this tool validates and saves it.",
-    inputSchema: buildToolInputSchema()
+    inputSchema: {
+      ...buildToolInputSchema(),
+      properties: {
+        ...buildToolInputSchema().properties,
+        sessionId: {
+          type: "string",
+          description: "Claude Code session ID (input.session_id). Used to write a session-scoped run pointer."
+        }
+      }
+    }
   },
   {
     name: "mir_launch",
@@ -251,6 +260,15 @@ async function handleBlueprintTool(args) {
       errors
     }, "Internal error saving artifacts. Try again or check file permissions."));
   }
+
+  // Write current-run pointer so hooks can find this run (legacy + session-scoped).
+  const { writeCurrentRunState } = await import("../dev-harness/src/project/run-state.mjs");
+  await writeCurrentRunState({
+    projectRoot,
+    runDir,
+    sessionId: typeof args.sessionId === "string" ? args.sessionId : null,
+    source: "makeitreal:plan"
+  });
 
   return toolCallText({
     ok: true,

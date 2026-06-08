@@ -47,7 +47,7 @@ Internal commands used by Make It Real skills:
   blueprint reject <runDir>    Reject Blueprint review evidence
   blueprint review <runDir>    Record a native Claude Code Blueprint review decision
   blueprint import <runDir>    Import a BlueprintProposal JSON from stdin (Claude Code generates, engine validates+writes)
-  setup <projectRoot>          Initialize Make It Real state and optionally record --run
+  setup <projectRoot>          Initialize Make It Real state and optionally record --run [--session-id <id>]
   status <projectRoot>         Show the active Make It Real run state
   doctor <projectRoot>         Diagnose plugin, hooks, config, preview, and Claude CLI
   hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
@@ -730,6 +730,7 @@ async function runCommand(argv) {
     const result = await initializeProject({
       projectRoot: resolveProjectRootArg(argv[1]),
       runDir: parseFlag(argv, "--run"),
+      sessionId: parseFlag(argv, "--session-id") ?? null,
       source: "makeitreal:setup",
       now: deterministicNow(argv)
     });

@@ -46,13 +46,14 @@ async function main() {
   const input = await readHookInput();
   const projectRoot = input.repoRoot ?? input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
   const runDir = input.runDir ?? input.makeitreal?.runDir ?? null;
+  const sessionId = input.session_id ?? null;
 
   // The UserPromptSubmit hook fires on EVERY user message in this Claude Code
   // session, including conversations that have nothing to do with Make It Real.
   // When there is no active run (no .makeitreal/current-run.json), return a
   // completely silent passthrough so we never inject Make It Real output into
   // unrelated conversations.
-  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, env: process.env });
+  const resolved = await resolveCurrentRunDir({ projectRoot, runDir, sessionId, env: process.env });
   if (!resolved.ok) {
     return { continue: true };
   }
