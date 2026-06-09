@@ -24,6 +24,7 @@ import { initializeProject } from "../src/project/bootstrap.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readRunStatus } from "../src/status/run-status.mjs";
 import { syncLiveWiki } from "../src/wiki/live-wiki.mjs";
+import { buildWikiIndex, openInBrowser, resolveWikiPaths } from "../src/wiki/wiki-viewer.mjs";
 import { normalizeVerificationCommand } from "../src/domain/verification-command.mjs";
 
 function printHelp() {
@@ -37,6 +38,8 @@ Internal commands used by Make It Real skills:
   config get <projectRoot>     Show Make It Real project config
   config set <projectRoot>     Update config (--profile default|quiet, --live-wiki/--dashboard-* enabled|disabled)
   wiki sync <runDir>           Sync verified work to live wiki
+  wiki open <runDir>           Render the live wiki to HTML and open it in the browser
+  wiki watch <runDir>          Render and open the wiki, then auto-regenerate on changes
   contracts openapi <runDir>   Validate OpenAPI contracts
   demo [template]              Generate a demo blueprint (todo-app, rest-api, auth-system)
   demo list                    List available demo templates
@@ -499,6 +502,97 @@ async function runCommand(argv) {
     }
     const result = await syncLiveWiki({ runDir: argv[2] });
     return { exitCode: result.ok ? 0 : 1, result: { command: "wiki sync", ...result } };
+  }
+
+  if (argv[0] === "wiki" && (argv[1] === "open" || argv[1] === "watch")) {
+    const subcommand = `wiki ${argv[1]}`;
+    if (!argv[2] || argv[2].startsWith("--")) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: subcommand,
+          errors: [createHarnessError({
+            code: "HARNESS_RUN_DIR_REQUIRED",
+            reason: `${subcommand} requires <runDir>.`,
+            evidence: ["argv"],
+            recoverable: true,
+            nextAction: `${subcommand} <runDir>`
+          })]
+        }
+      };
+    }
+
+    const runDir = argv[2];
+    const { liveDir, indexPath } = resolveWikiPaths(runDir);
+    const build = await buildWikiIndex(runDir);
+
+    if (build.count === 0) {
+      console.error(`No wiki pages found in ${liveDir}. Run 'wiki sync ${runDir}' to publish verified work first.`);
+    }
+
+    openInBrowser(indexPath);
+
+    if (argv[1] === "open") {
+      return {
+        exitCode: 0,
+        result: {
+          ok: true,
+          command: subcommand,
+          outputPath: indexPath,
+          pageCount: build.count,
+          errors: []
+        }
+      };
+    }
+
+    // wiki watch: regenerate on change and keep the process alive.
+    const { watch } = await import("node:fs");
+    let pending = null;
+    const regenerate = () => {
+      if (pending) {
+        clearTimeout(pending);
+      }
+      // Debounce rapid bursts of fs events.
+      pending = setTimeout(async () => {
+        pending = null;
+        try {
+          await buildWikiIndex(runDir);
+          console.error("Wiki updated");
+        } catch (error) {
+          console.error(`Wiki update failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }, 100);
+    };
+    try {
+      const watcher = watch(liveDir, { persistent: true }, (_eventType, filename) => {
+        if (!filename || filename.endsWith(".md")) {
+          regenerate();
+        }
+      });
+      watcher.on("error", (error) => {
+        console.error(`Wiki watch error: ${error instanceof Error ? error.message : String(error)}`);
+      });
+      console.error(`Watching ${liveDir} for changes. Press Ctrl+C to stop.`);
+    } catch (error) {
+      return {
+        exitCode: 1,
+        result: {
+          ok: false,
+          command: subcommand,
+          errors: [createHarnessError({
+            code: "HARNESS_WIKI_WATCH_FAILED",
+            reason: `Could not watch ${liveDir}: ${error instanceof Error ? error.message : String(error)}`,
+            evidence: [liveDir],
+            recoverable: true,
+            nextAction: `wiki sync ${runDir}`
+          })]
+        }
+      };
+    }
+
+    // Return without printing JSON so the watcher keeps the event loop alive.
+    return { exitCode: 0, result: null };
   }
 
   if (argv[0] === "contracts" && argv[1] === "openapi") {
