@@ -4,7 +4,7 @@
 
 **Make It Simple. Make It Work. Make It Real.**
 
-*プロダクトのドキュメントを先に書く。Claude Codeが仕様通りに実装する。*
+*契約が先、コードはあとから。*
 
 <p align="center">
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />

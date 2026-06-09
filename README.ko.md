@@ -6,7 +6,7 @@
 
 **Make It Simple. Make It Work. Make It Real.**
 
-*제품 문서를 먼저 작성하세요. Claude Code가 그대로 구현합니다.*
+*계약이 먼저입니다. 코드는 그다음.*
 
 <p>
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />

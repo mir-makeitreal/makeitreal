@@ -6,7 +6,7 @@
 
 **Make It Simple. Make It Work. Make It Real.**
 
-*Write your product docs first. Claude Code builds exactly what you specified.*
+*Contract first. Code follows.*
 
 <p>
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />

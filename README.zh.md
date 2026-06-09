@@ -4,7 +4,7 @@
 
 **Make It Simple. Make It Work. Make It Real.**
 
-*先写产品文档。Claude Code 严格按照规格实现。*
+*契约先行，代码随后。*
 
 <p align="center">
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
