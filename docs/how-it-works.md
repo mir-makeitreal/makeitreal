@@ -1,239 +1,584 @@
-# How It Works
+# How Make It Real Works
 
-A visual walkthrough of the full Make It Real pipeline, from goal to done.
+A technical reference for the orchestration engine, DAG scheduler, path enforcement, contract system, gate logic, and evidence model.
 
-## The Big Picture
+---
 
-```mermaid
-flowchart TB
-    subgraph Input["Input"]
-        G["🎯 Your Goal"]
-    end
+## Table of Contents
 
-    subgraph Planning["Planning Phase"]
-        P1["PRD Generation"]
-        P2["Architecture Design"]
-        P3["Contract Extraction"]
-        P4["DAG Construction"]
-        P5["Work Item Creation"]
-    end
+1. [Overview](#overview)
+2. [Board Structure](#board-structure)
+3. [DAG Scheduler](#dag-scheduler)
+4. [Sub-Agent Dispatch](#sub-agent-dispatch)
+5. [Path Boundary Enforcement](#path-boundary-enforcement)
+6. [Contract System](#contract-system)
+7. [Gate System](#gate-system)
+8. [Evidence System](#evidence-system)
+9. [SHA-256 Fingerprint & Drift Detection](#sha-256-fingerprint--drift-detection)
+10. [Session Isolation](#session-isolation)
+11. [Dynamic Decomposition (NEEDS_DECOMPOSE)](#dynamic-decomposition-needs_decompose)
+12. [Differentiators](#differentiators)
 
-    subgraph Review["Human Review"]
-        R1["Blueprint Preview"]
-        R2["Approve / Revise / Reject"]
-    end
+---
 
-    subgraph Gates["Ready Gate"]
-        G1["PRD valid?"]
-        G2["Contracts complete?"]
-        G3["Paths non-overlapping?"]
-        G4["Verification plans exist?"]
-        G5["Blueprint approved?"]
-    end
+## Overview
 
-    subgraph Execution["Parallel Execution"]
-        E1["Sub-agent A"]
-        E2["Sub-agent B"]
-        E3["Sub-agent C"]
-    end
+Make It Real (MIR) is a multi-agent software delivery harness. It takes a PRD and a design pack, generates a dependency graph of work items, and dispatches Claude Code sub-agents to execute them in parallel — each agent operating inside a hard path boundary enforced at the kernel level by a `PreToolUse` hook.
 
-    subgraph Verification["Verification"]
-        V1["Contract conformance"]
-        V2["Path boundary check"]
-        V3["Reviewer sub-agents"]
-        V4["Evidence collection"]
-    end
+Every step from plan approval to Done is gated by structured evidence. No work item transitions to Done unless its verification commands have been re-run, its outputs conform to declared contracts, and its wiki sync has been recorded. Plan documents are fingerprinted with SHA-256 at approval time; any subsequent drift blocks all writes.
 
-    subgraph Done["Done Gate"]
-        D1["All evidence valid"]
-        D2["Wiki synced"]
-        D3["✅ Complete"]
-    end
-
-    G --> P1 --> P2 --> P3 --> P4 --> P5
-    P5 --> R1 --> R2
-    R2 -->|Approved| G1
-    G1 --> G2 --> G3 --> G4 --> G5
-    G5 --> E1 & E2 & E3
-    E1 & E2 & E3 --> V1
-    V1 --> V2 --> V3 --> V4
-    V4 --> D1 --> D2 --> D3
+```
+PRD + Design Pack
+       │
+       ▼
+  ┌─────────────┐
+  │  Ready Gate  │  (DAG acyclic, contracts implementation-grade, blueprint approved)
+  └──────┬──────┘
+         │ approved
+         ▼
+  ┌─────────────────────────────────────────┐
+  │           DAG Scheduler                  │
+  │  getReadyWorkItems() → claim → Running   │
+  └──────────┬──────────────────────────────┘
+             │  (per work item)
+             ▼
+  ┌──────────────────────┐
+  │   Claude Code agent   │
+  │  + PreToolUse hook    │  ← path boundary enforced here
+  └──────────┬───────────┘
+             │  makeitrealReport
+             ▼
+  ┌─────────────┐
+  │  Done Gate   │  (evidence: verification + wiki-sync + conformance)
+  └─────────────┘
 ```
 
-## Phase 1: Planning
+---
 
-When you run `/makeitreal:plan`, the engine builds a complete implementation packet.
+## Board Structure
 
-### PRD Generation
+A MIR board is a directory with a fixed layout:
 
-Your request is transformed into a structured Product Requirements Document:
+```
+board/
+├── board.json                   # board metadata and lane state
+├── prd.json                     # product requirements document
+├── design-pack.json             # component and architecture decisions
+├── responsibility-units.json    # ownership assignments
+├── work-item-dag.json           # dependency graph
+├── contracts/
+│   ├── <contractId>.json        # one file per contract
+│   └── ...
+└── work-items/
+    ├── <workItemId>.json        # one file per work item
+    └── ...
+```
+
+### work-item-dag.json
+
+The DAG is the central scheduling artifact. It has two sections: `nodes` and `edges`.
 
 ```json
 {
-  "schemaVersion": "1.0",
-  "id": "prd-auth-system",
-  "title": "JWT Authentication System",
-  "goals": ["Secure user authentication with JWT tokens"],
-  "userVisibleBehavior": ["Login returns access + refresh tokens"],
-  "acceptanceCriteria": [
-    { "id": "ac-login", "statement": "POST /auth/login returns JWT on valid credentials" },
-    { "id": "ac-refresh", "statement": "POST /auth/refresh rotates tokens" }
+  "nodes": [
+    {
+      "id": "wi-auth-service",
+      "kind": "implementation",
+      "requiredForDone": true,
+      "responsibilityUnitId": "ru-backend"
+    }
   ],
-  "nonGoals": ["OAuth provider integration", "2FA"]
+  "edges": [
+    {
+      "from": "wi-auth-service",
+      "to": "wi-api-gateway",
+      "kind": "contract-dependency",
+      "contractId": "contract-auth-api"
+    },
+    {
+      "from": "wi-ui-shell",
+      "to": "wi-dashboard",
+      "kind": "coordination"
+    },
+    {
+      "from": "wi-auth-service",
+      "to": "wi-e2e-tests",
+      "kind": "integration-proof"
+    }
+  ]
 }
 ```
 
-Every field is validated. The PRD must have goals, user-visible behavior, acceptance criteria (each with id + statement), and explicit non-goals.
+**Edge kinds:**
 
-### Architecture Design (Design Pack)
+| Kind | Meaning |
+|---|---|
+| `contract-dependency` | Downstream cannot start until upstream's contract is Frozen |
+| `coordination` | Sequencing hint; upstream must be Done |
+| `integration-proof` | Downstream produces evidence that upstream integrates correctly |
 
-The engine generates a comprehensive design pack containing:
+---
 
-- **Architecture topology** — nodes (modules) and edges (dependencies) with contract references
-- **State flow** — lanes and transitions for the system's runtime behavior
-- **API specs** — OpenAPI references or explicit "kind: none" with reason
-- **Responsibility boundaries** — which module owns which paths and contracts
-- **Module interfaces** — public surfaces with typed signatures (inputs, outputs, errors)
-- **Call stacks** — how modules invoke each other
-- **Sequences** — interaction diagrams
+## DAG Scheduler
 
-Every architecture edge that references a contract must point to a declared `apiSpec`. Every module interface must reference a declared responsibility unit. Cross-references are validated bidirectionally.
+### Dependency Resolution
 
-### Contract Freezing
+`getReadyWorkItems()` computes the executable frontier:
 
-Contracts are the interface specifications between modules. Two types:
+1. Collect all work items in the **Ready** lane.
+2. For each, inspect its `dependsOn[]` list — the transitive set of upstream node IDs implied by the DAG edges.
+3. A work item is **blocked** if any item in `dependsOn[]` is not in the **Done** lane.
+4. Return the unblocked subset.
 
-1. **OpenAPI contracts** — full 3.x specs with paths, operations, request/response schemas, error responses, and examples. Every operation must have an `operationId`, request schema (for non-GET methods), success response schema, and at least one error response.
+```
+Ready lane items
+       │
+       ▼
+  for each item:
+    blocked = dependsOn[].some(id => workItems[id].lane !== 'Done')
+       │
+    blocked? → skip
+       │
+    not blocked? → include in frontier
+```
 
-2. **Module surface contracts** — typed function signatures declaring inputs, outputs, and error shapes. Each public surface has a name, kind, contract IDs, and a signature object.
+### Dispatch
 
-Contracts are frozen before implementation begins. They become the source of truth for integration.
+`promoteReadyGateApprovedWork()` is the scheduler tick:
 
-### DAG Construction
+```
+promoteReadyGateApprovedWork()
+  └── getReadyWorkItems()
+        └── .slice(0, concurrency)   ← respects parallelism ceiling
+              └── for each item:
+                    claim(item)       ← atomically move to Running lane
+                    spawnAgent(item)  ← launch Claude Code subprocess
+```
 
-Work items are organized into a Directed Acyclic Graph:
+The `concurrency` setting is a board-level parameter. Claims are atomic — two scheduler ticks cannot claim the same item.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Backlog
+    Backlog --> Ready : Ready Gate passes
+    Ready --> Running : scheduler claims (unblocked)
+    Running --> Done : Done Gate passes
+    Running --> Blocked : dependency unresolved
+    Blocked --> Ready : dependency resolves
+    Running --> NeedsDecompose : agent emits NEEDS_DECOMPOSE
+    NeedsDecompose --> [*] : children materialized, parent retired
+```
+
+---
+
+## Sub-Agent Dispatch
+
+Each claimed work item launches one Claude Code sub-agent. The agent receives a structured context object:
+
+```json
+{
+  "workItemId": "wi-auth-service",
+  "attemptId": "attempt-3f9a",
+  "implementationPrompt": "Implement the auth service...\n\nBoard: {{boardDir}}\nProject: {{projectRoot}}",
+  "reviewerPrompts": [
+    "Check that all endpoints match the OpenAPI spec in contracts/contract-auth-api.json"
+  ],
+  "scope": {
+    "allowedPaths": [
+      "src/auth/**",
+      "tests/auth/**",
+      "src/auth/index.ts"
+    ]
+  },
+  "verificationCommands": [
+    "pnpm test:auth",
+    "pnpm typecheck"
+  ]
+}
+```
+
+`{{boardDir}}` and `{{projectRoot}}` are substituted at dispatch time to absolute paths on the current machine.
+
+### Finish Envelope
+
+When done (or blocked), the agent writes a `makeitrealReport` to its run directory:
+
+```json
+{
+  "status": "done",
+  "summary": "Implemented JWT auth service with refresh token rotation.",
+  "changedFiles": [
+    "src/auth/service.ts",
+    "src/auth/middleware.ts",
+    "tests/auth/service.test.ts"
+  ],
+  "tested": [
+    "pnpm test:auth",
+    "pnpm typecheck"
+  ],
+  "concerns": [],
+  "blockers": []
+}
+```
+
+`status` is one of: `done` | `blocked` | `needs_decompose` | `failed`.
+
+The orchestrator reads this envelope, validates it against the Done Gate, and either transitions the work item or re-queues it.
+
+---
+
+## Path Boundary Enforcement
+
+This is MIR's most distinctive mechanism. Every file system operation a sub-agent attempts is validated before it executes — not after.
+
+### Mechanism
+
+Claude Code exposes a `PreToolUse` hook that fires synchronously before any tool call is dispatched to the underlying system. MIR registers a hook for the following tool names:
+
+- `Edit`
+- `Write`
+- `MultiEdit`
+- `Bash`
+
+The hook receives the full tool input and the current work item context (loaded from the session's run file). It extracts all file paths from the input and validates them against `workItem.allowedPaths[]`.
+
+**Returning `{ "type": "DENY" }` from the hook aborts the tool call at the kernel level.** The agent never sees a file system error — the call simply does not happen.
+
+### Path Extraction
+
+For `Edit`, `Write`, and `MultiEdit`, the hook recursively scans all keys in the tool input JSON for values that look like file paths.
+
+For `Bash`, the hook additionally parses the command string for:
+
+- Redirect targets: `> file`, `>> file`, `2> file`
+- Explicit file-touching commands: `touch`, `rm`, `mv`, `cp`, `mkdir`
+- Arguments to those commands that resolve to file paths
+
+### Pattern Matching
+
+`allowedPaths` entries use glob-style patterns:
+
+| Pattern | Matches |
+|---|---|
+| `src/auth/index.ts` | Exact file |
+| `src/auth/*.ts` | All `.ts` files directly in `src/auth/` |
+| `src/auth/**` | All files under `src/auth/` at any depth (prefix match) |
+
+The `/**` suffix triggers prefix matching: a path is allowed if it starts with the prefix before `/**`.
+
+### Overlap Validation
+
+The DAG validator enforces that no two sibling work items (items that could run concurrently) have overlapping `allowedPaths`. This check runs at plan time, before any agent is dispatched. A plan with overlapping paths is rejected at the Ready Gate.
+
+```
+plan time:
+  for each pair (A, B) where A and B may run concurrently:
+    if allowedPaths(A) ∩ allowedPaths(B) ≠ ∅:
+      REJECT plan
+```
+
+This means path isolation is guaranteed by construction — no runtime locking or conflict resolution is needed.
+
+---
+
+## Contract System
+
+Contracts are typed interface declarations that producers freeze before consumers implement.
+
+### Contract Types
+
+| Type | Description | Format |
+|---|---|---|
+| `http` | REST API surface | OpenAPI 3.x |
+| `function` | Typed module exports | Typed interface descriptor |
+| `event` | Async message shape | JSON Schema |
+| `component` | UI component props | Typed interface descriptor |
+
+### Contract Lifecycle
+
+```
+Draft → Frozen
+          │
+          └── consumers unblocked (contract-dependency edges resolve)
+```
+
+A contract moves to the **Frozen** lane when its producer work item is Done and its conformance evidence passes. Frozen is an immutable snapshot — subsequent edits create a new contract version.
+
+### OpenAPI Conformance Requirements
+
+For `http` contracts, MIR enforces structural requirements before a contract is considered implementation-grade:
+
+- Every operation must have an `operationId`
+- Every mutating operation must declare a `requestBody` with a JSON schema
+- Every operation must declare at least one success response (2xx)
+- Every `example` value in the spec must validate against its declared schema
+
+These checks run as part of the Ready Gate. A spec that passes Swagger linting but fails these checks will block the gate.
+
+---
+
+## Gate System
+
+Gates are boolean predicates evaluated against the board state. They are not advisory — a work item cannot transition lanes without passing its gate.
+
+### Ready Gate
+
+Evaluated before any agent is dispatched.
+
+| Check | What is verified |
+|---|---|
+| PRD valid | `prd.json` passes schema validation |
+| Design pack valid | `design-pack.json` passes schema validation |
+| DAG acyclic | No cycles in `work-item-dag.json`; DFS with cycle detection |
+| Contracts implementation-grade | All `http` contracts pass OpenAPI structural checks |
+| Blueprint approved | Human approval recorded in board state |
+| Preview exists | `preview/index.html` present (design preview artifact) |
+
+### Done Gate
+
+Evaluated after an agent submits its `makeitrealReport`.
+
+All Ready Gate checks, plus:
+
+| Check | What is verified |
+|---|---|
+| Verification evidence | `verification.json` present; `ok: true`; `exitCode: 0` for all commands |
+| Command hash match | `commandHashes[]` in evidence matches `verificationCommands` declared in work item |
+| Wiki sync evidence | `wiki-sync.json` present with correct `workItemId` and `outputPath` |
+| OpenAPI conformance | `openapi-conformance.json` with passing `cases[]` for all http contracts |
+| Module surface conformance | Live JS import of produced module; actual exports match declared `function` contract signatures |
+
+The Done Gate is evaluated by the orchestrator, not the agent. An agent cannot self-certify completion.
+
+### Gate Evaluation Flow
 
 ```mermaid
 flowchart TD
-    A["auth-service<br/><small>implementation</small>"] -->|contract: auth-api| B["api-gateway<br/><small>implementation</small>"]
-    A -->|contract: session-store| C["session-manager<br/><small>implementation</small>"]
-    B --> D["integration-test<br/><small>integration-evidence</small>"]
-    C --> D
+    A[Agent submits makeitrealReport] --> B{status == done?}
+    B -- no --> C[Re-queue or mark blocked]
+    B -- yes --> D{Ready Gate checks}
+    D -- fail --> E[Reject: gate violation logged]
+    D -- pass --> F{Verification evidence valid?}
+    F -- fail --> E
+    F -- pass --> G{commandHashes match?}
+    G -- fail --> E
+    G -- pass --> H{Wiki sync present?}
+    H -- fail --> E
+    H -- pass --> I{OpenAPI conformance?}
+    I -- fail --> E
+    I -- pass --> J{Module surface conformance?}
+    J -- fail --> E
+    J -- pass --> K[Transition to Done lane]
 ```
 
-Node kinds:
-- `implementation` — code-producing work
-- `domain-pm` — coordination/split validation work
-- `integration-evidence` — cross-module proof
+---
 
-Edge kinds:
-- `contract-dependency` — consumer depends on provider's contract
-- `coordination` — ordering without a software contract
-- `integration-proof` — evidence that contracts integrate correctly
+## Evidence System
 
-The DAG is validated: no cycles, all nodes have matching work items, all contract edges reference declared contracts, responsibility units match, and allowed paths don't overlap between sibling work items.
+Every Done Gate check requires a corresponding evidence file written into the work item's run directory. Evidence files are produced by the agent (or by MIR tooling the agent calls) during execution.
 
-## Phase 2: Review
-
-The Blueprint is presented for human review. You see:
-
-- What will be delivered
-- Scope boundaries
-- Work packages with dependencies
-- Contracts between modules
-
-You decide: **approve**, **reject**, or **request changes**.
-
-Approval is recorded with a cryptographic fingerprint of the Blueprint contents. If any artifact changes after approval, the fingerprint becomes stale and the Ready gate blocks execution until re-approval.
-
-## Phase 3: Ready Gate
-
-Before any sub-agent runs, the Ready gate validates the entire packet:
-
-| Check | What It Validates |
-|-------|-------------------|
-| PRD validity | Schema, required fields, acceptance criteria format |
-| Design pack validity | All 7 sections present, cross-references valid |
-| DAG validity | Acyclic, nodes ↔ work items, contract edges valid |
-| OpenAPI contracts | 3.x version, operation completeness, schema examples |
-| PRD trace | Every work item traces to acceptance criteria |
-| Single ownership | Each responsibility unit has exactly one owner |
-| Contract completeness | Work item contracts exist in design pack |
-| Verification plan | Every implementation work item has verification commands |
-| Path boundaries | Allowed paths non-overlapping, no reserved paths |
-| Module interfaces | Implementation nodes have frozen public surfaces |
-| Blueprint approval | Approved + fingerprint matches current artifacts |
-| Preview | Dashboard artifacts exist |
-
-All checks must pass. Any failure blocks execution with a specific `HARNESS_*` error code and recovery hint.
-
-## Phase 4: Parallel Execution
-
-The orchestrator dispatches sub-agents in topological DAG order:
-
-1. **Claim** — work item claimed by a worker with a lease
-2. **Transition to Running** — kanban state machine enforces valid transitions
-3. **Native Task dispatch** — Claude Code Task sub-agent runs with a scoped prompt containing:
-   - Run directory and project root
-   - Work item details and responsibility unit
-   - Contract IDs and dependencies
-   - Allowed paths (enforced boundary)
-   - Verification commands
-4. **Reviewer Tasks** — three reviewer sub-agents validate each implementation:
-   - `spec-reviewer` — does it match the spec?
-   - `quality-reviewer` — code quality check
-   - `verification-reviewer` — do verification commands pass?
-
-Sub-agents cannot:
-- Edit files outside their `allowedPaths`
-- Reference contracts not declared in their work item
-- Skip verification commands
-- Return without a structured report
-
-### Retry with Backoff
-
-If a sub-agent fails, the work item transitions to `Failed Fast` with:
-- Error code and reason
-- Attempt number tracking
-- Exponential backoff before retry
-- Automatic promotion back to `Ready` when due
-
-## Phase 5: Verification & Done
-
-After implementation, the engine runs the Done gate:
-
-| Check | What It Validates |
-|-------|-------------------|
-| Verification evidence | Commands ran, all passed, produced by engine, hashes match |
-| Wiki sync evidence | Documentation updated or explicitly skipped with reason |
-| OpenAPI conformance | Implementation matches frozen OpenAPI schemas |
-| Module surface conformance | Implementation exports match declared interfaces |
-
-Evidence is persisted as JSON with full provenance:
+### verification.json
 
 ```json
 {
   "kind": "verification",
-  "producer": "makeitreal-engine/verify",
+  "producer": "wi-auth-service/attempt-3f9a",
   "ok": true,
-  "workItemId": "auth-service",
   "commands": [
     {
-      "command": "npm test",
+      "command": "pnpm test:auth",
       "exitCode": 0,
       "stdout": "...",
-      "stderr": ""
+      "durationMs": 4312
+    },
+    {
+      "command": "pnpm typecheck",
+      "exitCode": 0,
+      "stdout": "",
+      "durationMs": 891
     }
   ],
-  "commandHashes": ["sha256:..."]
+  "commandHashes": [
+    "sha256:a3f...",
+    "sha256:b7c..."
+  ]
 }
 ```
 
-When all work items pass all gates, the run is complete.
+`commandHashes` are SHA-256 hashes of the canonical command strings. The Done Gate computes hashes of the work item's declared `verificationCommands` and compares them to this array. A passing test suite run against different commands does not satisfy the gate.
 
-## Next
+### wiki-sync.json
 
-- [Blueprints](concepts/blueprints.md) — the architecture document in detail
-- [Contracts](concepts/contracts.md) — the key differentiator
-- [Responsibility Units](concepts/responsibility-units.md) — ownership boundaries
-- [Orchestration](concepts/orchestration.md) — execution engine internals
+```json
+{
+  "kind": "wiki-sync",
+  "workItemId": "wi-auth-service",
+  "outputPath": "wiki/auth-service.md"
+}
+```
+
+Agents are expected to write a human-readable summary of what they built to the project wiki. The Done Gate verifies this artifact exists.
+
+### openapi-conformance.json
+
+```json
+{
+  "kind": "openapi-conformance",
+  "contractId": "contract-auth-api",
+  "cases": [
+    {
+      "operationId": "loginUser",
+      "request": { "username": "alice", "password": "secret" },
+      "response": { "token": "eyJ..." },
+      "requestValid": true,
+      "responseValid": true,
+      "schemaRef": "#/components/schemas/LoginResponse"
+    }
+  ]
+}
+```
+
+Cases are actual HTTP request/response pairs validated against the OpenAPI schema, not mock assertions. The Done Gate requires `requestValid: true` and `responseValid: true` for all cases.
+
+### Module Surface Conformance
+
+For `function` contracts, MIR performs a live check at Done Gate evaluation time:
+
+1. Dynamically `import()` the module at the path declared in the contract.
+2. Inspect the actual exported members.
+3. Compare name, arity, and TypeScript signature (if available via `.d.ts`) against the declared interface.
+
+This check has no evidence file — it runs inline during gate evaluation and its result is logged to the gate audit trail.
+
+---
+
+## SHA-256 Fingerprint & Drift Detection
+
+Once the Ready Gate approves a plan, the orchestrator computes a SHA-256 fingerprint over the entire plan corpus:
+
+**Inputs to the fingerprint hash:**
+
+- `prd.json`
+- `design-pack.json`
+- `responsibility-units.json`
+- `work-item-dag.json`
+- `board.json` (with volatile fields stripped: `updatedAt`, `laneHistory`, etc.)
+- `contracts/*.json` (all contract files, sorted by path)
+- `work-items/*.json` (all work item files, sorted by path)
+
+The fingerprint is stored in board state at approval time.
+
+**On every subsequent write operation**, before any file is modified, the orchestrator re-computes the fingerprint and compares it to the stored value. If they differ, all writes are blocked and the board enters a `drift-detected` state.
+
+This prevents the scenario where a plan is partially executed and then quietly amended — a class of failure common in long-running multi-agent runs.
+
+```
+approval time:   fingerprint = SHA-256(plan corpus)  →  stored in board.json
+                                                              │
+                                                              │
+every write:     re-compute fingerprint                       │
+                      │                                       │
+                      ▼                                       ▼
+                 fingerprint ──── compare ──── stored fingerprint
+                      │
+                 match? → allow write
+                 mismatch? → BLOCK all writes, set drift-detected
+```
+
+To recover from a drift-detected state, the plan must be re-reviewed and re-approved, which resets the fingerprint.
+
+---
+
+## Session Isolation
+
+Each Claude Code session that attaches to a MIR board gets its own run directory. Session state is stored in:
+
+```
+.makeitreal/current-runs/{session_id}.json
+```
+
+This file records:
+
+- Which work item the session is executing
+- The attempt ID
+- The session's `allowedPaths` snapshot
+- The session's blueprint state (draft vs. approved)
+- Enforcement mode: `attached` | `detached`
+
+Two sessions executing different work items simultaneously have completely separate run directories. The `PreToolUse` hook loads path boundaries from the current session's run file — it cannot see or be confused by another session's state.
+
+**`attached`**: Session is actively executing a work item. Path enforcement is active.
+
+**`detached`**: Session has no claimed work item. All file system operations are allowed (used for planning, review, and debugging workflows outside agent execution).
+
+---
+
+## Dynamic Decomposition (NEEDS_DECOMPOSE)
+
+A sub-agent can signal during execution that a work item is too large or discovered unexpected complexity. It does this by setting `status: "needs_decompose"` in its `makeitrealReport` and including a decomposition proposal:
+
+```json
+{
+  "status": "needs_decompose",
+  "summary": "Auth service requires separate token store and session manager components.",
+  "decompositionProposal": {
+    "children": [
+      {
+        "id": "wi-token-store",
+        "implementationPrompt": "...",
+        "allowedPaths": ["src/auth/token-store/**"],
+        "verificationCommands": ["pnpm test:token-store"]
+      },
+      {
+        "id": "wi-session-manager",
+        "implementationPrompt": "...",
+        "allowedPaths": ["src/auth/session/**"],
+        "verificationCommands": ["pnpm test:session"]
+      }
+    ],
+    "edges": [
+      { "from": "wi-token-store", "to": "wi-session-manager", "kind": "coordination" }
+    ]
+  }
+}
+```
+
+The orchestrator:
+
+1. Validates that the proposed children's `allowedPaths` are a subset of the parent's `allowedPaths` (no expansion of scope).
+2. Validates that the new child edges do not create cycles in the DAG.
+3. Materializes the children as new work items in the Backlog lane.
+4. Retires the parent work item (it is never marked Done).
+5. Adds edges from all of the parent's upstream dependencies to each child.
+
+This allows the DAG to grow during execution without human intervention, while preserving scope containment and acyclicity invariants.
+
+---
+
+## Differentiators
+
+These behaviors are specific to MIR and not present in comparable harnesses like OMC or ECC.
+
+### PreToolUse Blocking
+
+MIR's path enforcement fires *before* any tool executes. The agent receives a DENY response from the hook; no file system call is made. Comparable harnesses perform post-hoc auditing — they detect violations after the fact and attempt remediation, which is inherently racy in a multi-agent setting.
+
+### SHA-256 Fingerprint Drift Detection
+
+Plan documents are cryptographically bound at approval time. Mid-execution plan changes are detected and blocked automatically. Most harnesses have no equivalent mechanism and rely on process discipline.
+
+### allowedPaths Overlap Validation at Plan Time
+
+Concurrent work item pairs are checked for path overlap before any agent runs. This eliminates write conflicts by construction. Other harnesses rely on file locking or merge-time conflict resolution.
+
+### commandHashes Binding
+
+Verification evidence must prove that the *exact* declared commands were run, not just that *some* tests passed. An agent cannot substitute a lighter test suite to clear the gate.
+
+### NEEDS_DECOMPOSE Dynamic Child Materialization
+
+Agents can propose and trigger DAG expansion at runtime without leaving the orchestration loop. Decomposed work is automatically wired into the existing dependency graph with scope containment enforced.
+
+### Session-Scoped Isolation
+
+Each Claude Code session operates in a hermetic run context. Path boundaries, blueprint state, and enforcement mode are per-session — two concurrent sessions cannot interfere with each other's state.
