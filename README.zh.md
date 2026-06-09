@@ -1,90 +1,162 @@
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
 
+<div align="center">
+
 # Make It Real
 
 **Make It Simple. Make It Work. Make It Real.**
 
 *Contract first. Code follows.*
 
-<p align="center">
+<p>
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
   <img src="https://img.shields.io/badge/dependencies-0-lightgrey" alt="zero deps" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
-  <img src="https://img.shields.io/badge/node-%E2%89%A520-success" alt="node" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-blue" alt="node ≥20" />
 </p>
 
-<p align="center">
-  <a href="#60-秒快速上手">快速上手</a> •
-  <a href="#前后对比">前后对比</a> •
-  <a href="#工作原理">工作原理</a> •
+<p>
+  <a href="#安装">安装</a> ·
+  <a href="#三条核心命令">命令</a> ·
+  <a href="#开发流程">流程</a> ·
+  <a href="#docs-first-理念">理念</a> ·
   <a href="docs/README.md">文档</a>
 </p>
+
+</div>
+
+---
+
+大多数 AI 编码工具从代码开始。Make It Real 从文档开始。
+
+你先写清楚产品**应该**是什么样 — 目标、接口、验收标准、模块边界。Make It Real 把这些冻结成机器可检查的契约，然后派发只能实现文档所描述内容的并行 Claude 子 Agent。Agent 跑完时，代码和文档在结构上就是同步的。
 
 ---
 
 ## 安装
 
-**环境要求：** Claude Code（最新版）· Node.js ≥ 20
+**环境要求:** Claude Code (最新版) · Node.js ≥ 20
+
+**第一步 — 添加插件市场:**
+
+```bash
+claude plugin marketplace add 52g github:mir-makeitreal/makeitreal
+```
+
+**第二步 — 安装插件:**
 
 ```bash
 claude plugin install makeitreal@52g
 ```
 
-验证安装：
+**验证安装:**
 
 ```
 /mir:status
 ```
 
-无需 API 密钥，无需构建步骤，无需独立进程。
-
-> 已经安装了 Claude Code？插件安装完成后 `/mir:` 命令立即可用。
+无需 API 密钥。无需构建。无需独立进程。
 
 ---
 
-## 60 秒快速上手
+## 三条核心命令
 
-无需安装，克隆仓库直接跑演示：
+| 命令 | 作用 |
+|---------|------|
+| `/mir:plan "你的需求"` | 生成 Blueprint。PRD、架构、契约、DAG、仪表盘。内联审查并批准。 |
+| `/mir:launch` | 执行已批准的 Blueprint。按 DAG 顺序通过门控循环派发子 Agent。 |
+| `/mir:status` | 当前阶段、工作项状态、阻塞项、仪表盘 URL。 |
 
-```bash
-git clone https://github.com/mir-makeitreal/makeitreal && cd makeitreal
-node bin/harness.mjs demo rest-api --pretty
+核心循环就是：**plan → launch → status**。
+
+所有 `/mir:` 命令都有对应的完整形式 `/makeitreal:` 等价命令，供偏好完整名称的人使用。高级命令：[docs/command-reference.md](docs/command-reference.md)
+
+---
+
+## 开发流程
+
+从一句大白话需求，到验证过、与文档同步的代码 — 六个阶段：
+
+**阶段 1 — 描述** · 用大白话说清楚要构建什么
+
+**阶段 2 — Blueprint** · Claude 来设计：规格、架构、契约、任务图
+
+**阶段 3 — 审查** · 你来批准。指纹锁定每一份产物。
+
+**阶段 4 — 派发** · 并行 Agent 被分配到各模块，边界被强制执行
+
+**阶段 5 — 构建** · 每个 Agent 实现自己的模块，碰不到别人的
+
+**阶段 6 — 验证** · 契约一致性被证明，证据被写入，完成
+
+<!-- SCREENSHOT: dashboard -->
+<p align="center">
+  <img src="assets/dossier-screenshot.png" alt="Make It Real Architecture Dossier — auth system blueprint with module graph, contracts, and task DAG" width="100%" />
+</p>
+
+> *Architecture Dossier — 由 `/mir:plan` 生成。模块图、冻结的契约、任务依赖顺序、验收标准。全部交叉链接，全部机器可检查。*
+
+
+```mermaid
+flowchart LR
+    A["📝 你的需求"] --> B["🗺️ Blueprint\nPRD · 架构 · 契约"]
+    B --> C["🔍 审查 &\n批准"]
+    C --> D["❄️ 契约\n冻结"]
+    D --> DAG["📊 工作项 DAG\n依赖顺序"]
+
+    subgraph agents["🤖 并行子 Agent  (PreToolUse BLOCK 强制)"]
+        direction TB
+        AG1["Agent 1\nsrc/auth/**"]
+        AG2["Agent 2\nsrc/links/**"]
+        AG3["Agent 3\nsrc/db/**"]
+    end
+
+    DAG --> AG1
+    DAG --> AG2
+    DAG --> AG3
+
+    subgraph evidence["📋 证据收集"]
+        EV1["证据 A"]
+        EV2["证据 B"]
+        EV3["证据 C"]
+    end
+
+    AG1 --> EV1
+    AG2 --> EV2
+    AG3 --> EV3
+
+    EV1 --> GATE["🚦 完成门\n契约一致性验证"]
+    EV2 --> GATE
+    EV3 --> GATE
+
+    GATE --> DONE["✅ 完成\n文档与代码同步"]
 ```
 
-这条命令会把完整的架构 Blueprint（PRD、契约、工作项 DAG、仪表盘 HTML）输出到临时目录。用以下命令打开仪表盘：
+> *契约在任何 Agent 运行之前就被冻结。每个 Agent 都被 `PreToolUse` 钩子物理约束在声明的路径内。完成门会一直阻塞，直到每个 Agent 都证明了一致性。*
 
-```bash
-# runDir 路径会在演示输出中打印出来
-open <runDir>/preview/index.html
-```
-
-在 Claude Code 里，一条斜杠命令搞定：
-
-```
-/mir:demo rest-api
-```
-
-三个内置模板：`todo-app`（简单）、`rest-api`（中等）、`auth-system`（复杂）。
+完整流水线说明：[docs/how-it-works.md](docs/how-it-works.md)
 
 ---
 
 ## Docs First 理念
 
-> 「先把产品文档写好，然后 Make It Real。」
+大多数团队在写完代码**之后**才补文档。他们记录的是已经做出来的东西，而不是应该做的东西。结果总是一样：文档漂移、规格说谎、每次集成都冒出意外。
 
-这不只是一个「Blueprint 优先的 Claude Code 插件」，而是一套完整的工程哲学。
+Make It Real 把这个顺序倒过来。**文档是唯一可信来源。** 代码只是文档正确的证明。
 
-**让 PM、架构师和工程师说同一种语言。**
+```
+传统方式：     需求 → 代码 →（也许）文档 → 测试撞出意外
+Make It Real： 需求 → 文档 → 冻结契约 → 代码证明文档 → 没有意外
+```
 
-传统开发中，需求文档、设计文档和代码分散在不同地方，随时间推移不断漂移。在 Make It Real 里，文档是唯一可信来源——代码跟着文档走，永远不会反过来。
+这不只是给开发者的一套更好的工作流。它是团队**每个人**的共同语言：
 
-| 原则 | 含义 |
-|------|------|
-| **规格即测试** | OpenAPI 契约和类型化接口直接驱动一致性测试。测试通过，意味着规格已被机器验证为满足。 |
-| **契约即接口** | 模块边界不是「文档」，而是「可执行约束」。子 Agent 针对契约来实现，不靠猜测接口。 |
-| **未经批准不写代码** | Blueprint 批准之前，一行代码都不会产生。批准操作会记录指纹——产物一旦变更，必须重新批准。 |
+- **PM** 写下直接变成自动化门控的验收标准 — 而不是被遗忘在 Jira 里的工单
+- **架构师** 定义子 Agent 在物理上无法跨越的模块边界
+- **工程师** 针对自己没写的契约来实现，因为接口早已被证明
+- **审查者** 批准的是 Blueprint，而不是 diff — 在一行代码写出来之前
 
-深入了解这套理念：[概念：Blueprints](docs/concepts/blueprints.md) · [概念：Contracts](docs/concepts/contracts.md)
+规格即测试。契约即接口。文档和代码永远同步。
 
 ---
 
@@ -94,73 +166,13 @@ open <runDir>/preview/index.html
 
 |  | 没有 Make It Real | 有 Make It Real |
 |---|---|---|
-| **规划** | 直接开始写代码 | 先生成包含模块边界、契约和依赖图的 Blueprint，你审查并批准后才有任何代码产生。 |
-| **边界** | 单个 Agent 碰所有东西，Auth 层直接打穿数据库层。 | 每个子 Agent 有独立的 `allowedPaths`，物理上无法编辑自己模块之外的文件。 |
+| **规划** | 直接开始写代码 | 先生成 Blueprint：PRD、模块图、契约、DAG。在一行代码写出来之前你就批准。 |
+| **边界** | 单个 Agent 碰所有东西，Auth 层直接打穿数据库层。 | 每个子 Agent 有独立的 `allowedPaths`。钩子**拒绝**写入声明模块之外的文件。 |
 | **契约** | 祈祷最后模块能拼到一起 | OpenAPI 规格和类型化接口在实现前就已冻结，子 Agent 对着规格实现。 |
-| **并行度** | 顺序执行，或手动调用 `Task` 工具 | DAG 调度器带 Claims、Lease、重试机制，自动并行调度子 Agent。 |
-| **集成** | "在我分支上能跑" → 合并冲突 | 契约一致性测试通过 → 集成已被证明。 |
-| **证据** | "我觉得应该好了" | 每个工作项都有结构化验证证据，没有证据，完成门不放行。 |
-
----
-
-## 工作原理
-
-```mermaid
-flowchart LR
-    A["你的需求"] --> B["Blueprint"]
-    B --> C["契约冻结"]
-    C --> D["工作项 DAG"]
-    D --> E1["Agent 1"]
-    D --> E2["Agent 2"]
-    D --> E3["Agent 3"]
-    E1 --> F["验证通过 ✓"]
-    E2 --> F
-    E3 --> F
-```
-
-1. **描述你想要什么。** 一句话就够。
-2. **引擎生成 Blueprint。** PRD、架构、模块接口、OpenAPI 契约、责任边界、工作项 DAG——全部在任何代码产生前就已生成并验证。
-3. **你来审批。** 检查 Blueprint，要求修改，或者直接拒绝。批准操作记录指纹——任何产物变更后，门控会要求重新批准。
-4. **子 Agent 并行构建。** 每个 Agent 负责一个责任单元，针对冻结契约实现，只能操作自己声明的文件路径。
-5. **门控强制把关。** Ready 门在 Blueprint 通过健全性检查前阻止启动；Done 门在验证证据存在前阻止完成——没有自我声明的「完成」。
-
-完整流水线说明：[How It Works](docs/how-it-works.md)
-
----
-
-## 三条核心命令
-
-| 命令 | 作用 |
-|---------|------|
-| `/mir:plan "你的需求"` | 从需求生成 Blueprint，内联审查并批准。 |
-| `/mir:launch` | 执行已批准的 Blueprint，按 DAG 顺序调度子 Agent。 |
-| `/mir:status` | 查看当前阶段、工作项状态、阻塞项和仪表盘 URL。 |
-
-核心循环就是：**plan → launch → status**。
-
-更多高级命令见 [命令参考](docs/command-reference.md)。
-
-所有 `/mir:` 命令都有对应的完整形式 `/makeitreal:` 等价命令。
-
----
-
-## 生成的产物
-
-```
-.makeitreal/runs/<run-id>/
-├── prd.json                    # 目标、验收标准、非目标
-├── design-pack.json            # 架构拓扑、API、边界
-├── responsibility-units.json   # 带 allowedPaths 的所有权边界
-├── work-item-dag.json          # 带契约边的依赖图
-├── blueprint-review.json       # 带指纹的批准状态
-├── contracts/                  # 冻结的接口规格
-│   ├── *.openapi.json          #   带示例的 OpenAPI 3.x
-│   └── *.json                  #   模块表面签名
-├── work-items/                 # 带验证命令的逐项任务
-├── evidence/                   # 验证 + wiki 同步证据
-├── preview/                    # 仪表盘 HTML
-└── board.json                  # 所有工作项的看板状态
-```
+| **并行度** | 顺序执行，或互相踩脚的 `Task` 调用 | 带 Claims、Lease、重试的 DAG 调度子 Agent，强制依赖顺序。 |
+| **集成** | "在我分支上能跑" → 合并冲突 | 单元级的契约一致性证明集成。没有单独的集成阶段。 |
+| **证据** | "我觉得应该好了" | 每个工作项都有结构化验证证据。没有证据，完成门不放行。 |
+| **文档–代码同步** | 几天内文档就漂移 | 文档是唯一可信来源。代码是证明。两者无法分叉。 |
 
 ---
 
@@ -168,20 +180,21 @@ flowchart LR
 
 **424 个测试，零依赖。**
 
-引擎是纯 Node.js 验证逻辑——无网络调用，无 API 密钥，无外部服务，直接跑在 Claude Code 的运行时里。
+引擎是纯 Node.js 验证逻辑——无网络调用，无 API 密钥，无外部服务。它跑在 Claude Code 的运行时里，离线运行，边际成本为零。
 
-**契约不是文档。** 它是机器可检查的接口规格（OpenAPI 3.x + 类型化模块表面），可以直接生成一致性测试。子 Agent 的测试通过了，就证明它正确实现了契约。集成不是独立的阶段——它是契约一致性的自然结果。
+**契约不是文档，是强制约束。**
 
-**路径边界不是建议。** 引擎会验证没有子 Agent 越界操作 `allowedPaths` 之外的文件。分配到 `src/auth/**` 的 Agent 如果动了 `src/database/schema.ts`，验证直接失败。
+契约是 OpenAPI 3.x 规格，或类型化的模块表面。引擎在生成时就验证完整性：每条路径都有操作，每个操作都有 `operationId`，每个非 GET 端点都有请求体 schema，每个成功响应都有 JSON schema，每个错误情况都已声明。子 Agent 的测试通过了，就证明它实现了契约。集成不是独立的阶段——它是一致性的自然结果。
 
-延伸阅读：[Contracts](docs/concepts/contracts.md) · [Responsibility Units](docs/concepts/responsibility-units.md) · [Blueprints](docs/concepts/blueprints.md)
+**路径边界不是建议，是钩子强制执行的。**
 
----
+`PreToolUse` 钩子拦截子 Agent 的每一次 `Write` 和 `Edit` 调用，把目标路径对照 `allowedPaths` 检查。越出声明边界的 Agent 会立刻失败——不是在代码审查时，不是在合并时,而是当场。
 
-## 系统要求
+**批准指纹阻止悄无声息的漂移。**
 
-- Claude Code（最新版）
-- Node.js ≥ 20
+Blueprint 指纹是所有产物的 SHA-256。批准之后契约一旦变更——哪怕一个字符——Ready 门就会拒绝运行并要求重新批准。你无法基于一份没审查过的 Blueprint 开始实现。
+
+延伸阅读：[Contracts](docs/concepts/contracts.md) · [Responsibility Units](docs/concepts/responsibility-units.md) · [Blueprints](docs/concepts/blueprints.md) · [Orchestration](docs/concepts/orchestration.md)
 
 ---
 
@@ -191,13 +204,16 @@ flowchart LR
 |---|:---:|:---:|:---:|:---:|:---:|
 | 代码之前先做架构 | ✅ | ❌ | ✅ | ✅ | ✅ |
 | 机器可检查的契约 | ✅ | ❌ | ❌ | ⚠️ | ❌ |
+| 契约→测试生成 | ✅ | ❌ | ❌ | ❌ | ❌ |
 | DAG 调度并行 Agent | ✅ | ⚠️ | ✅ | ⚠️ | ✅ |
-| 路径边界强制执行 | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 路径边界强制执行（钩子） | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 批准指纹 | ✅ | ❌ | ❌ | ❌ | ❌ |
 | 质量门控（引擎强制） | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
 | 交互式仪表盘 | ✅ | ❌ | ❌ | ❌ | ❌ |
 | 零运行时依赖 | ✅ | ✅ | ✅ | ❌ | ⚠️ |
+| 文档–代码同步保证 | ✅ | ❌ | ❌ | ⚠️ | ❌ |
 
-各工具的诚实横评：[docs/comparison.md](docs/comparison.md)
+⚠️ = 部分或可选 · 完整诚实横评：[docs/comparison.md](docs/comparison.md)
 
 ---
 
@@ -212,6 +228,8 @@ node --test          # 运行全部 424 个测试，约 12 秒
 
 无需构建步骤，无需安装依赖，克隆即可测试。
 
+提 PR 前请先读 [CONTRIBUTING.md](CONTRIBUTING.md)。核心规则：**每一处变更都必须先写文档。** 如果你写不出一个功能的文档，那这个功能还没准备好被构建。
+
 ---
 
 ## 许可证
@@ -220,10 +238,14 @@ MIT — 详见 [LICENSE](LICENSE)。
 
 ---
 
-<p align="center">
-  <a href="docs/getting-started.md"><strong>开始使用 →</strong></a>
-  &nbsp;&nbsp;·&nbsp;&nbsp;
-  <a href="docs/README.md">阅读文档</a>
-  &nbsp;&nbsp;·&nbsp;&nbsp;
-  <a href="https://github.com/mir-makeitreal/makeitreal/issues">报告问题</a>
-</p>
+<div align="center">
+
+**[开始使用 →](docs/getting-started.md)**
+&nbsp;&nbsp;·&nbsp;&nbsp;
+[阅读文档](docs/README.md)
+&nbsp;&nbsp;·&nbsp;&nbsp;
+[报告问题](https://github.com/mir-makeitreal/makeitreal/issues)
+
+*先写文档，然后让它成真。*
+
+</div>
