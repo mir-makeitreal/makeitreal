@@ -68,6 +68,7 @@ No API keys. No build step. No separate process.
 | `/mir:plan "your request"` | Generate a blueprint. PRD, architecture, contracts, DAG, dashboard. Review and approve inline. |
 | `/mir:launch` | Execute the approved blueprint. Dispatches sub-agents in DAG order through the gated loop. |
 | `/mir:status` | Current phase, work-item states, blockers, dashboard URL. |
+| `/mir:wiki` | Open the live wiki — a browsable view of all verified work items — in your browser. |
 
 That's the core loop: **plan → launch → status**.
 

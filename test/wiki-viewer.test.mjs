@@ -26,10 +26,10 @@ test("generateWikiHtml renders dark theme with marked + JetBrains Mono", () => {
   const html = generateWikiHtml([
     { id: "WI-001", path: "/x/WI-001.md", content: "# Auth Service\n\nHandles login." }
   ]);
-  assert.ok(html.includes("#020617"), "uses dark background");
+  assert.ok(html.includes("#08090a"), "uses dark background");
   assert.ok(html.includes("JetBrains+Mono"), "loads JetBrains Mono");
   assert.ok(html.includes("marked.min.js"), "loads marked.js from CDN");
-  assert.ok(html.includes('id="wiki-WI-001"'), "creates a section per work item");
+  assert.ok(html.includes('id="work-WI-001"'), "creates a section per work item");
   assert.ok(html.includes("Auth Service"), "uses the markdown H1 as the title");
 });
 
@@ -81,7 +81,7 @@ test("buildWikiIndex writes index.html next to the live directory", async () => 
     assert.equal(result.count, 1);
     assert.equal(result.indexPath, indexPath);
     const html = await readFile(indexPath, "utf8");
-    assert.ok(html.includes("wiki-WI-001"));
+    assert.ok(html.includes("work-WI-001"));
   } finally {
     await rm(tmpRoot, { recursive: true, force: true });
   }
