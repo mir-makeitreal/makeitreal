@@ -93,36 +93,40 @@ From a plain-language request to verified, in-sync code — six stages:
 
 **Generated from `/mir:plan auth-system` — Authentication System blueprint**
 
-Module dependency graph (auto-generated from declared contracts):
+Module dependency graph:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#4f46e5', 'lineColor': '#6366f1', 'secondaryColor': '#16213e', 'tertiaryColor': '#0f3460', 'edgeLabelBackground': '#1e1e3f', 'clusterBkg': '#1e1e3f', 'titleColor': '#a5b4fc', 'fontFamily': 'ui-monospace, monospace'}}}%%
 flowchart LR
-  UserStore["user-store\n1 surface"]
-  SessionService["session-service\n1 surface"]
-  RBAC["rbac\n1 surface"]
-  AuditLog["audit-log\n1 surface"]
-  SessionService -->|"registerUser contract"| UserStore
-  RBAC -->|"loginUser contract"| SessionService
-  AuditLog -->|"authorizeSession contract"| RBAC
+  US["📦 user-store\nregisterUser · findByEmail"]
+  SS["🔐 session-service\nloginUser · refreshToken"]
+  RB["🛡️ rbac\nauthorizeSession"]
+  AL["📋 audit-log\nrecordAuthAudit"]
+  SS -->|"contract.registeruser"| US
+  RB -->|"contract.loginuser"| SS
+  AL -->|"contract.authorizesession"| RB
 ```
 
-Scenario flow (auto-generated from declared sequences):
+Scenario: login and authorize a protected action:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#4f46e5', 'lineColor': '#6366f1', 'secondaryColor': '#16213e', 'actorBkg': '#1e1e3f', 'actorTextColor': '#e2e8f0', 'actorBorderColor': '#4f46e5', 'signalColor': '#a5b4fc', 'signalTextColor': '#e2e8f0', 'labelBoxBkgColor': '#1e1e3f', 'labelBoxBorderColor': '#4f46e5', 'labelTextColor': '#a5b4fc', 'loopTextColor': '#e2e8f0', 'noteBkgColor': '#0f3460', 'noteTextColor': '#e2e8f0', 'fontFamily': 'ui-monospace, monospace'}}}%%
 sequenceDiagram
-  participant Client
-  participant SessionService
-  participant UserStore
-  participant RBAC
-  participant AuditLog
-  Client->>SessionService: loginUser({ email, password })
-  SessionService->>UserStore: findUserByEmail(email)
-  Client->>RBAC: authorizeSession(session, 'admin:write')
-  Client->>AuditLog: recordAuthAudit({ eventType: 'login', userId })
+  actor Client
+  participant SS as 🔐 SessionService
+  participant US as 📦 UserStore
+  participant RB as 🛡️ RBAC
+  participant AL as 📋 AuditLog
+  Client->>SS: loginUser({ email, password })
+  SS->>US: findUserByEmail(email)
+  US-->>SS: { userId, email, passwordHash }
+  SS-->>Client: { sessionId, token, expiresAt }
+  Client->>RB: authorizeSession(session, 'admin:write')
+  RB-->>Client: { authorized: true }
+  Client->>AL: recordAuthAudit({ eventType: 'login', userId })
 ```
 
-> *Every contract edge is machine-checkable. Every module has declared `allowedPaths`. Every scenario is verified before Done.*
-
+> *Both diagrams are auto-generated from the blueprint. Contracts are frozen before any agent runs.*
 
 
 ```mermaid
