@@ -22,6 +22,26 @@
 
 ---
 
+## 安装
+
+**环境要求：** Claude Code（最新版）· Node.js ≥ 20
+
+```bash
+claude plugin install makeitreal@52g
+```
+
+验证安装：
+
+```
+/mir:status
+```
+
+无需 API 密钥，无需构建步骤，无需独立进程。
+
+> 已经安装了 Claude Code？插件安装完成后 `/mir:` 命令立即可用。
+
+---
+
 ## 60 秒快速上手
 
 无需安装，克隆仓库直接跑演示：

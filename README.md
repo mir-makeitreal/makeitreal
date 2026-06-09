@@ -33,6 +33,26 @@ You write what the product **should** be — goals, interfaces, acceptance crite
 
 ---
 
+## Installation
+
+**Requirements:** Claude Code (latest) · Node.js ≥ 20
+
+```bash
+claude plugin install makeitreal@52g
+```
+
+Verify the install:
+
+```
+/mir:status
+```
+
+That's it. No API keys, no build step, no separate process to run.
+
+> Already have Claude Code? The plugin registers `/mir:` commands immediately after install.
+
+---
+
 ## 60-Second Quickstart
 
 No install. No API keys. Clone and run a demo:
@@ -85,17 +105,40 @@ The spec is the test. The contract is the interface. The docs and the code are a
 
 ```mermaid
 flowchart LR
-    A["You describe\nwhat you want"] --> B["Engine blueprints\nthe system"]
-    B --> C["You review\n& approve"]
-    C --> D["Contracts\nfrozen ❄️"]
-    D --> E1["Sub-agent A\nsrc/auth/**"]
-    D --> E2["Sub-agent B\nsrc/session/**"]
-    D --> E3["Sub-agent C\nsrc/api/**"]
-    E1 --> F["Contract conformance\nverified ✓"]
-    E2 --> F
-    E3 --> F
-    F --> G["Done — docs\nand code in sync"]
+    A["📝 Your Request"] --> B["🗺️ Blueprint\nPRD · Architecture · Contracts"]
+    B --> C["🔍 You Review\n& Approve"]
+    C --> D["❄️ Contracts\nFrozen"]
+    D --> DAG["📊 Work-Item DAG\nDependency Order"]
+
+    subgraph agents["🤖 Parallel Sub-Agents  (PreToolUse BLOCK enforced)"]
+        direction TB
+        AG1["Agent 1\nsrc/auth/**"]
+        AG2["Agent 2\nsrc/links/**"]
+        AG3["Agent 3\nsrc/db/**"]
+    end
+
+    DAG --> AG1
+    DAG --> AG2
+    DAG --> AG3
+
+    subgraph evidence["📋 Evidence Collection"]
+        EV1["Evidence A"]
+        EV2["Evidence B"]
+        EV3["Evidence C"]
+    end
+
+    AG1 --> EV1
+    AG2 --> EV2
+    AG3 --> EV3
+
+    EV1 --> GATE["🚦 Done Gate\nContract conformance verified"]
+    EV2 --> GATE
+    EV3 --> GATE
+
+    GATE --> DONE["✅ Done\nDocs & code in sync"]
 ```
+
+> *Contracts are frozen before any agent runs. Each agent is physically constrained to its declared paths by the `PreToolUse` hook. The Done gate blocks until every agent has proven conformance.*
 
 **Step 1 — You describe what you want.**
 One sentence, a feature request, or a full spec. The intake system asks focused clarifying questions until it has enough to generate a reviewable plan.
@@ -116,6 +159,74 @@ Each agent owns one responsibility unit, implements against frozen contracts, an
 The Done gate runs verification commands. There is no self-declaring "done." An agent must prove conformance to its contracts. Evidence is written to disk.
 
 Full walkthrough: [docs/how-it-works.md](docs/how-it-works.md)
+
+---
+
+## Path Boundary Enforcement
+
+Every write from a sub-agent passes through the `PreToolUse` hook before it reaches the filesystem. Cross-module writes are rejected at the source — not at code review, not at merge time.
+
+```mermaid
+sequenceDiagram
+    participant CC as 🤖 Claude Code (Agent 1)
+    participant H as 🛡️ PreToolUse Hook
+    participant AP as allowedPaths<br/>["src/auth/**"]
+    participant FS as 📁 Filesystem
+
+    CC->>H: Write("src/auth/login.ts", content)
+    H->>AP: path in allowedPaths?
+    AP-->>H: ✅ YES — matches src/auth/**
+    H-->>FS: allow write
+    FS-->>CC: written ✓
+
+    CC->>H: Write("src/links/router.ts", content)
+    H->>AP: path in allowedPaths?
+    AP-->>H: ❌ NO — outside src/auth/**
+    H-->>CC: DENY · HARNESS_PATH_BOUNDARY_VIOLATION
+    Note over CC,H: Agent 1 cannot touch src/links/**<br/>or any other module's files
+```
+
+> *The hook runs synchronously inside Claude Code's tool pipeline. There is no escape hatch — if the path is outside `allowedPaths`, the write never happens.*
+
+---
+
+## Gate System
+
+Two quality gates bookend the execution loop. Neither can be bypassed.
+
+```mermaid
+flowchart TD
+    subgraph ready["🟡 Ready Gate — runs before agents start"]
+        direction LR
+        R1{"PRD valid?"}
+        R2{"Design pack valid?"}
+        R3{"DAG acyclic?"}
+        R4{"OpenAPI specs exist?"}
+        R5{"Blueprint approved\n& fingerprint matches?"}
+    end
+
+    R1 & R2 & R3 & R4 & R5 --> RCHECK{"All checks\npass?"}
+    RCHECK -- "✅ All pass" --> PROMOTED["🟢 Work items promoted\nto Ready — agents dispatched"]
+    RCHECK -- "❌ Any fail" --> BLOCKED["🔴 Blocked\nfix artifact → re-run gate"]
+
+    PROMOTED --> RUNNING["⚙️ Agents Running"]
+
+    subgraph done["🔵 Done Gate — runs after each agent finishes"]
+        direction LR
+        D1{"Tests pass?"}
+        D2{"commandHashes\nmatch?"}
+        D3{"Wiki synced?"}
+        D4{"OpenAPI\nconformance?"}
+        D5{"Module surface\nmatch?"}
+    end
+
+    RUNNING --> D1 & D2 & D3 & D4 & D5
+    D1 & D2 & D3 & D4 & D5 --> DCHECK{"All checks\npass?"}
+    DCHECK -- "✅ All pass" --> DONE2["✅ Done\ndocs & code in sync"]
+    DCHECK -- "❌ Any fail" --> RUNNING
+```
+
+> *The Ready gate prevents work from starting against a stale or unapproved blueprint. The Done gate prevents self-declared completion — every agent must produce verifiable evidence.*
 
 ---
 
@@ -169,6 +280,38 @@ Every `/mir:` command has a `/makeitreal:` equivalent for those who prefer the f
 ```
 
 Every artifact cross-references the others. The engine validates all references bidirectionally — orphaned traces and dangling contract edges are caught at the Ready gate, before any agent runs.
+
+---
+
+## Session Isolation
+
+Multiple Make It Real runs can coexist in the same repository without interfering. Each session reads its own context file and enforces its own boundaries.
+
+```mermaid
+flowchart LR
+    subgraph repo["📁 Same Repository"]
+        subgraph sessionA["🟦 Session A"]
+            SA["Claude Code\nSession A"]
+            CA[".makeitreal/current-runs/\nsession-A.json\n→ run-auth"]
+            HA["🛡️ PreToolUse Hook A\nenforces run-auth boundaries\nsrc/auth/**"]
+        end
+
+        subgraph sessionB["🟨 Session B"]
+            SB["Claude Code\nSession B"]
+            CB[".makeitreal/current-runs/\nsession-B.json\n→ run-payment"]
+            HB["🛡️ PreToolUse Hook B\nenforces run-payment boundaries\nsrc/payment/**"]
+        end
+    end
+
+    SA -- "reads" --> CA
+    CA --> HA
+    SB -- "reads" --> CB
+    CB --> HB
+
+    HA -. "zero cross-contamination" .-> HB
+```
+
+> *Each Claude Code session resolves its run ID from its own session file. Hook A knows nothing about run-payment; Hook B knows nothing about run-auth. Two parallel workstreams, one repo, zero collisions.*
 
 ---
 

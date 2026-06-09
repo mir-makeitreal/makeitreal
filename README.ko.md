@@ -33,6 +33,26 @@
 
 ---
 
+## 설치
+
+**요구 사항:** Claude Code (최신 버전) · Node.js ≥ 20
+
+```bash
+claude plugin install makeitreal@52g
+```
+
+설치 확인:
+
+```
+/mir:status
+```
+
+API 키 불필요. 빌드 단계 불필요. 별도 프로세스 불필요.
+
+> 이미 Claude Code를 사용 중이라면? 설치 직후 `/mir:` 커맨드가 즉시 등록된다.
+
+---
+
 ## 60초 퀵스타트
 
 설치 불필요. API 키 불필요. 클론 후 바로 실행:
