@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="assets/52g-logo.png" height="52" alt="52G" />
+
 # Make It Real
 
 **Make It Simple. Make It Work. Make It Real.**
