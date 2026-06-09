@@ -11,10 +11,10 @@
 *Contract first. Code follows.*
 
 <p>
-  <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
-  <img src="https://img.shields.io/badge/dependencies-0-lightgrey" alt="zero deps" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
-  <img src="https://img.shields.io/badge/node-%E2%89%A520-blue" alt="node ≥20" />
+  <a href="https://github.com/mir-makeitreal/makeitreal/stargazers"><img src="https://img.shields.io/github/stars/mir-makeitreal/makeitreal?style=flat&color=ffcc00" alt="Stars" /></a>
+  <a href="https://github.com/mir-makeitreal/makeitreal/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat" alt="MIT" /></a>
+  <img src="https://img.shields.io/badge/Claude_Code-plugin-blueviolet?style=flat&logo=anthropic" alt="Claude Code Plugin" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-blue?style=flat" alt="node ≥20" />
 </p>
 
 <p>
@@ -77,94 +77,24 @@ Every `/mir:` command has a `/makeitreal:` equivalent for those who prefer the f
 
 ## The Development Flow
 
-From a plain-language request to verified, in-sync code — six stages:
+You describe what you want to build. The harness turns that into a blueprint: a spec, an architecture, typed contracts between modules, and a task graph. You review it and approve. At that point the contracts are locked — no agent can change them.
 
-**Stage 1 — Describe** · Tell it what to build in plain language
+Agents get dispatched in parallel, one per module. Each one is physically constrained to its declared file paths via the `PreToolUse` hook. They cannot touch each other's code. When they finish, they write evidence proving their module conforms to the contracts it was given. The Done gate blocks until every agent has cleared that bar.
 
-**Stage 2 — Blueprint** · Claude designs: spec, architecture, contracts, task graph
+Six stages in order:
 
-**Stage 3 — Review** · You approve. Fingerprint locks every artifact.
+1. You describe what to build.
+2. The harness produces the blueprint.
+3. You review and approve. Contracts are fingerprinted and frozen.
+4. Agents are dispatched to modules. Boundaries are enforced at the tool call level.
+5. Each agent builds its module. It cannot touch anything outside its declared paths.
+6. Contract conformance is verified. Evidence is written. Done.
 
-**Stage 4 — Dispatch** · Parallel agents assigned to modules, boundaries enforced
+> Example output from `/mir:plan "Build an auth system with user store, session service, RBAC, and audit logging"` — the diagrams below are auto-generated from that blueprint.
 
-**Stage 5 — Build** · Each agent implements its module, cannot touch others
+![Module dependency graph](assets/diagram-module-graph.svg)
 
-**Stage 6 — Verify** · Contract conformance proven, evidence written, Done
-
-**Generated from `/mir:plan auth-system` — Authentication System blueprint**
-
-Module dependency graph:
-
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#4f46e5', 'lineColor': '#6366f1', 'secondaryColor': '#16213e', 'tertiaryColor': '#0f3460', 'edgeLabelBackground': '#1e1e3f', 'clusterBkg': '#1e1e3f', 'titleColor': '#a5b4fc', 'fontFamily': 'ui-monospace, monospace'}}}%%
-flowchart LR
-  US["📦 user-store\nregisterUser · findByEmail"]
-  SS["🔐 session-service\nloginUser · refreshToken"]
-  RB["🛡️ rbac\nauthorizeSession"]
-  AL["📋 audit-log\nrecordAuthAudit"]
-  SS -->|"contract.registeruser"| US
-  RB -->|"contract.loginuser"| SS
-  AL -->|"contract.authorizesession"| RB
-```
-
-Scenario: login and authorize a protected action:
-
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#4f46e5', 'lineColor': '#6366f1', 'secondaryColor': '#16213e', 'actorBkg': '#1e1e3f', 'actorTextColor': '#e2e8f0', 'actorBorderColor': '#4f46e5', 'signalColor': '#a5b4fc', 'signalTextColor': '#e2e8f0', 'labelBoxBkgColor': '#1e1e3f', 'labelBoxBorderColor': '#4f46e5', 'labelTextColor': '#a5b4fc', 'loopTextColor': '#e2e8f0', 'noteBkgColor': '#0f3460', 'noteTextColor': '#e2e8f0', 'fontFamily': 'ui-monospace, monospace'}}}%%
-sequenceDiagram
-  actor Client
-  participant SS as 🔐 SessionService
-  participant US as 📦 UserStore
-  participant RB as 🛡️ RBAC
-  participant AL as 📋 AuditLog
-  Client->>SS: loginUser({ email, password })
-  SS->>US: findUserByEmail(email)
-  US-->>SS: { userId, email, passwordHash }
-  SS-->>Client: { sessionId, token, expiresAt }
-  Client->>RB: authorizeSession(session, 'admin:write')
-  RB-->>Client: { authorized: true }
-  Client->>AL: recordAuthAudit({ eventType: 'login', userId })
-```
-
-> *Both diagrams are auto-generated from the blueprint. Contracts are frozen before any agent runs.*
-
-
-```mermaid
-flowchart LR
-    A["📝 Your Request"] --> B["🗺️ Blueprint\nPRD · Architecture · Contracts"]
-    B --> C["🔍 You Review\n& Approve"]
-    C --> D["❄️ Contracts\nFrozen"]
-    D --> DAG["📊 Work-Item DAG\nDependency Order"]
-
-    subgraph agents["🤖 Parallel Sub-Agents  (PreToolUse BLOCK enforced)"]
-        direction TB
-        AG1["Agent 1\nsrc/auth/**"]
-        AG2["Agent 2\nsrc/links/**"]
-        AG3["Agent 3\nsrc/db/**"]
-    end
-
-    DAG --> AG1
-    DAG --> AG2
-    DAG --> AG3
-
-    subgraph evidence["📋 Evidence Collection"]
-        EV1["Evidence A"]
-        EV2["Evidence B"]
-        EV3["Evidence C"]
-    end
-
-    AG1 --> EV1
-    AG2 --> EV2
-    AG3 --> EV3
-
-    EV1 --> GATE["🚦 Done Gate\nContract conformance verified"]
-    EV2 --> GATE
-    EV3 --> GATE
-
-    GATE --> DONE["✅ Done\nDocs & code in sync"]
-```
-
-> *Contracts are frozen before any agent runs. Each agent is physically constrained to its declared paths by the `PreToolUse` hook. The Done gate blocks until every agent has proven conformance.*
+![Development flow](assets/diagram-dev-flow.svg)
 
 Full walkthrough: [docs/how-it-works.md](docs/how-it-works.md)
 

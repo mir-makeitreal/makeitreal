@@ -11,10 +11,10 @@
 *Contract first. Code follows.*
 
 <p>
-  <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
-  <img src="https://img.shields.io/badge/dependencies-0-lightgrey" alt="zero deps" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
-  <img src="https://img.shields.io/badge/node-%E2%89%A520-blue" alt="node ≥20" />
+  <a href="https://github.com/mir-makeitreal/makeitreal/stargazers"><img src="https://img.shields.io/github/stars/mir-makeitreal/makeitreal?style=flat&color=ffcc00" alt="Stars" /></a>
+  <a href="https://github.com/mir-makeitreal/makeitreal/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat" alt="MIT" /></a>
+  <img src="https://img.shields.io/badge/Claude_Code-plugin-blueviolet?style=flat&logo=anthropic" alt="Claude Code Plugin" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-blue?style=flat" alt="node ≥20" />
 </p>
 
 <p>
