@@ -22,38 +22,18 @@ Deterministic check:
 npm run check
 ```
 
-## Real Claude Code Golden Path
+## Documentation Example Packets
 
-Command:
+Paths:
 
-```bash
-/mir:launch
+```text
+dev-harness/docs/examples/auth-system
+dev-harness/docs/examples/rest-api
+dev-harness/docs/examples/todo-app
 ```
 
 Purpose:
 
-- creates a fresh project and run directory
-- plans with `--runner claude-code`
-- blocks launch before Blueprint approval
-- records approval evidence
-- launches a native Claude Code work item flow against the real project root
-  under Make It Real allowed-path hooks
-- verifies output through the engine
-- checks read-only dashboard behavior
-- reaches Done through gate evidence
-
-Latest recorded evidence:
-
-```text
-dev-harness/docs/e2e-evidence/real-claude-golden-path-1778137695717.json
-```
-
-Observed artifact:
-
-```text
-modules/slug-stats/index.cjs
-```
-
-The module is intentionally small: it proves that Make It Real can constrain a
-real agent to declared allowed paths, verify a deterministic result, and move the
-Kanban board to Done only after evidence exists.
+- show complete request-to-blueprint example packets
+- provide static preview files for docs and screenshots
+- illustrate PRD, design-pack, responsibility-unit, trust-policy, and work-DAG shapes

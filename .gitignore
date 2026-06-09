@@ -17,7 +17,22 @@ node_modules/
 /.claude/
 /.codex/
 /.harness/
-/.makeitreal/
+.makeitreal/
+
+# Internal planning/audit artifacts
+/.hermes/
+docs/superpowers/
+docs/e2e/
+docs/e2e-evidence/
+docs/research/
+docs/backlog.md
+docs/*e2e*.md
+docs/r[0-9]-*.md
+docs/*-plan.md
+docs/*audit*.md
+docs/*scorecard*.md
+*TRANSITION-STRATEGY.md
+*multi-run-plan.md
 
 # Logs and temporary files
 *.log

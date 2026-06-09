@@ -7,8 +7,36 @@ import { test } from "node:test";
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const canonicalSkillRoot = path.join(repoRoot, "plugins", "makeitreal", "skills");
 const mirSkillRoot = path.join(repoRoot, "plugins", "mir", "skills");
-const implementationPlansRoot = path.join(repoRoot, "docs", "superpowers", "plans");
-const gsdSpecKitReviewPath = path.join(repoRoot, "docs", "research", "2026-05-08-gsd-speckit-feature-review.md");
+
+const forbiddenPublicDocReferences = [
+  /\.hermes/i,
+  /docs\/superpowers/i,
+  /superpowers\/(plans|specs)/i,
+  /docs\/e2e(?:-|\/)/i,
+  /e2e-evidence/i,
+  /r[23]-.*(?:e2e|release-packaging)/i,
+  /backlog\.md/i,
+  /doctrine-violations-full-audit/i,
+  /tournament-scorecard/i,
+  /session-scoped-multi-run-plan/i
+];
+
+async function listMarkdownFiles(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...await listMarkdownFiles(fullPath));
+    } else if (entry.name.endsWith(".md")) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
 
 async function readCanonicalSkill(name) {
   return readFile(path.join(canonicalSkillRoot, name, "SKILL.md"), "utf8");
@@ -88,39 +116,16 @@ for (const [label, readSkill] of [
   });
 }
 
-test("implementation plans are self-contained and do not require external workflow skills", async () => {
-  const planFiles = (await readdir(implementationPlansRoot)).filter((fileName) => fileName.endsWith(".md"));
-  assert.ok(planFiles.length > 0);
+test("public docs do not link to internal planning or evidence artifacts", async () => {
+  const markdownFiles = await listMarkdownFiles(path.join(repoRoot, "docs"));
+  assert.ok(markdownFiles.length > 0);
 
-  for (const fileName of planFiles) {
-    const plan = await readFile(path.join(implementationPlansRoot, fileName), "utf8");
-    assert.match(plan, /This plan is self-contained/i, fileName);
-    assert.doesNotMatch(plan, /REQUIRED SUB-SKILL/i, fileName);
-    assert.doesNotMatch(plan, /superpowers:(subagent-driven-development|executing-plans)/i, fileName);
+  for (const filePath of markdownFiles) {
+    const doc = await readFile(filePath, "utf8");
+    const relativePath = path.relative(repoRoot, filePath);
+
+    for (const pattern of forbiddenPublicDocReferences) {
+      assert.doesNotMatch(doc, pattern, relativePath);
+    }
   }
-});
-
-test("GSD and Spec Kit review captures dynamic subagent architecture without external agent dependency", async () => {
-  const review = await readFile(gsdSpecKitReviewPath, "utf8");
-
-  assert.match(review, /Superpowers Subagent-Driven Development Review/);
-  assert.match(review, /fresh subagent per work item attempt/i);
-  assert.match(review, /spec compliance reviewer/i);
-  assert.match(review, /code quality reviewer/i);
-  assert.match(review, /Native Claude Compatibility Without Pre-Created Agents/);
-  assert.match(review, /Selective Adoption Decision/);
-  assert.match(review, /pre-created role agents are not/i);
-  assert.match(review, /dynamic prompts and handoff packets/i);
-  assert.match(review, /Dynamic role handoff templates/i);
-  assert.match(review, /Control-plane coordination/i);
-  assert.match(review, /Approved reviewer evidence as a Done gate/i);
-  assert.match(review, /routes the work item to Rework/i);
-  assert.match(review, /Direct free-form agent-to-agent chat/i);
-  assert.match(review, /Worker self-scoping/i);
-  assert.match(review, /optional .*\.claude\/agents/);
-  assert.match(review, /drifts from the engine-generated handoff/i);
-  assert.match(review, /does not require\s+Superpowers/i);
-  assert.match(review, /must stay self-contained/i);
-  assert.doesNotMatch(review, /REQUIRED SUB-SKILL/i);
-  assert.doesNotMatch(review, /should therefore ship a small plugin `agents` roster/i);
 });
