@@ -1,8 +1,10 @@
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
+
 # Make It Real
 
-**先写文档，再 Make It Real。**
+**Make It Simple. Make It Work. Make It Real.**
 
-Make It Real 是一个 Claude Code 插件。你先把产品应该是什么样子写成文档——契约、接口、验收标准——Claude 再按照这份文档去实现它。把架构写进 Blueprint，冻结模块间的契约，让受路径约束的子 Agent 并行构建。测试通过的那一刻，集成已经证明完毕。
+*先写产品文档。Claude Code 严格按照规格实现。*
 
 <p align="center">
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />

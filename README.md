@@ -1,13 +1,15 @@
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
+
 <div align="center">
 
 # Make It Real
 
-**Write the docs. Then make it real.**
+**Make It Simple. Make It Work. Make It Real.**
 
-*Claude Code builds your code. Make It Real makes sure it builds the **right** code — the code your docs describe.*
+*Write your product docs first. Claude Code builds exactly what you specified.*
 
 <p>
-  <img src="https://img.shields.io/badge/tests-433-brightgreen" alt="433 tests" />
+  <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
   <img src="https://img.shields.io/badge/dependencies-0-lightgrey" alt="zero deps" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
   <img src="https://img.shields.io/badge/node-%E2%89%A520-blue" alt="node ≥20" />

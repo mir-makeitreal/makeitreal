@@ -1,8 +1,10 @@
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
+
 # Make It Real
 
-**まずドキュメントを書く。そして、Make It Real。**
+**Make It Simple. Make It Work. Make It Real.**
 
-Make It Real は Claude Code プラグインです。プロダクトの仕様を「動く真実」として先に書き、Claude がその仕様を忠実に実装します。アーキテクチャを Blueprint に固め、モジュール間のコントラクトを凍結し、パス境界で制約されたサブエージェントが並列実装する。テストが通った時点で、統合はすでに証明されています。
+*プロダクトのドキュメントを先に書く。Claude Codeが仕様通りに実装する。*
 
 <p align="center">
   <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />

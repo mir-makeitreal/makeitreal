@@ -1,15 +1,17 @@
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
+
 <div align="center">
 
 # Make It Real
 
-**문서를 먼저 써라. 그러면 현실이 된다.**
+**Make It Simple. Make It Work. Make It Real.**
 
-*Claude Code가 코드를 짠다. Make It Real은 그 코드가 **올바른** 코드인지 — 문서가 설명한 그 코드인지 — 보장한다.*
+*제품 문서를 먼저 작성하세요. Claude Code가 그대로 구현합니다.*
 
 <p>
-  <img src="https://img.shields.io/badge/테스트-433개-brightgreen" alt="433 tests" />
-  <img src="https://img.shields.io/badge/의존성-없음-lightgrey" alt="zero deps" />
-  <img src="https://img.shields.io/badge/라이선스-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/tests-424-brightgreen" alt="424 tests" />
+  <img src="https://img.shields.io/badge/dependencies-0-lightgrey" alt="zero deps" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
   <img src="https://img.shields.io/badge/node-%E2%89%A520-blue" alt="node ≥20" />
 </p>
 
