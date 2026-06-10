@@ -272,23 +272,25 @@ test("Make It Real exposes a thin mir slash-command alias plugin", async () => {
   assert.match(planSkill, /makeitreal:interactive-review:native-claude/);
 
   const planCommand = await readAliasPluginFile("commands", "plan.md");
-  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"\]/);
+  assert.match(planCommand, /allowed-tools: \["Bash", "Read", "AskUserQuestion", "Task"(?:, "[^"]+")*\]/);
+  assert.match(planCommand, /mcp__make-it-real__mir_blueprint/);
   assert.match(planCommand, /\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/);
-  assert.match(planCommand, /If the argument is empty/i);
+  assert.match(planCommand, /blueprint approve/);
+  assert.match(planCommand, /blueprint reject/);
+  assert.match(planCommand, /empty or whitespace/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /canonical request/i);
-  assert.match(planCommand, /Do not run `makeitreal-engine` plan with an empty `--request`/);
-  assert.match(planCommand, /Do not use a fixed question script/i);
+  assert.match(planCommand, /Always submit through the MCP tool/i);
+  assert.match(planCommand, /Dynamic Intake rubric/i);
   assert.match(planCommand, /derive each question/i);
   assert.doesNotMatch(planCommand, /ask what concrete feature/i);
-  assert.match(planCommand, /operator-facing Blueprint report/i);
+  assert.match(planCommand, /Operator-Facing Report/i);
   assert.match(planCommand, /What will be delivered/i);
   assert.match(planCommand, /Do not lead with raw engine fields/i);
   assert.match(planCommand, /AskUserQuestion/);
   assert.match(planCommand, /blueprint review/);
   assert.match(planCommand, /Do not branch on the selected label/i);
   assert.match(planCommand, /If the question is dismissed/i);
-  assert.match(planCommand, /Do not add a guessed `--allowed-path modules\/<slug>\/\*\*`/);
   assert.match(planCommand, /--prompt "<operator answer>" --decision-json/);
   assert.match(planCommand, /Never run `blueprint review` without both `--prompt` and `--decision-json`/);
 
@@ -461,7 +463,11 @@ test("Make It Real exposes opt-in Claude plugin validation", async () => {
   assert.equal(pkg.scripts["plugin:validate"], "node scripts/validate-claude-plugin.mjs");
   assert.equal(pkg.scripts["plugin:sync"], "node scripts/sync-plugin-engine.mjs");
   assert.equal(pkg.scripts["plugin:check"], "node scripts/sync-plugin-engine.mjs --check");
-  assert.equal(pkg.scripts["release:check"], "npm run check && npm run plugin:check && npm run plugin:validate");
+  assert.equal(pkg.scripts["version:check"], "node scripts/check-version-sync.mjs");
+  assert.equal(
+    pkg.scripts["release:check"],
+    "npm run check && npm run plugin:check && npm run plugin:validate && npm run version:check"
+  );
 
   const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "validate-claude-plugin.mjs"), "--help"], {
     cwd: repoRoot,

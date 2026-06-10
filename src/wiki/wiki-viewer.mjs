@@ -5,6 +5,10 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
+import { resolveWikiPaths } from "./paths.mjs";
+
+// Re-export the canonical resolver so viewer consumers keep a single import site.
+export { resolveWikiPaths } from "./paths.mjs";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -506,19 +510,6 @@ export function generateWikiHtml(wikiFiles = []) {
 </html>`;
 }
 
-// Resolve the canonical wiki paths for a run directory.
-export function resolveWikiPaths(runDir) {
-  // runDir is <project>/.makeitreal/runs/<slug>/
-  // wiki lives at <project>/.makeitreal/wiki/live/
-  const makeiteralRoot = path.resolve(runDir, "..", "..");
-  const wikiDir = path.join(makeiteralRoot, "wiki");
-  return {
-    wikiDir,
-    liveDir: path.join(wikiDir, "live"),
-    indexPath: path.join(wikiDir, "index.html")
-  };
-}
-
 // Read all markdown files from the live wiki directory.
 // Returns [] when the directory is absent or holds no .md files.
 export async function readWikiFiles(liveDir) {
@@ -544,7 +535,7 @@ export async function readWikiFiles(liveDir) {
   return files;
 }
 
-// Read the live wiki, render HTML, and write it to <runDir>/.makeitreal/wiki/index.html.
+// Read the live wiki, render HTML, and write it to <project>/.makeitreal/wiki/index.html.
 // Returns { wikiFiles, indexPath, count }.
 export async function buildWikiIndex(runDir) {
   const { liveDir, indexPath, wikiDir } = resolveWikiPaths(runDir);

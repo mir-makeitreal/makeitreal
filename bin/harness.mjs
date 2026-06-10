@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { runVerification } from "../src/adapters/command-evidence.mjs";
 import { validateOpenApiContracts } from "../src/adapters/openapi-contract.mjs";
 import { loadBoard } from "../src/board/board-store.mjs";
@@ -19,8 +20,10 @@ import { runGates } from "../src/gates/index.mjs";
 import { getClaudeHookStatus, installClaudeHooks } from "../src/hooks/claude-settings.mjs";
 import { completeVerifiedWork } from "../src/orchestrator/board-completion.mjs";
 import { finishNativeClaudeTask, orchestratorTick, reconcileBoard, startNativeClaudeTask } from "../src/orchestrator/orchestrator.mjs";
+import { fileExists } from "../src/io/json.mjs";
 import { refreshPreviewForTrigger, renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { initializeProject } from "../src/project/bootstrap.mjs";
+import { currentRunStatePath, readCurrentRunState } from "../src/project/run-state.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readRunStatus } from "../src/status/run-status.mjs";
 import { syncLiveWiki } from "../src/wiki/live-wiki.mjs";
@@ -37,9 +40,9 @@ Internal commands used by Make It Real skills:
   verify <runDir>              Run declared verification commands
   config get <projectRoot>     Show Make It Real project config
   config set <projectRoot>     Update config (--profile default|quiet, --live-wiki/--dashboard-* enabled|disabled)
-  wiki sync <runDir>           Sync verified work to live wiki
-  wiki open <runDir>           Render the live wiki to HTML and open it in the browser
-  wiki watch <runDir>          Render and open the wiki, then auto-regenerate on changes
+  wiki sync <runDir|projectRoot>  Sync verified work to live wiki
+  wiki open <runDir|projectRoot>  Render the live wiki to HTML and open it in the browser
+  wiki watch <runDir|projectRoot> Render and open the wiki, then auto-regenerate on changes
   contracts openapi <runDir>   Validate OpenAPI contracts
   demo [template]              Generate a demo blueprint (todo-app, rest-api, auth-system)
   demo list                    List available demo templates
@@ -312,6 +315,44 @@ function resolveProjectRootFlag(value) {
   return value === null ? null : resolveProjectRootArg(value);
 }
 
+// wiki commands accept either a run directory or a project root. Resolution is
+// explicit: a canonical run path (<project>/.makeitreal/runs/<slug>) or a
+// directory holding run artifacts is used as-is; a project root is resolved
+// through .makeitreal/current-run.json; anything else is an explicit error.
+// Never guess — guessing is how wiki files end up outside the project.
+function isCanonicalRunDirPath(resolvedPath) {
+  const segments = resolvedPath.split(path.sep);
+  const makeitrealIndex = segments.lastIndexOf(".makeitreal");
+  return makeitrealIndex >= 0
+    && segments[makeitrealIndex + 1] === "runs"
+    && segments.length > makeitrealIndex + 2;
+}
+
+async function resolveWikiRunDirArg(argValue) {
+  const resolved = path.resolve(argValue);
+  if (isCanonicalRunDirPath(resolved)) {
+    return { ok: true, runDir: resolved, errors: [] };
+  }
+  if (await fileExists(path.join(resolved, "prd.json"))) {
+    return { ok: true, runDir: resolved, errors: [] };
+  }
+  const currentRun = await readCurrentRunState(resolved);
+  if (currentRun.ok) {
+    return { ok: true, runDir: currentRun.runDir, errors: [] };
+  }
+  return {
+    ok: false,
+    runDir: null,
+    errors: [createHarnessError({
+      code: "HARNESS_RUN_NOT_FOUND",
+      reason: `${resolved} is neither a Make It Real run directory nor a project root with an active run.`,
+      evidence: [resolved, currentRunStatePath(resolved)],
+      recoverable: true,
+      nextAction: "Pass <project>/.makeitreal/runs/<slug>, or use /makeitreal:setup --run <runDir> to record the active run."
+    })]
+  };
+}
+
 function blueprintReviewCliResult(output) {
   const action = output?.makeitreal?.action ?? "unknown";
   const ok = ["approved", "rejected", "revision-requested", "already-approved"].includes(action);
@@ -500,7 +541,11 @@ async function runCommand(argv) {
         }
       };
     }
-    const result = await syncLiveWiki({ runDir: argv[2] });
+    const resolvedRun = await resolveWikiRunDirArg(argv[2]);
+    if (!resolvedRun.ok) {
+      return { exitCode: 1, result: { ok: false, command: "wiki sync", errors: resolvedRun.errors } };
+    }
+    const result = await syncLiveWiki({ runDir: resolvedRun.runDir });
     return { exitCode: result.ok ? 0 : 1, result: { command: "wiki sync", ...result } };
   }
 
@@ -523,7 +568,11 @@ async function runCommand(argv) {
       };
     }
 
-    const runDir = argv[2];
+    const resolvedRun = await resolveWikiRunDirArg(argv[2]);
+    if (!resolvedRun.ok) {
+      return { exitCode: 1, result: { ok: false, command: subcommand, errors: resolvedRun.errors } };
+    }
+    const runDir = resolvedRun.runDir;
     const { liveDir, indexPath } = resolveWikiPaths(runDir);
     const build = await buildWikiIndex(runDir);
 

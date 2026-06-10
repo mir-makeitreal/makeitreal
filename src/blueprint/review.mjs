@@ -1,7 +1,9 @@
+import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { fileExists, readJsonFile, writeJsonFile } from "../io/json.mjs";
+import { currentRunStatePath } from "../project/run-state.mjs";
 import { computeBlueprintFingerprint } from "./fingerprint.mjs";
 
 export const BLUEPRINT_APPROVAL_CODES = new Set([
@@ -129,6 +131,49 @@ function validateRunnerEnvironment(env = process.env) {
   };
 }
 
+// A rejected run must not keep blocking the project: when the project-level
+// current-run pointer still references the rejected run directory, the
+// PreToolUse hook would deny every edit with no remaining escape hatch.
+// The pointer is removed only when it points at exactly this run.
+async function releaseCurrentRunPointer({ runDir }) {
+  const resolvedRunDir = path.resolve(runDir);
+  const segments = resolvedRunDir.split(path.sep);
+  const makeitrealIndex = segments.lastIndexOf(".makeitreal");
+  if (makeitrealIndex <= 0) {
+    return {
+      released: false,
+      pointerPath: null,
+      reason: "Run directory is not inside a .makeitreal project tree; no current-run pointer applies."
+    };
+  }
+
+  const projectRoot = segments.slice(0, makeitrealIndex).join(path.sep) || path.sep;
+  const pointerPath = currentRunStatePath(projectRoot);
+  if (!await fileExists(pointerPath)) {
+    return { released: false, pointerPath, reason: "No current-run pointer exists." };
+  }
+
+  let state;
+  try {
+    state = await readJsonFile(pointerPath);
+  } catch {
+    return { released: false, pointerPath, reason: "current-run pointer is not readable JSON; left untouched." };
+  }
+  const pointerTarget = typeof state?.currentRunDir === "string"
+    ? path.resolve(projectRoot, state.currentRunDir)
+    : null;
+  if (pointerTarget !== resolvedRunDir) {
+    return { released: false, pointerPath, reason: "current-run pointer references a different run; left untouched." };
+  }
+
+  await unlink(pointerPath);
+  return {
+    released: true,
+    pointerPath,
+    reason: "Rejected run released the current-run pointer; PreToolUse edit blocking no longer applies to it."
+  };
+}
+
 function validateReviewShape(review) {
   if (!review || typeof review !== "object" || Array.isArray(review) || !ALLOWED_STATUSES.has(review.status)) {
     return {
@@ -189,17 +234,29 @@ export async function decideBlueprintReview({
 
   const binding = await expectedBinding(runDir);
   const fingerprint = await computeBlueprintFingerprint({ runDir });
-  const errors = [...binding.errors, ...fingerprint.errors];
-  if (errors.length > 0) {
-    return { ok: false, command: commandName(status), reviewPath: currentReview.reviewPath, errors };
+  const packetErrors = [...binding.errors, ...fingerprint.errors];
+  if (status === "approved" && packetErrors.length > 0) {
+    return { ok: false, command: commandName(status), reviewPath: currentReview.reviewPath, errors: packetErrors };
   }
+
+  // Rejection is the escape hatch for an incomplete run packet. The
+  // fingerprint exists to detect drift after an approval; a rejection cannot
+  // drift, so an uncomputable fingerprint (e.g. work-item-dag.json never
+  // materialized) is recorded as null instead of blocking the decision.
+  // Approval keeps the strict packet requirements above.
+  const reviewBinding = binding.ok ? binding.binding : {
+    runId: currentReview.review.runId ?? path.basename(runDir),
+    workItemId: currentReview.review.workItemId ?? null,
+    prdId: currentReview.review.prdId ?? null
+  };
+  const reviewFingerprint = fingerprint.ok ? fingerprint.fingerprint : null;
 
   const review = {
     schemaVersion: "1.0",
-    runId: binding.binding.runId,
-    workItemId: binding.binding.workItemId,
-    prdId: binding.binding.prdId,
-    blueprintFingerprint: fingerprint.fingerprint,
+    runId: reviewBinding.runId,
+    workItemId: reviewBinding.workItemId,
+    prdId: reviewBinding.prdId,
+    blueprintFingerprint: reviewFingerprint,
     status,
     reviewSource,
     reviewedBy,
@@ -207,16 +264,24 @@ export async function decideBlueprintReview({
     decisionNote
   };
   await writeJsonFile(currentReview.reviewPath, review);
-  return {
+  const result = {
     ok: true,
     command: commandName(status),
     runDir,
     reviewPath: currentReview.reviewPath,
     status,
-    blueprintFingerprint: fingerprint.fingerprint,
+    blueprintFingerprint: reviewFingerprint,
     reviewedBy,
     review,
     errors: []
+  };
+  if (status !== "rejected") {
+    return result;
+  }
+  return {
+    ...result,
+    fingerprintUnavailable: !fingerprint.ok,
+    currentRunPointer: await releaseCurrentRunPointer({ runDir })
   };
 }
 
@@ -265,23 +330,23 @@ export async function recordBlueprintRevisionRequest({
 
   const binding = await expectedBinding(runDir);
   const fingerprint = await computeBlueprintFingerprint({ runDir });
-  const errors = [...binding.errors, ...fingerprint.errors];
-  if (errors.length > 0) {
-    return {
-      ok: false,
-      command: "blueprint revision request",
-      reviewPath: currentReview.reviewPath,
-      errors
-    };
-  }
+  // Like rejection, a revision request must stay possible for an incomplete
+  // run packet: it resets the review to pending, and the next approval
+  // re-establishes the strict fingerprint requirement.
+  const reviewBinding = binding.ok ? binding.binding : {
+    runId: currentReview.review.runId ?? path.basename(runDir),
+    workItemId: currentReview.review.workItemId ?? null,
+    prdId: currentReview.review.prdId ?? null
+  };
+  const reviewFingerprint = fingerprint.ok ? fingerprint.fingerprint : null;
 
   const review = {
     ...currentReview.review,
     schemaVersion: "1.0",
-    runId: binding.binding.runId,
-    workItemId: binding.binding.workItemId,
-    prdId: binding.binding.prdId,
-    blueprintFingerprint: fingerprint.fingerprint,
+    runId: reviewBinding.runId,
+    workItemId: reviewBinding.workItemId,
+    prdId: reviewBinding.prdId,
+    blueprintFingerprint: reviewFingerprint,
     status: "pending",
     reviewSource,
     reviewedBy: null,
@@ -298,7 +363,8 @@ export async function recordBlueprintRevisionRequest({
     runDir,
     reviewPath: currentReview.reviewPath,
     status: "pending",
-    blueprintFingerprint: fingerprint.fingerprint,
+    blueprintFingerprint: reviewFingerprint,
+    fingerprintUnavailable: !fingerprint.ok,
     revisionRequestedBy: requestedBy,
     review,
     errors: []

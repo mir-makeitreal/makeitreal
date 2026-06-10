@@ -7,9 +7,9 @@ description: Use when an approved Make It Real plan should advance into gated Ka
 
 Advance an approved plan through the harness. Drive the loop with the
 `mcp__make-it-real__mir_launch` MCP tool; expose the workflow to the user as
-`/mir:launch`. The MCP tool wraps the internal engine commands for gates,
-board state, claims, orchestration, verification, and wiki sync — do not
-invoke those internal engine commands as user-facing Bash chains.
+`/mir:launch`. The MCP tool wraps the internal engine commands for
+gates, board state, claims, orchestration, verification, and wiki sync — do
+not invoke those internal engine commands as user-facing Bash chains.
 
 
 ## Dashboard Boundary
@@ -45,19 +45,30 @@ The `result` you pass to `mir_launch(action="finish", ...)` is one node report p
     "blockers": []
   },
   "makeitrealReviews": [
-    {"role": "spec-reviewer", "status": "DONE", "summary": "Contracts satisfied"},
-    {"role": "quality-reviewer", "status": "DONE_WITH_CONCERNS", "concerns": ["No input sanitization"]},
-    {"role": "verification-reviewer", "status": "DONE", "summary": "All tests pass"}
+    {"role": "spec-reviewer", "status": "APPROVED", "summary": "Contracts satisfied"},
+    {"role": "quality-reviewer", "status": "APPROVED_WITH_NOTES", "findings": ["No input sanitization"]},
+    {"role": "verification-reviewer", "status": "APPROVED", "summary": "All tests pass"}
   ]
 }
 ```
 
-Valid `status` values for both the node report and each review are:
+The node report and the review reports use two separate status vocabularies. Do not use `DONE` or `DONE_WITH_CONCERNS` inside `makeitrealReviews`; the engine rejects unknown review statuses with `HARNESS_REVIEW_STATUS_INVALID`.
 
-- `DONE` — work or review completed with no outstanding issues.
+Valid node-report `status` values (for `makeitrealReport`, `makeitrealPmReport`, and `makeitrealEvidenceReport`) are: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`.
+
+- `DONE` — work completed with no outstanding issues.
 - `DONE_WITH_CONCERNS` — completed, but non-blocking concerns are recorded in `concerns[]`.
 - `NEEDS_CONTEXT` — the node could not finish without more context; `needsContext` is `true` and the gap is described.
 - `BLOCKED` — the node could not proceed; `blockers[]` lists the hard blockers.
+
+Valid review `status` values (for each entry in `makeitrealReviews`) are: `APPROVED`, `APPROVED_WITH_NOTES`, `CHANGES_REQUESTED`, `REJECTED`, `NEEDS_CONTEXT`, `BLOCKED`.
+
+- `APPROVED` — the review passed with no outstanding issues.
+- `APPROVED_WITH_NOTES` — the review passed; non-blocking notes are recorded in `findings[]`.
+- `CHANGES_REQUESTED` — the reviewer requires changes before the work can be approved.
+- `REJECTED` — the reviewer rejected the work.
+- `NEEDS_CONTEXT` — the reviewer could not judge without more context.
+- `BLOCKED` — the review could not proceed.
 
 If a native reviewer returned `{ "makeitrealReview": {...} }`, unwrap that object into the `makeitrealReviews` array. Do not call `finish` with empty results, prose-only output, or a missing node report.
 
@@ -82,11 +93,21 @@ Launch-created subagents are scoped workers, not general chat assistants. Every 
 
 The runner prompt must state that other files, other work items, and undeclared contracts are outside scope. Subagents may read supporting files needed to understand the assigned paths, but edits must stay inside the work item's allowed paths. General user-created subagents outside Make It Real launch mode must not be blocked merely because a current run exists.
 
-Use contract-first slicing when parallel frontend/backend/data work is required: define contracts first, then launch scoped backend and frontend/data work items against the same frozen contract. Use vertical slices when one responsibility unit can own a complete, testable path.
+Use contract-first slicing when parallel frontend/backend/data work is required: define contracts first, then launch scoped backend and frontend/data work items against the same frozen contract. Use vertical slices when one module can own a complete, testable path.
 
-Do not require pre-created Claude agent files for scoped work. Launch should inject a dynamic role handoff / node-kind handoff into the work-item prompt each time. Node reports use the status protocol `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`. Implementation nodes use the `implementation-worker` report and the spec-reviewer -> quality-reviewer -> verification-reviewer review loop. Domain PM nodes use `makeitrealPmReport` plus spec-reviewer approval and do not edit code. Integration evidence nodes use `makeitrealEvidenceReport` plus verification-reviewer approval and prove cross-boundary behavior after implementation nodes are Done. Direct free-form agent-to-agent chat is not a coordination mechanism; use board events, dependency artifacts, mailbox entries, claims, and review debt.
+Do not require pre-created Claude agent files for scoped work. Launch should inject a dynamic role handoff / node-kind handoff into the work-item prompt each time. Node reports use the status protocol `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`; reviewer reports use the separate review vocabulary from the Finish Result Envelope section. Implementation nodes use the `implementation-worker` report and the spec-reviewer -> quality-reviewer -> verification-reviewer review loop. Domain PM nodes use `makeitrealPmReport` plus spec-reviewer approval and do not edit code. Integration evidence nodes use `makeitrealEvidenceReport` plus verification-reviewer approval and prove cross-boundary behavior after implementation nodes are Done. Direct free-form agent-to-agent chat is not a coordination mechanism; use board events, dependency artifacts, mailbox entries, claims, and review debt.
 
 For Claude-code attempts, task success alone is not Done evidence. Completion requires the reviewer evidence declared by that node kind in the latest attempt provenance; missing or rejected review evidence routes the work item to Rework instead of Done.
+
+## Blueprint-Authored Prompts and Review Roles
+
+Doctrine: the blueprint (LLM) decides what a worker's job is and which reviewers are required. The engine validates and saves; it does not author intent. Each work item may therefore declare:
+
+- `implementationPrompt` (optional string) — used verbatim as the worker's brief. The engine interpolates only runtime values via the `{{boardDir}}`, `{{projectRoot}}`, `{{attemptId}}`, and `{{workItemId}}` placeholders. When absent, the engine falls back to a generated default and logs a deprecation warning to stderr.
+- `reviewerPrompts` (optional object) — maps a review role (e.g. `spec-reviewer`) to that reviewer's brief, used verbatim with the same placeholder interpolation. When a role's prompt is absent, the engine falls back to a generated default and logs a deprecation warning.
+- `requiredReviewRoles` (optional array) — the exact review roles the engine must collect before completion. When absent, the engine falls back to the node-kind default (`implementation` → spec/quality/verification, `domain-pm` → spec, `integration-evidence` → verification) and logs a deprecation warning.
+
+Declaring these in the blueprint keeps prompt authorship and review policy with the LLM. The fallbacks exist only for backward compatibility; a deprecation warning on stderr signals a work item that should declare them.
 
 ## Internal Runner Selection
 

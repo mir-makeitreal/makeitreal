@@ -5,6 +5,7 @@ import { findPrimaryWorkItem, loadRunArtifacts } from "../domain/artifacts.mjs";
 import { formatVerificationCommand } from "../domain/verification-command.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
+import { resolveWikiPaths } from "./paths.mjs";
 
 function asList(values = [], formatter = (value) => value) {
   if (!values || values.length === 0) {
@@ -27,7 +28,7 @@ export function renderWikiPage({ artifacts, evidence }) {
   return `# ${workItem.id}\n\n> Wiki content not declared in blueprint. Declare workItem.wikiContent.\n\nLane: ${workItem.lane ?? "unknown"}\nResponsibility unit: ${workItem.responsibilityUnitId ?? "unknown"}`;
 }
 
-export async function syncLiveWiki({ runDir, wikiRoot, projectRoot = null, env = process.env }) {
+export async function syncLiveWiki({ runDir, projectRoot = null, env = process.env }) {
   const artifacts = await loadRunArtifacts(runDir);
   const workItem = findPrimaryWorkItem(artifacts);
   const verification = await readVerificationEvidence(runDir, { workItem });
@@ -59,7 +60,9 @@ export async function syncLiveWiki({ runDir, wikiRoot, projectRoot = null, env =
     };
   }
 
-  const targetRoot = wikiRoot ?? path.join(runDir, ".makeitreal", "wiki", "live");
+  // Canonical location shared with the wiki viewer (see src/wiki/paths.mjs).
+  const wikiPaths = resolveWikiPaths(runDir);
+  const targetRoot = wikiPaths.liveDir;
   const outputPath = path.join(targetRoot, `${workItem.id}.md`);
   await mkdir(targetRoot, { recursive: true });
   await writeFile(outputPath, renderWikiPage({ artifacts, evidence: verificationEvidence }), "utf8");
@@ -68,7 +71,9 @@ export async function syncLiveWiki({ runDir, wikiRoot, projectRoot = null, env =
     kind: "wiki-sync",
     workItemId: workItem.id,
     skipped: false,
-    outputPath
+    // Recorded relative to the project root so committed evidence stays
+    // machine-independent.
+    outputPath: path.relative(wikiPaths.projectRoot, outputPath)
   });
 
   return { ok: true, skipped: false, errors: [], outputPath, evidencePath };

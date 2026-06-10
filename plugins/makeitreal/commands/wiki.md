@@ -14,6 +14,8 @@ Open the live wiki — a browsable HTML view of all verified work items.
 
 The wiki opens in your default browser at `.makeitreal/wiki/index.html`.
 
+The engine resolves the active run from `.makeitreal/current-run.json` (a run directory like `.makeitreal/runs/<slug>` is also accepted directly). If there is no active run, the command fails with `HARNESS_RUN_NOT_FOUND` — start with `/makeitreal:plan` or `/makeitreal:setup --run <runDir>` first.
+
 If no wiki pages exist yet, it will show an empty state. Wiki pages are written automatically after each work item is verified (`wiki sync` runs as part of the Done gate).
 
 To watch for changes and auto-refresh:

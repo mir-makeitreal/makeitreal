@@ -2,6 +2,17 @@
 
 All notable changes to Make It Real are documented here.
 
+## [0.1.47] - 2026-06-10
+
+### Fixed
+- Installation instructions in documentation
+- Review status vocabulary in the launch skill, synced to the `mir` alias plugin
+- Wiki output consolidated to a single canonical path
+- Blueprint reject now works on runs whose Blueprint cannot be fingerprinted, so a broken run no longer deadlocks the review loop
+
+### Added
+- Version sync guard: `release:check` now verifies that package.json, both plugin manifests, marketplace.json, and CHANGELOG.md agree on the current version
+
 ## [0.1.46] - 2026-05-19
 
 ### Added

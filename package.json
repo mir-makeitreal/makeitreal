@@ -1,6 +1,6 @@
 {
   "name": "@52g-tools/makeitreal-engine",
-  "version": "0.1.46",
+  "version": "0.1.47",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,8 @@
     "plugin:sync": "node scripts/sync-plugin-engine.mjs",
     "plugin:check": "node scripts/sync-plugin-engine.mjs --check",
     "plugin:validate": "node scripts/validate-claude-plugin.mjs",
-    "release:check": "npm run check && npm run plugin:check && npm run plugin:validate"
+    "version:check": "node scripts/check-version-sync.mjs",
+    "release:check": "npm run check && npm run plugin:check && npm run plugin:validate && npm run version:check"
   },
   "engines": {
     "node": ">=20"

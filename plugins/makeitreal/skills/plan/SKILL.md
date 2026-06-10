@@ -94,7 +94,7 @@ All review paths must converge on the current Claude Code session as the review 
 - later chat reply: rely on the `UserPromptSubmit` hook, which injects the reply, previous assistant message, and native review protocol back into the current Claude Code session;
 - explicit slash command: keep `/makeitreal:plan approve` and `/makeitreal:plan reject` only as scriptable controls.
 
-Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --prompt <operator answer> --decision-json <native judgment>`. Always include both `--prompt` and `--decision-json`; always include `decision` and `launchRequested`; include `confidence` and `reason` when available. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/makeitreal:plan approve`.
+Do not branch on option labels, button text, keywords, or short replies such as "yes". The current Claude Code session owns the approval, rejection, revision-request, or no-op classification and records non-noop decisions through `blueprint review --prompt <operator answer> --decision-json <native judgment>`. Always include both `--prompt` and `--decision-json`; always include `decision` and `launchRequested`. Any decision other than `none` must include a non-empty `reason` — the engine rejects non-`none` decisions without one. Include `confidence` when available. If the question is dismissed, report that the operator can still answer naturally in chat; do not force `/makeitreal:plan approve`.
 
 ## Architecture: Claude Code Generates, MCP Tool Validates and Saves
 

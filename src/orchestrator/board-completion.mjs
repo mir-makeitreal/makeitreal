@@ -10,6 +10,7 @@ import { BOARD_VERIFICATION_PRODUCER, diagnoseVerificationCommandResult, formatV
 import { canTransition } from "../kanban/state-engine.mjs";
 import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
+import { resolveWikiPaths } from "../wiki/paths.mjs";
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
@@ -418,7 +419,9 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
   let wikiPath = null;
   let wikiSkipped = false;
   if (liveWikiEnabled(config.config)) {
-    const wikiRoot = path.join(boardDir, "wiki", "live");
+    // Canonical location shared with the wiki viewer (see src/wiki/paths.mjs).
+    const wikiPaths = resolveWikiPaths(boardDir);
+    const wikiRoot = wikiPaths.liveDir;
     wikiPath = path.join(wikiRoot, `${workItemId}.md`);
     await mkdir(wikiRoot, { recursive: true });
     await writeFile(wikiPath, renderBoardWiki({ board, workItem, evidence: verificationEvidence }), "utf8");
@@ -426,7 +429,9 @@ export async function completeVerifiedWork({ boardDir, workItemId, now, runnerMo
       kind: "board-wiki-sync",
       workItemId,
       skipped: false,
-      outputPath: wikiPath
+      // Recorded relative to the project root so committed evidence stays
+      // machine-independent.
+      outputPath: path.relative(wikiPaths.projectRoot, wikiPath)
     });
     await appendBoardEvent(boardDir, {
       event: "wiki_synced",

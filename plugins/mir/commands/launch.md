@@ -45,6 +45,8 @@ Drive the parent-session native Task path through the MCP tool so Claude Code sh
    }
    ```
 
+   Each entry in `makeitrealReviews[]` uses the review status vocabulary `APPROVED`, `APPROVED_WITH_NOTES`, `CHANGES_REQUESTED`, `REJECTED`, `NEEDS_CONTEXT`, or `BLOCKED` — not the node-report `DONE` statuses. See the skill's Finish Result Envelope section.
+
 5. Then complete only the work items that the engine moved to `Verifying` and that have successful attempt provenance:
 
    `mir_launch(action="complete", workItemId=<id>)`
