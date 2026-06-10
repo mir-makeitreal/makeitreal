@@ -42,14 +42,19 @@
 **ステップ 1 — マーケットプレイスを追加:**
 
 ```bash
-claude plugin marketplace add 52g github:mir-makeitreal/makeitreal
+claude plugin marketplace add mir-makeitreal/makeitreal
 ```
+
+マーケットプレイスは `52g` という名前で登録される。
 
 **ステップ 2 — プラグインをインストール:**
 
 ```bash
 claude plugin install makeitreal@52g
+claude plugin install mir@52g
 ```
+
+`makeitreal` がエンジン本体で、`mir` は以下で使う短い `/mir:` エイリアスを提供する。
 
 **確認:**
 
@@ -68,7 +73,7 @@ API キー不要。ビルド不要。別プロセス不要。
 | `/mir:plan "あなたのリクエスト"` | Blueprint を生成。PRD・アーキテクチャ・コントラクト・DAG・ダッシュボード。インラインでレビュー・承認する。 |
 | `/mir:launch` | 承認済み Blueprint を実行。DAG 順にサブエージェントをゲート付きループへディスパッチする。 |
 | `/mir:status` | 現在のフェーズ、作業項目の状態、ブロッカー、ダッシュボード URL。 |
-| `/mir:wiki` | ライブ Wiki をブラウザで開く — 検証済みの全作業項目をブラウズ可能なビューで。 |
+| `/makeitreal:wiki` | ライブ Wiki をブラウザで開く — 検証済みの全作業項目をブラウズ可能なビューで。 |
 
 コアループはこれだけ：**plan → launch → status**。
 

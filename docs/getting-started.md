@@ -5,14 +5,16 @@ Install to first Blueprint in 90 seconds.
 ## Install
 
 ```bash
-/plugin marketplace add 52g-tools/dev-harness
-/plugin install makeitreal@52g
+claude plugin marketplace add mir-makeitreal/makeitreal
+claude plugin install makeitreal@52g
 ```
+
+The marketplace registers under the name `52g`.
 
 For short aliases, install the companion alias plugin:
 
 ```bash
-/plugin install mir@52g
+claude plugin install mir@52g
 ```
 
 This gives you two plugin surfaces:

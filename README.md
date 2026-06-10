@@ -42,14 +42,19 @@ You write what the product **should** be — goals, interfaces, acceptance crite
 **Step 1 — Add the marketplace:**
 
 ```bash
-claude plugin marketplace add 52g github:mir-makeitreal/makeitreal
+claude plugin marketplace add mir-makeitreal/makeitreal
 ```
 
-**Step 2 — Install the plugin:**
+The marketplace registers under the name `52g`.
+
+**Step 2 — Install the plugins:**
 
 ```bash
 claude plugin install makeitreal@52g
+claude plugin install mir@52g
 ```
+
+`makeitreal` is the engine; `mir` adds the short `/mir:` aliases used below.
 
 **Verify:**
 
@@ -68,7 +73,7 @@ No API keys. No build step. No separate process.
 | `/mir:plan "your request"` | Generate a blueprint. PRD, architecture, contracts, DAG, dashboard. Review and approve inline. |
 | `/mir:launch` | Execute the approved blueprint. Dispatches sub-agents in DAG order through the gated loop. |
 | `/mir:status` | Current phase, work-item states, blockers, dashboard URL. |
-| `/mir:wiki` | Open the live wiki — a browsable view of all verified work items — in your browser. |
+| `/makeitreal:wiki` | Open the live wiki — a browsable view of all verified work items — in your browser. |
 
 That's the core loop: **plan → launch → status**.
 

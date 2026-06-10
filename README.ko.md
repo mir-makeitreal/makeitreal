@@ -42,14 +42,19 @@
 **1단계 — 마켓플레이스 추가:**
 
 ```bash
-claude plugin marketplace add 52g github:mir-makeitreal/makeitreal
+claude plugin marketplace add mir-makeitreal/makeitreal
 ```
+
+마켓플레이스는 `52g`라는 이름으로 등록된다.
 
 **2단계 — 플러그인 설치:**
 
 ```bash
 claude plugin install makeitreal@52g
+claude plugin install mir@52g
 ```
+
+`makeitreal`은 엔진이고, `mir`는 아래에서 사용하는 짧은 `/mir:` 별칭을 제공한다.
 
 **설치 확인:**
 
@@ -68,7 +73,7 @@ API 키 불필요. 빌드 단계 없음. 별도 프로세스 없음.
 | `/mir:plan "요청 내용"` | 블루프린트 생성. PRD, 아키텍처, 계약, DAG, 대시보드. 인라인으로 검토·승인. |
 | `/mir:launch` | 승인된 블루프린트를 실행. DAG 순서로 서브에이전트를 게이트된 루프로 디스패치. |
 | `/mir:status` | 현재 단계, 작업 항목 상태, 블로커, 대시보드 URL. |
-| `/mir:wiki` | 브라우저에서 라이브 위키 열기 — 검증된 모든 작업 항목을 탐색 가능한 뷰로. |
+| `/makeitreal:wiki` | 브라우저에서 라이브 위키 열기 — 검증된 모든 작업 항목을 탐색 가능한 뷰로. |
 
 핵심 루프: **plan → launch → status**
 

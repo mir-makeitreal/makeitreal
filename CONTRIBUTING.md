@@ -5,8 +5,8 @@ Thank you for considering contributing to Make It Real. This document explains h
 ## Development Setup
 
 ```bash
-git clone https://github.com/52g-tools/dev-harness.git
-cd dev-harness
+git clone https://github.com/mir-makeitreal/makeitreal.git
+cd makeitreal
 node --version  # Must be >= 20
 ```
 

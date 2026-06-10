@@ -42,14 +42,19 @@
 **第一步 — 添加插件市场:**
 
 ```bash
-claude plugin marketplace add 52g github:mir-makeitreal/makeitreal
+claude plugin marketplace add mir-makeitreal/makeitreal
 ```
+
+该插件市场会以 `52g` 这个名称注册。
 
 **第二步 — 安装插件:**
 
 ```bash
 claude plugin install makeitreal@52g
+claude plugin install mir@52g
 ```
+
+`makeitreal` 是引擎本体，`mir` 提供下文使用的 `/mir:` 短别名。
 
 **验证安装:**
 
@@ -68,7 +73,7 @@ claude plugin install makeitreal@52g
 | `/mir:plan "你的需求"` | 生成 Blueprint。PRD、架构、契约、DAG、仪表盘。内联审查并批准。 |
 | `/mir:launch` | 执行已批准的 Blueprint。按 DAG 顺序通过门控循环派发子 Agent。 |
 | `/mir:status` | 当前阶段、工作项状态、阻塞项、看板 URL。 |
-| `/mir:wiki` | 在浏览器中打开实时 Wiki — 以可浏览视图展示所有已验证的工作项。 |
+| `/makeitreal:wiki` | 在浏览器中打开实时 Wiki — 以可浏览视图展示所有已验证的工作项。 |
 
 核心循环就是：**plan → launch → status**。
 
