@@ -11,7 +11,7 @@ import { sendMailboxMessage } from "../src/board/mailbox.mjs";
 import { applyNativeBlueprintReviewDecision } from "../src/blueprint/interactive-approval.mjs";
 import { decideBlueprintReview, seedBlueprintReview } from "../src/blueprint/review.mjs";
 import { validateBlueprintProposal } from "../src/plan/blueprint-validator.mjs";
-import { normalizeBlueprintProposal, writeBlueprintArtifacts } from "../src/plan/blueprint-normalizer.mjs";
+import { normalizeBlueprintProposal, verifyImportArtifacts, writeBlueprintArtifacts } from "../src/plan/blueprint-normalizer.mjs";
 import { materializeLaunchBoard } from "../src/plan/artifact-assembly.mjs";
 import { readProjectConfig, setDashboardRefresh, setLiveWikiEnabled, setProjectConfigProfile } from "../src/config/project-config.mjs";
 import { runDoctor } from "../src/diagnostics/doctor.mjs";
@@ -786,6 +786,15 @@ async function runCommand(argv) {
     const runnerMode = parseFlag(argv, "--runner") ?? "claude-code";
     const normalized = normalizeBlueprintProposal(proposal);
     await writeBlueprintArtifacts(normalized, runDir, runId);
+
+    // board.json is the completion signal: verify required artifacts before writing it.
+    const incomplete = await verifyImportArtifacts(runDir, normalized.workItems);
+    if (incomplete) {
+      return {
+        exitCode: 1,
+        result: { ok: false, command: "blueprint import", runDir, runId, errors: [incomplete] }
+      };
+    }
 
     const slug = (proposal.title ?? "blueprint")
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);

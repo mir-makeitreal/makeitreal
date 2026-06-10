@@ -1,5 +1,6 @@
 import path from "node:path";
-import { writeJsonFile } from "../io/json.mjs";
+import { createHarnessError } from "../domain/errors.mjs";
+import { fileExists, writeJsonFile } from "../io/json.mjs";
 
 function slugify(value) {
   const normalized = String(value ?? "")
@@ -566,4 +567,29 @@ export async function writeBlueprintArtifacts(normalized, runDir, runId) {
   }
 
   return { ok: true, runDir };
+}
+
+// board.json is the completion signal for an imported run, so it must be written
+// last — and only after every required artifact is confirmed on disk. Returns a
+// HARNESS_IMPORT_INCOMPLETE error (or null) instead of writing a partial board.
+export async function verifyImportArtifacts(runDir, workItems) {
+  const required = [
+    "prd.json",
+    "design-pack.json",
+    "responsibility-units.json",
+    "work-item-dag.json",
+    ...workItems.map(item => path.join("work-items", `${item.id}.json`))
+  ];
+  const missing = [];
+  for (const relativePath of required) {
+    if (!await fileExists(path.join(runDir, relativePath))) missing.push(relativePath);
+  }
+  if (missing.length === 0) return null;
+  return createHarnessError({
+    code: "HARNESS_IMPORT_INCOMPLETE",
+    reason: `Import is incomplete: missing ${missing.join(", ")}. board.json was not written.`,
+    evidence: missing,
+    recoverable: true,
+    nextAction: "Re-run blueprint import <runDir> with the BlueprintProposal on stdin."
+  });
 }

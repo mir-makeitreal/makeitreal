@@ -10,6 +10,11 @@ import { canTransition } from "../kanban/state-engine.mjs";
 const DEFAULT_MAX_DECOMPOSITION_DEPTH = 2;
 const DEFAULT_MAX_CHILDREN_PER_PROPOSAL = 8;
 
+// Work item id convention (see blueprint-normalizer slugify): lowercase
+// alphanumeric segments joined by "." or "-". Rejects path separators and
+// ".." so ids are safe to use in work-items/<id>.json paths.
+const WORK_ITEM_ID_PATTERN = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
+
 /**
  * Validate a childWorkProposal against existing board state.
  *
@@ -69,6 +74,11 @@ export function validateChildWorkProposal({ proposal, parentWorkItem, board, art
     if (!child.id || typeof child.id !== "string") {
       errors.push(createError("HARNESS_DECOMPOSE_CHILD_ID_MISSING",
         "Each child must have a non-empty string id."));
+      continue;
+    }
+    if (!WORK_ITEM_ID_PATTERN.test(child.id)) {
+      errors.push(createError("HARNESS_DECOMPOSE_CHILD_ID_INVALID",
+        `Child id ${child.id} must be lowercase alphanumeric segments joined by "." or "-".`));
       continue;
     }
     if (childIds.has(child.id)) {

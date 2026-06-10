@@ -4,6 +4,8 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { normalizeBlueprintProposal, verifyImportArtifacts, writeBlueprintArtifacts } from "../src/plan/blueprint-normalizer.mjs";
+import { fileExists } from "../src/io/json.mjs";
 
 const HARNESS_BIN = path.resolve(import.meta.dirname, "../bin/harness.mjs");
 
@@ -195,6 +197,22 @@ describe("blueprint import CLI command", () => {
     assert.equal(result.ok, false);
     assert.ok(result.errors.some(e => e.code === "HARNESS_RUN_DIR_REQUIRED"));
     assert.equal(code, 1);
+  });
+
+  it("fails with HARNESS_IMPORT_INCOMPLETE and no board.json when a required artifact is missing", async () => {
+    tempDir = await mkdtemp(path.join(tmpdir(), "blueprint-import-test-"));
+    const normalized = normalizeBlueprintProposal(validProposal());
+    await writeBlueprintArtifacts(normalized, tempDir, "incomplete-run");
+    // Simulate an interrupted import: the DAG artifact never made it to disk.
+    await rm(path.join(tempDir, "work-item-dag.json"));
+
+    const incomplete = await verifyImportArtifacts(tempDir, normalized.workItems);
+    assert.ok(incomplete, "expected an incomplete-import error");
+    assert.equal(incomplete.code, "HARNESS_IMPORT_INCOMPLETE");
+    assert.deepEqual(incomplete.evidence, ["work-item-dag.json"]);
+    assert.equal(await fileExists(path.join(tempDir, "board.json")), false, "board.json must not exist");
+
+    await rm(tempDir, { recursive: true, force: true });
   });
 
   it("passes --slug through as runId", async () => {

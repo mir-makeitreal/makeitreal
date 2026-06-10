@@ -1001,13 +1001,13 @@
         "command": "Answer the review question or reply in chat",
         "id": "blueprint-review",
         "label": "Blueprint Review",
-        "status": "blocked"
+        "status": "complete"
       },
       {
         "command": "/makeitreal:launch",
         "id": "launch",
         "label": "Launch",
-        "status": "pending"
+        "status": "current"
       },
       {
         "command": "/makeitreal:verify",
@@ -1022,9 +1022,9 @@
         "status": "pending"
       }
     ],
-    "nextActionCode": "status",
-    "nextCommand": "/makeitreal:status",
-    "phase": "blocked",
+    "nextActionCode": "launch",
+    "nextCommand": "/makeitreal:launch",
+    "phase": "launch-ready",
     "readOnly": true
   },
   "run": {
@@ -1051,8 +1051,8 @@
         "workItemId": "work.feature-auth"
       }
     ],
-    "nextActionCode": "status",
-    "nextCommand": "/makeitreal:status",
-    "phase": "blocked"
+    "nextActionCode": "launch",
+    "nextCommand": "/makeitreal:launch",
+    "phase": "launch-ready"
   }
 }

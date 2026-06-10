@@ -185,6 +185,7 @@ test("stop reports active runner instead of missing Done evidence while work is 
     const output = JSON.parse(blocked.stdout);
     assert.equal(output.decision, "block");
     assert.match(output.reason, /HARNESS_RUNNER_IN_PROGRESS/);
+    assert.match(output.reason, /orchestrator reconcile/);
     assert.doesNotMatch(output.reason, /HARNESS_EVIDENCE_MISSING/);
   });
 });

@@ -81,11 +81,12 @@ async function main() {
   if (active.running) {
     return block([{
       code: "HARNESS_RUNNER_IN_PROGRESS",
-      reason: "Make It Real runner is still active; wait for the runner result before checking Done evidence.",
+      reason: `Make It Real runner is still active; wait for the runner result before checking Done evidence. If the runner actually crashed, run \`makeitreal-engine orchestrator reconcile ${resolved.runDir}\` or \`/makeitreal:doctor\` to clear the stale entry.`,
       contractId: null,
       ownerModule: null,
       evidence: ["runtime-state.json", "board.json"],
-      recoverable: true
+      recoverable: true,
+      nextAction: `makeitreal-engine orchestrator reconcile ${resolved.runDir}`
     }]);
   }
 

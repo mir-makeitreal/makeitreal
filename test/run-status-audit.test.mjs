@@ -233,12 +233,12 @@ test("status projects board recovery phases through the public current-run surfa
     });
     assert.equal(approval.ok, true);
 
-    // The read-only status surface no longer auto-promotes Contract Frozen
-    // items. They remain non-launchable until the orchestrator's Ready gate
-    // flow promotes them, so the pre-launch projection is "blocked".
+    // The read-only status surface still does not auto-promote Contract
+    // Frozen items, but a board whose pending work sits entirely in Contract
+    // Frozen is the launch happy path, so the projection is "launch-ready".
     let status = runHarness(["status", projectRoot]);
     assert.equal(status.status, 0, status.stdout || status.stderr);
-    assert.equal(JSON.parse(status.stdout).phase, "blocked");
+    assert.equal(JSON.parse(status.stdout).phase, "launch-ready");
     assert.deepEqual(JSON.parse(status.stdout).boardStatus.launchableWorkItemIds, []);
     assert.equal(JSON.parse(status.stdout).boardStatus.recommendedNativeTaskConcurrency, 0);
 

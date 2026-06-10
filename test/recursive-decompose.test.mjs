@@ -186,6 +186,18 @@ describe("validateChildWorkProposal", () => {
     assert.ok(result.errors.some(e => e.code === "HARNESS_DECOMPOSE_CHILD_ID_CONFLICT"));
   });
 
+  test("rejects child id with path traversal", () => {
+    const result = validateChildWorkProposal({
+      proposal: {
+        reason: "Split needed for traversal test",
+        children: [validChild("../../../tmp/evil", ["src/auth/a/**"])]
+      },
+      parentWorkItem: baseParent, board: baseBoard, artifacts: baseArtifacts, depth: 0
+    });
+    assert.ok(!result.ok);
+    assert.ok(result.errors.some(e => e.code === "HARNESS_DECOMPOSE_CHILD_ID_INVALID"));
+  });
+
   test("rejects child depending on non-sibling non-parent", () => {
     const result = validateChildWorkProposal({
       proposal: {

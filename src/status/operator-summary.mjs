@@ -249,6 +249,16 @@ export function summarizeBoardOperator({
   if (activeClaims.length > 0) {
     return { phase: "running", blockers: [], nextActionCode: ACTION_CODES.STATUS };
   }
+  // Reaching this point means the audit/Ready gate passed (gate failures
+  // return above as blockers). Pending work sitting entirely in Contract
+  // Frozen is the launch happy path: launch promotes frozen items through the
+  // Ready gates, so the answer is "launch", not "blocked with no blockers".
+  const pendingLanes = new Set((board.workItems ?? [])
+    .filter((item) => !["Done", "Cancelled"].includes(item.lane))
+    .map((item) => item.lane));
+  if (pendingLanes.size === 1 && pendingLanes.has("Contract Frozen")) {
+    return { phase: "launch-ready", blockers: [], nextActionCode: ACTION_CODES.LAUNCH };
+  }
   return { phase: "blocked", blockers: [], nextActionCode: ACTION_CODES.STATUS };
 }
 

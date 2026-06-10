@@ -58,6 +58,19 @@ async function addRequiredAuditNode(runDir, overrides = {}) {
   return workItem;
 }
 
+test("gate rejects missing or unknown --target", async () => {
+  await withFixture(async ({ runDir }) => {
+    for (const targetArgs of [[], ["--target", "Bogus"]]) {
+      const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, ...targetArgs], {
+        cwd: new URL("../", import.meta.url),
+        encoding: "utf8"
+      });
+      assert.equal(result.status, 1);
+      assert.equal(JSON.parse(result.stdout).errors[0].code, "HARNESS_GATE_TARGET_INVALID");
+    }
+  });
+});
+
 test("Ready gate requires rendered preview", async () => {
   await withFixture(async ({ runDir }) => {
     const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {

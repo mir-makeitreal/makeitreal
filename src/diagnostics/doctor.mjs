@@ -197,10 +197,29 @@ async function checkCurrentRun({ projectRoot, runDir, env }) {
   });
 }
 
-async function checkHooks({ projectRoot, currentRun }) {
+async function checkHooks({ projectRoot, currentRun, env }) {
   if (!currentRun.ok || !currentRun.runDir) {
     return skipped("Hook diagnostics require a current run.", {
       installed: null
+    });
+  }
+  const pluginRoot = env.CLAUDE_PLUGIN_ROOT ? path.resolve(env.CLAUDE_PLUGIN_ROOT) : null;
+  if (pluginRoot) {
+    const pluginHooks = await validatePluginHooks({ pluginRoot });
+    if (!pluginHooks.ok) {
+      return fail({
+        code: "HARNESS_PLUGIN_HOOKS_INVALID",
+        summary: "Plugin-native Make It Real hooks are invalid.",
+        reason: pluginHooks.reason,
+        evidence: pluginHooks.evidence,
+        nextAction: "Reinstall the Make It Real plugin from the marketplace.",
+        extra: { source: "plugin", pluginRoot }
+      });
+    }
+    return pass("Plugin-native Make It Real hooks are registered in hooks.json; Claude settings hooks are not required.", {
+      source: "plugin",
+      pluginRoot,
+      hookAssets: pluginHooks.evidence
     });
   }
   const result = await getClaudeHookStatus({
@@ -311,7 +330,7 @@ export async function runDoctor({
   const config = await checkConfig({ projectRoot: resolvedProjectRoot });
   const plugin = await checkPlugin({ env });
   const currentRun = await checkCurrentRun({ projectRoot: resolvedProjectRoot, runDir, env });
-  const hooks = await checkHooks({ projectRoot: resolvedProjectRoot, currentRun });
+  const hooks = await checkHooks({ projectRoot: resolvedProjectRoot, currentRun, env });
   const dashboard = await checkPreview({ currentRun });
   const claudeBinary = checkClaudeBinary({ env });
   const checks = { config, plugin, currentRun, hooks, dashboard, claudeBinary };

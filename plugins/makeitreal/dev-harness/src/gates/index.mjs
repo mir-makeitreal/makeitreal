@@ -193,6 +193,21 @@ function validateOneReadyWorkItem({ artifacts, workItem, errors }) {
 }
 
 export async function runGates({ runDir, target }) {
+  if (target !== "Ready" && target !== "Done") {
+    return {
+      ok: false,
+      command: "gate",
+      target: target ?? null,
+      errors: [createHarnessError({
+        code: "HARNESS_GATE_TARGET_INVALID",
+        reason: `gate requires --target Ready or Done, received: ${target ?? "(missing)"}.`,
+        evidence: ["argv"],
+        recoverable: true,
+        nextAction: "gate <runDir> --target <Ready|Done>"
+      })]
+    };
+  }
+
   const artifacts = await loadRunArtifacts(runDir);
   const errors = [];
   const workItems = artifacts.workItems;

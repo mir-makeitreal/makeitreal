@@ -40,6 +40,10 @@ test("board status blocks approved boards when Ready gate fails", async () => {
     assert.equal(result.audit.ok, false);
     assert.equal(result.readyGate.ok, false);
     assert.equal(result.phase, "blocked");
+    // Ready-gate errors must be promoted to blockers; "blocked" with empty
+    // blockers is a dead end for the operator.
+    assert.equal(result.blockers.length, result.readyGate.errors.length);
+    assert.equal(result.blockers[0].code, result.readyGate.errors[0].code);
     assert.deepEqual(result.launchableWorkItemIds, []);
     assert.equal(result.recommendedNativeTaskConcurrency, 0);
     assert.equal(Object.hasOwn(result, "launchableWork"), false);
@@ -202,6 +206,44 @@ test("board status blocks Contract Frozen planned work until Blueprint approval"
   }
 });
 
+
+test("board status reports launch-ready for approved Contract Frozen work", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "harness-board-status-frozen-"));
+  try {
+    const plan = await importBlueprint({
+      projectRoot,
+      proposal: minimalProposal({
+        title: "Contract Frozen Launch Path",
+        moduleName: "contract-frozen-launch",
+        allowedPaths: ["modules/contract-frozen-launch/**"]
+      }),
+      runId: "contract-frozen-launch",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const approval = await decideBlueprintReview({
+      runDir: plan.runDir,
+      status: "approved",
+      reviewedBy: "operator:frozen-launch-test",
+      now: new Date("2026-05-06T00:00:00.000Z")
+    });
+    assert.equal(approval.ok, true);
+
+    // Items stay in Contract Frozen until launch promotes them through the
+    // Ready gates. With approval and Ready gate green, status must point at
+    // launch instead of the dead-end "blocked with no blockers".
+    const result = await readBoardStatus({ boardDir: plan.runDir, now: new Date("2026-05-06T00:00:00.000Z") });
+    assert.equal(result.readyGate.ok, true);
+    assert.deepEqual(result.laneCounts, { "Contract Frozen": 1 });
+    assert.equal(result.phase, "launch-ready");
+    assert.equal(result.nextActionCode, "launch");
+    assert.equal(result.nextCommand, "/makeitreal:launch");
+    assert.deepEqual(result.blockers, []);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
 
 test("board status reports unlinked and drifted board authority", async () => {
   await withBoard(async ({ boardDir }) => {

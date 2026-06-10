@@ -2,6 +2,16 @@
 
 All notable changes to Make It Real are documented here.
 
+## [0.1.48] - 2026-06-10
+
+### Fixed
+- Doctor now validates plugin-native hooks via `CLAUDE_PLUGIN_ROOT` instead of failing on absent Claude settings hooks
+- `gate` rejects targets other than `Ready`/`Done` with an explicit `HARNESS_GATE_TARGET_INVALID` error instead of silently passing
+- Status no longer reports "blocked with no blockers" when all pending work sits in Contract Frozen; it now answers `launch-ready`
+- Stop hook's runner-in-progress block now includes a recovery path (`orchestrator reconcile`) for crashed runners
+- Decompose child work item ids are validated against the slug pattern, rejecting path separators and `..` traversal
+- Blueprint import verifies all required artifacts exist on disk before writing `board.json`, so a partial import can no longer look complete
+
 ## [0.1.47] - 2026-06-10
 
 ### Fixed

@@ -91,6 +91,84 @@ test("doctor reports plugin, hooks, current run, dashboard, and Claude binary wi
   }
 });
 
+test("doctor passes hooks via plugin-native hooks.json without Claude settings hooks", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-native-"));
+  const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-native-bin-"));
+  try {
+    await writeFakeClaude(binDir);
+    const plan = await importBlueprint({
+      projectRoot: root,
+      proposal: minimalProposal({
+        title: "Plugin Native Hook Diagnostics",
+        workItemId: "wi.native-hooks",
+        ruId: "ru.native-hooks",
+        owner: "team.diagnostics",
+        allowedPaths: ["modules/native-hooks/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('native hooks ok')"] }]
+      }),
+      runId: "native-hooks",
+      now: new Date("2026-05-08T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const result = await runDoctor({
+      projectRoot: root,
+      env: {
+        ...process.env,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        PATH: `${binDir}${path.delimiter}${process.env.PATH}`
+      },
+      now: new Date("2026-05-08T00:00:01.000Z")
+    });
+
+    assert.equal(result.healthy, true);
+    assert.equal(result.checks.hooks.status, "pass");
+    assert.equal(result.checks.hooks.source, "plugin");
+    assert.equal(result.nextAction, "/makeitreal:status");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(binDir, { recursive: true, force: true });
+  }
+});
+
+test("doctor still fails missing settings hooks when no plugin root is set", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-fallback-"));
+  const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-fallback-bin-"));
+  try {
+    await writeFakeClaude(binDir);
+    const plan = await importBlueprint({
+      projectRoot: root,
+      proposal: minimalProposal({
+        title: "Fallback Hook Diagnostics",
+        workItemId: "wi.fallback-hooks",
+        ruId: "ru.fallback-hooks",
+        owner: "team.diagnostics",
+        allowedPaths: ["modules/fallback-hooks/**"],
+        verificationCommands: [{ file: "node", args: ["-e", "console.log('fallback hooks ok')"] }]
+      }),
+      runId: "fallback-hooks",
+      now: new Date("2026-05-08T00:00:00.000Z")
+    });
+    assert.equal(plan.ok, true);
+
+    const env = { ...process.env, PATH: `${binDir}${path.delimiter}${process.env.PATH}` };
+    delete env.CLAUDE_PLUGIN_ROOT;
+    const result = await runDoctor({
+      projectRoot: root,
+      env,
+      now: new Date("2026-05-08T00:00:01.000Z")
+    });
+
+    assert.equal(result.healthy, false);
+    assert.equal(result.checks.hooks.status, "fail");
+    assert.equal(result.checks.hooks.errors[0].code, "HARNESS_CLAUDE_HOOKS_MISSING");
+    assert.equal(result.nextAction, "/makeitreal:setup");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(binDir, { recursive: true, force: true });
+  }
+});
+
 test("doctor diagnoses a non-executable plugin engine binary", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-engine-"));
   const binDir = await mkdtemp(path.join(os.tmpdir(), "makeitreal-doctor-engine-bin-"));
