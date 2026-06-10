@@ -343,6 +343,14 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
     const verifyCommand = parseVerifyCommand(wi.verifyCommand);
     const verificationCommands = verifyCommand ? [verifyCommand] : [];
 
+    // A declared acceptanceCriteriaIds array is trusted as-is; the Ready gate
+    // enforces that every PRD criterion stays covered by at least one work
+    // item. No declaration keeps the legacy behavior of tracing the item to
+    // every criterion (backward compatibility).
+    const declaredTraceIds = Array.isArray(wi.acceptanceCriteriaIds)
+      ? wi.acceptanceCriteriaIds.map(String)
+      : null;
+
     const rawDepsOn = wi.dependsOn ?? [];
     return {
       schemaVersion: "1.0",
@@ -361,7 +369,7 @@ function buildWorkItems(proposal, modules, moduleContracts, acceptanceCriteria, 
         return [depId, kind];
       })),
       allowedPaths: [...(module.ownedPaths ?? [])],
-      prdTrace: { acceptanceCriteriaIds: [...allCriterionIds] },
+      prdTrace: { acceptanceCriteriaIds: declaredTraceIds ?? [...allCriterionIds] },
       doneEvidence: (() => {
         const mapped = (wi.doneEvidence ?? []).map(e => ({ kind: e.kind, path: e.path }));
         if (mapped.length === 0) {

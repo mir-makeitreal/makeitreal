@@ -15,6 +15,44 @@ export const REVIEW_STATUSES = Object.freeze([
 export const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 const VALID_REVIEW_STATUSES = new Set(REVIEW_STATUSES);
 
+// Infrastructure validation only. Doctrine: requiredReviewRoles is NOT declared
+// here — it comes from workItem.requiredReviewRoles. The engine validates and
+// saves; it does not decide which reviewers a work item needs.
+// Canonical copy shared by orchestrator.mjs and board-completion.mjs; reportKeys
+// are only consumed by the native finish path in orchestrator.mjs.
+export const COMPLETION_POLICIES = Object.freeze({
+  "implementation": {
+    reportRole: "implementation-worker",
+    reportKeys: ["makeitrealReport", "agentReport"],
+    requiresChangedFiles: true,
+    requiresVerificationCommands: true
+  },
+  "domain-pm": {
+    reportRole: "domain-pm",
+    reportKeys: ["makeitrealPmReport", "pmReport"],
+    requiresChangedFiles: false,
+    requiresVerificationCommands: false
+  },
+  "integration-evidence": {
+    reportRole: "integration-evidence",
+    reportKeys: ["makeitrealEvidenceReport", "evidenceReport"],
+    requiresChangedFiles: false,
+    requiresVerificationCommands: true
+  }
+});
+
+// Doctrine: the blueprint (LLM) decides which review roles a work item needs.
+// The engine only validates and saves. Blueprint import rejects work items that
+// omit the declaration (REQUIRED_REVIEW_ROLES_REQUIRED); this runtime warning
+// only covers boards imported before that gate existed.
+export function resolveRequiredReviewRoles({ workItem }) {
+  if (Array.isArray(workItem?.requiredReviewRoles)) {
+    return workItem.requiredReviewRoles;
+  }
+  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — no reviewers required. Declare requiredReviewRoles in your blueprint.\n");
+  return [];
+}
+
 function reportArray(value) {
   if (!Array.isArray(value)) {
     return [];

@@ -7,7 +7,7 @@ import { readVerificationEvidence, readWikiSyncEvidence } from "../domain/eviden
 import { loadRunArtifacts } from "../domain/artifacts.mjs";
 import { createHarnessError } from "../domain/errors.mjs";
 import { invalidAllowedPathPattern, reservedControlPlanePath } from "../domain/path-policy.mjs";
-import { validatePrd, validateWorkItemPrdTrace } from "../domain/prd.mjs";
+import { validatePrd, validatePrdTraceCoverage, validateWorkItemPrdTrace } from "../domain/prd.mjs";
 import { normalizeVerificationCommand } from "../domain/verification-command.mjs";
 import { requiredDagNodeIds, validateWorkItemDag } from "../domain/work-item-dag.mjs";
 import { fileExists } from "../io/json.mjs";
@@ -253,6 +253,8 @@ export async function runGates({ runDir, target }) {
     for (const workItem of requiredWorkItems) {
       validateOneReadyWorkItem({ artifacts, workItem, errors });
     }
+
+    errors.push(...validatePrdTraceCoverage({ prd: artifacts.prd, workItems: requiredWorkItems }).errors);
 
     const blueprintApproval = await validateBlueprintApproval({ runDir });
     errors.push(...blueprintApproval.errors);

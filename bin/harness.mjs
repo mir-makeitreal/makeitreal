@@ -23,7 +23,7 @@ import { finishNativeClaudeTask, orchestratorTick, reconcileBoard, startNativeCl
 import { fileExists } from "../src/io/json.mjs";
 import { refreshPreviewForTrigger, renderDesignPreview } from "../src/preview/render-preview.mjs";
 import { initializeProject } from "../src/project/bootstrap.mjs";
-import { currentRunStatePath, readCurrentRunState } from "../src/project/run-state.mjs";
+import { cancelCurrentRun, currentRunStatePath, readCurrentRunState } from "../src/project/run-state.mjs";
 import { readBoardStatus } from "../src/status/board-status.mjs";
 import { readRunStatus } from "../src/status/run-status.mjs";
 import { syncLiveWiki } from "../src/wiki/live-wiki.mjs";
@@ -55,6 +55,7 @@ Internal commands used by Make It Real skills:
   blueprint import <runDir>    Import a BlueprintProposal JSON from stdin (Claude Code generates, engine validates+writes)
   setup <projectRoot>          Initialize Make It Real state and optionally record --run [--session-id <id>]
   status <projectRoot>         Show the active Make It Real run state
+  run cancel <projectRoot>     Release the active run's current-run pointers; the run directory is preserved
   doctor <projectRoot>         Diagnose plugin, hooks, config, preview, and Claude CLI
   hooks install <projectRoot> --run <runDir> Install Claude hook settings for a run
   hooks status <projectRoot> --run <runDir>  Show Make It Real Claude hook status
@@ -914,6 +915,11 @@ async function runCommand(argv) {
         errors: dashboard.errors
       }
     };
+  }
+
+  if (argv[0] === "run" && argv[1] === "cancel") {
+    const result = await cancelCurrentRun({ projectRoot: resolveProjectRootArg(argv[2]) });
+    return { exitCode: result.ok ? 0 : 1, result };
   }
 
   if (argv[0] === "doctor") {

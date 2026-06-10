@@ -55,6 +55,8 @@ function validProposal(overrides = {}) {
         dependsOn: [],
         verifyCommand: "node --test",
         complexity: "small",
+        // Explicit zero-reviewer declaration: import requires requiredReviewRoles.
+        requiredReviewRoles: [],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.alpha.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.alpha.wiki-sync.json" }

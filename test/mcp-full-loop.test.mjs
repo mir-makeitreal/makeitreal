@@ -72,6 +72,8 @@ function twoModuleProposal() {
         dependsOn: [],
         verifyCommand: "node -e process.exit(0)",
         complexity: "small",
+        // Explicit zero-reviewer declaration: import requires requiredReviewRoles.
+        requiredReviewRoles: [],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.auth.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.auth.wiki-sync.json" }
@@ -83,6 +85,8 @@ function twoModuleProposal() {
         dependsOn: ["auth"],
         verifyCommand: "node -e process.exit(0)",
         complexity: "small",
+        // Explicit zero-reviewer declaration: import requires requiredReviewRoles.
+        requiredReviewRoles: [],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.todos.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.todos.wiki-sync.json" }

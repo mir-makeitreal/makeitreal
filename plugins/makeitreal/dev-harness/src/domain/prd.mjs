@@ -81,16 +81,21 @@ export function validateWorkItemPrdTrace({ prd, workItem }) {
     }
   }
 
-  const traceSet = new Set(traceIds);
-  const missingIds = [...ids].filter((id) => !traceSet.has(id));
-  const duplicateIds = traceIds.filter((traceId, index) => traceIds.indexOf(traceId) !== index);
-  if (missingIds.length > 0 || duplicateIds.length > 0 || traceSet.size !== ids.size) {
-    errors.push(createHarnessError({
-      code: "HARNESS_PRD_TRACE_INCOMPLETE",
-      reason: `Work item ${workItem.id} must trace exactly all PRD acceptance criteria.`,
-      evidence: ["prd.json", "work-items"]
-    }));
-  }
+  return { ok: errors.length === 0, errors };
+}
 
+// Run-level invariant replacing the old per-item "trace exactly all criteria"
+// rule, which the normalizer satisfied trivially by injecting every criterion
+// into every work item. The real guarantee is coverage: every PRD acceptance
+// criterion must be delivered by at least one work item.
+export function validatePrdTraceCoverage({ prd, workItems }) {
+  const covered = new Set((workItems ?? [])
+    .flatMap((workItem) => workItem?.prdTrace?.acceptanceCriteriaIds ?? []));
+  const uncovered = [...criterionIds(prd)].filter((id) => !covered.has(id));
+  const errors = uncovered.length === 0 ? [] : [createHarnessError({
+    code: "HARNESS_PRD_TRACE_INCOMPLETE",
+    reason: `PRD acceptance criteria are not covered by any work item: ${uncovered.join(", ")}.`,
+    evidence: ["prd.json", "work-items"]
+  })];
   return { ok: errors.length === 0, errors };
 }

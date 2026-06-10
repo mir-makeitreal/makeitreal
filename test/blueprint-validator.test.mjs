@@ -58,6 +58,7 @@ function validProposal(overrides = {}) {
         dependsOn: [],
         verifyCommand: "npm test -- --grep auth",
         complexity: "medium",
+        requiredReviewRoles: ["code-quality"],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.auth.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.auth.wiki-sync.json" }
@@ -115,6 +116,29 @@ describe("blueprint-validator", () => {
     proposal.modules[0].ownedPaths = [];
     const result = validateBlueprintProposal(proposal);
     assert.ok(result.errors.some(e => e.code === "MODULE_FIELDS_REQUIRED"));
+  });
+
+  it("REQUIRED_REVIEW_ROLES_REQUIRED — rejects a work item without requiredReviewRoles", () => {
+    const proposal = validProposal();
+    delete proposal.workItems[0].requiredReviewRoles;
+    const result = validateBlueprintProposal(proposal);
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.some(e => e.code === "REQUIRED_REVIEW_ROLES_REQUIRED"));
+  });
+
+  it("REQUIRED_REVIEW_ROLES_REQUIRED — rejects a non-array requiredReviewRoles", () => {
+    const proposal = validProposal();
+    proposal.workItems[0].requiredReviewRoles = "code-quality";
+    const result = validateBlueprintProposal(proposal);
+    assert.ok(result.errors.some(e => e.code === "REQUIRED_REVIEW_ROLES_REQUIRED"));
+  });
+
+  it("REQUIRED_REVIEW_ROLES_REQUIRED — accepts an explicit empty array", () => {
+    const proposal = validProposal();
+    proposal.workItems[0].requiredReviewRoles = [];
+    const result = validateBlueprintProposal(proposal);
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    assert.ok(!result.errors.some(e => e.code === "REQUIRED_REVIEW_ROLES_REQUIRED"));
   });
 
   it("CONTRACT_FIELDS_REQUIRED — detects invalid contract type", () => {
@@ -280,6 +304,18 @@ describe("blueprint-normalizer", () => {
     assert.ok(Array.isArray(wi.doneEvidence));
     assert.ok(wi.prdTrace);
     assert.ok(Array.isArray(wi.prdTrace.acceptanceCriteriaIds));
+  });
+
+  it("preserves a declared acceptanceCriteriaIds trace on the work item", () => {
+    const proposal = validProposal();
+    proposal.workItems[0].acceptanceCriteriaIds = ["AC-002"];
+    const result = normalizeBlueprintProposal(proposal);
+    assert.deepEqual(result.workItems[0].prdTrace.acceptanceCriteriaIds, ["AC-002"]);
+  });
+
+  it("traces all PRD criteria when acceptanceCriteriaIds is not declared (backward compatibility)", () => {
+    const result = normalizeBlueprintProposal(validProposal());
+    assert.deepEqual(result.workItems[0].prdTrace.acceptanceCriteriaIds, ["AC-001", "AC-002"]);
   });
 
   it("produces canonical work-item-dag.json shape", () => {

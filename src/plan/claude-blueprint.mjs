@@ -41,7 +41,7 @@ WorkItem:
   "verifyCommand": string,              // e.g. "npm test -- --grep auth"
   "complexity": "trivial" | "small" | "medium" | "large",
   "implementationPrompt"?: string,      // OPTIONAL — used verbatim as the worker's brief; placeholders {{boardDir}}, {{projectRoot}}, {{attemptId}}, {{workItemId}} are interpolated by the engine
-  "requiredReviewRoles"?: [string],     // OPTIONAL — exact review roles the engine must collect before completion
+  "requiredReviewRoles": [string],      // REQUIRED — exact review roles the engine must collect before completion; declare [] explicitly when none
   "reviewerPrompts"?: { [role: string]: string } // OPTIONAL — per-role reviewer brief, used verbatim; same placeholders interpolated
 }
 
@@ -141,13 +141,18 @@ export function getBlueprintSchema() {
         minItems: 1,
         items: {
           type: "object",
-          required: ["module", "title"],
+          required: ["module", "title", "requiredReviewRoles"],
           properties: {
             module: { type: "string" },
             title: { type: "string" },
             dependsOn: { type: "array", items: { type: "string" } },
             verifyCommand: { type: "string" },
             complexity: { type: "string", enum: ["trivial", "small", "medium", "large"] },
+            acceptanceCriteriaIds: {
+              type: "array",
+              items: { type: "string" },
+              description: "Optional. PRD acceptance criterion ids this work item delivers (AC-001 is the first acceptanceCriteria entry, AC-002 the second, ...). If omitted, the engine traces the work item to every criterion. Every criterion must be covered by at least one work item."
+            },
             implementationPrompt: {
               type: "string",
               description: "If provided, used verbatim as the implementation prompt. Otherwise engine generates a default. Runtime placeholders {{boardDir}}, {{projectRoot}}, {{attemptId}}, {{workItemId}} are interpolated by the engine."
@@ -155,7 +160,7 @@ export function getBlueprintSchema() {
             requiredReviewRoles: {
               type: "array",
               items: { type: "string" },
-              description: "If provided, the exact review roles the engine must collect before completion. Otherwise the engine falls back to the node-kind default."
+              description: "Required. The exact review roles the engine must collect before completion. Declare [] explicitly when no reviews are needed — omitting the field fails the import."
             },
             reviewerPrompts: {
               type: "object",

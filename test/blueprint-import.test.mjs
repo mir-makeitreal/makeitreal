@@ -59,6 +59,7 @@ function validProposal(overrides = {}) {
         dependsOn: [],
         verifyCommand: "npm test -- --grep auth",
         complexity: "medium",
+        requiredReviewRoles: ["code-quality"],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.auth.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.auth.wiki-sync.json" }
@@ -171,8 +172,8 @@ describe("blueprint import CLI command", () => {
         }
       ],
       workItems: [
-        { module: "alpha", title: "Build alpha", dependsOn: [], verifyCommand: "node --test" },
-        { module: "beta", title: "Build beta", dependsOn: [], verifyCommand: "node --test" }
+        { module: "alpha", title: "Build alpha", dependsOn: [], verifyCommand: "node --test", requiredReviewRoles: [] },
+        { module: "beta", title: "Build beta", dependsOn: [], verifyCommand: "node --test", requiredReviewRoles: [] }
       ]
     });
     const { result, code } = await runBlueprintImport(tempDir, proposal);

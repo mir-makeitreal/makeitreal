@@ -113,6 +113,22 @@ export const VALIDATION_RULES = [
     }
   },
   {
+    // Doctrine: the blueprint decides which reviewers each work item needs.
+    // The declaration must be explicit — [] is a valid "zero reviewers" choice,
+    // but omitting the field entirely fails the import.
+    id: "REQUIRED_REVIEW_ROLES_REQUIRED",
+    severity: "error",
+    check(proposal) {
+      const missing = (proposal.workItems ?? [])
+        .filter(wi => !Array.isArray(wi.requiredReviewRoles))
+        .map(wi => wi.title ?? wi.module ?? "?");
+      if (missing.length === 0) return null;
+      return missing
+        .map(label => `Work item ${label} must declare requiredReviewRoles as an array (use [] to explicitly require no reviewers).`)
+        .join(" ");
+    }
+  },
+  {
     id: "CONTRACT_NAME_INVALID",
     severity: "error",
     check(proposal) {

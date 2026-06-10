@@ -462,6 +462,47 @@ test("Ready gate rejects PRD and responsibility boundary drift", async () => {
   });
 });
 
+test("Ready gate fails when a PRD criterion is covered by no work item", async () => {
+  await withFixture(async ({ runDir }) => {
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+    const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
+    const workItem = await readJsonFile(workItemPath);
+    workItem.prdTrace.acceptanceCriteriaIds = ["AC-001", "AC-002"];
+    await writeJsonFile(workItemPath, workItem);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const errors = JSON.parse(result.stdout).errors;
+    assert.equal(result.status, 1);
+    const traceError = errors.find((error) => error.code === "HARNESS_PRD_TRACE_INCOMPLETE");
+    assert.ok(traceError);
+    assert.match(traceError.reason, /AC-003/);
+  });
+});
+
+test("Ready gate accepts PRD trace coverage split across work items", async () => {
+  await withFixture(async ({ runDir }) => {
+    const workItemPath = path.join(runDir, "work-items", "work.feature-auth.json");
+    const workItem = await readJsonFile(workItemPath);
+    workItem.prdTrace.acceptanceCriteriaIds = ["AC-001", "AC-002"];
+    await writeJsonFile(workItemPath, workItem);
+    await addRequiredAuditNode(runDir); // traces AC-003 only
+    await renderDesignPreview({ runDir });
+    await approveRun(runDir);
+
+    const result = spawnSync(process.execPath, ["bin/harness.mjs", "gate", runDir, "--target", "Ready"], {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8"
+    });
+    const codes = JSON.parse(result.stdout).errors.map((error) => error.code);
+    assert.equal(codes.includes("HARNESS_PRD_TRACE_INCOMPLETE"), false);
+    assert.equal(codes.includes("HARNESS_PRD_TRACE_INVALID"), false);
+  });
+});
+
 test("Ready gate validates declared OpenAPI contracts", async () => {
   await withFixture(async ({ runDir }) => {
     await renderDesignPreview({ runDir });

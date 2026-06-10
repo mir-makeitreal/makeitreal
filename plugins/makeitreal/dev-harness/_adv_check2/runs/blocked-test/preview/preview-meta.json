@@ -1,6 +1,0 @@
-{
-  "dashboardModel": "preview-model.json",
-  "renderedFrom": "design-pack.json",
-  "statusSource": "readRunStatus/readBoardStatus",
-  "workItemId": "work.feature-auth"
-}

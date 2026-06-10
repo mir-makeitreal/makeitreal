@@ -185,6 +185,8 @@ export function minimalProposal({
       dependsOn: [],
       verifyCommand,
       complexity: "medium",
+      // Explicit zero-reviewer declaration: import requires requiredReviewRoles.
+      requiredReviewRoles: [],
       doneEvidence: canonicalDoneEvidence(moduleName)
     }],
     scenarios: [{

@@ -82,6 +82,7 @@ test("CLI uses wall-clock timestamps unless --now is supplied", async () => {
         dependsOn: [],
         verifyCommand: "node -e console.log('ok')",
         complexity: "small",
+        requiredReviewRoles: [],
         doneEvidence: [
           { kind: "verification", path: "evidence/work.timestamp-smoke.verification.json" },
           { kind: "wiki-sync", path: "evidence/work.timestamp-smoke.wiki-sync.json" }

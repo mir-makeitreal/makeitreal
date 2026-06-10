@@ -157,7 +157,9 @@ Top-level shape:
   "title":         string,
   "dependsOn":     [string],                                   // module names this work waits on
   "verifyCommand": string,                                     // e.g. "npm test -- --grep auth"
-  "complexity":    "trivial" | "small" | "medium" | "large"
+  "complexity":    "trivial" | "small" | "medium" | "large",
+  "requiredReviewRoles": [string],                             // REQUIRED — review roles the engine must collect before completion; declare [] explicitly for zero reviewers
+  "acceptanceCriteriaIds": [string]                            // optional — PRD acceptance criterion ids this item delivers (AC-001 = first acceptanceCriteria entry); omit to trace all criteria
 }
 ```
 
@@ -177,6 +179,8 @@ Top-level shape:
 - Module `dependsOn` and WorkItem `dependsOn` must reference declared module names.
 - The dependency DAG (modules + workItems) must be acyclic.
 - Each contract must include `inputs`, `outputs`, and `errors` arrays.
+- Each `WorkItem` must declare `requiredReviewRoles` as an array — omitting it fails the import (`REQUIRED_REVIEW_ROLES_REQUIRED`).
+- When work items declare `acceptanceCriteriaIds`, every PRD acceptance criterion must still be covered by at least one work item — uncovered criteria fail the Ready gate (`HARNESS_PRD_TRACE_INCOMPLETE`).
 - Each `WorkItem.module` must match exactly one declared module; at most one work item per module.
 - For multi-module blueprints, include a work item with `module: "integration"` that depends on ALL other modules. This work item is responsible for creating the server entry point, mounting routers, and wiring all modules together. Without it, modules will be built but never connected. Declare the `integration` module like any other module (name, purpose, ownedPaths for the entry point, contracts, and a verify command).
 - Do NOT invent file paths that don't exist unless the work item creates them.
@@ -303,14 +307,16 @@ A reviewable proposal for adding email-link login:
       "title": "Implement createLoginLink/consumeLoginLink with 10-minute expiry and single-use semantics",
       "dependsOn": [],
       "verifyCommand": "npm test -- --grep auth/link",
-      "complexity": "medium"
+      "complexity": "medium",
+      "requiredReviewRoles": ["code-quality", "contract-conformance"]
     },
     {
       "module": "auth-http",
       "title": "Wire POST /auth/request-link and GET /auth/callback to the auth-link module and set the session cookie",
       "dependsOn": ["auth-link"],
       "verifyCommand": "npm test -- --grep auth/http",
-      "complexity": "medium"
+      "complexity": "medium",
+      "requiredReviewRoles": ["code-quality", "contract-conformance"]
     }
   ],
   "scenarios": [

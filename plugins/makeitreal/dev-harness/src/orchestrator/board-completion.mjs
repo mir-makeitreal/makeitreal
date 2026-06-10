@@ -12,43 +12,10 @@ import { writeJsonFile } from "../io/json.mjs";
 import { liveWikiEnabled, resolveProjectConfigForRun } from "../config/project-config.mjs";
 import { resolveWikiPaths } from "../wiki/paths.mjs";
 import { latestSuccessfulRunAttempt } from "./attempt-store.mjs";
+import { APPROVED_REVIEW_STATUSES, COMPLETION_POLICIES, resolveRequiredReviewRoles } from "./review-evidence.mjs";
 import { loadRuntimeState, recordCompleted, saveRuntimeState } from "./runtime-state.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
-
-// Infrastructure validation only. Doctrine: requiredReviewRoles is NOT declared
-// here — it comes from workItem.requiredReviewRoles. The engine validates and
-// saves; it does not decide which reviewers a work item needs.
-const COMPLETION_POLICIES = Object.freeze({
-  "implementation": {
-    reportRole: "implementation-worker",
-    requiresChangedFiles: true,
-    requiresVerificationCommands: true
-  },
-  "domain-pm": {
-    reportRole: "domain-pm",
-    requiresChangedFiles: false,
-    requiresVerificationCommands: false
-  },
-  "integration-evidence": {
-    reportRole: "integration-evidence",
-    requiresChangedFiles: false,
-    requiresVerificationCommands: true
-  }
-});
-
-const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
-
-// Doctrine: the blueprint (LLM) decides which review roles a work item needs.
-// The engine only validates and saves. When a work item omits the declaration,
-// return [] — the LLM must declare requiredReviewRoles explicitly.
-function resolveRequiredReviewRoles({ workItem }) {
-  if (Array.isArray(workItem?.requiredReviewRoles)) {
-    return workItem.requiredReviewRoles;
-  }
-  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — no reviewers required. Declare requiredReviewRoles in your blueprint.\n");
-  return [];
-}
 
 function transitionWorkItem(workItem, to, context) {
   const transition = canTransition({ from: workItem.lane, to, context });

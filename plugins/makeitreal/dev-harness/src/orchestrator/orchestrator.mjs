@@ -26,35 +26,9 @@ import {
 } from "./runtime-state.mjs";
 import { extractAgentReport, validateAgentReports } from "./dynamic-role-handoff.mjs";
 import { defaultNativeRoleMapping, validateNativeRoleMapping } from "./native-role-mapping.mjs";
-import { extractReviewReports } from "./review-evidence.mjs";
+import { APPROVED_REVIEW_STATUSES, COMPLETION_POLICIES, extractReviewReports, resolveRequiredReviewRoles } from "./review-evidence.mjs";
 import { validateRunnerPolicy } from "./trust-policy.mjs";
 import { resolveProjectRootForRun, resolveWorkspace } from "./workspace-manager.mjs";
-
-// Infrastructure validation only. Doctrine: requiredReviewRoles is NOT declared
-// here — it comes from workItem.requiredReviewRoles. The engine validates and
-// saves; it does not decide which reviewers a work item needs.
-const COMPLETION_POLICIES = Object.freeze({
-  "implementation": {
-    reportRole: "implementation-worker",
-    reportKeys: ["makeitrealReport", "agentReport"],
-    requiresChangedFiles: true,
-    requiresVerificationCommands: true
-  },
-  "domain-pm": {
-    reportRole: "domain-pm",
-    reportKeys: ["makeitrealPmReport", "pmReport"],
-    requiresChangedFiles: false,
-    requiresVerificationCommands: false
-  },
-  "integration-evidence": {
-    reportRole: "integration-evidence",
-    reportKeys: ["makeitrealEvidenceReport", "evidenceReport"],
-    requiresChangedFiles: false,
-    requiresVerificationCommands: true
-  }
-});
-
-const APPROVED_REVIEW_STATUSES = new Set(["APPROVED", "APPROVED_WITH_NOTES"]);
 
 // Runtime values the engine is allowed to interpolate into an LLM-authored
 // prompt. The blueprint owns the prompt text; the engine only substitutes
@@ -70,17 +44,6 @@ function interpolateRuntimeValues(template, { boardDir, projectRoot, attemptId, 
     /\{\{\s*(boardDir|projectRoot|attemptId|workItemId)\s*\}\}/g,
     (_match, key) => values[key]
   );
-}
-
-// Doctrine: the blueprint (LLM) decides which review roles a work item needs.
-// The engine only validates and saves. When a work item omits the declaration,
-// require no reviewers — the LLM must declare requiredReviewRoles explicitly.
-function resolveRequiredReviewRoles({ workItem }) {
-  if (Array.isArray(workItem?.requiredReviewRoles)) {
-    return workItem.requiredReviewRoles;
-  }
-  process.stderr.write("[make-it-real] workItem missing requiredReviewRoles — no reviewers required. Declare requiredReviewRoles in your blueprint.\n");
-  return [];
 }
 
 function mappingForEvidenceRole(mapping, role) {

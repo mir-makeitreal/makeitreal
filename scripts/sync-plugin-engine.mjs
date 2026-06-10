@@ -106,8 +106,20 @@ async function checkDirectory(directoryName, stale) {
   }
 }
 
+async function checkEmbeddedRoot(stale) {
+  const allowed = new Set([...copiedDirectories, ...copiedFiles]);
+  const entries = await readdir(embeddedRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    if (allowed.has(entry.name) || ignoredDirectoryNames.has(entry.name)) {
+      continue;
+    }
+    stale.push(`${entry.name} exists in embedded engine root but is not part of the synced payload`);
+  }
+}
+
 async function checkEmbeddedEngine() {
   const stale = [];
+  await checkEmbeddedRoot(stale);
   for (const directoryName of copiedDirectories) {
     await checkDirectory(directoryName, stale);
   }

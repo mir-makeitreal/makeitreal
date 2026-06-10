@@ -729,6 +729,7 @@ test("preview renders long implementation requests as compact reference docs", a
           dependsOn: [],
           verifyCommand: "npm test",
           complexity: "small",
+          requiredReviewRoles: [],
           doneEvidence: [
             { kind: "verification", path: "evidence/work.normalize-display-name.verification.json" },
             { kind: "wiki-sync", path: "evidence/work.normalize-display-name.wiki-sync.json" }
@@ -820,6 +821,7 @@ test("preview renders API dossiers with concise responsibility labels", async ()
           dependsOn: [],
           verifyCommand: "node -e console.log('orders api ok')",
           complexity: "medium",
+          requiredReviewRoles: [],
           doneEvidence: [
             { kind: "verification", path: "evidence/work.orders-api.verification.json" },
             { kind: "wiki-sync", path: "evidence/work.orders-api.wiki-sync.json" },
@@ -900,6 +902,7 @@ test("preview Mermaid diagrams show software contracts, not harness traceability
           dependsOn: [],
           verifyCommand: "npm test",
           complexity: "small",
+          requiredReviewRoles: [],
           doneEvidence: [
             { kind: "verification", path: "evidence/work.match-route.verification.json" },
             { kind: "wiki-sync", path: "evidence/work.match-route.wiki-sync.json" }
@@ -989,6 +992,7 @@ test("preview renders request-specific SDK examples and function signatures", as
           dependsOn: [],
           verifyCommand: "npm test",
           complexity: "small",
+          requiredReviewRoles: [],
           doneEvidence: [
             { kind: "verification", path: "evidence/work.parse-bounded-int.verification.json" },
             { kind: "wiki-sync", path: "evidence/work.parse-bounded-int.wiki-sync.json" }
@@ -1095,9 +1099,9 @@ test("preview keeps multi-unit Blueprints centered on the architecture packet in
           }
         ],
         workItems: [
-          { module: "Safe Add", title: "Safe Add", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.safe-add.verification.json" }, { kind: "wiki-sync", path: "evidence/work.safe-add.wiki-sync.json" }] },
-          { module: "Slugify Title", title: "Slugify Title", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.slugify-title.verification.json" }, { kind: "wiki-sync", path: "evidence/work.slugify-title.wiki-sync.json" }] },
-          { module: "Format ISO Date", title: "Format ISO Date", dependsOn: [], verifyCommand: "npm test", complexity: "small", doneEvidence: [{ kind: "verification", path: "evidence/work.format-iso-date.verification.json" }, { kind: "wiki-sync", path: "evidence/work.format-iso-date.wiki-sync.json" }] }
+          { module: "Safe Add", title: "Safe Add", dependsOn: [], verifyCommand: "npm test", complexity: "small", requiredReviewRoles: [], doneEvidence: [{ kind: "verification", path: "evidence/work.safe-add.verification.json" }, { kind: "wiki-sync", path: "evidence/work.safe-add.wiki-sync.json" }] },
+          { module: "Slugify Title", title: "Slugify Title", dependsOn: [], verifyCommand: "npm test", complexity: "small", requiredReviewRoles: [], doneEvidence: [{ kind: "verification", path: "evidence/work.slugify-title.verification.json" }, { kind: "wiki-sync", path: "evidence/work.slugify-title.wiki-sync.json" }] },
+          { module: "Format ISO Date", title: "Format ISO Date", dependsOn: [], verifyCommand: "npm test", complexity: "small", requiredReviewRoles: [], doneEvidence: [{ kind: "verification", path: "evidence/work.format-iso-date.verification.json" }, { kind: "wiki-sync", path: "evidence/work.format-iso-date.wiki-sync.json" }] }
         ],
         scenarios: [
           {

@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { fileExists, readJsonFile, writeJsonFile } from "../io/json.mjs";
 
@@ -185,6 +185,67 @@ export async function readSessionRunState(projectRoot, sessionId) {
     statePath,
     runDir,
     state,
+    errors: []
+  };
+}
+
+// Cancelling a run releases every pointer that keeps hook enforcement bound to
+// it: the project-level current-run.json plus any session-scoped pointers under
+// .makeitreal/current-runs/ that reference the same run directory. Both the
+// UserPromptSubmit pending-review injection and the PreToolUse edit blocking
+// resolve the run through these pointers (session pointer first, then legacy),
+// so releasing them is sufficient to unblock unrelated work. The run directory
+// itself is never touched — cancel removes blocking, not data.
+export async function cancelCurrentRun({ projectRoot }) {
+  const current = await readCurrentRunState(projectRoot);
+  if (!current.ok) {
+    return {
+      ok: false,
+      command: "run cancel",
+      projectRoot: current.projectRoot,
+      statePath: current.statePath,
+      runDir: null,
+      errors: current.errors
+    };
+  }
+
+  await unlink(current.statePath);
+  const releasedPointers = [current.statePath];
+  const unreadablePointers = [];
+
+  const sessionDir = path.join(current.projectRoot, ".makeitreal", "current-runs");
+  let sessionEntries = [];
+  try {
+    sessionEntries = await readdir(sessionDir);
+  } catch {
+    sessionEntries = [];
+  }
+  for (const entry of sessionEntries.filter((name) => name.endsWith(".json")).sort()) {
+    const pointerPath = path.join(sessionDir, entry);
+    let state = null;
+    try {
+      state = await readJsonFile(pointerPath);
+    } catch {
+      // Same policy as blueprint reject: an unreadable pointer is left
+      // untouched, but it is reported so the operator can repair it.
+      unreadablePointers.push(pointerPath);
+      continue;
+    }
+    const target = resolveProjectPath(current.projectRoot, state?.currentRunDir);
+    if (target === current.runDir) {
+      await unlink(pointerPath);
+      releasedPointers.push(pointerPath);
+    }
+  }
+
+  return {
+    ok: true,
+    command: "run cancel",
+    projectRoot: current.projectRoot,
+    runDir: current.runDir,
+    runDirPreserved: true,
+    releasedPointers,
+    unreadablePointers,
     errors: []
   };
 }

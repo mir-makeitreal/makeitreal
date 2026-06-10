@@ -2,6 +2,18 @@
 
 All notable changes to Make It Real are documented here.
 
+## [0.1.49] - 2026-06-10
+
+### Fixed
+- New `run cancel <projectRoot>` command releases the active run's current-run pointers (project-level and matching session-scoped) so hook enforcement unblocks; the run directory itself is preserved
+- PRD trace gate now enforces run-level coverage (every acceptance criterion delivered by at least one work item) instead of the per-item "trace all criteria" rule the normalizer satisfied trivially; blueprints may declare `acceptanceCriteriaIds` per work item
+- Blueprint import rejects work items that omit `requiredReviewRoles` (`REQUIRED_REVIEW_ROLES_REQUIRED`); `[]` remains a valid explicit "no reviewers" choice
+- Completion policy and review-role resolution deduplicated into `review-evidence.mjs`, removing drift between the orchestrator and board-completion copies
+- `plugin:sync --check` now flags unexpected entries at the embedded engine root, so stray artifacts cannot ride along unnoticed
+
+### Removed
+- Stray `_adv_check`, `_adv_check2`, `_adv_mkdir_test` test artifact directories accidentally committed under the embedded plugin engine (~15k lines)
+
 ## [0.1.48] - 2026-06-10
 
 ### Fixed
